@@ -36,5 +36,5 @@ repository.mynewt-dw1000-core:
     type: github
     vers: 0-dev
     user: pkettle
-    repo: mynewt-dw1000
+    repo: mynewt-dw1000-core
     token: 'bcbe624ab44174e1af5e257ed8dca50fed2c2569'
