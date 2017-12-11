@@ -19,37 +19,46 @@
 #
 -->
 
-# Apache Blinky
+# Decawave DW1000 driver 
 
 ## Overview
 
-Apache Blinky is a skeleton for new Apache Mynewt projects.  The user downloads
-this skeleton by issuing the "newt new" command (using Apache Newt).  Apache
-blinky also contains an example app and target for use with Apache Mynewt to
-help you get started.
+This repo contains the device driver model for the DW1000 for the mynewt OS. The  
+diver support, hardware abstraction layers, low-level MAC, Ranging Services and a 
+rawlwip stack. 
+
+## Project Status
+This project is destined to be streamed into the mynewt repo early Q1 2018. The example contained herein will
+become part of the mynewt distribution and maintained within that distribution.
+
+DW1000 Device Driver (complete)
+DWM1001 Board Support Package (complete)
+DW1000 Ranging Services ss_twr (complete)
+DW1000 Ranging Services ds_twr (under development)
+CLI node_cfg (Pending)
+CLI autosurvey (Pending)
+CLI anchor (Pending)
+CLI mlat (pending)
 
 ## Building
 
-Apache Blinky contains an example Apache Mynewt application called blinky.
-When executed on suitably equipped hardware, this application repeatedly blinks
-an LED.  The below procedure describes how to build this application for the
-Apache Mynewt simulator.
-
 1. Download and install Apache Newt.
+
+2. Download and install Apache Newt.
 
 You will need to download the Apache Newt tool, as documented in the [Getting Started Guide](http://mynewt.apache.org/os/get_started/introduction/).
 
-2. Download the Apache Mynewt Core package (executed from the blinky directory).
+3. Download the Apache Mynewt Core package (executed from the blinky directory).
 
 ```no-highlight
     $ newt install
 ```
 
-3. Build the blinky app for the sim platform using the "my_blinky_sim" target
-(executed from the blinky directory).
+4. Build the Single Side Two Way Ranging (ss_twr) Applicaitons for the DWM1000 hardware platform using the "dwm1001" target
+(executed from the mynewt-dw1000 directory).
 
 ```no-highlight
-    $ newt build my_blinky_sim
+    $ newt build ss_twr_master
 ```
 
 The Apache Newt tool should indicate the location of the generated blinky
