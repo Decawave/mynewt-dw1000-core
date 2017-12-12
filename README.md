@@ -1,4 +1,5 @@
 <!--
+# Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -23,10 +24,16 @@
 
 ## Overview
 
-This distribution contains the device driver model for the DW1000 UWB transceiver within the mynewt-OS. The driver includes hardware abstraction layers, low-level MAC, Ranging Services and raw-lwip stacks. The DW1000 driver and mynewt-OS combination to create a hardware and architecture agnostic platform for IoT location-aware applications. Augmented with the newt package management tools provides a powerful environment and deploying large-scale distributions within IoT and beyond. The newt management tools uses a repo methodology for package management. The driver contained herein becomes a dependent repo for any DW1000 related project and is automatically included in these project––the https://github.com/devawave/mynewt-dw1000-apps showcase this behavior.  
+This distribution contains the device driver model for the dw1000 UWB transceiver within the mynewt-OS. The driver includes hardware abstraction layers, low-level MAC, Ranging Services and raw-lwip stacks. The dw1000 driver and mynewt-OS combination to create a hardware and architecture agnostic platform for IoT Location Based Services. Augmented this with the newtmgt management tools to create a powerful environment and deploying large-scale distributions within IoT and beyond. The newt management tool uses a repo methodology for package management. The driver contained herein becomes a dependent repo for any DW1000 related project and is automatically included in projects as required––the https://github.com/devawave/mynewt-dw1000-apps showcase this relationship.
+
+This reps also contains the board support package (BSP) for the Decawave dwm1001 module and dwm1001-dev kit. The dwm1001 includes a nrf52832 and the dw1000 transceiver. The dwm1001-dev is a breakout board that supports a Seggar OB-JLink interface with RTT support. The mynewt build environment provides a clean interface for maintaining BSP, and the contained dwm1001 BSP can serve as a template for other dw1000 enabled platforms. The dwm1001-dev and the driver contain herein provide a clean out-of-the-box experience for UWB Location Based Services. 
+
+Warning: The dwm1001 out-of-the-box is flashed with a UWB Location Based Services stack. This distribution repurposes the hardware and is not intended to replace the functionality of the shipped stack. This distribution is intended to be a starting point for evaluating and developing ones own such stacks. 
+
+A signle DW1000 UWB transceiver can be used to form a 6LowPAN mesh network while concurrent measuring distance between nodes (Range). Dual DW1000 device can be used to measure Range and Azimuth also known as Angle-of-Arrival (AoA). With this intent, this dirver is thread-safe and multi-instance. The driver has a hierarchical architecture and is partitioned into functional groups. 
 
 ## Project Status
-This project is destined to be up-streamed into the mynewt repo early Q1 2018:
+This project is destined to be up-streamed into the mynewt repo Q1 2018:
 
 * DW1000 Device Driver (complete)
 * DWM1001 Board Support Package (complete)
@@ -35,16 +42,19 @@ This project is destined to be up-streamed into the mynewt repo early Q1 2018:
 * CLI autosurvey (Pending)
 * CLI anchor (Pending)
 * CLI mlat (Pending)
+* CLI network tools, ping, scan etc. (Pending)
+* Open-Thread support (Pending) 
 * Example (see companion repo mynewt-dw1000-apps)
 
-The driver is layered out hierarchical architecture sorted into functional groups. The dirver is also designed for thread safe and multi-instance. 
+
+## File Description
 ```
 └── drivers
 │       └── dw1000
 │           ├── include
 │           │   └── dw1000
 │           │       ├── dw1000_dev.h
-│           │       ├── dw1000_ftypes.h
+│           │       ├── dw1000_ftypes.h         // Frame types
 │           │       ├── dw1000_gpio.h
 │           │       ├── dw1000_hal.h
 │           │       ├── dw1000_lwip.h
@@ -67,29 +77,14 @@ The driver is layered out hierarchical architecture sorted into functional group
 │               └── dw1000_rng.c                // Ranging services
 ```
 
+## Supported Hardware
+* Decawave dwm1001 and companion dwm1001 (Complete)
+* Decawave AoA-Node (Pending)
+* Decawave TAG-Node (Pending)
+
 ## Building
 
-1. Download and install Apache Newt.
+See the companion repo mynewt-dw1000-apps for building instructions, recall that this driver will is pulled into project as a dependency and will be build form within that project. As such build instructions are light here. 
 
-2. Download and install Apache Newt.
+The dw1000 driver make use of c99 anonymous union extensions, this need to be enabled within the mynewt build enviorement. A patch is provided for the apache-mynewt-core distribution and this can be found in ./repos/.patches/apache-mynewt-core.patch. This patch simply adds -fms-extensions to the cflag.
 
-You will need to download the Apache Newt tool, as documented in the [Getting Started Guide](http://mynewt.apache.org/os/get_started/introduction/).
-
-3. Download the Apache Mynewt Core package (executed from the blinky directory).
-
-```no-highlight
-    $ newt install
-```
-
-4. Build the Single Side Two Way Ranging (ss_twr) Applicaitons for the DWM1000 hardware platform using the "dwm1001" target
-(executed from the mynewt-dw1000 directory).
-
-```no-highlight
-    $ newt build ss_twr_master
-```
-
-The Apache Newt tool should indicate the location of the generated blinky
-executable.  Since the simulator does not have an LED to blink, this version of
-blinky is not terribly exciting - a printed message indicating the current LED
-state.  To learn how to build blinky for actual hardware, please see the
-[Getting Started Guide](http://mynewt.apache.org/os/get_started/introduction/).
