@@ -19,26 +19,52 @@
 #
 -->
 
-# Decawave DW1000 driver 
+# DW1000 mynewt driver 
 
 ## Overview
 
-This repo contains the device driver model for the DW1000 for the mynewt OS. The  
-diver support, hardware abstraction layers, low-level MAC, Ranging Services and a 
-rawlwip stack. 
+This distribution contains the device driver model for the DW1000 UWB transceiver within the mynewt-OS. The driver includes hardware abstraction layers, low-level MAC, Ranging Services and raw-lwip stacks. The DW1000 driver and mynewt-OS combination to create a hardware and architecture agnostic platform for IoT location-aware applications. Augmented with the newt package management tools provides a powerful environment and deploying large-scale distributions within IoT and beyond. The newt management tools uses a repo methodology for package management. The driver contained herein becomes a dependent repo for any DW1000 related project and is automatically included in these project––the https://github.com/devawave/mynewt-dw1000-apps showcase this behavior.  
 
 ## Project Status
-This project is destined to be streamed into the mynewt repo early Q1 2018. The example contained herein will
-become part of the mynewt distribution and maintained within that distribution.
+This project is destined to be up-streamed into the mynewt repo early Q1 2018:
 
-DW1000 Device Driver (complete)
-DWM1001 Board Support Package (complete)
-DW1000 Ranging Services ss_twr (complete)
-DW1000 Ranging Services ds_twr (under development)
-CLI node_cfg (Pending)
-CLI autosurvey (Pending)
-CLI anchor (Pending)
-CLI mlat (pending)
+* DW1000 Device Driver (complete)
+* DWM1001 Board Support Package (complete)
+* DW1000 Ranging Services (complete)
+* CLI node_cfg (Pending)
+* CLI autosurvey (Pending)
+* CLI anchor (Pending)
+* CLI mlat (Pending)
+* Example (see companion repo mynewt-dw1000-apps)
+
+The driver is layered out hierarchical architecture sorted into functional groups. The dirver is also designed for thread safe and multi-instance. 
+```
+└── drivers
+│       └── dw1000
+│           ├── include
+│           │   └── dw1000
+│           │       ├── dw1000_dev.h
+│           │       ├── dw1000_ftypes.h
+│           │       ├── dw1000_gpio.h
+│           │       ├── dw1000_hal.h
+│           │       ├── dw1000_lwip.h
+│           │       ├── dw1000_mac.h
+│           │       ├── dw1000_otp.h
+│           │       ├── dw1000_phy.h
+│           │       ├── dw1000_regs.h
+│           │       ├── dw1000_regulatory.h
+│           │       └── dw1000_rng.h
+│           ├── pkg.yml
+│           └── src
+│               ├── dw1000_dev.c
+│               ├── dw1000_gpio.c
+│               ├── dw1000_hal.c
+│               ├── dw1000_mac.c
+│               ├── dw1000_otp.c
+│               ├── dw1000_phy.c
+│               ├── dw1000_regulatory.c
+│               └── dw1000_rng.c
+```
 
 ## Building
 
