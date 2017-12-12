@@ -56,14 +56,15 @@ The driver is layered out hierarchical architecture sorted into functional group
 │           │       └── dw1000_rng.h
 │           ├── pkg.yml
 │           └── src
-│               ├── dw1000_dev.c
-│               ├── dw1000_gpio.c
-│               ├── dw1000_hal.c
-│               ├── dw1000_mac.c
-│               ├── dw1000_otp.c
-│               ├── dw1000_phy.c
-│               ├── dw1000_regulatory.c
-│               └── dw1000_rng.c
+│               ├── dw1000_dev.c                // Driver instance
+│               ├── dw1000_gpio.c               // DW1000 gpio interface
+│               ├── dw1000_hal.c                // Hardware abstraction
+│               ├── dw1000_lwip.c               // raw-lwip stack
+│               ├── dw1000_mac.c                // MAC lowerlevel
+│               ├── dw1000_otp.c                // One Time Programming
+│               ├── dw1000_phy.c                // Physical layer controller
+│               ├── dw1000_regulatory.c         // Regulatory profiles 
+│               └── dw1000_rng.c                // Ranging services
 ```
 
 ## Building
