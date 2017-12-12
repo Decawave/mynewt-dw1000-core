@@ -40,6 +40,7 @@ typedef struct _dw1000_rng_config_t{
 typedef enum _dw1000_rng_modes_t{
     DW1000_SS_TWR=0,
     DW1000_SS_TWR_T1,
+    DW1000_SS_TWR_FINAL,
     DW1000_DS_TWR,
     DW1000_DS_TWR_T1,
     DW1000_DS_TWR_T2,
