@@ -20,11 +20,11 @@
 #
 -->
 
-# DW1000 mynewt driver 
+# DW1000 mynewt OS driver 
 
 ## Overview
 
-This distribution contains the device driver model for the dw1000 UWB transceiver within the mynewt-OS. The driver includes hardware abstraction layers, low-level MAC, Ranging Services and raw-lwip stacks. The dw1000 driver and mynewt-OS combination to create a hardware and architecture agnostic platform for IoT Location Based Services. Augmented this with the newtmgt management tools to create a powerful environment and deploying large-scale distributions within IoT and beyond. The newt management tool uses a repo methodology for package management. The driver contained herein becomes a dependent repo for any DW1000 related project and is automatically included in projects as required––the https://github.com/devawave/mynewt-dw1000-apps showcase this relationship.
+This distribution contains the device driver model for the dw1000 IR-UWB transceiver within the mynewt-OS. The driver includes hardware abstraction layers, low-level MAC, Ranging Services and raw-lwip stacks. The dw1000 driver and mynewt-OS combination to create a hardware and architecture agnostic platform for IoT Location Based Services. Augmented this with the newtmgt management tools to create a powerful environment and deploying large-scale distributions within IoT and beyond. The newt management tool uses a repo methodology for package management. The driver contained herein becomes a dependent repo for any DW1000 related project and is automatically included in projects as required––the https://github.com/devawave/mynewt-dw1000-apps showcase this relationship.
 
 This reps also contains the board support package (BSP) for the Decawave dwm1001 module and dwm1001-dev kit. The dwm1001 includes a nrf52832 and the dw1000 transceiver. The dwm1001-dev is a breakout board that supports a Seggar OB-JLink interface with RTT support. The mynewt build environment provides a clean interface for maintaining BSP, and the contained dwm1001 BSP can serve as a template for other dw1000 enabled platforms. The dwm1001-dev and the driver contain herein provide a clean out-of-the-box experience for UWB Location Based Services. 
 
@@ -84,7 +84,7 @@ This project is destined to be up-streamed into the mynewt repo Q1 2018:
 
 ## Building
 
-See the companion repo mynewt-dw1000-apps for building instructions, recall that this driver will is pulled into project as a dependency and will be build form within that project. As such build instructions are light here. 
+See the companion repo mynewt-dw1000-apps for building instructions, recall that this driver will is pulled into projects as a dependency and will be build form within that project. As such build instructions are light here. 
 
-The dw1000 driver make use of c99 anonymous union extensions, this need to be enabled within the mynewt build enviorement. A patch is provided for the apache-mynewt-core distribution and this can be found in ./repos/.patches/apache-mynewt-core.patch. This patch simply adds -fms-extensions to the cflag.
+The dw1000 driver make use of c99 anonymous union extensions, this need to be enabled within the mynewt build enviorement. A patch is provided for the apache-mynewt-core distribution, this can be found at ./mynewt-dw1000-apps/repos/.patches/apache-mynewt-core.patch. This patch simply adds -fms-extensions to the cflag.
 
