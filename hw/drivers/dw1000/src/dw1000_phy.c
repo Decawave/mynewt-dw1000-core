@@ -1,4 +1,6 @@
 /**
+ * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
+ * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -325,7 +327,7 @@ void dw1000_phy_forcetrxoff(dw1000_dev_instance_t * inst)
     err = os_mutex_release(&inst->mutex);
     assert(err == OS_OK);
 
-    inst->status.wait4resp_enabled = 0;
+    inst->control.wait4resp_enabled = 0;
 
 }
 

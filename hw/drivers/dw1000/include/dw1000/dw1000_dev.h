@@ -1,4 +1,6 @@
 /**
+ * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
+ * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -55,9 +57,29 @@ typedef struct _dw1000_dev_status_t{
     uint32_t start_tx_error:1;
     uint32_t start_rx_error:1;
     uint32_t tx_frame_error:1;
-    uint32_t rx_timeout_enabled:1;
     uint32_t rx_error:1;
     uint32_t rx_timeout_error:1;
+/*
+    uint32_t wait4resp_enabled:1;
+    uint32_t wait4resp_delay_enabled:1;
+    uint32_t start_tx_delay_enabled:1;
+    uint32_t autoack_delay_enabled:1;
+    uint32_t start_rx_delay_enabled:1;
+    uint32_t start_rx_syncbuf_enabled:1;
+    uint32_t dblbuffon_enabled:1;
+    uint32_t framefilter_enabled:1;
+*/
+    uint32_t spi_error:1;
+    uint32_t wakeup_LLDE:1;
+    uint32_t wakeup_LLDO:1;
+
+    uint32_t rx_ranging_frame:1;     //Range Request bit set for inbound frame
+    uint32_t tx_ranging_frame:1;     //Range Request bit set for outbound frame
+    uint32_t range_request_timeout:1;
+}dw1000_dev_status_t;
+
+
+typedef struct _dw1000_dev_control_t{
 
     uint32_t wait4resp_enabled:1;
     uint32_t wait4resp_delay_enabled:1;
@@ -67,15 +89,12 @@ typedef struct _dw1000_dev_status_t{
     uint32_t start_rx_syncbuf_enabled:1;
     uint32_t dblbuffon_enabled:1;
     uint32_t framefilter_enabled:1;
+    uint32_t rx_timeout_enabled:1;
 
-    uint32_t spi_error:1;
     uint32_t wakeup_LLDE:1;
     uint32_t wakeup_LLDO:1;
 
-    uint32_t rx_ranging_frame:1;     //Range Request bit set for inbound frame
-    uint32_t tx_ranging_frame:1;     //Range Request bit set for outbound frame
-    uint32_t range_request_timeout:1;
-}dw1000_dev_status_t;
+}dw1000_dev_control_t;
 
 typedef struct _dw1000_dev_config_t{
     uint16_t regulatory_profile:2;  
@@ -129,6 +148,7 @@ typedef struct _dw1000_dev_instance_t{
     struct _dw1000_rng_instance_t * rng;
     struct _dw1000_lwip_instance_t * lwip;
     struct _ss_twr_transaction_t * ss_twr;
+    dw1000_dev_control_t control; 
     dw1000_dev_status_t status; 
 }dw1000_dev_instance_t;
 

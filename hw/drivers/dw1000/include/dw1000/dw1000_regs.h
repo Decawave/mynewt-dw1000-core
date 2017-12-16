@@ -1,14 +1,22 @@
-/*! ------------------------------------------------------------------------------------------------------------------
- * @file    dw1000_regs.h
- * @brief   DW1000 Register Definitions
- *          This file supports assembler and C development for DW1000 enabled devices
+/**
+ * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
+ * 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
- * @attention
- *
- * Copyright 2013 (c) Decawave Ltd, Dublin, Ireland.
- *
- * All rights reserved.
- *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 #ifndef _DW1000_REGS_H_
@@ -392,7 +400,7 @@ extern "C" {
 /****************************************************************************//**
  * @brief Bit definitions for register RX_TTCKI
  *      The value here is the interval over which the timing offset reported
- *      in the RXTOFS field of Register file: 0x14 – RX_TTCKO is measured.
+ *      in the RXTOFS field of Register file: 0x14 ï¿½ RX_TTCKO is measured.
  *      The clock offset is calculated by dividing RXTTCKI by RXTOFS.
  *      The value in RXTTCKI will take just one of two values depending on the PRF: 0x01F00000 @ 16 MHz PRF,
  *      and 0x01FC0000 @ 64 MHz PRF.
@@ -784,10 +792,10 @@ extern "C" {
 #define GIMOD8  GIRQx8  /* Value 0 = Level, 1 = Edge. */
 
 /* offset from EXT_SYNC_ID in bytes */
-#define GPIO_IBES_OFFSET        0x1C    /* sub-register 0x1C is the GPIO interrupt “Both Edge” selection register */
+#define GPIO_IBES_OFFSET        0x1C    /* sub-register 0x1C is the GPIO interrupt ï¿½Both Edgeï¿½ selection register */
 #define GPIO_IBES_LEN           (4)
 #define GPIO_IBES_MASK          GPIO_IRQE_MASK  /*  */
-#define GIBES0  GIRQx0  /* GPIO IRQ “Both Edge” selection for GPIO0 input. Value 0 = GPIO_IMODE register selects the edge. Value 1 = Both edges trigger the interrupt. */
+#define GIBES0  GIRQx0  /* GPIO IRQ ï¿½Both Edgeï¿½ selection for GPIO0 input. Value 0 = GPIO_IMODE register selects the edge. Value 1 = Both edges trigger the interrupt. */
 #define GIBES1  GIRQx1  /*  */
 #define GIBES2  GIRQx2  /*  */
 #define GIBES3  GIRQx3  /*  */
@@ -848,7 +856,7 @@ extern "C" {
 /* offset from DRX_CONF_ID in bytes */
 #define DRX_TUNE0b_OFFSET       (0x02)  /* sub-register 0x02 is a 16-bit tuning register. */
 #define DRX_TUNE0b_LEN          (2)
-#define DRX_TUNE0b_MASK         0xFFFF  /* 7.2.40.2 Sub-Register 0x27:02 – DRX_TUNE0b */
+#define DRX_TUNE0b_MASK         0xFFFF  /* 7.2.40.2 Sub-Register 0x27:02 ï¿½ DRX_TUNE0b */
 #define DRX_TUNE0b_110K_STD     0x000A
 #define DRX_TUNE0b_110K_NSTD    0x0016
 #define DRX_TUNE0b_850K_STD     0x0001
@@ -857,14 +865,14 @@ extern "C" {
 #define DRX_TUNE0b_6M8_NSTD     0x0002
 
 /* offset from DRX_CONF_ID in bytes */
-#define DRX_TUNE1a_OFFSET       0x04    /* 7.2.40.3 Sub-Register 0x27:04 – DRX_TUNE1a */
+#define DRX_TUNE1a_OFFSET       0x04    /* 7.2.40.3 Sub-Register 0x27:04 ï¿½ DRX_TUNE1a */
 #define DRX_TUNE1a_LEN          (2)
 #define DRX_TUNE1a_MASK         0xFFFF
 #define DRX_TUNE1a_PRF16        0x0087
 #define DRX_TUNE1a_PRF64        0x008D
 
 /* offset from DRX_CONF_ID in bytes */
-#define DRX_TUNE1b_OFFSET       0x06    /* 7.2.40.4 Sub-Register 0x27:06 – DRX_TUNE1b */
+#define DRX_TUNE1b_OFFSET       0x06    /* 7.2.40.4 Sub-Register 0x27:06 ï¿½ DRX_TUNE1b */
 #define DRX_TUNE1b_LEN          (2)
 #define DRX_TUNE1b_MASK         0xFFFF
 #define DRX_TUNE1b_110K         0x0064
@@ -872,7 +880,7 @@ extern "C" {
 #define DRX_TUNE1b_6M8_PRE64    0x0010
 
 /* offset from DRX_CONF_ID in bytes */
-#define DRX_TUNE2_OFFSET        0x08    /* 7.2.40.5 Sub-Register 0x27:08 – DRX_TUNE2 */
+#define DRX_TUNE2_OFFSET        0x08    /* 7.2.40.5 Sub-Register 0x27:08 ï¿½ DRX_TUNE2 */
 #define DRX_TUNE2_LEN           (4)
 #define DRX_TUNE2_MASK          0xFFFFFFFFUL
 #define DRX_TUNE2_PRF16_PAC8    0x311A002DUL
@@ -888,17 +896,17 @@ extern "C" {
 /* WARNING: Please do NOT set DRX_SFDTOC to zero (disabling SFD detection timeout)
  * since this risks IC malfunction due to prolonged receiver activity in the event of false preamble detection.
  */
-#define DRX_SFDTOC_OFFSET       0x20    /* 7.2.40.7 Sub-Register 0x27:20 – DRX_SFDTOC */
+#define DRX_SFDTOC_OFFSET       0x20    /* 7.2.40.7 Sub-Register 0x27:20 ï¿½ DRX_SFDTOC */
 #define DRX_SFDTOC_LEN          (2)
 #define DRX_SFDTOC_MASK         0xFFFF
 
 /* offset from DRX_CONF_ID in bytes */
-#define DRX_PRETOC_OFFSET       0x24    /* 7.2.40.9 Sub-Register 0x27:24 – DRX_PRETOC */
+#define DRX_PRETOC_OFFSET       0x24    /* 7.2.40.9 Sub-Register 0x27:24 ï¿½ DRX_PRETOC */
 #define DRX_PRETOC_LEN          (2)
 #define DRX_PRETOC_MASK         0xFFFF
 
 /* offset from DRX_CONF_ID in bytes */
-#define DRX_TUNE4H_OFFSET       0x26    /* 7.2.40.10 Sub-Register 0x27:26 – DRX_TUNE4H */
+#define DRX_TUNE4H_OFFSET       0x26    /* 7.2.40.10 Sub-Register 0x27:26 ï¿½ DRX_TUNE4H */
 #define DRX_TUNE4H_LEN          (2)
 #define DRX_TUNE4H_MASK         0xFFFF
 #define DRX_TUNE4H_PRE64        0x0010
@@ -908,7 +916,7 @@ extern "C" {
 /****************************************************************************//**
  * @brief Bit definitions for register  RF_CONF
  * Analog RF Configuration block
- * Refer to section 7.2.41 Register file: 0x28 – Analog RF configuration block
+ * Refer to section 7.2.41 Register file: 0x28 ï¿½ Analog RF configuration block
 **/
 #define RF_CONF_ID              0x28            /* Analog RF Configuration */
 #define RF_CONF_LEN             (58)
@@ -929,12 +937,12 @@ extern "C" {
 #define RF_TXCTRL_LEN           (4)
 #define RF_TXCTRL_TXMTUNE_MASK  0x000001E0UL    /* Transmit mixer tuning register */
 #define RF_TXCTRL_TXTXMQ_MASK   0x00000E00UL    /* Transmit mixer Q-factor tuning register */
-#define RF_TXCTRL_CH1           0x00005C40UL    /* 32-bit value to program to Sub-Register 0x28:0C – RF_TXCTRL */
-#define RF_TXCTRL_CH2           0x00045CA0UL    /* 32-bit value to program to Sub-Register 0x28:0C – RF_TXCTRL */
-#define RF_TXCTRL_CH3           0x00086CC0UL    /* 32-bit value to program to Sub-Register 0x28:0C – RF_TXCTRL */
-#define RF_TXCTRL_CH4           0x00045C80UL    /* 32-bit value to program to Sub-Register 0x28:0C – RF_TXCTRL */
-#define RF_TXCTRL_CH5           0x001E3FE0UL    /* 32-bit value to program to Sub-Register 0x28:0C – RF_TXCTRL */
-#define RF_TXCTRL_CH7           0x001E7DE0UL    /* 32-bit value to program to Sub-Register 0x28:0C – RF_TXCTRL */
+#define RF_TXCTRL_CH1           0x00005C40UL    /* 32-bit value to program to Sub-Register 0x28:0C ï¿½ RF_TXCTRL */
+#define RF_TXCTRL_CH2           0x00045CA0UL    /* 32-bit value to program to Sub-Register 0x28:0C ï¿½ RF_TXCTRL */
+#define RF_TXCTRL_CH3           0x00086CC0UL    /* 32-bit value to program to Sub-Register 0x28:0C ï¿½ RF_TXCTRL */
+#define RF_TXCTRL_CH4           0x00045C80UL    /* 32-bit value to program to Sub-Register 0x28:0C ï¿½ RF_TXCTRL */
+#define RF_TXCTRL_CH5           0x001E3FE0UL    /* 32-bit value to program to Sub-Register 0x28:0C ï¿½ RF_TXCTRL */
+#define RF_TXCTRL_CH7           0x001E7DE0UL    /* 32-bit value to program to Sub-Register 0x28:0C ï¿½ RF_TXCTRL */
 
 /* offset from TX_CAL_ID in bytes */
 #define RF_STATUS_OFFSET        0x2C
@@ -946,7 +954,7 @@ extern "C" {
 
 /****************************************************************************//**
  * @brief Bit definitions for register TX_CAL
- * Refer to section 7.2.43 Register file: 0x2A – Transmitter Calibration block
+ * Refer to section 7.2.43 Register file: 0x2A ï¿½ Transmitter Calibration block
 **/
 #define TX_CAL_ID               0x2A            /* Transmitter calibration block */
 #define TX_CAL_LEN              (52)
@@ -958,7 +966,7 @@ extern "C" {
 #define TC_SARW_SAR_WTEMP_OFFSET    0x06            /* SAR reading of Temperature level taken at last wakeup event */
 #define TC_SARW_SAR_WVBAT_OFFSET    0x07            /* SAR reading of Voltage level taken at last wakeup event */
 /* offset from TX_CAL_ID in bytes */
-#define TC_PGDELAY_OFFSET       0x0B            /* Transmitter Calibration – Pulse Generator Delay */
+#define TC_PGDELAY_OFFSET       0x0B            /* Transmitter Calibration ï¿½ Pulse Generator Delay */
 #define TC_PGDELAY_LEN          (1)
 #define TC_PGDELAY_CH1          0xC9            /* Recommended value for channel 1 */
 #define TC_PGDELAY_CH2          0xC2            /* Recommended value for channel 2 */
@@ -967,14 +975,14 @@ extern "C" {
 #define TC_PGDELAY_CH5          0xC0            /* Recommended value for channel 5 */
 #define TC_PGDELAY_CH7          0x93            /* Recommended value for channel 7 */
 /* offset from TX_CAL_ID in bytes */
-#define TC_PGTEST_OFFSET        0x0C            /* Transmitter Calibration – Pulse Generator Test */
+#define TC_PGTEST_OFFSET        0x0C            /* Transmitter Calibration ï¿½ Pulse Generator Test */
 #define TC_PGTEST_LEN           (1)
 #define TC_PGTEST_NORMAL        0x00            /* Normal operation */
 #define TC_PGTEST_CW            0x13            /* Continuous Wave (CW) Test Mode */
 
 /****************************************************************************//**
  * @brief Bit definitions for register
- * Refer to section 7.2.44 Register file: 0x2B – Frequency synthesiser control block
+ * Refer to section 7.2.44 Register file: 0x2B ï¿½ Frequency synthesiser control block
 **/
 #define FS_CTRL_ID              0x2B            /* Frequency synthesiser control block */
 #define FS_CTRL_LEN             (21)
@@ -982,7 +990,7 @@ extern "C" {
 #define FS_RES1_OFFSET          0x00            /* reserved area. Please take care not to write to this area as doing so may cause the DW1000 to malfunction. */
 #define FS_RES1_LEN             (7)
 /* offset from FS_CTRL_ID in bytes */
-#define FS_PLLCFG_OFFSET        0x07            /* Frequency synthesiser – PLL configuration */
+#define FS_PLLCFG_OFFSET        0x07            /* Frequency synthesiser ï¿½ PLL configuration */
 #define FS_PLLCFG_LEN           (5)
 #define FS_PLLCFG_CH1           0x09000407UL    /* Operating Channel 1 */
 #define FS_PLLCFG_CH2           0x08400508UL    /* Operating Channel 2 */
@@ -991,7 +999,7 @@ extern "C" {
 #define FS_PLLCFG_CH5           0x0800041DUL    /* Operating Channel 5 */
 #define FS_PLLCFG_CH7           FS_PLLCFG_CH5   /* Operating Channel 7 (same as 5) */
 /* offset from FS_CTRL_ID in bytes */
-#define FS_PLLTUNE_OFFSET       0x0B            /* Frequency synthesiser – PLL Tuning */
+#define FS_PLLTUNE_OFFSET       0x0B            /* Frequency synthesiser ï¿½ PLL Tuning */
 #define FS_PLLTUNE_LEN          (1)
 #define FS_PLLTUNE_CH1          0x1E            /* Operating Channel 1 */
 #define FS_PLLTUNE_CH2          0x26            /* Operating Channel 2 */
@@ -1003,9 +1011,9 @@ extern "C" {
 #define FS_RES2_OFFSET          0x0C    /* reserved area. Please take care not to write to this area as doing so may cause the DW1000 to malfunction. */
 #define FS_RES2_LEN             (2)
 /* offset from FS_CTRL_ID in bytes */
-#define FS_XTALT_OFFSET         0x0E    /* Frequency synthesiser – Crystal trim */
+#define FS_XTALT_OFFSET         0x0E    /* Frequency synthesiser ï¿½ Crystal trim */
 #define FS_XTALT_LEN            (1)
-#define FS_XTALT_MASK           0x1F    /* Crystal Trim. Crystals may be trimmed using this register setting to tune out errors, see 8.1 – IC Calibration – Crystal Oscillator Trim. */
+#define FS_XTALT_MASK           0x1F    /* Crystal Trim. Crystals may be trimmed using this register setting to tune out errors, see 8.1 ï¿½ IC Calibration ï¿½ Crystal Oscillator Trim. */
 #define FS_XTALT_MIDRANGE       0x10
 /* offset from FS_CTRL_ID in bytes */
 #define FS_RES3_OFFSET          0x0F    /* reserved area. Please take care not to write to this area as doing so may cause the DW1000 to malfunction. */
@@ -1022,7 +1030,7 @@ extern "C" {
 #define AON_WCFG_MASK           0x09CB  /* access mask to AON_WCFG register*/
 #define AON_WCFG_ONW_RADC       0x0001  /* On Wake-up Run the (temperature and voltage) Analog-to-Digital Convertors */
 #define AON_WCFG_ONW_RX         0x0002  /* On Wake-up turn on the Receiver */
-#define AON_WCFG_ONW_LEUI       0x0008  /* On Wake-up load the EUI from OTP memory into Register file: 0x01 – Extended Unique Identifier. */
+#define AON_WCFG_ONW_LEUI       0x0008  /* On Wake-up load the EUI from OTP memory into Register file: 0x01 ï¿½ Extended Unique Identifier. */
 #define AON_WCFG_ONW_LDC        0x0040  /* On Wake-up load configurations from the AON memory into the host interface register set */
 #define AON_WCFG_ONW_L64P       0x0080  /* On Wake-up load the Length64 receiver operating parameter set */
 #define AON_WCFG_PRES_SLEEP     0x0100  /* Preserve Sleep. This bit determines what the DW1000 does with respect to the ARXSLP and ATXSLP sleep controls */
@@ -1065,11 +1073,11 @@ extern "C" {
 #define AON_CFG1_MASK           0x0007  /* aceess mask to AON_CFG1 */
 #define AON_CFG1_SLEEP_CEN      0x0001  /* This bit enables the sleep counter */
 #define AON_CFG1_SMXX           0x0002  /* This bit needs to be set to 0 for correct operation in the SLEEP state within the DW1000 */
-#define AON_CFG1_LPOSC_CAL      0x0004  /* This bit enables the calibration function that measures the period of the IC’s internal low powered oscillator */
+#define AON_CFG1_LPOSC_CAL      0x0004  /* This bit enables the calibration function that measures the period of the ICï¿½s internal low powered oscillator */
 
 /****************************************************************************//**
  * @brief Bit definitions for register OTP_IF
- * Refer to section 7.2.46 Register file: 0x2D – OTP Memory Interface
+ * Refer to section 7.2.46 Register file: 0x2D ï¿½ OTP Memory Interface
 **/
 #define OTP_IF_ID               0x2D            /* One Time Programmable Memory Interface */
 #define OTP_IF_LEN              (18)
@@ -1113,8 +1121,8 @@ extern "C" {
 
 /****************************************************************************//**
  * @brief Bit definitions for register LDE_IF
- * Refer to section 7.2.47 Register file: 0x2E – Leading Edge Detection Interface
- * PLEASE NOTE: Other areas within the address space of Register file: 0x2E – Leading Edge Detection Interface
+ * Refer to section 7.2.47 Register file: 0x2E ï¿½ Leading Edge Detection Interface
+ * PLEASE NOTE: Other areas within the address space of Register file: 0x2E ï¿½ Leading Edge Detection Interface
  * are reserved. To ensure proper operation of the LDE algorithm (i.e. to avoid loss of performance or a malfunction),
  * care must be taken not to write to any byte locations other than those defined in the sub-sections below.
 **/
@@ -1229,11 +1237,11 @@ extern "C" {
 #define EVC_TXFS_MASK           0x0FFF
 
 /* offset from DIG_DIAG_ID in bytes */
-#define EVC_HPW_OFFSET          0x18        /* The EVC_HPW field is a 12-bit counter of “Half Period Warnings”. */
+#define EVC_HPW_OFFSET          0x18        /* The EVC_HPW field is a 12-bit counter of ï¿½Half Period Warningsï¿½. */
 #define EVC_HPW_LEN             (2)
 #define EVC_HPW_MASK            0x0FFF
 /* offset from DIG_DIAG_ID in bytes */
-#define EVC_TPW_OFFSET          0x1A        /* The EVC_TPW field is a 12-bit counter of “Transmitter Power-Up Warnings”. */
+#define EVC_TPW_OFFSET          0x1A        /* The EVC_TPW field is a 12-bit counter of ï¿½Transmitter Power-Up Warningsï¿½. */
 #define EVC_TPW_LEN             (2)
 #define EVC_TPW_MASK            0x0FFF
 

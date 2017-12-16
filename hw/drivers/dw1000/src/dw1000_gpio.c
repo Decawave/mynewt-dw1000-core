@@ -1,4 +1,6 @@
 /**
+ * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
+ * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -16,7 +18,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>

@@ -1,4 +1,6 @@
 /**
+ * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
+ * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -37,8 +39,6 @@ static void rng_rx_complete_cb(dw1000_dev_instance_t * inst);
 static void rng_rx_timeout_cb(dw1000_dev_instance_t * inst);
 static void rng_rx_error_cb(dw1000_dev_instance_t * inst);
 
-
-
 dw1000_rng_instance_t * dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config){
 
     assert(inst);
@@ -63,7 +63,6 @@ dw1000_rng_instance_t * dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng
     return inst->rng;
 }
 
-
 void dw1000_rng_free(dw1000_rng_instance_t * inst){
 
     assert(inst);  
@@ -80,7 +79,7 @@ void dw1000_rng_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng
     inst->rng_rx_error_cb = rng_rx_error_cb;
 }
 
-inline void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, ss_twr_range_t * transaction){
+inline void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, ss_twr_frame_t * transaction){
     if (transaction != NULL) 
         inst->rng->ss_twr = transaction;
 }
@@ -98,18 +97,17 @@ dw1000_dev_status_t dw1000_rng_config(dw1000_dev_instance_t * inst, dw1000_rng_c
 }
 
 
-
 dw1000_dev_status_t dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t protocal){
 
     /* Semaphore lock for multi-threaded applications */
     os_error_t err = os_sem_pend(&inst->rng->sem, OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
     
-    ss_twr_range_t * ss_twr  = inst->rng->ss_twr;    
+    ss_twr_frame_t * ss_twr  = inst->rng->ss_twr;    
     dw1000_rng_config_t * config = inst->rng->config;
 
     ss_twr->request.seq_num++;
-    ss_twr->request.code = DW1000_SS_TWR;
+    ss_twr->request.code = DWT_SS_TWR;
     ss_twr->request.src_address = inst->my_short_address;
     ss_twr->request.dst_address = dst_address;
 
@@ -129,6 +127,13 @@ dw1000_dev_status_t dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t ds
 }
 
 static void rng_tx_complete_cb(dw1000_dev_instance_t * inst){
+
+   // Unblock Semaphore after last transmission
+   ss_twr_frame_t * ss_twr  = inst->rng->ss_twr; 
+   if (ss_twr->response.src_address != inst->my_short_address) 
+        return;
+   if (ss_twr->response.code == DWT_SS_TWR_FINAL || ss_twr->response.code == DWT_SDS_TWR_T2) 
+        os_sem_release(&inst->rng->sem);  
 }
 
 static void rng_rx_complete_cb(dw1000_dev_instance_t * inst){
@@ -136,8 +141,10 @@ static void rng_rx_complete_cb(dw1000_dev_instance_t * inst){
     hal_gpio_toggle(LED_1);
 
     uint16_t code, dst_address; 
-    ss_twr_range_t * ss_twr  = inst->rng->ss_twr;    
+    ss_twr_frame_t * ss_twr  = inst->rng->ss_twr;    
     dw1000_rng_config_t * config = inst->rng->config;
+    uint64_t request_timestamp, response_tx_delay, response_timestamp;
+  
 
     if (inst->fctrl == 0x8841){ 
         dw1000_read_rx(inst, (uint8_t *) &code, offsetof(ieee_rng_request_frame_t,code), sizeof(uint16_t));
@@ -146,12 +153,13 @@ static void rng_rx_complete_cb(dw1000_dev_instance_t * inst){
         printf("unknown ranging frame type\n");
         return;
     }
-//    printf("dst_address = %X my_short_address = %X\n", dst_address, inst->my_short_address);
+   printf("dst_address = %X my_short_address = %X\n", dst_address, inst->my_short_address);
     if (dst_address != inst->my_short_address) 
         return;
-
+    
     switch (code){
-        case DW1000_SS_TWR:
+        case DWT_SS_TWR:
+
             if (inst->frame_len <= sizeof(ieee_rng_request_frame_t))
                 dw1000_read_rx(inst, (uint8_t *) &ss_twr->request, 0, sizeof(ieee_rng_request_frame_t));
             else 
@@ -174,15 +182,15 @@ static void rng_rx_complete_cb(dw1000_dev_instance_t * inst){
             // wait4resp_delay is in (usec)
             // 1 (usec) = 1 << 9 (DTU) 
             
-            uint64_t request_timestamp = dw1000_read_rxtime(inst);  
-            uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->wait4resp_delay << 15); 
-            uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
+            request_timestamp = dw1000_read_rxtime(inst);  
+            response_tx_delay = request_timestamp + ((uint64_t)config->wait4resp_delay << 15); 
+            response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + (inst->tx_antenna_delay << 2);
   
             ss_twr->response.reception_timestamp = request_timestamp;
             ss_twr->response.transmission_timestamp = response_timestamp;
             ss_twr->response.dst_address = ss_twr->request.src_address;
             ss_twr->response.src_address = inst->my_short_address;
-            ss_twr->response.code = DW1000_SS_TWR_T1;
+            ss_twr->response.code = DWT_SS_TWR_T1;
 
             dw1000_write_tx(inst, (uint8_t *)&ss_twr->response, 0, sizeof(ieee_rng_response_frame_t));
             dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true); 
@@ -190,22 +198,40 @@ static void rng_rx_complete_cb(dw1000_dev_instance_t * inst){
 
             if (dw1000_start_tx_delayed(inst, response_tx_delay).start_tx_error)
                 os_sem_release(&inst->rng->sem);  
-    
             break;
 
-        case DW1000_SS_TWR_T1:
+        case DWT_SS_TWR_T1:
+
             if (inst->frame_len <= sizeof(ieee_rng_response_frame_t))
                 dw1000_read_rx(inst,  (uint8_t *) &ss_twr->response, 0, sizeof(ieee_rng_response_frame_t));
             else 
                 break;
 
             ss_twr->request_timestamp = dw1000_read_txtime_lo(inst);   // This corresponds to when the original request was actually sent
-            ss_twr->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received
-            
-            os_sem_release(&inst->rng->sem);
+            ss_twr->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received            
+            ss_twr->response.code = DWT_SS_TWR_FINAL;
+            ss_twr->response.dst_address = ss_twr->response.src_address;
+            ss_twr->response.src_address = inst->my_short_address;
+
+            request_timestamp = dw1000_read_rxtime(inst);  
+            response_tx_delay = request_timestamp + ((uint64_t)config->wait4resp_delay << 15); 
+
+            // Transmit timestamp final report
+            dw1000_write_tx(inst, (uint8_t *)&ss_twr, 0, sizeof(ss_twr_frame_t));
+            dw1000_write_tx_fctrl(inst, sizeof(ss_twr_frame_t), 0, true); 
+            dw1000_set_wait4resp(inst, false, config->wait4resp_delay, config->rx_timeout_period); // switch in received frame now
+            //dw1000_start_tx(inst);
+            if (dw1000_start_tx_delayed(inst, response_tx_delay).start_tx_error)
+                os_sem_release(&inst->rng->sem);  
             break;
 
-        case  DW1000_SS_TWR_FINAL:
+        case  DWT_SS_TWR_FINAL:
+         if (inst->frame_len <= sizeof(ss_twr_frame_t))
+                dw1000_read_rx(inst,  (uint8_t *) &ss_twr, 0, sizeof(ss_twr_frame_t));
+
+        os_sem_release(&inst->rng->sem);
+        break;
+
         default: break;
     }  
 }

@@ -1,4 +1,6 @@
 /**
+ * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
+ * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -329,6 +331,18 @@ dw1000_dev_status_t dw1000_write_tx(dw1000_dev_instance_t * inst,  uint8_t *txFr
     assert((txBufferOffset + txFrameLength) <= 1024);
 #endif
 
+     inst->control = (dw1000_dev_control_t){
+        .wait4resp_enabled=0,
+        .wait4resp_delay_enabled=0,
+        .start_tx_delay_enabled=0,
+        .autoack_delay_enabled=0,
+        .start_rx_delay_enabled=0,
+        .start_rx_syncbuf_enabled=0,
+        .dblbuffon_enabled=0,
+        .framefilter_enabled=0,
+        .rx_timeout_enabled=0
+    };
+
     if ((txBufferOffset + txFrameLength) <= 1024){
         // Write the data to the IC TX buffer, (-2 bytes for auto generated CRC)
         dw1000_write(inst, TX_BUFFER_ID, txBufferOffset,  txFrameBytes, txFrameLength-2);
@@ -380,16 +394,16 @@ inline void dw1000_write_tx_fctrl(dw1000_dev_instance_t * inst, uint16_t txFrame
 dw1000_dev_status_t dw1000_start_tx(dw1000_dev_instance_t * inst)
 {
 
-     if (inst->status.wait4resp_enabled) // Undocumented ANONMALY::This should not be required
+     if (inst->control.wait4resp_enabled) // Undocumented ANONMALY::This should not be required
         dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint8_t)SYS_CTRL_WAIT4RESP, sizeof(uint8_t));
 
     inst->sys_ctrl_reg = SYS_CTRL_TXSTRT;
-    if (inst->status.wait4resp_enabled)
+    if (inst->control.wait4resp_enabled)
         inst->sys_ctrl_reg |= SYS_CTRL_WAIT4RESP; 
-    if (inst->status.start_tx_delay_enabled)
+    if (inst->control.start_tx_delay_enabled)
         inst->sys_ctrl_reg |= SYS_CTRL_TXDLYS; 
 
-    if (inst->status.start_tx_delay_enabled){
+    if (inst->control.start_tx_delay_enabled){
         dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint8_t) inst->sys_ctrl_reg, sizeof(uint8_t));
         uint16_t sys_status_reg = dw1000_read_reg(inst, SYS_STATUS_ID, 3, sizeof(uint16_t)); // Read at offset 3 to get the upper 2 bytes out of 5
         inst->status.start_tx_error = (sys_status_reg & ((SYS_STATUS_HPDWARN | SYS_STATUS_TXPUTE) >> 24)) != 0;
@@ -427,9 +441,9 @@ dw1000_dev_status_t dw1000_start_tx(dw1000_dev_instance_t * inst)
  */
 inline dw1000_dev_status_t dw1000_start_tx_delayed(dw1000_dev_instance_t * inst, uint64_t delay)
 {
-    inst->status.start_tx_delay_enabled = (delay >> 8) > 0;
+    inst->control.start_tx_delay_enabled = (delay >> 8) > 0;
 
-    if (inst->status.start_tx_delay_enabled)
+    if (inst->control.start_tx_delay_enabled)
          dw1000_write_reg(inst, DX_TIME_ID, 1, delay >> 8, DX_TIME_LEN-1);
 
     dw1000_start_tx(inst);
@@ -450,15 +464,15 @@ inline dw1000_dev_status_t dw1000_start_tx_delayed(dw1000_dev_instance_t * inst,
 dw1000_dev_status_t dw1000_start_rx(dw1000_dev_instance_t * inst)
 {
     inst->status.rx_error = 0;
-    if (inst->status.start_rx_syncbuf_enabled)
+    if (inst->control.start_rx_syncbuf_enabled)
         dw1000_sync_rxbufptrs(inst);
 
     inst->sys_ctrl_reg = SYS_CTRL_RXENAB;
-    if (inst->status.start_rx_delay_enabled) 
+    if (inst->control.start_rx_delay_enabled) 
         inst->sys_ctrl_reg |= SYS_CTRL_RXDLYE;
 
     dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, inst->sys_ctrl_reg, sizeof(uint16_t));
-    if (inst->status.start_rx_delay_enabled){ // check for errors
+    if (inst->control.start_rx_delay_enabled){ // check for errors
         uint8_t sys_status_reg = dw1000_read_reg(inst, SYS_STATUS_ID, 3, sizeof(uint8_t));  // Read 1 byte at offset 3 to get the 4th byte out of 5
         inst->status.start_rx_error = (sys_status_reg & (SYS_STATUS_HPDWARN >> 24)) != 0;   
         if (inst->status.start_rx_error){   // if delay has passed do immediate RX on unless DWT_IDLE_ON_DLY_ERR is true
@@ -481,7 +495,7 @@ dw1000_dev_status_t dw1000_start_rx(dw1000_dev_instance_t * inst)
  */
 dw1000_dev_status_t dw1000_set_wait4resp(dw1000_dev_instance_t * inst, bool enable, uint32_t delay, uint32_t timeout)
 {
-    inst->status.wait4resp_enabled = enable;
+    inst->control.wait4resp_enabled = enable;
     dw1000_set_wait4resp_delay(inst, delay);
     dw1000_set_rx_timeout(inst, timeout);
 
@@ -499,9 +513,9 @@ dw1000_dev_status_t dw1000_set_wait4resp(dw1000_dev_instance_t * inst, bool enab
 
 dw1000_dev_status_t dw1000_start_rx_delayed(dw1000_dev_instance_t * inst, uint64_t delay){
 
-    inst->status.start_rx_delay_enabled = delay > 0; 
+    inst->control.start_rx_delay_enabled = (delay >> 8) > 0; 
 
-    if (inst->status.start_rx_delay_enabled)
+    if (inst->control.start_rx_delay_enabled)
         dw1000_write_reg(inst, DX_TIME_ID, 1, delay >> 8, DX_TIME_LEN-1);
 
     dw1000_start_rx(inst);
@@ -525,8 +539,8 @@ dw1000_dev_status_t dw1000_start_rx_delayed(dw1000_dev_instance_t * inst, uint64
 
 dw1000_dev_status_t dw1000_set_rx_timeout(dw1000_dev_instance_t * inst, uint16_t timeout)
 {
-    inst->status.rx_timeout_enabled = timeout > 0;
-    if(inst->status.rx_timeout_enabled){  
+    inst->control.rx_timeout_enabled = timeout > 0;
+    if(inst->control.rx_timeout_enabled){  
         dw1000_write_reg(inst, RX_FWTO_ID, RX_FWTO_OFFSET, timeout, sizeof(uint16_t));
         inst->sys_cfg_reg |= SYS_CFG_RXWTOE;
         dw1000_write_reg(inst, SYS_CFG_ID, 0, inst->sys_cfg_reg, sizeof(uint32_t));
@@ -614,9 +628,9 @@ dw1000_dev_status_t dw1000_mac_framefilter(dw1000_dev_instance_t * inst, uint16_
 {
     inst->sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)) ; // Read sysconfig register
 
-    inst->status.framefilter_enabled = enable > 0;
+    inst->control.framefilter_enabled = enable > 0;
 
-    if(inst->status.framefilter_enabled){   // Enable frame filtering and configure frame types
+    if(inst->control.framefilter_enabled){   // Enable frame filtering and configure frame types
         inst->sys_cfg_reg &= ~(SYS_CFG_FF_ALL_EN);  // Clear all
         inst->sys_cfg_reg |= (enable & SYS_CFG_FF_ALL_EN) | SYS_CFG_FFE;
     }else
@@ -643,11 +657,11 @@ dw1000_dev_status_t dw1000_mac_framefilter(dw1000_dev_instance_t * inst, uint16_
  */
 dw1000_dev_status_t dw1000_set_autoack_delay(dw1000_dev_instance_t * inst, uint8_t delay)
 {
-    assert(inst->status.framefilter_enabled);
+    assert(inst->control.framefilter_enabled);
 
-    inst->status.autoack_delay_enabled = delay > 0;
+    inst->control.autoack_delay_enabled = delay > 0;
 
-    if (inst->status.autoack_delay_enabled){
+    if (inst->control.autoack_delay_enabled){
         // Set auto ACK reply delay
         dw1000_write_reg(inst, ACK_RESP_T_ID, ACK_RESP_T_ACK_TIM_OFFSET, delay, sizeof(uint8_t)); // In symbols
         // Enable auto ACK
@@ -676,8 +690,8 @@ dw1000_dev_status_t dw1000_set_autoack_delay(dw1000_dev_instance_t * inst, uint8
 dw1000_dev_status_t dw1000_set_wait4resp_delay(dw1000_dev_instance_t * inst, uint32_t delay)
 {
 
-    inst->status.wait4resp_delay_enabled = delay > 0;
-    if (inst->status.wait4resp_delay_enabled){
+    inst->control.wait4resp_delay_enabled = delay > 0;
+    if (inst->control.wait4resp_delay_enabled){
         uint32_t ack_resp_reg = dw1000_read_reg(inst, ACK_RESP_T_ID, 0, sizeof(uint32_t)) ; // Read ACK_RESP_T_ID register
         ack_resp_reg &= ~(ACK_RESP_T_W4R_TIM_MASK) ;        // Clear the timer (19:0)
         ack_resp_reg |= (delay & ACK_RESP_T_W4R_TIM_MASK) ; // In UWB microseconds (e.g. turn the receiver on 20uus after TX)
@@ -703,8 +717,8 @@ dw1000_dev_status_t dw1000_set_wait4resp_delay(dw1000_dev_instance_t * inst, uin
 dw1000_dev_status_t dw1000_set_dblrxbuff(dw1000_dev_instance_t * inst, bool enable)
 {
 
-    inst->status.dblbuffon_enabled = enable;
-    if(inst->status.dblbuffon_enabled)
+    inst->control.dblbuffon_enabled = enable;
+    if(inst->control.dblbuffon_enabled)
         inst->sys_cfg_reg &= ~SYS_CFG_DIS_DRXB;
     else
         inst->sys_cfg_reg |= SYS_CFG_DIS_DRXB;
@@ -823,7 +837,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
     // printf("inst->sys_status =%lX\n",inst->sys_status);
     // Handle RX good frame event
     if(inst->sys_status & SYS_STATUS_RXFCG){
-      //  printf("SYS_STATUS_RXFCG\n");
+        printf("SYS_STATUS_RXFCG\n");
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_GOOD, sizeof(uint32_t));     // Clear all receive status bits
         uint16_t finfo = dw1000_read_reg(inst, RX_FINFO_ID, RX_FINFO_OFFSET, sizeof(uint16_t)); // Read frame info - Only the first two bytes of the register are used here.
         inst->frame_len = finfo & RX_FINFO_RXFL_MASK_1023;          // Report frame length - Standard frame length up to 127, extended frame length up to 1023 bytes
@@ -847,13 +861,13 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
             inst->rx_complete_cb(inst);
         
         // Toggle the Host side Receive Buffer Pointer
-        if (inst->status.dblbuffon_enabled)
+        if (inst->control.dblbuffon_enabled)
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 1, sizeof(uint8_t));
     }
 
     // Handle TX confirmation event
     if(inst->sys_status & SYS_STATUS_TXFRS){
-    //    printf("SYS_STATUS_TXFRS\n");
+        printf("SYS_STATUS_TXFRS\n");
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_TX, sizeof(uint32_t)); // Clear TX event bits
 
         // In the case where this TXFRS interrupt is due to the automatic transmission of an ACK solicited by a response (with ACK request bit set)
@@ -862,7 +876,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
         // ACK TX).
         // See section "Transmit and automatically wait for response" in DW1000 User Manual
 
-        if((inst->sys_status & SYS_STATUS_AAT) && inst->status.wait4resp_enabled){
+        if((inst->sys_status & SYS_STATUS_AAT) && inst->control.wait4resp_enabled){
             dw1000_phy_forcetrxoff(inst);   // Turn the RX off
             dw1000_phy_rx_reset(inst);      // Reset in case we were late and a frame was already being received
         }
@@ -877,7 +891,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
     // Handle frame reception/preamble detect timeout events
     inst->status.rx_timeout_error = (inst->sys_status & SYS_STATUS_ALL_RX_TO) !=0;
     if(inst->sys_status & SYS_STATUS_ALL_RX_TO){
-   //     printf("SYS_STATUS_ALL_RX_TO\n");
+        printf("SYS_STATUS_ALL_RX_TO\n");
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_RXRFTO, sizeof(uint32_t)); // Clear RX timeout event bits        
         // Because of an issue with receiver restart after error conditions, an RX reset must be applied after any error or timeout event to ensure
         // the next good frame's timestamp is computed correctly.
@@ -896,7 +910,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
     // Handle RX errors events
     inst->status.rx_error = (inst->sys_status & SYS_STATUS_ALL_RX_ERR) !=0 ;
     if(inst->sys_status & SYS_STATUS_ALL_RX_ERR){
-    //    printf("SYS_STATUS_ALL_RX_ERR\n");
+        printf("SYS_STATUS_ALL_RX_ERR\n");
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_ERR, sizeof(uint32_t)); // Clear RX error event bits
         // Because of an issue with receiver restart after error conditions, an RX reset must be applied after any error or timeout event to ensure
         // the next good frame's timestamp is computed correctly.
