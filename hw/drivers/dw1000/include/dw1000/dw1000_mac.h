@@ -249,7 +249,6 @@ dw1000_dev_status_t dw1000_set_rx_timeout(dw1000_dev_instance_t * inst, uint16_t
 #define dw1000_read_txtime_lo(inst) (uint32_t) dw1000_read_reg(inst, TX_TIME_ID, TX_TIME_TX_STAMP_OFFSET, sizeof(uint32_t))
 #define dw1000_get_irqstatus(inst) ((uint8_t) dw1000_read_reg(inst, SYS_STATUS_ID, SYS_STATUS_OFFSET,sizeof(uint8_t)) & (uint8_t) SYS_STATUS_IRQS)
 
-
 #ifdef __cplusplus
 }
 #endif

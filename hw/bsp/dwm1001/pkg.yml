@@ -85,6 +85,7 @@ pkg.deps:
     - '@apache-mynewt-core/hw/mcu/nordic/nrf52xxx'
     - '@apache-mynewt-core/kernel/os'
     - '@apache-mynewt-core/libc/baselibc'
+    - '@mynewt-dw1000-core/hw/drivers/dw1000'
     
 
 pkg.deps.BLE_DEVICE:
@@ -100,4 +101,4 @@ pkg.deps.PWM:
     - '@mynewt_nordic/hw/drivers/pwm/pwm_nrf52'
 
 pkg.deps.DW1000.DEVICE_0:
-    - '@apache-mynewt-core/hw/drivers/dwm1000'
+    - '@mynewt-dw1000-core/hw/drivers/dw1000'

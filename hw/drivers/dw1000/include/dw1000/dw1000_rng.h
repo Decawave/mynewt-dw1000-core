@@ -35,7 +35,8 @@ extern "C" {
 #include <dw1000/dw1000_ftypes.h>
 
 typedef struct _dw1000_rng_config_t{
-   uint32_t wait4resp_delay;         // Delay between frames, in UWB usec.
+   uint32_t rx_holdoff_delay;        // Delay between frames, in UWB usec.
+   uint32_t tx_holdoff_delay;        // Delay between frames, in UWB usec.
    uint16_t rx_timeout_period;       // Receive response timeout, in UWB usec.
 }dw1000_rng_config_t;
 
@@ -43,6 +44,7 @@ typedef enum _dw1000_rng_modes_t{
     DWT_SS_TWR = 0,
     DWT_SS_TWR_T1,
     DWT_SS_TWR_FINAL,
+    DWT_SS_TWR_END,
     DWT_SDS_TWR,
     DWT_SDS_TWR_T1,
     DWT_SDS_TWR_T2,
@@ -63,7 +65,7 @@ typedef struct _ss_twr_frame_t{
     }__attribute__((__packed__)); 
     uint32_t request_timestamp;     // request transmission timestamp.
     uint32_t response_timestamp;    // reception reception timestamp.
-}ss_twr_frame_t;
+}__attribute__((__packed__)) ss_twr_frame_t;
 
 typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * dev;

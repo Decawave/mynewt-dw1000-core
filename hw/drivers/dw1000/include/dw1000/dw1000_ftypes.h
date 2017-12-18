@@ -104,7 +104,6 @@ typedef union {
 }__attribute__((__packed__)) ieee_std_frame_t;
 
 
-
 #ifdef __cplusplus
 }
 #endif

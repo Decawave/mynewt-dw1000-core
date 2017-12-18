@@ -130,7 +130,6 @@ void hal_dw1000_read(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t 
 
 void hal_dw1000_write(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {   
-
     os_error_t err = os_mutex_pend(&g_spi_mutex, 0);
     assert(err == OS_OK);
 
