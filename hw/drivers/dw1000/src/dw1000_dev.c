@@ -31,7 +31,8 @@
 #include <dw1000/dw1000_phy.h>
 
 
-dw1000_dev_status_t dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length){
+dw1000_dev_status_t 
+dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length){
     assert(reg <= 0x3F); // Record number is limited to 6-bits.
     assert((subaddress <= 0x7FFF) && ((subaddress + length) <= 0x7FFF)); // Index and sub-addressable area are limited to 15-bits.
 
@@ -55,7 +56,8 @@ dw1000_dev_status_t dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint
     return inst->status;
 }
 
-dw1000_dev_status_t dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length){
+dw1000_dev_status_t 
+dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length){
     assert(reg <= 0x3F); // Record number is limited to 6-bits.
     assert((subaddress <= 0x7FFF) && ((subaddress + length) <= 0x7FFF)); // Index and sub-addressable area are limited to 15-bits.
 
@@ -79,7 +81,8 @@ dw1000_dev_status_t dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uin
     return inst->status;
 }
 
-uint64_t dw1000_read_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, size_t nbytes)
+uint64_t 
+dw1000_read_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, size_t nbytes)
 {
     union _buffer{
         uint8_t array[sizeof(uint64_t)];
@@ -92,7 +95,8 @@ uint64_t dw1000_read_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t su
     return buffer.value;
 } 
 
-void dw1000_write_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint64_t val, size_t nbytes)
+void 
+dw1000_write_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint64_t val, size_t nbytes)
 {
      union _buffer{
         uint8_t array[sizeof(uint64_t)];
@@ -104,7 +108,8 @@ void dw1000_write_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subad
     dw1000_write(inst, reg, subaddress, buffer.array, nbytes); 
 } 
 
-void dw1000_softreset(dw1000_dev_instance_t * inst)
+void 
+dw1000_softreset(dw1000_dev_instance_t * inst)
 {
     // Set system clock to XTI
     uint8_t reg = (uint8_t) dw1000_read_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, sizeof(uint8_t));
@@ -125,7 +130,8 @@ void dw1000_softreset(dw1000_dev_instance_t * inst)
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_SOFTRESET_OFFSET, PMSC_CTRL0_RESET_CLEAR, sizeof(uint8_t)); // Clear reset
 }
 
-dw1000_dev_instance_t * dw1000_dev_init(dw1000_dev_instance_t * inst, uint8_t spi_num)
+dw1000_dev_instance_t * 
+dw1000_dev_init(dw1000_dev_instance_t * inst, uint8_t spi_num)
 {
     int rc;
 
@@ -167,7 +173,8 @@ dw1000_dev_instance_t * dw1000_dev_init(dw1000_dev_instance_t * inst, uint8_t sp
     return inst;
 }
 
-void dw1000_dev_free(dw1000_dev_instance_t * inst){
+void 
+dw1000_dev_free(dw1000_dev_instance_t * inst){
     assert(inst);  
     hal_spi_disable(inst->spi_num);  
 

@@ -59,13 +59,13 @@ typedef struct _dw1000_rng_status_t{
 }dw1000_rng_status_t;
 
 typedef struct _ss_twr_frame_t{
-    union {
-        ieee_rng_request_frame_t request;
-        ieee_rng_response_frame_t response;
-    }__attribute__((__packed__)); 
-    uint32_t request_timestamp;     // request transmission timestamp.
-    uint32_t response_timestamp;    // reception reception timestamp.
-}__attribute__((__packed__)) ss_twr_frame_t;
+        union {
+            ieee_rng_request_frame_t request;
+            ieee_rng_response_frame_t response;
+        }__attribute__((__packed__)); 
+        uint32_t request_timestamp;     // request transmission timestamp.
+        uint32_t response_timestamp;    // reception reception timestamp.
+}ss_twr_frame_t;
 
 typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * dev;
@@ -74,8 +74,6 @@ typedef struct _dw1000_rng_instance_t{
     dw1000_rng_config_t * config;
     dw1000_rng_status_t status;
 }dw1000_rng_instance_t;
-
-
 
 
 dw1000_rng_instance_t * dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config);

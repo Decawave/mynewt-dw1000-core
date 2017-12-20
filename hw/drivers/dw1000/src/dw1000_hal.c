@@ -86,13 +86,16 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
 
 struct os_mutex g_spi_mutex;
 
-dw1000_dev_instance_t * hal_dw1000_inst(uint8_t idx){
+dw1000_dev_instance_t * 
+hal_dw1000_inst(uint8_t idx){
 
     assert(idx == 0);  // Only one instance for this bsp
     return &hal_dw1000_instances[idx];
 }
 
-void hal_dw1000_reset(dw1000_dev_instance_t * inst){
+void 
+hal_dw1000_reset(dw1000_dev_instance_t * inst)
+{
     
     assert(inst);
 
@@ -110,7 +113,8 @@ void hal_dw1000_reset(dw1000_dev_instance_t * inst){
     os_time_delay(2 * OS_TICKS_PER_SEC / 1000);
 }
 
-void hal_dw1000_read(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
+void 
+hal_dw1000_read(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {   
     os_error_t err = os_mutex_pend(&g_spi_mutex, 0);
     assert(err == OS_OK);
@@ -128,7 +132,8 @@ void hal_dw1000_read(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t 
     assert(err == OS_OK);
 }
 
-void hal_dw1000_write(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
+void 
+hal_dw1000_write(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {   
     os_error_t err = os_mutex_pend(&g_spi_mutex, 0);
     assert(err == OS_OK);
