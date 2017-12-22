@@ -65,7 +65,7 @@ typedef struct _dw1000_dev_status_t{
 
     uint32_t rx_ranging_frame:1;     //Range Request bit set for inbound frame
     uint32_t tx_ranging_frame:1;     //Range Request bit set for outbound frame
-    uint32_t range_request_timeout:1;
+    uint32_t request_timeout:1;
 }dw1000_dev_status_t;
 
 

@@ -41,13 +41,16 @@ typedef struct _dw1000_rng_config_t{
 }dw1000_rng_config_t;
 
 typedef enum _dw1000_rng_modes_t{
-    DWT_SS_TWR = 0,
+    DWT_TWR_INVALID = 0,
+    DWT_SS_TWR,
     DWT_SS_TWR_T1,
     DWT_SS_TWR_FINAL,
     DWT_SS_TWR_END,
     DWT_SDS_TWR,
     DWT_SDS_TWR_T1,
     DWT_SDS_TWR_T2,
+    DWT_SDS_TWR_FINAL,
+    DWT_SDS_TWR_END,
     DWT_TDOA
 }dw1000_rng_modes_t;
 
@@ -56,6 +59,7 @@ typedef struct _dw1000_rng_status_t{
     uint16_t selfmalloc:1;
     uint16_t initialized:1;
     uint16_t mac_error:1;
+    uint16_t invalid_code_error:1;
 }dw1000_rng_status_t;
 
 typedef struct _ss_twr_frame_t{
@@ -65,14 +69,16 @@ typedef struct _ss_twr_frame_t{
         }__attribute__((__packed__)); 
         uint32_t request_timestamp;     // request transmission timestamp.
         uint32_t response_timestamp;    // reception reception timestamp.
+        uint16_t csr;                 // reception reception timestamp.
 }ss_twr_frame_t;
 
 typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * dev;
     struct os_sem sem;
-    ss_twr_frame_t * ss_twr;
     dw1000_rng_config_t * config;
     dw1000_rng_status_t status;
+    uint16_t nframes;
+    ss_twr_frame_t ss_twr[];
 }dw1000_rng_instance_t;
 
 
@@ -81,7 +87,7 @@ void dw1000_rng_free(dw1000_rng_instance_t * inst);
 dw1000_dev_status_t dw1000_rng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config);
 void dw1000_rng_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_tx_complete_cb, dw1000_dev_cb_t rng_rx_complete_cb, dw1000_dev_cb_t rng_rx_timeout_cb,  dw1000_dev_cb_t rng_rx_error_cb);
 dw1000_dev_status_t dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t protocal);
-void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, ss_twr_frame_t * range);
+void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, ss_twr_frame_t ss_twr[], uint16_t nframes);
 
 
 #ifdef __cplusplus

@@ -864,7 +864,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
 
     // Handle RX good frame event
     if(inst->sys_status & SYS_STATUS_RXFCG){
-        printf("SYS_STATUS_RXFCG %08lX\n", inst->sys_status);
+     //   printf("SYS_STATUS_RXFCG %08lX\n", inst->sys_status);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_GOOD, sizeof(uint32_t));     // Clear all receive status bits
         uint16_t finfo = dw1000_read_reg(inst, RX_FINFO_ID, RX_FINFO_OFFSET, sizeof(uint16_t)); // Read frame info - Only the first two bytes of the register are used here.
         inst->frame_len = finfo & RX_FINFO_RXFL_MASK_1023;          // Report frame length - Standard frame length up to 127, extended frame length up to 1023 bytes
@@ -894,7 +894,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
 
     // Handle TX confirmation event
     if(inst->sys_status & SYS_STATUS_TXFRS){
-        printf("SYS_STATUS_TXFRS %08lX\n", inst->sys_status);
+    //    printf("SYS_STATUS_TXFRS %08lX\n", inst->sys_status);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_TX, sizeof(uint32_t)); // Clear TX event bits
 
         // In the case where this TXFRS interrupt is due to the automatic transmission of an ACK solicited by a response (with ACK request bit set)
@@ -918,7 +918,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
     // Handle frame reception/preamble detect timeout events
     inst->status.rx_timeout_error = (inst->sys_status & SYS_STATUS_ALL_RX_TO) !=0;
     if(inst->status.rx_timeout_error){
-        printf("SYS_STATUS_ALL_RX_TO %08lX\n", inst->sys_status);
+    //    printf("SYS_STATUS_ALL_RX_TO %08lX\n", inst->sys_status);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_RXRFTO | SYS_STATUS_RXPTO, sizeof(uint32_t)); // Clear RX timeout event bits        
         // Because of an issue with receiver restart after error conditions, an RX reset must be applied 
         // after any error or timeout event to ensure the next good frame's timestamp is computed correctly.
@@ -937,7 +937,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
     // Handle RX errors events
     inst->status.rx_error = (inst->sys_status & SYS_STATUS_ALL_RX_ERR) !=0 ;
     if(inst->status.rx_error){
-        printf("SYS_STATUS_ALL_RX_ERR %08lX\n", inst->sys_status);
+    //    printf("SYS_STATUS_ALL_RX_ERR %08lX\n", inst->sys_status);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_ERR, sizeof(uint32_t)); // Clear RX error event bits
         // Because of an issue with receiver restart after error conditions, an RX reset must be applied after any error or timeout event to ensure
         // the next good frame's timestamp is computed correctly.

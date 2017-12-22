@@ -57,7 +57,8 @@ dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uin
 }
 
 dw1000_dev_status_t 
-dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length){
+dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length)
+{
     assert(reg <= 0x3F); // Record number is limited to 6-bits.
     assert((subaddress <= 0x7FFF) && ((subaddress + length) <= 0x7FFF)); // Index and sub-addressable area are limited to 15-bits.
 
