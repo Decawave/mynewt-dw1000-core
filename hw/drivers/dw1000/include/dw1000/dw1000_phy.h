@@ -1,5 +1,4 @@
 /**
- * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -43,15 +42,37 @@ extern "C" {
 #define MIXER_GAIN_STEP (0.5)
 #define DA_ATTN_STEP    (2.5)
 
-typedef struct _dw1000_phy_txconfig_t {
-    uint8_t   PGdly;
-    //TX POWER
-    //31:24     BOOST_0.125ms_PWR
-    //23:16     BOOST_0.25ms_PWR-TX_SHR_PWR
-    //15:8      BOOST_0.5ms_PWR-TX_PHR_PWR
-    //7:0       DEFAULT_PWR-TX_DATA_PWR
-    uint32_t  power;
-}dw1000_phy_txconfig_t;
+typedef struct dw1000_phy_txrf_config_t {
+    uint8_t   PGdly; 
+    union _power {   
+        struct _smart{ 
+            uint8_t BOOSTNORM;      //PWR_TX_DATA_PWR
+            uint8_t BOOSTP500;      //PWR_TX_PHR_PWR
+            uint8_t BOOSTP250;      //PWR_TX_SHR_PWR
+            uint8_t BOOSTP125;      //PWR
+         };
+         struct _manual { 
+            uint8_t _NA1;
+            uint8_t TXPOWPHR;
+            uint8_t TXPOWSD;
+            uint8_t _NA4;
+         };
+        uint32_t power;          
+    };
+}dw1000_phy_txrf_config_t;
+
+typedef enum {
+    DW1000_txrf_config_18db = 0,
+    DW1000_txrf_config_15db,
+    DW1000_txrf_config_12db,
+    DW1000_txrf_config_9db,
+    DW1000_txrf_config_6db,
+    DW1000_txrf_config_3db,
+    DW1000_txrf_config_0db,
+    DW1000_txrf_config_off
+}coarse_power_levels_t;
+
+#define dw1000_power_value(COARSE,FINE) ((COARSE<<5) + FINE)
 
 typedef struct _dw1000_phy_rxdiag_t{
     uint16_t    fp_idx;             // First path index (10.6 bits fixed point integer)
@@ -60,7 +81,7 @@ typedef struct _dw1000_phy_rxdiag_t{
     uint16_t    preamble_cnt;       // Count of preamble symbols accumulated
 }dw1000_phy_rxdiag_t;
 
-dw1000_dev_status_t dw1000_phy_init(dw1000_dev_instance_t * inst);
+dw1000_dev_status_t dw1000_phy_init(dw1000_dev_instance_t * inst, dw1000_phy_txrf_config_t * txrf_config);
 void dw1000_phy_sysclk_XTAL(dw1000_dev_instance_t * inst);
 void dw1000_phy_sysclk_PLL(dw1000_dev_instance_t * inst);
 void dw1000_phy_sysclk_SEQ(dw1000_dev_instance_t * inst);
@@ -68,7 +89,7 @@ void dw1000_phy_sysclk_ACC(dw1000_dev_instance_t * inst, uint8_t mode);
 void dw1000_phy_disable_sequencing(dw1000_dev_instance_t * inst);
 void dw1000_phy_delayed_txrxtime(dw1000_dev_instance_t * inst, uint32_t starttime);
 void dw1000_phy_config_lde(dw1000_dev_instance_t * inst, int prfIndex);
-void dw1000_phy_config_txrf(dw1000_dev_instance_t * inst, dw1000_phy_txconfig_t *config);
+void dw1000_phy_config_txrf(dw1000_dev_instance_t * inst, dw1000_phy_txrf_config_t *config);
 void dw1000_phy_read_rxdiag(dw1000_dev_instance_t * inst, dw1000_phy_rxdiag_t * diag);
 void dw1000_phy_rx_reset(dw1000_dev_instance_t * inst);
 void dw1000_phy_forcetrxoff(dw1000_dev_instance_t * inst);

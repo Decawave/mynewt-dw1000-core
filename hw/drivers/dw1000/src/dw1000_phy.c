@@ -1,5 +1,4 @@
 /**
- * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -94,7 +93,7 @@ void dw1000_phy_disable_sequencing(dw1000_dev_instance_t * inst){
 }
 
 
-dw1000_dev_status_t dw1000_phy_init(dw1000_dev_instance_t * inst){
+dw1000_dev_status_t dw1000_phy_init(dw1000_dev_instance_t * inst, dw1000_phy_txrf_config_t * txrf_config){
 
     dw1000_softreset(inst);
     dw1000_gpio_config_leds(inst, DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
@@ -132,8 +131,8 @@ dw1000_dev_status_t dw1000_phy_init(dw1000_dev_instance_t * inst){
     dw1000_write_reg(inst, FS_CTRL_ID, FS_XTALT_OFFSET, reg_val, sizeof(uint8_t));
 
     _dw1000_phy_load_microcode(inst);
-    inst->status.wakeup_LLDE = 1; // Microcode must be loaded at wake-up
-    dw1000_phy_sysclk_SEQ(inst); // Enable clocks for sequencing
+    inst->status.wakeup_LLDE = 1;   // Microcode must be loaded at wake-up
+    dw1000_phy_sysclk_SEQ(inst);    // Enable clocks for sequencing
 
     // The 3 bits in AON CFG1 register must be cleared to ensure proper operation of the DW1000 in DEEPSLEEP mode.
     dw1000_write_reg(inst, AON_ID, AON_CFG1_OFFSET, 0x0, sizeof(uint8_t));
@@ -145,13 +144,15 @@ dw1000_dev_status_t dw1000_phy_init(dw1000_dev_instance_t * inst){
     dw1000_phy_set_rx_antennadelay(inst, inst->rx_antenna_delay);
     dw1000_phy_set_tx_antennadelay(inst, inst->tx_antenna_delay);
 
+    // Apply tx power settings */
+    if (txrf_config != NULL)  
+        dw1000_phy_config_txrf(inst, txrf_config);
+
     // Read system register / store local copy
     inst->sys_cfg_reg = dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)) ; // Read sysconfig register
 
     return inst->status;
 }
-
-
 
 
 void _dw1000_phy_load_microcode(dw1000_dev_instance_t * inst)
@@ -189,7 +190,7 @@ void dw1000_phy_config_lde(dw1000_dev_instance_t * inst, int prfIndex)
 
 
 /*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_configure_txrf()
+ * @fn dw1000_config_txrf()
  *
  * @brief This function provides the API for the configuration of the TX spectrum
  * including the power and pulse generator delay. The input is a pointer to the data structure
@@ -198,13 +199,13 @@ void dw1000_phy_config_lde(dw1000_dev_instance_t * inst, int prfIndex)
  * input parameters
  * @param config    -   pointer to the txrf configuration structure, which contains the tx rf config data
  *
- * output parameters
+ * output parameters`
  *
  * no return value
  */
-void dw1000_phy_config_txrf(dw1000_dev_instance_t * inst, dw1000_phy_txconfig_t *config)
+void dw1000_phy_config_txrf(dw1000_dev_instance_t * inst, dw1000_phy_txrf_config_t *config)
 {
-        // Configure RF TX PG_DELAY
+    // Configure RF TX PG_DELAY
     dw1000_write_reg(inst, TX_CAL_ID, TC_PGDELAY_OFFSET, config->PGdly, sizeof(uint8_t));
     // Configure TX power
     dw1000_write_reg(inst, TX_POWER_ID, 0, config->power, sizeof(uint32_t));

@@ -1,5 +1,4 @@
 /**
- * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -168,22 +167,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
         dw1000_read_rx(inst, (uint8_t *) &code, offsetof(ieee_rng_request_frame_t,code), sizeof(uint16_t));
         dw1000_read_rx(inst, (uint8_t *) &dst_address, offsetof(ieee_rng_request_frame_t,dst_address), sizeof(uint16_t));    
     }else{
-        printf("unknown ranging frame type\n");
-        ss_twr_frame_t * ss_twr  = inst->rng->ss_twr;    
-        dw1000_read_rx(inst,  (uint8_t *) &ss_twr, 0, sizeof(ieee_rng_response_frame_t));
-        printf("{\n\tfctrl:0x%04X,\n", ss_twr->response.fctrl);
-        printf("\tseq_num:0x%02X,\n", ss_twr->response.seq_num);
-        printf("\tPANID:0x%04X,\n", ss_twr->response.PANID);
-        printf("\tdst_address:0x%04X,\n", ss_twr->response.dst_address);
-        printf("\tsrc_address:0x%04X,\n", ss_twr->response.src_address);
-        printf("\tcode:0x%04X,\n", ss_twr->response.code);
-        printf("\treception_timestamp:0x%08lX,\n", ss_twr->response.reception_timestamp); 
-        printf("\ttransmission_timestamp:0x%08lX,\n", ss_twr->response.transmission_timestamp); 
-        printf("\trequest_timestamp:0x%08lX,\n", ss_twr->request_timestamp); 
-        printf("\tresponse_timestamp:0x%08lX\n}\n", ss_twr->response_timestamp);
         return;
     }
-
     if (dst_address != inst->my_short_address)
         return;
 
@@ -379,7 +364,6 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
             break;
 #endif //SDS_TWR_ENABLE
         default: 
-            printf("Unsupported TWR code\n");
         break;
     }  
 }

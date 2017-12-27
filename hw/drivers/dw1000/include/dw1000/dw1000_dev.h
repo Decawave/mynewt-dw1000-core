@@ -1,5 +1,4 @@
 /**
- * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -135,11 +134,11 @@ typedef struct _dw1000_dev_instance_t{
     os_stack_t interrupt_task_stack[DW1000_DEV_TASK_STACK_SZ];
     struct _dw1000_rng_instance_t * rng;
     struct _dw1000_lwip_instance_t * lwip;
-    struct _ss_twr_transaction_t * ss_twr;
     dw1000_dev_config_t config;
     dw1000_dev_control_t control; 
     dw1000_dev_status_t status; 
 }dw1000_dev_instance_t;
+
 
 typedef void (* dw1000_dev_cb_t)(dw1000_dev_instance_t * inst);
 dw1000_dev_instance_t * dw1000_dev_init(dw1000_dev_instance_t * inst, uint8_t spi_num);

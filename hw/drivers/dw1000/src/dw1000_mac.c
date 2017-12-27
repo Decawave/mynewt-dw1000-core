@@ -1,5 +1,4 @@
 /**
- * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -588,11 +587,11 @@ dw1000_dev_status_t dw1000_sync_rxbufptrs(dw1000_dev_instance_t * inst)
  * output parameters
  *
  */
-dw1000_dev_status_t dw1000_read_accdata(dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t len, uint16_t accOffset)
+dw1000_dev_status_t dw1000_read_accdata(dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t accOffset, uint16_t len)
 {
     // Force on the ACC clocks if we are sequenced
     dw1000_phy_sysclk_ACC(inst, true);
-    dw1000_read(inst, ACC_MEM_ID, accOffset, buffer,len) ;
+    dw1000_read(inst, ACC_MEM_ID, accOffset, buffer, len) ;
     dw1000_phy_sysclk_ACC(inst, false);
 
     return inst->status;

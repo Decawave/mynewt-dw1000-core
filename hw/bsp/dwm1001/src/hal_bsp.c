@@ -217,7 +217,7 @@ void hal_bsp_init(void)
 #endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    //dw1000_dev_init(hal_dw1000_inst(0), MYNEWT_VAL(DW1000_DEVICE_0_SPI_IDX));
+//    dw1000_dev_init(hal_dw1000_inst(0), MYNEWT_VAL(DW1000_DEVICE_0_SPI_IDX));
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
     dw1000_dev_init(hal_dw1000_inst(1), MYNEWT_VAL(DW1000_DEVICE_1_SPI_IDX));

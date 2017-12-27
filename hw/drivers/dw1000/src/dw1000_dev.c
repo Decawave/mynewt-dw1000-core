@@ -1,5 +1,4 @@
 /**
- * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -161,7 +160,7 @@ dw1000_dev_init(dw1000_dev_instance_t * inst, uint8_t spi_num)
     assert(inst->status.initialized);
     inst->timestamp = (uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN);
 
-    dw1000_phy_init(inst);
+    //dw1000_phy_init(inst, NULL);
 
     inst->spi_settings.baudrate = MYNEWT_VAL(DW1000_DEVICE_BAUDRATE_HIGH);
     rc = hal_spi_disable(inst->spi_num);
