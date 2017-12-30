@@ -212,27 +212,6 @@ void dw1000_phy_config_txrf(dw1000_dev_instance_t * inst, dw1000_phy_txrf_config
 }
 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_phy_read_rxdiag()
- *
- * @brief this function reads the RX signal quality diagnostic data
- *
- * input parameters
- * @param diagnostics - diagnostic structure pointer, this will contain the diagnostic data read from the DW1000
- *
- * output parameters
- *
- * no return value
- */
-void dw1000_phy_read_rxdiag(dw1000_dev_instance_t * inst, dw1000_phy_rxdiag_t * diag)
-{  
-    // Read the HW FP index
-    diag->fp_idx = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
-    diag->fp_amp = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_AMPL1_OFFSET, sizeof(uint16_t));
-    diag->rx_std = dw1000_read_reg(inst, RX_FQUAL_ID, 0, sizeof(uint16_t));   
-    diag->preamble_cnt =  (dw1000_read_reg(inst, RX_FINFO_ID, 0, sizeof(uint32_t)) & RX_FINFO_RXPACC_MASK) >> RX_FINFO_RXPACC_SHIFT;
-}
-
 
 /*! ------------------------------------------------------------------------------------------------------------------
  * @fn dw1000_phy_read_wakeuptemp_SI(inst)

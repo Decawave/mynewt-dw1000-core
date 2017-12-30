@@ -1,5 +1,6 @@
 /**
- * 
+ * Copyright 2018, Decawave Limited, All Rights Reserved
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -74,12 +75,6 @@ typedef enum {
 
 #define dw1000_power_value(COARSE,FINE) ((COARSE<<5) + FINE)
 
-typedef struct _dw1000_phy_rxdiag_t{
-    uint16_t    fp_idx;             // First path index (10.6 bits fixed point integer)
-    uint16_t    fp_amp;             // Amplitude at floor(index FP) + 1
-    uint16_t    rx_std;             // Standard deviation of noise
-    uint16_t    preamble_cnt;       // Count of preamble symbols accumulated
-}dw1000_phy_rxdiag_t;
 
 dw1000_dev_status_t dw1000_phy_init(dw1000_dev_instance_t * inst, dw1000_phy_txrf_config_t * txrf_config);
 void dw1000_phy_sysclk_XTAL(dw1000_dev_instance_t * inst);
@@ -89,12 +84,10 @@ void dw1000_phy_sysclk_ACC(dw1000_dev_instance_t * inst, uint8_t mode);
 void dw1000_phy_disable_sequencing(dw1000_dev_instance_t * inst);
 void dw1000_phy_delayed_txrxtime(dw1000_dev_instance_t * inst, uint32_t starttime);
 void dw1000_phy_config_lde(dw1000_dev_instance_t * inst, int prfIndex);
-void dw1000_phy_config_txrf(dw1000_dev_instance_t * inst, dw1000_phy_txrf_config_t *config);
-void dw1000_phy_read_rxdiag(dw1000_dev_instance_t * inst, dw1000_phy_rxdiag_t * diag);
+void dw1000_phy_config_txrf(dw1000_dev_instance_t * inst, dw1000_phy_txrf_config_t * config);
 void dw1000_phy_rx_reset(dw1000_dev_instance_t * inst);
 void dw1000_phy_forcetrxoff(dw1000_dev_instance_t * inst);
 void dw1000_phy_interrupt_mask(dw1000_dev_instance_t * inst, uint32_t bitmask, uint8_t enable);
-
 
 #define dw1000_phy_set_rx_antennadelay(inst, rxDelay) dw1000_write_reg(inst, LDE_IF_ID, LDE_RXANTD_OFFSET, rxDelay, sizeof(uint16_t)) // Set the RX antenna delay for auto TX timestamp adjustment
 #define dw1000_phy_set_tx_antennadelay(inst, txDelay) dw1000_write_reg(inst, TX_ANTD_ID, TX_ANTD_OFFSET, txDelay, sizeof(uint16_t)) // Set the TX antenna delay for auto TX timestamp adjustment

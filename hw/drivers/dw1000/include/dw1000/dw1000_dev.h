@@ -52,7 +52,6 @@ typedef struct _dw1000_cmd{
 typedef struct _dw1000_dev_status_t{
     uint32_t selfmalloc:1;
     uint32_t initialized:1;
-    
     uint32_t start_tx_error:1;
     uint32_t start_rx_error:1;
     uint32_t tx_frame_error:1;
@@ -61,7 +60,6 @@ typedef struct _dw1000_dev_status_t{
     uint32_t spi_error:1;
     uint32_t wakeup_LLDE:1;
     uint32_t wakeup_LLDO:1;
-
     uint32_t rx_ranging_frame:1;     //Range Request bit set for inbound frame
     uint32_t tx_ranging_frame:1;     //Range Request bit set for outbound frame
     uint32_t request_timeout:1;
@@ -86,7 +84,15 @@ typedef struct _dw1000_dev_config_t{
     uint32_t autoack_delay_enabled:1;
     uint32_t dblbuffon_enabled:1;
     uint32_t framefilter_enabled:1;
+    uint32_t rxdiag_enable:1;
 }dw1000_dev_config_t;
+
+typedef struct _dw1000_dev_rxdiag_t{
+    uint16_t    fp_idx;             // First path index (10.6 bits fixed point integer)
+    uint16_t    fp_amp;             // Amplitude at floor(index FP) + 1
+    uint16_t    rx_std;             // Standard deviation of noise
+    uint16_t    preamble_cnt;       // Count of preamble symbols accumulated
+}dw1000_dev_rxdiag_t;
 
 typedef struct _dw1000_dev_instance_t{
 
@@ -134,6 +140,7 @@ typedef struct _dw1000_dev_instance_t{
     os_stack_t interrupt_task_stack[DW1000_DEV_TASK_STACK_SZ];
     struct _dw1000_rng_instance_t * rng;
     struct _dw1000_lwip_instance_t * lwip;
+    dw1000_dev_rxdiag_t rxdiag;
     dw1000_dev_config_t config;
     dw1000_dev_control_t control; 
     dw1000_dev_status_t status; 

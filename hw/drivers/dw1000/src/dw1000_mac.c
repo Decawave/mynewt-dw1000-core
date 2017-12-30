@@ -287,13 +287,11 @@ dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *
     // Set up TX Preamble Size, PRF and Data Rate
     inst->tx_fctrl = ((config->txPreambLength | config->prf) << TX_FCTRL_TXPRF_SHFT) | (config->dataRate << TX_FCTRL_TXBR_SHFT);
     dw1000_write_reg(inst, TX_FCTRL_ID, 0, inst->tx_fctrl, sizeof(uint32_t));
-
     // The SFD transmit pattern is initialised by the DW1000 upon a user TX request, but (due to an IC issue) it is not done for an auto-ACK TX. The
     // SYS_CTRL write below works around this issue, by simultaneously initiating and aborting a transmission, which correctly initialises the SFD
     // after its configuration or reconfiguration.
     // This issue is not documented at the time of writing this code. It should be in next release of DW1000 User Manual (v2.09, from July 2016).
     dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_TXSTRT | SYS_CTRL_TRXOFF, sizeof(uint8_t)); // Request TX start and TRX off at the same time
-
     dw1000_tasks_init(inst);
 
     return inst->status;
@@ -323,7 +321,6 @@ dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *
 
 dw1000_dev_status_t dw1000_write_tx(dw1000_dev_instance_t * inst,  uint8_t *txFrameBytes, uint16_t txBufferOffset, uint16_t txFrameLength)
 {
-
 #ifdef DW1000_API_ERROR_CHECK
     assert(txFrameLength >= 2);
     assert((pdw1000local->longFrames && (txFrameLength <= 1023)) || (txFrameLength <= 127));
@@ -340,7 +337,6 @@ dw1000_dev_status_t dw1000_write_tx(dw1000_dev_instance_t * inst,  uint8_t *txFr
 
     return inst->status;
 }
-
 
 /* @fn dw1000_write_tx_fctrl()
  *
@@ -370,7 +366,6 @@ inline void dw1000_write_tx_fctrl(dw1000_dev_instance_t * inst, uint16_t txFrame
     dw1000_write_reg(inst, TX_FCTRL_ID, 0, tx_fctrl_reg, sizeof(uint32_t));
  
 } 
-
 
 /*! ------------------------------------------------------------------------------------------------------------------
  * @fn dw1000_start_tx()
@@ -420,7 +415,6 @@ dw1000_dev_status_t dw1000_start_tx(dw1000_dev_instance_t * inst)
         .framefilter_enabled=0,
         .rx_timeout_enabled=0
     };
-        
     return inst->status;
 } 
 
@@ -444,7 +438,6 @@ inline dw1000_dev_status_t dw1000_set_delay_start(dw1000_dev_instance_t * inst, 
          dw1000_write_reg(inst, DX_TIME_ID, 1, delay >> 8, DX_TIME_LEN-1);
 
     dw1000_start_tx(inst);
-
     return inst->status;
 }
 
@@ -727,8 +720,6 @@ dw1000_dev_status_t dw1000_set_wait4resp_delay(dw1000_dev_instance_t * inst, uin
 }
 
 
-
-
 /*! ------------------------------------------------------------------------------------------------------------------
  * @fn dw1000_set_dblrxbuff()
  *
@@ -755,6 +746,29 @@ dw1000_dev_status_t dw1000_set_dblrxbuff(dw1000_dev_instance_t * inst, bool enab
 
     return inst->status;
 }
+
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn dw1000_read_rxdiag()
+ *
+ * @brief this function reads the RX signal quality diagnostic data
+ *
+ * input parameters
+ * @param diagnostics - diagnostic structure pointer, this will contain the diagnostic data read from the DW1000
+ *
+ * output parameters
+ *
+ * no return value
+ */
+void dw1000_read_rxdiag(dw1000_dev_instance_t * inst, dw1000_dev_rxdiag_t * diag)
+{  
+    // Read the HW FP index
+    diag->fp_idx = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
+    diag->fp_amp = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_AMPL1_OFFSET, sizeof(uint16_t));
+    diag->rx_std = dw1000_read_reg(inst, RX_FQUAL_ID, 0, sizeof(uint16_t));   
+    diag->preamble_cnt =  (dw1000_read_reg(inst, RX_FINFO_ID, 0, sizeof(uint32_t)) & RX_FINFO_RXPACC_MASK) >> RX_FINFO_RXPACC_SHIFT;
+}
+
 
 /*! ------------------------------------------------------------------------------------------------------------------
  * @fn dw1000_mac_tasks_init()
@@ -884,11 +898,13 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
             inst->rng_rx_complete_cb(inst);
         // Call the corresponding non-ranging frame callback if present
         else if(inst->rx_complete_cb != NULL)
-            inst->rx_complete_cb(inst);
-        
+            inst->rx_complete_cb(inst);        
         // Toggle the Host side Receive Buffer Pointer
         if (inst->control.dblbuffon_enabled)
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 1, sizeof(uint8_t));
+        // Collect RX Frame Quality diagnositics
+        if(inst->config.rxdiag_enable)  
+            dw1000_read_rxdiag(inst, &inst->rxdiag);
     }
 
     // Handle TX confirmation event

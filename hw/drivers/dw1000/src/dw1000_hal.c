@@ -1,4 +1,5 @@
 /**
+ * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -44,7 +45,10 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             },
             .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_0_RX_ANT_DLY),
             .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_0_TX_ANT_DLY),
-            .status = {0}
+            .status = {0},
+            .config = {
+                .rxdiag_enable = 1,
+            }
             
     }
     #if  MYNEWT_VAL(DW1000_DEVICE_1)
@@ -60,7 +64,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             },
             .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_1_RX_ANT_DLY),
             .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_1_TX_ANT_DLY),
-            .status = {0}
+            .status = {0},
     }
     #if  MYNEWT_VAL(DW1000_DEVICE_2)
     [2] = {
@@ -75,7 +79,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             },
             .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_2_RX_ANT_DLY),
             .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_2_TX_ANT_DLY),
-            .status = {0}
+            .status = {0},
     }
     #endif
     #endif

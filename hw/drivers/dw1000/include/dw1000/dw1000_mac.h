@@ -1,4 +1,5 @@
 /**
+ * Copyright 2018, Decawave Limited, All Rights Reserved 
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -175,16 +176,7 @@ typedef struct _dwt_config_t {
 } dwt_config_t ;
 
 
-typedef struct _dw1000_mac_txconfig_t {
-    uint8_t   PGdly;
-    //TX POWER
-    //31:24     BOOST_0.125ms_PWR
-    //23:16     BOOST_0.25ms_PWR-TX_SHR_PWR
-    //15:8      BOOST_0.5ms_PWR-TX_PHR_PWR
-    //7:0       DEFAULT_PWR-TX_DATA_PWR
-    uint32_t  power;
-} dw1000_mac_txconfig_t ;
-
+/*
 typedef struct _dw1000_mac_rxdiag_t {
     uint16_t      maxNoise ;          // LDE max value of noise
     uint16_t      firstPathAmp1 ;     // Amplitude at floor(index FP) + 1
@@ -195,7 +187,7 @@ typedef struct _dw1000_mac_rxdiag_t {
     uint16_t      rxPreamCount ;      // Count of preamble symbols accumulated
     uint16_t      firstPath ;         // First path index (10.6 bits fixed point integer)
 }dw1000_mac_rxdiag_t ;
-
+*/
 
 typedef struct _dw1000_mac_deviceentcnts_t{
     //all of the below are mapped to a 12-bit register in DW1000
