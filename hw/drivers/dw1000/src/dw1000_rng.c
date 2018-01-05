@@ -189,7 +189,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                     
                         uint64_t request_timestamp = dw1000_read_rxtime(inst);  
                         uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 15); 
-                        uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + (inst->tx_antenna_delay  << 2);
+                        uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + (inst->tx_antenna_delay  << 0);
         
                         ss_twr->response.reception_timestamp = request_timestamp;
                         ss_twr->response.transmission_timestamp = response_timestamp;
@@ -264,7 +264,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
 
                             uint64_t request_timestamp = dw1000_read_rxtime(inst);  
                             uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 15); 
-                            uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + (inst->tx_antenna_delay  << 2);
+                            uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + (inst->tx_antenna_delay  << 0);
             
                             ss_twr->response.reception_timestamp = request_timestamp;
                             ss_twr->response.transmission_timestamp = response_timestamp;
@@ -305,7 +305,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
 
                             uint64_t request_timestamp = dw1000_read_rxtime(inst);  
                             uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 15); 
-                            uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + (inst->tx_antenna_delay  << 2);
+                            uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + (inst->tx_antenna_delay  << 0);
                             
                             ss_twr->response.reception_timestamp = request_timestamp;
                             ss_twr->response.transmission_timestamp = response_timestamp;

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
+ * Copyright 2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -50,7 +50,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .rxdiag_enable = 1,
             }
             
-    }
+    },
     #if  MYNEWT_VAL(DW1000_DEVICE_1)
     [1] = {
             .rst_pin  = MYNEWT_VAL(DW1000_DEVICE_1_RST),
@@ -64,8 +64,8 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             },
             .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_1_RX_ANT_DLY),
             .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_1_TX_ANT_DLY),
-            .status = {0},
-    }
+            .status = {0}
+    },
     #if  MYNEWT_VAL(DW1000_DEVICE_2)
     [2] = {
             .rst_pin  = MYNEWT_VAL(DW1000_DEVICE_2_RST),
@@ -79,7 +79,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             },
             .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_2_RX_ANT_DLY),
             .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_2_TX_ANT_DLY),
-            .status = {0},
+            .status = {0}
     }
     #endif
     #endif
@@ -92,7 +92,7 @@ struct os_mutex g_spi_mutex;
 dw1000_dev_instance_t * 
 hal_dw1000_inst(uint8_t idx){
 
-    assert(idx == 0);  // Only one instance for this bsp
+    assert(idx < 2);  // Only one instance for this bsp
     return &hal_dw1000_instances[idx];
 }
 
