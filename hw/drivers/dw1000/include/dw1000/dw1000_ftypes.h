@@ -83,6 +83,7 @@ typedef union {
     uint8_t array[sizeof(struct _ieee_rng_response_frame_t)];
 }__attribute__((__packed__)) ieee_rng_response_frame_t;
 
+  
 typedef union {
     ieee_rng_request_frame_t request;
     ieee_rng_response_frame_t response;

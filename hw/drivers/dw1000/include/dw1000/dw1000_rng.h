@@ -25,6 +25,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#define FUSION_EXTENDED_FRAME
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -54,7 +56,6 @@ typedef enum _dw1000_rng_modes_t{
     DWT_TDOA
 }dw1000_rng_modes_t;
 
-
 typedef struct _dw1000_rng_status_t{
     uint16_t selfmalloc:1;
     uint16_t initialized:1;
@@ -62,15 +63,29 @@ typedef struct _dw1000_rng_status_t{
     uint16_t invalid_code_error:1;
 }dw1000_rng_status_t;
 
-typedef struct _ss_twr_frame_t{
+typedef union _triad_t{
+    struct _fields{
+        uint16_t x,y,z;
+    };
+    uint16_t axis[sizeof(struct _fields)/sizeof(uint16_t)];
+}triad_t; 
+
+typedef struct _twr_frame_t{
         union {
             ieee_rng_request_frame_t request;
             ieee_rng_response_frame_t response;
         }__attribute__((__packed__)); 
         uint32_t request_timestamp;     // request transmission timestamp.
-        uint32_t response_timestamp;    // reception reception timestamp.
-        uint16_t csr;                 // reception reception timestamp.
-}ss_twr_frame_t;
+        uint32_t response_timestamp;    // response reception timestamp.
+#ifdef FUSION_EXTENDED_FRAME            
+        union _fusion{
+            triad_t position;           // position estimate triad 
+            triad_t acceleration;       // or accleration measurement triad 
+        };
+        triad_t variance;               // variance estimate triad 
+#endif //FUSION_EXTENDED_FRAME
+        uint16_t csr;                  
+}twr_frame_t;
 
 typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * dev;
@@ -78,7 +93,7 @@ typedef struct _dw1000_rng_instance_t{
     dw1000_rng_config_t * config;
     dw1000_rng_status_t status;
     uint16_t nframes;
-    ss_twr_frame_t ss_twr[];
+    twr_frame_t twr[];
 }dw1000_rng_instance_t;
 
 
@@ -87,7 +102,7 @@ void dw1000_rng_free(dw1000_rng_instance_t * inst);
 dw1000_dev_status_t dw1000_rng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config);
 void dw1000_rng_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_tx_complete_cb, dw1000_dev_cb_t rng_rx_complete_cb, dw1000_dev_cb_t rng_rx_timeout_cb,  dw1000_dev_cb_t rng_rx_error_cb);
 dw1000_dev_status_t dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t protocal);
-void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, ss_twr_frame_t ss_twr[], uint16_t nframes);
+void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, twr_frame_t twr[], uint16_t nframes);
 
 
 #ifdef __cplusplus
