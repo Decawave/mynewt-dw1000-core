@@ -38,8 +38,8 @@
 #define SS_TWR_ENABLE
 #endif
 
-#ifndef SDS_TWR_ENABLE
-#define SDS_TWR_ENABLE
+#ifndef DS_TWR_ENABLE
+#define DS_TWR_ENABLE
 #endif
 
 static void rng_tx_complete_cb(dw1000_dev_instance_t * inst);
@@ -190,7 +190,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                     
                         uint64_t request_timestamp = dw1000_read_rxtime(inst);  
                         uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 15); 
-                        uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + (inst->tx_antenna_delay  << 0);
+                        uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
         
                         twr->response.reception_timestamp = request_timestamp;
                         twr->response.transmission_timestamp = response_timestamp;
@@ -223,6 +223,10 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                         twr->response.dst_address = twr->response.src_address;
                         twr->response.src_address = inst->my_short_address;
                         twr->response.code = DWT_SS_TWR_FINAL;
+
+                        // Final callback, prior to transmission, use this callback to populate the FUSION_EXTENDED_FRAME fields.
+                        if (inst->rng_tx_final_cb != NULL)
+                            inst->rng_tx_final_cb(inst);
                     
                         // Transmit timestamp final report
                         dw1000_write_tx(inst, (uint8_t *) twr, 0, sizeof(twr_frame_t));
@@ -250,13 +254,13 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
              }
              break;
 #endif //SS_TWR_ENABLE
-#ifdef SDS_TWR_ENABLE
-        case DWT_SDS_TWR ... DWT_SDS_TWR_FINAL:
+#ifdef DS_TWR_ENABLE
+        case DWT_DS_TWR ... DWT_DS_TWR_FINAL:
             switch(code){
-                    case DWT_SDS_TWR:
+                    case DWT_DS_TWR:
                         {
                             // This code executes on the device that is responding to a original request
-                            // printf("DWT_SDS_TWR\n");
+                            // printf("DWT_DS_TWR\n");
                             twr_frame_t * twr = &inst->rng->twr[0];
                             if (inst->frame_len <= sizeof(ieee_rng_request_frame_t))
                                 dw1000_read_rx(inst, (uint8_t *) &twr->request, 0, sizeof(ieee_rng_request_frame_t));
@@ -265,13 +269,13 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
 
                             uint64_t request_timestamp = dw1000_read_rxtime(inst);  
                             uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 15); 
-                            uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + (inst->tx_antenna_delay  << 0);
+                            uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
             
                             twr->response.reception_timestamp = request_timestamp;
                             twr->response.transmission_timestamp = response_timestamp;
                             twr->response.dst_address = twr->request.src_address;
                             twr->response.src_address = inst->my_short_address;
-                            twr->response.code = DWT_SDS_TWR_T1;
+                            twr->response.code = DWT_DS_TWR_T1;
 
                             dw1000_write_tx(inst, (uint8_t *)&twr->response, 0, sizeof(ieee_rng_response_frame_t));
                             dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true); 
@@ -283,11 +287,11 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                                 os_sem_release(&inst->rng->sem);  
                             break;
                         }
-                    case DWT_SDS_TWR_T1:
+                    case DWT_DS_TWR_T1:
                         {
                             // This code executes on the device that initiated the original request, and is now preparing the next series of timestamps
                             // The 1st frame now contains a local copy of the initial first side of the double sided scheme. 
-                            // printf("DWT_SDS_TWR_T1\n");
+                            // printf("DWT_DS_TWR_T1\n");
                             twr_frame_t * twr = &inst->rng->twr[0];
                             if (inst->frame_len <= sizeof(ieee_rng_response_frame_t))
                                 dw1000_read_rx(inst,  (uint8_t *) &inst->rng->twr[0].response, 0, sizeof(ieee_rng_response_frame_t));
@@ -302,11 +306,11 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             twr->response.dst_address = inst->rng->twr[0].response.src_address;
                             twr->response.src_address = inst->my_short_address;
                             twr->response.seq_num = inst->rng->twr[0].response.seq_num;
-                            twr->response.code = DWT_SDS_TWR_T2;
+                            twr->response.code = DWT_DS_TWR_T2;
 
                             uint64_t request_timestamp = dw1000_read_rxtime(inst);  
                             uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 15); 
-                            uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + (inst->tx_antenna_delay  << 0);
+                            uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
                             
                             twr->response.reception_timestamp = request_timestamp;
                             twr->response.transmission_timestamp = response_timestamp;
@@ -326,7 +330,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             break; 
                         }
 
-                    case DWT_SDS_TWR_T2:
+                    case DWT_DS_TWR_T2:
                         {
                             // This code executes on the device that responded to the original request, and is now preparing the final timestamps
                             // printf("DWT_SDS_TWR_T2\n");
@@ -340,7 +344,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             twr->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received            
                             twr->response.dst_address = twr->response.src_address;
                             twr->response.src_address = inst->my_short_address;
-                            twr->response.code = DWT_SDS_TWR_FINAL;
+                            twr->response.code = DWT_DS_TWR_FINAL;
                     
                             // Final callback, prior to transmission, use this callback to populate the FUSION_EXTENDED_FRAME fields.
                             if (inst->rng_tx_final_cb != NULL)
@@ -354,10 +358,10 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                                 os_sem_release(&inst->rng->sem);  
                             break;
                         }
-                    case  DWT_SDS_TWR_FINAL:
+                    case  DWT_DS_TWR_FINAL:
                         {
                             // This code executes on the device that initialed the original request, and has now receive the final response timestamp. 
-                            // This marks the completion of the symetric-double-single-two-way request. 
+                            // This marks the completion of the double-single-two-way request. 
                             // printf("DWT_SDS_TWR_FINAL\n");
                             twr_frame_t * twr = &inst->rng->twr[1];
                             if (inst->frame_len <= sizeof(twr_frame_t))
@@ -367,11 +371,11 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             break;
                         }
                     default: 
-                        printf("Unsupported SDS_TWR code\n");
+                        printf("Unsupported DS_TWR code\n");
                         break;
                 }
             break;
-#endif //SDS_TWR_ENABLE
+#endif //DS_TWR_ENABLE
         default: 
         break;
     }  

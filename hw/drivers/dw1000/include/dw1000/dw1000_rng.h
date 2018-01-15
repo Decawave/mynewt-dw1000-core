@@ -25,7 +25,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#define FUSION_EXTENDED_FRAME
+#ifndef FUSION_EXTENDED_FRAME
+#undef FUSION_EXTENDED_FRAME
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,11 +50,11 @@ typedef enum _dw1000_rng_modes_t{
     DWT_SS_TWR_T1,
     DWT_SS_TWR_FINAL,
     DWT_SS_TWR_END,
-    DWT_SDS_TWR,
-    DWT_SDS_TWR_T1,
-    DWT_SDS_TWR_T2,
-    DWT_SDS_TWR_FINAL,
-    DWT_SDS_TWR_END,
+    DWT_DS_TWR,
+    DWT_DS_TWR_T1,
+    DWT_DS_TWR_T2,
+    DWT_DS_TWR_FINAL,
+    DWT_DS_TWR_END,
     DWT_TDOA
 }dw1000_rng_modes_t;
 
@@ -63,12 +65,30 @@ typedef struct _dw1000_rng_status_t{
     uint16_t invalid_code_error:1;
 }dw1000_rng_status_t;
 
-typedef union _triad_t{
-    struct _fields{
-        uint16_t x,y,z;
+
+#ifdef FUSION_EXTENDED_FRAME
+#ifdef FUSION_EXTENDED_FRAME_INT16
+typedef union __triad_t{
+    struct _int16_axis{
+        int16_t x,y,z;
     };
-    uint16_t axis[sizeof(struct _fields)/sizeof(uint16_t)];
+    struct _int16_spherical{
+        int16_t range, azimuth, zenith;
+    };
+    int16_t array[sizeof(struct _int16_axis)/sizeof(int16_t)];
+}int16_triad_t; 
+#else
+typedef union _triad_t{
+    struct _axis{
+        float  x,y,z;
+    };
+    struct _spherical{
+       float range, azimuth, zenith;
+    };
+    float array[sizeof(struct _axis)/sizeof(float)];
 }triad_t; 
+#endif
+#endif
 
 typedef struct _twr_frame_t{
         union {
@@ -77,13 +97,16 @@ typedef struct _twr_frame_t{
         }__attribute__((__packed__)); 
         uint32_t request_timestamp;     // request transmission timestamp.
         uint32_t response_timestamp;    // response reception timestamp.
-#ifdef FUSION_EXTENDED_FRAME            
+    
+#if defined(FUSION_EXTENDED_FRAME)          
         union _fusion{
-            triad_t position;           // position estimate triad 
+            triad_t position;           // position triad 
+            triad_t spherical;          // spherical triad 
             triad_t acceleration;       // or accleration measurement triad 
         };
         triad_t variance;               // variance estimate triad 
 #endif //FUSION_EXTENDED_FRAME
+
         uint16_t csr;                  
 }twr_frame_t;
 
