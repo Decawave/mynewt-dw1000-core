@@ -39,20 +39,6 @@ syscfg.defs:
         description: 'CTS pin for UART0'
         value: 7
 
-    SPI_0_MASTER:
-        description: 'SPI 0 master'
-        value:  1
-        restrictions:
-            - "!SPI_0_SLAVE"
-    SPI_0_MASTER_SS_PIN:
-        description: 'SPI 0 (master) SS pin number.'
-        value:  17
-    SPI_0_SLAVE:
-        description: 'SPI 0 slave'
-        value:  0
-        restrictions:
-            - "!SPI_0_MASTER"
-
     TIMER_0:
         description: 'NRF52 Timer 0'
         value:  1
@@ -71,10 +57,6 @@ syscfg.defs:
     TIMER_5:
         description: 'NRF52 RTC 0'
         value:  1
-
-    I2C_0:
-        description: 'NRF52 I2C (TWI) interface 0'
-        value:  0
 
     DW1000_DEVICE_0:
         description: 'DW1000 Device Enable'
