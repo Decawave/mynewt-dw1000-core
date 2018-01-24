@@ -89,10 +89,12 @@ dw1000_rng_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_tx_c
 
 inline void 
 dw1000_rng_set_frames(dw1000_dev_instance_t * inst, twr_frame_t ss_twr[], uint16_t nframes){
-    if (ss_twr != NULL) 
+    if (ss_twr != NULL)
+    {
         inst->rng->nframes = nframes;
         for (uint16_t i = 0; i < nframes; i++)
             inst->rng->twr[i] = ss_twr[i];
+    }
 }
 
 dw1000_dev_status_t 
