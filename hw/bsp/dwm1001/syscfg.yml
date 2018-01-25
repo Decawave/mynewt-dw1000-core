@@ -106,6 +106,7 @@ syscfg.vals:
     # Enable the shell task.
     SHELL_TASK: 1
     SHELL_PROMPT_MODULE: 1
+    SPI_0_MASTER: 1
 
 syscfg.vals.BLE_LP_CLOCK:
     OS_CPUTIME_FREQ: 32768
