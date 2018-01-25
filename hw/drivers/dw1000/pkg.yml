@@ -30,3 +30,7 @@ pkg.req_apis:
 
 pkg.init:
     dw1000_pkg_init: 0
+
+pkg.cflags:
+    - "-std=gnu99"
+    - "-fms-extensions"
