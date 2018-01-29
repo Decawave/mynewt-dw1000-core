@@ -20,6 +20,13 @@ Header files are located in include/
 
 pkg.yml contains the base definition of the package.
 
+To erase the default flash image that shipped with the lps2mini board.
+```
+$ JLinkExe -device nRF52 -speed 4000 -if SWD
+J-Link>erase
+J-Link>exit
+$ 
+```
 
 ```
 newt target create lps2mini_boot
