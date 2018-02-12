@@ -20,6 +20,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <assert.h>
+#include <string.h>
+#include <sysinit/sysinit.h>
 #include <nrf52.h>
 #include "os/os_cputime.h"
 #include "syscfg/syscfg.h"
@@ -33,16 +35,23 @@
 #include "hal/hal_i2c.h"
 #include "hal/hal_gpio.h"
 #include "mcu/nrf52_hal.h"
+#if MYNEWT_VAL(DW1000_DEVICE_0)
 #include "dw1000/dw1000_dev.h"
 #include "dw1000/dw1000_hal.h"
+#endif
 
-#if MYNEWT_VAL(UART_0) 
+#if MYNEWT_VAL(UART_0)
 #include "uart/uart.h"
 #include "uart_hal/uart_hal.h"
 #endif
 
 #include "os/os_dev.h"
 #include "bsp.h"
+
+#if MYNEWT_VAL(MPU6500_ONB)
+#include <mpu6500/mpu6500.h>
+static struct mpu6500 mpu6500;
+#endif
 
 #if MYNEWT_VAL(UART_0)
 static struct uart_dev os_bsp_uart0;
@@ -67,12 +76,20 @@ static const struct nrf52_hal_spi_cfg os_bsp_spi0m_cfg = {
 #endif
 
 
-#if MYNEWT_VAL(I2C_0)
+#if MYNEWT_VAL(I2C_1)
 static const struct nrf52_hal_i2c_cfg hal_i2c_cfg = {
     .scl_pin = 12,
     .sda_pin = 11,
     .i2c_frequency = 400    /* 400 kHz */
 };
+
+#if MYNEWT_VAL(MPU6500_ONB)
+static struct sensor_itf i2c_1_itf_mpu = {
+    .si_type = SENSOR_ITF_I2C,
+    .si_num  = 1,
+    .si_addr = 0x69        /* 0b1101001 */
+};
+#endif
 #endif
 
 /*
@@ -87,7 +104,6 @@ static const struct hal_bsp_mem_dump dump_cfg[] = {
 
 
 
-#if 0
 const struct hal_flash * hal_bsp_flash_dev(uint8_t id)
 {
     /*
@@ -97,19 +113,6 @@ const struct hal_flash * hal_bsp_flash_dev(uint8_t id)
         return NULL;
     }
     return &nrf52k_flash_dev;
-}
-#endif
-
-const struct hal_flash * hal_bsp_flash_dev(uint8_t id)
-{
-    switch (id) {
-    case 0:
-        /* MCU internal flash. */
-        return &nrf52k_flash_dev;
-    default:
-        /* External flash.  Assume not present in this BSP. */
-        return NULL;
-    }
 }
 
 const struct hal_bsp_mem_dump * hal_bsp_core_dump(int *area_cnt)
@@ -145,6 +148,55 @@ uint32_t hal_bsp_get_nvic_priority(int irq_num, uint32_t pri)
         cfg_pri = pri;
     }
     return cfg_pri;
+}
+
+
+/**
+ * MPU6500 Sensor default configuration
+ *
+ * @return 0 on success, non-zero on failure
+ */
+int
+config_mpu6500_sensor(void)
+{
+#if MYNEWT_VAL(MPU6500_ONB)
+    int rc;
+    struct os_dev *dev;
+    struct mpu6500_cfg cfg;
+
+    dev = (struct os_dev *) os_dev_open("mpu6500_0", OS_TIMEOUT_NEVER, NULL);
+    assert(dev != NULL);
+
+    memset(&cfg, 0, sizeof(cfg));
+
+    cfg.mask = SENSOR_TYPE_ACCELEROMETER | SENSOR_TYPE_GYROSCOPE;
+    cfg.accel_range = MPU6500_ACCEL_RANGE_16;
+    cfg.gyro_range = MPU6500_GYRO_RANGE_2000;
+    cfg.sample_rate_div = MPU6500_GYRO_RATE_200;
+    cfg.lpf_cfg = 0;
+    cfg.int_enable = 0;
+    cfg.int_cfg = 0;
+    
+    rc = mpu6500_config((struct mpu6500 *)dev, &cfg);
+    SYSINIT_PANIC_ASSERT(rc == 0);
+
+    os_dev_close(dev);
+#endif
+    return 0;
+}
+
+static void
+sensor_dev_create(void)
+{
+    int rc;
+    (void)rc;
+    
+#if MYNEWT_VAL(MPU6500_ONB)
+    rc = os_dev_create((struct os_dev *) &mpu6500, "mpu6500_0",
+      OS_DEV_INIT_PRIMARY, 0, mpu6500_init, (void *)&i2c_1_itf_mpu);
+    assert(rc == 0);
+#endif
+
 }
 
 
@@ -187,8 +239,8 @@ void hal_bsp_init(void)
     assert(rc == 0);
 #endif
 
-#if MYNEWT_VAL(I2C_0)
-    rc = hal_i2c_init(0, (void *)&hal_i2c_cfg);
+#if MYNEWT_VAL(I2C_1)
+    rc = hal_i2c_init(1, (void *)&hal_i2c_cfg);
     assert(rc == 0);
 #endif
 
@@ -214,4 +266,6 @@ void hal_bsp_init(void)
 #else
     hal_gpio_init_out(DW1000_ENABLE_N_PIN, 1);
 #endif
+
+    sensor_dev_create();
 }

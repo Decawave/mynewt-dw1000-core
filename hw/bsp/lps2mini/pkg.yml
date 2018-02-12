@@ -24,6 +24,7 @@ pkg.author: "Niklas Casaril <niklas@loligoelectronics.com>"
 pkg.homepage: "http://loligoelectronics.com/"
 pkg.keywords:
     - nrf52
+    - mpu6500
     - dw1000
 
 pkg.cflags:
@@ -38,7 +39,6 @@ pkg.deps:
     - '@apache-mynewt-core/hw/mcu/nordic/nrf52xxx'
     - '@apache-mynewt-core/kernel/os'
     - '@apache-mynewt-core/libc/baselibc'
-    - '@mynewt-dw1000-core/hw/drivers/dw1000'
     
 
 pkg.deps.BLE_DEVICE:
@@ -55,3 +55,9 @@ pkg.deps.PWM:
 
 pkg.deps.DW1000.DEVICE_0:
     - '@mynewt-dw1000-core/hw/drivers/dw1000'
+
+pkg.deps.MPU6500_ONB:
+    - '@mynewt-dw1000-core/hw/drivers/sensors/mpu6500'
+
+pkg.init:
+  config_mpu6500_sensor: 400
