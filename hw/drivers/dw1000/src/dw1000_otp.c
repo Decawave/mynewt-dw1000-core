@@ -51,7 +51,7 @@ uint32_t _dw1000_otp_read(dw1000_dev_instance_t * inst, uint16_t address)
     dw1000_write_reg(inst, OTP_IF_ID, OTP_CTRL, 0x0, sizeof(uint8_t)); // OTPREAD is self clearing but OTPRDEN is not
 
     // Read data, available 40ns after rising edge of OTP_READ
-     os_cputime_delay_nsecs(40);
-     return  (uint32_t) dw1000_read_reg(inst, OTP_IF_ID, OTP_RDAT, sizeof(uint32_t));
+    os_cputime_delay_usecs(1);
+    return  (uint32_t) dw1000_read_reg(inst, OTP_IF_ID, OTP_RDAT, sizeof(uint32_t));
 }
 
