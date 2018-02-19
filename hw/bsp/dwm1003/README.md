@@ -60,23 +60,23 @@ newt load dwm1003_boot
 
 newt target create twr_tag
 newt target set twr_tag app=apps/twr_tag
-newt target set twr_tag bsp=@mynewt-dw1000-core/hw/bsp/dwm1001
+newt target set twr_tag bsp=@mynewt-dw1000-core/hw/bsp/dwm1003
 newt target set twr_tag build_profile=debug 
 newt run twr_tag 0
 
 ```
 
-4. On a second dwm1001-dev build the master side of the Two-Way-Ranging (twr_node) applicaitons as follows. 
+4. On a second dwm1003-dev build the master side of the Two-Way-Ranging (aoa_node) applicaitons as follows. 
 
 (executed from within the mynewt-dw1000-app directory).
 
 ```no-highlight
 
-newt target create twr_node 
-newt target set twr_node app=apps/twr_node
-newt target set twr_node bsp=@mynewt-dw1000-core/hw/bsp/dwm1003
-newt target set twr_node build_profile=debug 
-newt run twr_node 0
+newt target create aoa_node 
+newt target set aoa_node app=apps/aoa_node
+newt target set aoa_node bsp=@mynewt-dw1000-core/hw/bsp/dwm1003
+newt target set aoa_node build_profile=debug 
+newt run aoa_node 0
 
 ```
 

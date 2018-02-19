@@ -19,13 +19,13 @@
 #
 -->
 
-# Decawave DW1003-DEV 
+# Decawave DW1002-DEV 
 
 ## Overview
 
 This distribution contains the example applications for the dwm1002-DEV. The dw1000 device driver model is integrated into the mynewt-OS (https://github.com/decawave/mynewt-dw1000-core). This driver includes native support for a 6lowPAN stack, Ranging Services, and Location Services, etc. Mynewt and it's tools build environment newt and management tools newtmgt create a powerful environment and deploying large-scale distributions within IoT.
 
-For these examples, we leverage the Decawave dwm1002 module and dwm1002-dev kit. The dwm1002 includes the nrf52832, LSM6DSL(6DoF), LIS2MDL(MAG), LPS22HB(Barometer), and Dual dw1000 transceiver configured for AoA. The dwm1002-dev is a breakout board that supports a Seggar OB-JLink interface with RTT support. The mynewt build environment provides a clean interface for maintaining platform agnostics distributions. The dwm1003-dev and the examples contained herein provide a clean out-of-the-box experience for UWB Location Based Services.
+For these examples, we leverage the Decawave dwm1002 module and dwm1002-dev kit. The dwm1002 includes the nrf52832, LSM6DSL(6DoF), LIS2MDL(MAG), LPS22HB(Barometer), and Dual dw1000 transceivers configured for AoA. The dwm1002-dev is a breakout board that supports a Seggar OB-JLink interface with RTT support. The mynewt build environment provides a clean interface for maintaining platform agnostics distributions. The dwm1003-dev and the examples contained herein provide a clean out-of-the-box experience for UWB Location Based Services.
 
 1. To erase the default flash image that shipped with the DWM1001.
 
@@ -66,7 +66,7 @@ newt run twr_tag 0
 
 ```
 
-4. On a second dwm1001-dev build the master side of the Two-Way-Ranging (twr_node) applicaitons as follows. 
+4. On a second dwm1002-dev build the master side of the Two-Way-Ranging (twr_node) applicaitons as follows. 
 
 (executed from within the mynewt-dw1000-app directory).
 
