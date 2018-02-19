@@ -6,7 +6,9 @@ Local Positioning System in a very small form factor. Indoor navigation system w
 - USB micro
 - BLE
 - DWM1000 for UWB.
-- Accelerometer/Gyro: LSM6DSL.
+- 
+
+:1
 - Altimeter: LPS22HB.
 - Outdoor range: Around 200-300m line of sight depending on your propagation environment.
 - Indoor range: Around 30-50m depending on your walls.
