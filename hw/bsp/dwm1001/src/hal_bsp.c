@@ -32,8 +32,11 @@
 #include "hal/hal_watchdog.h"
 #include "hal/hal_i2c.h"
 #include "mcu/nrf52_hal.h"
+
+#if MYNEWT_VAL(DW1000_DEVICE_0)
 #include "dw1000/dw1000_dev.h"
 #include "dw1000/dw1000_hal.h"
+#endif
 
 #if MYNEWT_VAL(UART_0) 
 #include "uart/uart.h"

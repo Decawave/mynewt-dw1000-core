@@ -60,7 +60,7 @@ syscfg.defs:
 
     DW1000_DEVICE_0:
         description: 'DW1000 Device Enable'
-        value:  1
+        value:  0
     DW1000_DEVICE_0_SPI_IDX:
         description: 'Using SPI0'
         value:  0

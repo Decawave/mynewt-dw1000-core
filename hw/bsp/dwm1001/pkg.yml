@@ -37,9 +37,7 @@ pkg.cflags.HARDFLOAT:
 pkg.deps:
     - '@apache-mynewt-core/hw/mcu/nordic/nrf52xxx'
     - '@apache-mynewt-core/kernel/os'
-    - '@apache-mynewt-core/libc/baselibc'
-    - '@mynewt-dw1000-core/hw/drivers/dw1000'
-    
+    - '@apache-mynewt-core/libc/baselibc'   
 
 pkg.deps.BLE_DEVICE:
     - '@apache-mynewt-core/hw/drivers/nimble/nrf52'
@@ -53,5 +51,5 @@ pkg.deps.UART_1:
 pkg.deps.PWM:
     - '@mynewt_nordic/hw/drivers/pwm/pwm_nrf52'
 
-pkg.deps.DW1000.DEVICE_0:
+pkg.deps.DW1000_DEVICE_0:
     - '@mynewt-dw1000-core/hw/drivers/dw1000'
