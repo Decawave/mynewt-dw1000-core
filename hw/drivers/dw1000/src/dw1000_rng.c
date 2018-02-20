@@ -203,7 +203,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                         dw1000_write_tx(inst, (uint8_t *)&twr->response, 0, sizeof(ieee_rng_response_frame_t));
                         dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true); 
                         dw1000_set_wait4resp(inst, true);    
-                        dw1000_set_delay_start(inst, response_tx_delay);   
+                        dw1000_set_delay_start(inst, response_tx_delay);
+                        dw1000_start_tx(inst);
                         dw1000_set_rx_timeout(inst, config->rx_timeout_period); 
 
                         if (dw1000_start_tx(inst).start_tx_error)
@@ -284,6 +285,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true); 
                             dw1000_set_wait4resp(inst, true);    
                             dw1000_set_delay_start(inst, response_tx_delay);   
+                            dw1000_start_tx(inst);
                             dw1000_set_rx_timeout(inst, config->rx_timeout_period); 
 
                             if (dw1000_start_tx(inst).start_tx_error)
@@ -326,6 +328,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_write_tx_fctrl(inst, sizeof(twr_frame_t), 0, true); 
                             dw1000_set_wait4resp(inst, true);    
                             dw1000_set_delay_start(inst, response_tx_delay);   
+                            dw1000_start_tx(inst);
                             dw1000_set_rx_timeout(inst, config->rx_timeout_period); 
                         
                             if (dw1000_start_tx(inst).start_tx_error)

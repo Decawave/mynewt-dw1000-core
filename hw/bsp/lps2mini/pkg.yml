@@ -53,7 +53,7 @@ pkg.deps.UART_1:
 pkg.deps.PWM:
     - '@mynewt_nordic/hw/drivers/pwm/pwm_nrf52'
 
-pkg.deps.DW1000.DEVICE_0:
+pkg.deps.DW1000_DEVICE_0:
     - '@mynewt-dw1000-core/hw/drivers/dw1000'
 
 pkg.deps.MPU6500_ONB:
