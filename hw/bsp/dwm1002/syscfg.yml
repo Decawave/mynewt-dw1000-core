@@ -69,7 +69,7 @@ syscfg.defs:
         value:  1
 
     DW1000_DEVICE_0:
-        description: 'DW1000 Device Enable'
+        description: '1st DW1000 Device Enable'
         value:  0
     DW1000_DEVICE_0_SPI_IDX:
         description: 'Using SPI0'
@@ -96,6 +96,28 @@ syscfg.defs:
         description: 'TX_ANT_DLY'
         value: 0x4050
     DW1000_DEVICE_0_RX_ANT_DLY:
+        description: 'RX_ANT_DLY'
+        value: 0x4050
+
+    DW1000_DEVICE_1:
+        description: '2nd DW1000 Device Enable'
+        value:  0
+    DW1000_DEVICE_1_SPI_IDX:
+        description: 'Using SPI0'
+        value:  0
+    DW1000_DEVICE_1_SS:
+        description: 'Slave Select Pin, P1.05 = 32+5'
+        value:  37 
+    DW1000_DEVICE_1_RST:
+        description: 'Reset Pin, P1.06 = 32+6'
+        value:  38
+    DW1000_DEVICE_1_IRQ:
+        description: 'Interrupt Request Pin, P1.10 = 32+10'
+        value:  42
+    DW1000_DEVICE_1_TX_ANT_DLY:
+        description: 'TX_ANT_DLY'
+        value: 0x4050
+    DW1000_DEVICE_1_RX_ANT_DLY:
         description: 'RX_ANT_DLY'
         value: 0x4050
 

@@ -49,7 +49,6 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             .config = {
                 .rxdiag_enable = 1,
             }
-            
     },
     #if  MYNEWT_VAL(DW1000_DEVICE_1)
     [1] = {
@@ -92,20 +91,27 @@ struct os_mutex g_spi_mutex;
 dw1000_dev_instance_t * 
 hal_dw1000_inst(uint8_t idx){
 
-    assert(idx < 2);  // Only one instance for this bsp
+#if  MYNEWT_VAL(DW1000_DEVICE_0) 
+#if  MYNEWT_VAL(DW1000_DEVICE_1)
+    assert(idx < 2);  // Only two instance for chosen bsp
+#endif
+    assert(idx < 1);  // Only one instance for chosen bsp
+#else
+    assert(0);  // no instance for chosen bsp
+#endif
     return &hal_dw1000_instances[idx];
 }
 
-void 
+void  
 hal_dw1000_reset(dw1000_dev_instance_t * inst)
 {
     
     assert(inst);
 
-#if MYNEWT_VAL(DW1000_DEVICE_1) || MYNEWT_VAL(DW1000_DEVICE_1)
-    os_error_t err = os_mutex_init(&g_spi_mutex);
-    assert(err == OS_OK);
-#endif
+//#if MYNEWT_VAL(DW1000_DEVICE_0) || MYNEWT_VAL(DW1000_DEVICE_1) 
+//    os_error_t err = os_mutex_init(&g_spi_mutex);
+//    assert(err == OS_OK);
+//#endif
 
     hal_gpio_init_out(inst->ss_pin, 1);
     hal_gpio_init_out(inst->rst_pin, 0);
