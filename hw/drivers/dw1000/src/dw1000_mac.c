@@ -438,7 +438,6 @@ inline dw1000_dev_status_t dw1000_set_delay_start(dw1000_dev_instance_t * inst, 
     if (inst->control.delay_start_enabled)
          dw1000_write_reg(inst, DX_TIME_ID, 1, delay >> 8, DX_TIME_LEN-1);
 
-    dw1000_start_tx(inst);
     return inst->status;
 }
 
