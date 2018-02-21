@@ -802,7 +802,7 @@ void dw1000_tasks_init(dw1000_dev_instance_t * inst)
     hal_gpio_irq_init(inst->irq_pin, dw1000_irq, inst, HAL_GPIO_TRIG_RISING, HAL_GPIO_PULL_UP);
     hal_gpio_irq_enable(inst->irq_pin);
 
-    dw1000_phy_interrupt_mask(inst, DWT_INT_TFRS | DWT_INT_RFCG | DWT_INT_RFTO | DWT_INT_RXPTO | DWT_INT_RPHE | DWT_INT_RFCE | DWT_INT_RFSL | DWT_INT_SFDT, true);
+    dw1000_phy_interrupt_mask(inst, DWT_INT_TFRS | DWT_INT_RFCG | DWT_INT_RFTO | DWT_INT_RXPTO | DWT_INT_RPHE | DWT_INT_RFCE | DWT_INT_RFSL | DWT_INT_SFDT | DWT_INT_ARFE, true);
 }
 
 static void dw1000_irq(void *arg)
