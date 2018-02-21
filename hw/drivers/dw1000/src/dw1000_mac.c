@@ -899,12 +899,12 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
         // Call the corresponding non-ranging frame callback if present
         else if(inst->rx_complete_cb != NULL)
             inst->rx_complete_cb(inst);        
-        // Toggle the Host side Receive Buffer Pointer
-        if (inst->control.dblbuffon_enabled)
-            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 1, sizeof(uint8_t));
         // Collect RX Frame Quality diagnositics
         if(inst->config.rxdiag_enable)  
             dw1000_read_rxdiag(inst, &inst->rxdiag);
+        // Toggle the Host side Receive Buffer Pointer
+        if (inst->control.dblbuffon_enabled)
+            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 1, sizeof(uint8_t));
     }
 
     // Handle TX confirmation event
