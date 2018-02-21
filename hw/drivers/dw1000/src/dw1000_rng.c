@@ -150,10 +150,10 @@ rng_tx_complete_cb(dw1000_dev_instance_t * inst)
    if (inst->rng->twr[0].response.code == DWT_SS_TWR_FINAL || inst->rng->twr[0].response.code == DWT_SS_TWR_T1){
         os_sem_release(&inst->rng->sem);  
    }
-#ifdef  SDS_TWR_ENABLE
+#ifdef  DS_TWR_ENABLE
     else{ 
         if(inst->rng->nframes > 1) 
-            if (inst->rng->twr[1].response.code ==  DWT_SDS_TWR_FINAL){
+            if (inst->rng->twr[1].response.code ==  DWT_DS_TWR_FINAL){
                 os_sem_release(&inst->rng->sem);  
             }
     }
@@ -247,6 +247,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                         twr_frame_t * twr  = &inst->rng->twr[0]; 
                         if (inst->frame_len <= sizeof(twr_frame_t))
                             dw1000_read_rx(inst,  (uint8_t *) twr, 0, sizeof(twr_frame_t));
+                            
                         os_sem_release(&inst->rng->sem);
                         break;
                     }
