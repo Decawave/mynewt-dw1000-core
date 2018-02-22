@@ -26,7 +26,7 @@
 #include <stdint.h>
 
 #ifndef FUSION_EXTENDED_FRAME
-#undef FUSION_EXTENDED_FRAME
+#define FUSION_EXTENDED_FRAME
 #endif
 
 #ifdef __cplusplus

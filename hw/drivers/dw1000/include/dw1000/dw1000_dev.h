@@ -66,15 +66,12 @@ typedef struct _dw1000_dev_status_t{
     uint32_t request_timeout:1;
 }dw1000_dev_status_t;
 
-
 typedef struct _dw1000_dev_control_t{
     uint32_t wait4resp_enabled:1;
     uint32_t wait4resp_delay_enabled:1;
     uint32_t delay_start_enabled:1;
     uint32_t autoack_delay_enabled:1;
     uint32_t start_rx_syncbuf_enabled:1;
-    uint32_t dblbuffon_enabled:1;
-    uint32_t framefilter_enabled:1;
     uint32_t rx_timeout_enabled:1;
     uint32_t wakeup_LLDE:1;
     uint32_t wakeup_LLDO:1;

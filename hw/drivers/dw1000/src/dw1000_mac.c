@@ -412,8 +412,6 @@ dw1000_dev_status_t dw1000_start_tx(dw1000_dev_instance_t * inst)
         .delay_start_enabled=0,
         .autoack_delay_enabled=0,
         .start_rx_syncbuf_enabled=0,
-        .dblbuffon_enabled=0,
-        .framefilter_enabled=0,
         .rx_timeout_enabled=0
     };
     return inst->status;
@@ -479,8 +477,6 @@ dw1000_dev_status_t dw1000_start_rx(dw1000_dev_instance_t * inst)
         .delay_start_enabled=0,
         .autoack_delay_enabled=0,
         .start_rx_syncbuf_enabled=0,
-        .dblbuffon_enabled=0,
-        .framefilter_enabled=0,
         .rx_timeout_enabled=0
     };
 
@@ -616,8 +612,8 @@ dw1000_dev_status_t dw1000_mac_framefilter(dw1000_dev_instance_t * inst, uint16_
 
     inst->sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)) ; // Read sysconfig register
 
-    inst->control.framefilter_enabled = enable > 0;
-    if(inst->control.framefilter_enabled){   // Enable frame filtering and configure frame types
+    inst->config.framefilter_enabled = enable > 0;
+    if(inst->config.framefilter_enabled){   // Enable frame filtering and configure frame types
         inst->sys_cfg_reg &= ~(SYS_CFG_FF_ALL_EN);  // Clear all
         inst->sys_cfg_reg |= (enable & SYS_CFG_FF_ALL_EN) | SYS_CFG_FFE;
     }else
@@ -736,8 +732,8 @@ dw1000_dev_status_t dw1000_set_dblrxbuff(dw1000_dev_instance_t * inst, bool enab
 
     inst->sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)); 
 
-    inst->control.dblbuffon_enabled = enable;
-    if(inst->control.dblbuffon_enabled)
+    inst->config.dblbuffon_enabled = enable;
+    if(inst->config.dblbuffon_enabled)
         inst->sys_cfg_reg &= ~SYS_CFG_DIS_DRXB;
     else
         inst->sys_cfg_reg |= SYS_CFG_DIS_DRXB;
@@ -807,9 +803,9 @@ void dw1000_tasks_init(dw1000_dev_instance_t * inst)
 
 static void dw1000_irq(void *arg)
 {
-//    dw1000_dev_instance_t * inst = arg;
-//    os_eventq_put(&inst->interrupt_eventq, &inst->interrupt_ev);
-    dw1000_interrupt_ev_cb(NULL);
+    dw1000_dev_instance_t * inst = arg;
+    os_eventq_put(&inst->interrupt_eventq, &inst->interrupt_ev);
+//    dw1000_interrupt_ev_cb(NULL);
 }
 
 
@@ -903,7 +899,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
         if(inst->config.rxdiag_enable)  
             dw1000_read_rxdiag(inst, &inst->rxdiag);
         // Toggle the Host side Receive Buffer Pointer
-        if (inst->control.dblbuffon_enabled)
+        if (inst->config.dblbuffon_enabled)
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 1, sizeof(uint8_t));
     }
 
