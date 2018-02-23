@@ -66,6 +66,7 @@ dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config){
 
     dw1000_rng_set_callbacks(inst, rng_tx_complete_cb, rng_rx_complete_cb, rng_rx_timeout_cb, rng_rx_error_cb);
     inst->rng_tx_final_cb = NULL;
+    inst->rng_interface_extension_cb = NULL;
     inst->rng->status.initialized = 1;
     return inst->rng;
 }
@@ -142,10 +143,38 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
    return inst->status;
 }
 
+float 
+dw1000_rng_twr_to_tof(twr_frame_t * twr, dw1000_rng_modes_t code){
+    float ToF = 0;
+    uint64_t T1R, T1r, T2R, T2r;
+    int64_t nom,denom;
+
+    switch(code){
+        case DWT_SS_TWR:
+            ToF = ((twr->response_timestamp - twr->request_timestamp) 
+                    -  (twr->response.transmission_timestamp - twr->response.reception_timestamp))/2.; 
+        break;
+        case DWT_DS_TWR:
+            T1R = (twr[0].response_timestamp - twr[0].request_timestamp); 
+            T1r = (twr[0].response.transmission_timestamp  - twr[0].response.reception_timestamp);         
+            T2R = (twr[1].response_timestamp - twr[1].request_timestamp); 
+            T2r = (twr[1].response.transmission_timestamp  - twr[1].response.reception_timestamp); 
+        //     ToF = (T1R - T1r + T2R - T2r) >> 2;  
+            nom = T1R * T2R  - T1r * T2r;
+            denom = T1R + T2R  + T1r + T2r;
+            ToF = (float) (nom) / denom; 
+        break;
+        default: break;       
+    }
+    return ToF;
+}
+
+
+
+
 static void 
 rng_tx_complete_cb(dw1000_dev_instance_t * inst)
 {
-  //  printf("inst->rng->nframes=%d %d %d\n", inst->rng->nframes, inst->rng->twr[0].response.code , inst->rng->twr[1].response.code);
    // Unblock Semaphore after last transmission
    if (inst->rng->twr[0].response.code == DWT_SS_TWR_FINAL || inst->rng->twr[0].response.code == DWT_SS_TWR_T1){
         os_sem_release(&inst->rng->sem);  
@@ -252,7 +281,9 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                         break;
                     }
                 default: 
-                    printf("Unsupported SS_TWR code\n");
+                    // Use this callback to extend interface and ranging services
+                     if (inst->rng_interface_extension_cb != NULL)
+                            inst->rng_interface_extension_cb(inst);
                     break;
              }
              break;
@@ -301,8 +332,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             else 
                                 break;
 
-                            twr->request_timestamp = dw1000_read_txtime_lo(inst);   // This corresponds to when the original request was actually sent
-                            twr->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received      
+                            twr->request_timestamp = inst->rng->twr[1].request_timestamp = dw1000_read_txtime_lo(inst);   // This corresponds to when the original request was actually sent
+                            twr->response_timestamp = inst->rng->twr[1].response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received      
                             
                             // Note:: Switching from 1st to 2nd ss_twr frame    
                             twr = &inst->rng->twr[1];
@@ -342,13 +373,15 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                                 dw1000_read_rx(inst,  (uint8_t *) twr, 0, sizeof(twr_frame_t));
                             else 
                                 break;
+                            inst->rng->twr[0].request_timestamp = inst->rng->twr[1].request_timestamp;
+                            inst->rng->twr[0].response_timestamp = inst->rng->twr[1].response_timestamp;
 
                             twr->request_timestamp = dw1000_read_txtime_lo(inst);   // This corresponds to when the original request was actually sent
                             twr->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received            
                             twr->response.dst_address = twr->response.src_address;
                             twr->response.src_address = inst->my_short_address;
                             twr->response.code = DWT_DS_TWR_FINAL;
-                    
+
                             // Final callback, prior to transmission, use this callback to populate the FUSION_EXTENDED_FRAME fields.
                             if (inst->rng_tx_final_cb != NULL)
                                 inst->rng_tx_final_cb(inst);
@@ -374,7 +407,9 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             break;
                         }
                     default: 
-                        printf("Unsupported DS_TWR code\n");
+                        // Use this callback to extend interface and ranging services
+                        if (inst->rng_interface_extension_cb != NULL)
+                            inst->rng_interface_extension_cb(inst);
                         break;
                 }
             break;
@@ -395,3 +430,4 @@ rng_rx_error_cb(dw1000_dev_instance_t * inst){
     os_error_t err = os_sem_release(&inst->rng->sem);
     assert(err == OS_OK);
 }
+

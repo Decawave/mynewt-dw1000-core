@@ -97,16 +97,11 @@ typedef struct _twr_frame_t{
         }__attribute__((__packed__)); 
         uint32_t request_timestamp;     // request transmission timestamp.
         uint32_t response_timestamp;    // response reception timestamp.
-    
 #if defined(FUSION_EXTENDED_FRAME)          
-        union _fusion{
-            triad_t position;           // position triad 
-            triad_t spherical;          // spherical triad 
-            triad_t acceleration;       // or accleration measurement triad 
-        };
-        triad_t variance;               // variance estimate triad 
+        triad_t local_coordinate;              // position triad 
+        triad_t spherical_coordinate;          // spherical triad 
+        triad_t variance;                      // variance triad 
 #endif //FUSION_EXTENDED_FRAME
-
         uint16_t csr;                  
 }twr_frame_t;
 
@@ -117,7 +112,7 @@ typedef struct _dw1000_rng_instance_t{
     dw1000_rng_status_t status;
     uint16_t nframes;
     twr_frame_t twr[];
-}dw1000_rng_instance_t;
+}dw1000_rng_instance_t; 
 
 
 dw1000_rng_instance_t * dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config);
@@ -126,6 +121,11 @@ dw1000_dev_status_t dw1000_rng_config(dw1000_dev_instance_t * inst, dw1000_rng_c
 void dw1000_rng_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_tx_complete_cb, dw1000_dev_cb_t rng_rx_complete_cb, dw1000_dev_cb_t rng_rx_timeout_cb,  dw1000_dev_cb_t rng_rx_error_cb);
 dw1000_dev_status_t dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t protocal);
 void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, twr_frame_t twr[], uint16_t nframes);
+float dw1000_rng_twr_to_tof(twr_frame_t * twr, dw1000_rng_modes_t code);
+
+#define dw1000_rng_tof_to_meters(ToF) (float)(ToF * 299792458 * (1.0/499.2e6/128.0)) 
+#define dw1000_rng_set_extension_cb(inst, rng_interface_extension_cb) inst->rng_interface_extension_cb = rng_interface_extension_cb 
+#define dw1000_rng_set_tx_final_cb(inst, rng_tx_final_cb) inst->rng_tx_final_cb = rng_tx_final_cb 
 
 
 #ifdef __cplusplus
