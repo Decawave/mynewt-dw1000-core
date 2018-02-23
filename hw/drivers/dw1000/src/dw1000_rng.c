@@ -31,6 +31,7 @@
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_mac.h>
+#include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_ftypes.h>
 #include <dw1000/dw1000_rng.h>
 
@@ -133,7 +134,7 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     dw1000_set_rx_timeout(inst, config->rx_timeout_period); 
     dw1000_start_tx(inst);
     
-    err = os_sem_pend(&inst->rng->sem, 10000); // Wait for completion of transactions units os_clicks
+    err = os_sem_pend(&inst->rng->sem, OS_TICKS_PER_SEC/16); // Wait for completion of transactions units os_clicks
     inst->status.request_timeout = (err == OS_TIMEOUT);
     os_sem_release(&inst->rng->sem);
     

@@ -376,7 +376,7 @@ inline void dw1000_write_tx_fctrl(dw1000_dev_instance_t * inst, uint16_t txFrame
  */
 dw1000_dev_status_t dw1000_start_tx(dw1000_dev_instance_t * inst)
 {
-     if (inst->control.wait4resp_enabled) // Undocumented ANONMALY::This should not be required
+    if (inst->control.wait4resp_enabled) // Undocumented ANONMALY::This should not be required
         dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint8_t)SYS_CTRL_WAIT4RESP, sizeof(uint8_t));
 
     inst->sys_ctrl_reg = SYS_CTRL_TXSTRT;
