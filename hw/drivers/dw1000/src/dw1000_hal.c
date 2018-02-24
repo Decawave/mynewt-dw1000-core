@@ -48,6 +48,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             .status = {0},
             .config = {
                 .rxdiag_enable = 1,
+                .dblbuffon_enabled =1
             }
     },
     #if  MYNEWT_VAL(DW1000_DEVICE_1)

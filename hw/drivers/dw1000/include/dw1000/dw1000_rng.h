@@ -25,8 +25,14 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#ifndef FUSION_EXTENDED_FRAME
-#define FUSION_EXTENDED_FRAME
+#ifndef SS_TWR_ENABLE
+#define SS_TWR_ENABLE
+#endif
+#ifndef DS_TWR_ENABLE
+#define DS_TWR_ENABLE
+#endif
+#ifndef DS_TWR_EXT_ENABLE
+#define DS_TWR_EXT_ENABLE
 #endif
 
 #ifdef __cplusplus
@@ -55,6 +61,11 @@ typedef enum _dw1000_rng_modes_t{
     DWT_DS_TWR_T2,
     DWT_DS_TWR_FINAL,
     DWT_DS_TWR_END,
+    DWT_DS_TWR_EXT,
+    DWT_DS_TWR_EXT_T1,
+    DWT_DS_TWR_EXT_T2,
+    DWT_DS_TWR_EXT_FINAL,
+    DWT_DS_TWR_EXT_END,
     DWT_TDOA
 }dw1000_rng_modes_t;
 
@@ -66,8 +77,8 @@ typedef struct _dw1000_rng_status_t{
 }dw1000_rng_status_t;
 
 
-#ifdef FUSION_EXTENDED_FRAME
-#ifdef FUSION_EXTENDED_FRAME_INT16
+#ifdef DS_TWR_EXT_ENABLE
+#ifdef DS_TWR_EXT_ENABLE_INT16
 typedef union __triad_t{
     struct _int16_axis{
         int16_t x,y,z;
@@ -90,20 +101,24 @@ typedef union _triad_t{
 #endif
 #endif
 
-typedef struct _twr_frame_t{
-        union {
-            ieee_rng_request_frame_t request;
-            ieee_rng_response_frame_t response;
-        }__attribute__((__packed__)); 
+typedef struct _twr_frame_final_t{
+        struct _ieee_rng_response_frame_t;
         uint32_t request_timestamp;     // request transmission timestamp.
         uint32_t response_timestamp;    // response reception timestamp.
-#if defined(FUSION_EXTENDED_FRAME)          
-        triad_t local_coordinate;              // position triad 
-        triad_t spherical_coordinate;          // spherical triad 
-        triad_t variance;                      // variance triad 
-#endif //FUSION_EXTENDED_FRAME
-        uint16_t csr;                  
-}twr_frame_t;
+        uint16_t dummy3;
+} twr_frame_final_t;
+
+typedef struct _twr_frame_t{
+        struct _twr_frame_final_t;
+        union {
+            struct  _fusion_ext_t{
+                triad_t local_coordinate;       // position triad 
+                triad_t spherical_coordinate;   // spherical triad 
+                triad_t variance;               // variance triad 
+            }__attribute__((__packed__));
+            uint8_t payload[sizeof(struct _fusion_ext_t)];
+        };
+} twr_frame_t;
 
 typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * dev;
@@ -122,6 +137,7 @@ void dw1000_rng_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng
 dw1000_dev_status_t dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t protocal);
 void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, twr_frame_t twr[], uint16_t nframes);
 float dw1000_rng_twr_to_tof(twr_frame_t * twr, dw1000_rng_modes_t code);
+uint32_t dw1000_rng_twr_to_tof_sym(twr_frame_t * twr, dw1000_rng_modes_t code);
 
 #define dw1000_rng_tof_to_meters(ToF) (float)(ToF * 299792458 * (1.0/499.2e6/128.0)) 
 #define dw1000_rng_set_extension_cb(inst, rng_interface_extension_cb) inst->rng_interface_extension_cb = rng_interface_extension_cb 

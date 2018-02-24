@@ -63,32 +63,20 @@ typedef union {
         uint16_t dst_address;       // destination address
         uint16_t src_address;       // source address
         uint16_t code;    
-        uint16_t csr;               // frame check-sum
+        uint16_t dummy;               // frame check-sum
     }__attribute__((__packed__));          
     uint8_t array[sizeof(struct _ieee_rng_request_frame_t)];
 }__attribute__((__packed__)) ieee_rng_request_frame_t;
 
 typedef union {
     struct  _ieee_rng_response_frame_t{
-        uint16_t fctrl;             // frame control (0x8841 to indicate a data frame using 16-bit addressing).
-        uint8_t seq_num;            // sequence number, incremented for each new frame.
-        uint16_t PANID;              // PANID (0xDECA)
-        uint16_t dst_address;       // destination address
-        uint16_t src_address;       // source address
-        uint16_t code;
+        struct _ieee_rng_request_frame_t;
         uint32_t reception_timestamp;    // request reception timestamp.
         uint32_t transmission_timestamp; // response transmission timestamp.
-        uint16_t csr;               // frame check-sum
+        uint16_t dummy1;
     }__attribute__((__packed__));
     uint8_t array[sizeof(struct _ieee_rng_response_frame_t)];
 }__attribute__((__packed__)) ieee_rng_response_frame_t;
-
-  
-typedef union {
-    ieee_rng_request_frame_t request;
-    ieee_rng_response_frame_t response;
-}__attribute__((__packed__)) ieee_rng_frame_t;
-
 
 // IEEE 802.15.4 standard data frame
 typedef union {
