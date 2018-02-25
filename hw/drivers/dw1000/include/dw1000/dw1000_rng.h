@@ -65,8 +65,7 @@ typedef enum _dw1000_rng_modes_t{
     DWT_DS_TWR_EXT_T1,
     DWT_DS_TWR_EXT_T2,
     DWT_DS_TWR_EXT_FINAL,
-    DWT_DS_TWR_EXT_END,
-    DWT_TDOA
+    DWT_DS_TWR_EXT_END
 }dw1000_rng_modes_t;
 
 typedef struct _dw1000_rng_status_t{
@@ -105,20 +104,23 @@ typedef struct _twr_frame_final_t{
         struct _ieee_rng_response_frame_t;
         uint32_t request_timestamp;     // request transmission timestamp.
         uint32_t response_timestamp;    // response reception timestamp.
-        uint16_t dummy3;
-} twr_frame_final_t;
+} __attribute__((__packed__, aligned(1))) twr_frame_final_t;
 
-typedef struct _twr_frame_t{
+typedef union {
+    struct _twr_frame_t{
         struct _twr_frame_final_t;
         union {
             struct  _fusion_ext_t{
                 triad_t local_coordinate;       // position triad 
                 triad_t spherical_coordinate;   // spherical triad 
                 triad_t variance;               // variance triad 
-            }__attribute__((__packed__));
+            };
             uint8_t payload[sizeof(struct _fusion_ext_t)];
         };
+    };
+    uint8_t array[sizeof(struct _twr_frame_t)];
 } twr_frame_t;
+
 
 typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * dev;

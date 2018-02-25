@@ -36,10 +36,9 @@ typedef union{
         uint8_t fctrl;              // frame type (0xC5 for a blink) using 64-bit addressing
         uint8_t seq_num;            // sequence number, incremented for each new frame.
         uint64_t ext_address;       // device ID
-        uint16_t csr;               // frame check-sum
     }__attribute__((__packed__));
     uint8_t array[sizeof(struct _ieee_blink_frame)];
-}__attribute__((__packed__)) ieee_blink_frame_t;
+}ieee_blink_frame_t;
 
 // ISO/IEC 24730-62:2013 standard blink. It is a 14-byte frame composed of the following fields
 typedef union {
@@ -49,10 +48,9 @@ typedef union {
         uint64_t address;           // device ID
         uint8_t encoding;           // 0x43 to indicate no extended ID
         uint8_t EXT_header ;        // 0x02 to indicate tag is listening for a response immediately
-        uint16_t csr;               // frame check-sum
-    }__attribute__((__packed__));
+    }__attribute__((__packed__,aligned(1)));
     uint8_t array[sizeof(struct _ieee_blink_frame_ext_t)];
-}__attribute__((__packed__)) ieee_blink_frame_ext_t;
+}ieee_blink_frame_ext_t;
 
 // IEEE 802.15.4 standard ranging frames
 typedef union {
@@ -63,20 +61,18 @@ typedef union {
         uint16_t dst_address;       // destination address
         uint16_t src_address;       // source address
         uint16_t code;    
-        uint16_t dummy;               // frame check-sum
-    }__attribute__((__packed__));          
+    }__attribute__((__packed__,aligned(1)));    
     uint8_t array[sizeof(struct _ieee_rng_request_frame_t)];
-}__attribute__((__packed__)) ieee_rng_request_frame_t;
+} ieee_rng_request_frame_t;
 
 typedef union {
     struct  _ieee_rng_response_frame_t{
         struct _ieee_rng_request_frame_t;
         uint32_t reception_timestamp;    // request reception timestamp.
         uint32_t transmission_timestamp; // response transmission timestamp.
-        uint16_t dummy1;
-    }__attribute__((__packed__));
+    }__attribute__((__packed__,aligned(1)));
     uint8_t array[sizeof(struct _ieee_rng_response_frame_t)];
-}__attribute__((__packed__)) ieee_rng_response_frame_t;
+} ieee_rng_response_frame_t;
 
 // IEEE 802.15.4 standard data frame
 typedef union {
@@ -87,10 +83,9 @@ typedef union {
         uint16_t dst_address;       // destination address
         uint16_t src_address;       // source address
         uint16_t code;    
-        uint16_t csr;               // frame check-sum
-    }__attribute__((__packed__));          
+    }__attribute__((__packed__,aligned(1)));          
     uint8_t array[sizeof(struct _ieee_std_frame_t)];
-}__attribute__((__packed__)) ieee_std_frame_t;
+} ieee_std_frame_t;
 
 
 #ifdef __cplusplus

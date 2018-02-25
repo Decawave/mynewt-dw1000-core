@@ -320,7 +320,7 @@ dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *
  * returns DWT_SUCCESS for success, or DWT_ERROR for error
  */
 
-dw1000_dev_status_t dw1000_write_tx(dw1000_dev_instance_t * inst,  uint8_t *txFrameBytes, uint16_t txBufferOffset, uint16_t txFrameLength)
+dw1000_dev_status_t dw1000_write_tx(dw1000_dev_instance_t * inst,  uint8_t * txFrameBytes, uint16_t txBufferOffset, uint16_t txFrameLength)
 {
 #ifdef DW1000_API_ERROR_CHECK
     assert(txFrameLength >= 2);
@@ -329,8 +329,7 @@ dw1000_dev_status_t dw1000_write_tx(dw1000_dev_instance_t * inst,  uint8_t *txFr
 #endif
 
     if ((txBufferOffset + txFrameLength) <= 1024){
-        // Write the data to the IC TX buffer, (-2 bytes for auto generated CRC)
-        dw1000_write(inst, TX_BUFFER_ID, txBufferOffset,  txFrameBytes, txFrameLength-2);
+        dw1000_write(inst, TX_BUFFER_ID, txBufferOffset,  txFrameBytes, txFrameLength);
         inst->status.tx_frame_error = 0;
     }
     else
@@ -344,7 +343,7 @@ dw1000_dev_status_t dw1000_write_tx(dw1000_dev_instance_t * inst,  uint8_t *txFr
  * @brief This API function configures the TX frame control register before the transmission of a frame
  *
  * input parameters:
- * @param txFrameLength - this is the length of TX message (including the 2 byte CRC) - max is 1023
+ * @param txFrameLength - this is the length of TX message (excluding the 2 byte CRC) - max is 1023
  *                              NOTE: standard PHR mode allows up to 127 bytes
  *                              if > 127 is programmed, DWT_PHRMODE_EXT needs to be set in the phrMode configuration
  *                              see dwt_configure function
@@ -358,11 +357,11 @@ dw1000_dev_status_t dw1000_write_tx(dw1000_dev_instance_t * inst,  uint8_t *txFr
 inline void dw1000_write_tx_fctrl(dw1000_dev_instance_t * inst, uint16_t txFrameLength, uint16_t txBufferOffset, bool ranging)
 {
 #ifdef DW1000_API_ERROR_CHECK
-    assert((inst->longFrames && (txFrameLength <= 1023)) || (txFrameLength <= 127));
+    assert((inst->longFrames && ((txFrameLength + 2) <= 1023)) || ((txFrameLength +2) <= 127));
 #endif
 
     // Write the frame length to the TX frame control register
-    uint32_t tx_fctrl_reg = inst->tx_fctrl | txFrameLength | (txBufferOffset << TX_FCTRL_TXBOFFS_SHFT) | ((ranging)?(TX_FCTRL_TR):0);
+    uint32_t tx_fctrl_reg = inst->tx_fctrl | (txFrameLength + 2)  | (txBufferOffset << TX_FCTRL_TXBOFFS_SHFT) | ((ranging)?(TX_FCTRL_TR):0);
     inst->status.tx_ranging_frame = ranging;
     dw1000_write_reg(inst, TX_FCTRL_ID, 0, tx_fctrl_reg, sizeof(uint32_t));
  
@@ -378,7 +377,7 @@ dw1000_dev_status_t dw1000_start_tx(dw1000_dev_instance_t * inst)
 {
     if (inst->control.wait4resp_enabled) // Undocumented ANONMALY::This should not be required
         dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint8_t)SYS_CTRL_WAIT4RESP, sizeof(uint8_t));
-
+        
     inst->sys_ctrl_reg = SYS_CTRL_TXSTRT;
     if (inst->control.wait4resp_enabled)
         inst->sys_ctrl_reg |= SYS_CTRL_WAIT4RESP; 
@@ -873,7 +872,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
 
     // Handle RX good frame event
     if(inst->sys_status & SYS_STATUS_RXFCG){
-     //   printf("SYS_STATUS_RXFCG %08lX\n", inst->sys_status);
+    //    printf("SYS_STATUS_RXFCG %08lX\n", inst->sys_status);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_GOOD, sizeof(uint32_t));     // Clear all receive status bits
         uint16_t finfo = dw1000_read_reg(inst, RX_FINFO_ID, RX_FINFO_OFFSET, sizeof(uint16_t)); // Read frame info - Only the first two bytes of the register are used here.
         inst->frame_len = finfo & RX_FINFO_RXFL_MASK_1023;          // Report frame length - Standard frame length up to 127, extended frame length up to 1023 bytes
@@ -905,7 +904,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
 
     // Handle TX confirmation event
     if(inst->sys_status & SYS_STATUS_TXFRS){
-    //    printf("SYS_STATUS_TXFRS %08lX\n", inst->sys_status);
+    //   printf("SYS_STATUS_TXFRS %08lX\n", inst->sys_status);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_TX, sizeof(uint32_t)); // Clear TX event bits
 
         // In the case where this TXFRS interrupt is due to the automatic transmission of an ACK solicited by a response (with ACK request bit set)
