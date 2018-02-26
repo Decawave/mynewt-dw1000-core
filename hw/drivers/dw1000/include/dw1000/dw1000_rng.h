@@ -110,14 +110,15 @@ typedef union {
     struct _twr_frame_t{
         struct _twr_frame_final_t;
         union {
-            struct  _fusion_ext_t{
+            struct  _payload_ext_t{
+                uint64_t utime;
                 triad_t local_coordinate;       // position triad 
                 triad_t spherical_coordinate;   // spherical triad 
                 triad_t variance;               // variance triad 
             };
-            uint8_t payload[sizeof(struct _fusion_ext_t)];
+            uint8_t payload[sizeof(struct _payload_ext_t)];
         };
-    };
+    } __attribute__((__packed__, aligned(1)));
     uint8_t array[sizeof(struct _twr_frame_t)];
 } twr_frame_t;
 
