@@ -111,7 +111,7 @@ typedef union {
         struct _twr_frame_final_t;
         union {
             struct  _payload_ext_t{
-                uint64_t utime;
+                uint64_t utime;                 // universial system time
                 triad_t local_coordinate;       // position triad 
                 triad_t spherical_coordinate;   // spherical triad 
                 triad_t variance;               // variance triad 

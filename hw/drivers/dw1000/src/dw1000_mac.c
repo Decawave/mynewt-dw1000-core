@@ -470,6 +470,7 @@ dw1000_dev_status_t dw1000_start_rx(dw1000_dev_instance_t * inst)
     }else
         inst->status.start_rx_error = 0;
 
+    inst->control_current_context = inst->control;
     inst->control = (dw1000_dev_control_t){
         .wait4resp_enabled=0,
         .wait4resp_delay_enabled=0,
@@ -872,7 +873,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
 
     // Handle RX good frame event
     if(inst->sys_status & SYS_STATUS_RXFCG){
-    //    printf("SYS_STATUS_RXFCG %08lX\n", inst->sys_status);
+        // printf("SYS_STATUS_RXFCG %08lX\n", inst->sys_status);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_GOOD, sizeof(uint32_t));     // Clear all receive status bits
         uint16_t finfo = dw1000_read_reg(inst, RX_FINFO_ID, RX_FINFO_OFFSET, sizeof(uint16_t)); // Read frame info - Only the first two bytes of the register are used here.
         inst->frame_len = finfo & RX_FINFO_RXFL_MASK_1023;          // Report frame length - Standard frame length up to 127, extended frame length up to 1023 bytes
