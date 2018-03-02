@@ -44,12 +44,6 @@ This project is destined to be up-streamed into the mynewt repo Q1 2018:
 * DW1000 TDMA Services
 * DW1000 LWIP Driver
 * JSON API for register access and cmd/ctrl (see companion repo mynewt-dw1000-diag)
-* CLI node_cfg (Pending)
-* CLI autosurvey (Pending)
-* CLI anchor (Pending)
-* CLI mlat (Pending)
-* CLI network tools, ping, scan etc. (Pending)
-* Open-Thread support (Pending) 
 * Example (see companion repo mynewt-dw1000-apps)
 
 ## BSP Supported Hardware
