@@ -24,6 +24,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include "dw1000/triad.h"
 
 #ifndef SS_TWR_ENABLE
 #define SS_TWR_ENABLE
@@ -43,6 +44,7 @@ extern "C" {
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
+#include <dw1000/triad.h>
 
 typedef struct _dw1000_rng_config_t{
    uint32_t rx_holdoff_delay;        // Delay between frames, in UWB usec.
@@ -75,48 +77,25 @@ typedef struct _dw1000_rng_status_t{
     uint16_t invalid_code_error:1;
 }dw1000_rng_status_t;
 
-
-#ifdef DS_TWR_EXT_ENABLE
-#ifdef DS_TWR_EXT_ENABLE_INT16
-typedef union __triad_t{
-    struct _int16_axis{
-        int16_t x,y,z;
-    };
-    struct _int16_spherical{
-        int16_t range, azimuth, zenith;
-    };
-    int16_t array[sizeof(struct _int16_axis)/sizeof(int16_t)];
-}int16_triad_t; 
-#else
-typedef union _triad_t{
-    struct _axis{
-        float  x,y,z;
-    };
-    struct _spherical{
-       float range, azimuth, zenith;
-    };
-    float array[sizeof(struct _axis)/sizeof(float)];
-}triad_t; 
-#endif
-#endif
-
 typedef struct _twr_frame_final_t{
         struct _ieee_rng_response_frame_t;
         uint32_t request_timestamp;     // request transmission timestamp.
         uint32_t response_timestamp;    // response reception timestamp.
 } __attribute__((__packed__, aligned(1))) twr_frame_final_t;
 
-typedef union {
-    struct _twr_frame_t{
-        struct _twr_frame_final_t;
-        union {
-            struct  _payload_ext_t{
+typedef struct _twr_data_t{
                 uint64_t utime;
                 triad_t local_coordinate;       // position triad 
                 triad_t spherical_coordinate;   // spherical triad 
                 triad_t variance;               // variance triad 
-            };
-            uint8_t payload[sizeof(struct _payload_ext_t)];
+}twr_data_t;
+
+typedef union {
+    struct _twr_frame_t{
+        struct _twr_frame_final_t;
+        union {
+            struct _twr_data_t;
+            uint8_t payload[sizeof(struct _twr_data_t)];
         };
     } __attribute__((__packed__, aligned(1)));
     uint8_t array[sizeof(struct _twr_frame_t)];

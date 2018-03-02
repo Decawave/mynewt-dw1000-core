@@ -88,9 +88,6 @@ syscfg.defs:
     DW1000_DEVICE_0_RX_ANT_DLY:
         description: 'RX_ANT_DLY'
         value: 0x4010
-    FUSION_EXTENDED_FRAME: 
-        description: 'Extend TWR final frame to include fusion data'
-        value: 0
 
 syscfg.defs.BLE_LP_CLOCK:
     TIMER_0:

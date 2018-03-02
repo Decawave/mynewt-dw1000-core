@@ -40,6 +40,7 @@ static void rng_tx_complete_cb(dw1000_dev_instance_t * inst);
 static void rng_rx_complete_cb(dw1000_dev_instance_t * inst);
 static void rng_rx_timeout_cb(dw1000_dev_instance_t * inst);
 static void rng_rx_error_cb(dw1000_dev_instance_t * inst);
+static void rng_tx_final_cb(dw1000_dev_instance_t * inst);
 
 dw1000_rng_instance_t * 
 dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config){
@@ -59,6 +60,8 @@ dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config){
     }
 
     dw1000_rng_set_callbacks(inst, rng_tx_complete_cb, rng_rx_complete_cb, rng_rx_timeout_cb, rng_rx_error_cb);
+    dw1000_rng_set_tx_final_cb(inst, rng_tx_final_cb);
+    
     inst->rng_tx_final_cb = NULL;
     inst->rng_interface_extension_cb = NULL;
     inst->rng->status.initialized = 1;
@@ -184,6 +187,15 @@ dw1000_rng_twr_to_tof_sym(twr_frame_t * twr, dw1000_rng_modes_t code){
     return ToF;
 }
 
+static void 
+rng_tx_final_cb(dw1000_dev_instance_t * inst){
+
+    twr_frame_t * twr = &inst->rng->twr[1];
+
+    twr->local_coordinate.x = MYNEWT_VAL(LOCAL_COORDINATE_X);
+    twr->local_coordinate.y = MYNEWT_VAL(LOCAL_COORDINATE_Y);
+    twr->local_coordinate.z = MYNEWT_VAL(LOCAL_COORDINATE_Z);
+}
 
 static void 
 rng_tx_complete_cb(dw1000_dev_instance_t * inst)
