@@ -143,7 +143,8 @@ typedef struct _dw1000_dev_instance_t{
     struct _dw1000_lwip_instance_t * lwip;
     dw1000_dev_rxdiag_t rxdiag;
     dw1000_dev_config_t config;
-    dw1000_dev_control_t control; 
+    dw1000_dev_control_t control;
+    dw1000_dev_control_t control_current_context; 
     dw1000_dev_status_t status; 
 }dw1000_dev_instance_t;
 

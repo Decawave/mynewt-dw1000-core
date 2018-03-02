@@ -227,8 +227,11 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
     }else{
         return;
     }
-    if (dst_address != inst->my_short_address)
+    if (dst_address != inst->my_short_address){
+        inst->control = inst->control_current_context;
+        dw1000_start_rx(inst); 
         return;
+    }
 
     switch (code){
 #ifdef SS_TWR_ENABLE
