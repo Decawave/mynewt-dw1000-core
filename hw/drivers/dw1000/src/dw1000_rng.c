@@ -61,8 +61,7 @@ dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config){
 
     dw1000_rng_set_callbacks(inst, rng_tx_complete_cb, rng_rx_complete_cb, rng_rx_timeout_cb, rng_rx_error_cb);
     dw1000_rng_set_tx_final_cb(inst, rng_tx_final_cb);
-    
-    inst->rng_tx_final_cb = NULL;
+
     inst->rng_interface_extension_cb = NULL;
     inst->rng->status.initialized = 1;
     return inst->rng;
@@ -130,7 +129,7 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     dw1000_set_rx_timeout(inst, config->rx_timeout_period); 
     dw1000_start_tx(inst);
     
-    err = os_sem_pend(&inst->rng->sem, OS_TICKS_PER_SEC/10); // Wait for completion of transactions units os_clicks
+    err = os_sem_pend(&inst->rng->sem, OS_TICKS_PER_SEC/100); // Wait for completion of transactions units os_clicks
     inst->status.request_timeout = (err == OS_TIMEOUT);
     os_sem_release(&inst->rng->sem);
     
@@ -191,10 +190,11 @@ static void
 rng_tx_final_cb(dw1000_dev_instance_t * inst){
 
     twr_frame_t * twr = &inst->rng->twr[1];
-
     twr->local_coordinate.x = MYNEWT_VAL(LOCAL_COORDINATE_X);
     twr->local_coordinate.y = MYNEWT_VAL(LOCAL_COORDINATE_Y);
     twr->local_coordinate.z = MYNEWT_VAL(LOCAL_COORDINATE_Z);
+    twr->spherical_coordinate.range = dw1000_rng_tof_to_meters(dw1000_rng_twr_to_tof(inst->rng->twr, DWT_DS_TWR));
+    twr->utime = os_time_get(); //dw1000_read_systime(inst)/128;
 }
 
 static void 
@@ -207,7 +207,7 @@ rng_tx_complete_cb(dw1000_dev_instance_t * inst)
 #ifdef  DS_TWR_ENABLE
     else{ 
         if(inst->rng->nframes > 1) 
-            if (inst->rng->twr[1].code ==  DWT_DS_TWR_FINAL){
+            if (inst->rng->twr[1].code ==  DWT_DS_TWR_FINAL || inst->rng->twr[1].code ==  DWT_DS_TWR_EXT_FINAL){
                 os_sem_release(&inst->rng->sem);  
             }
     }
@@ -215,9 +215,24 @@ rng_tx_complete_cb(dw1000_dev_instance_t * inst)
 }
 
 static void 
+rng_rx_timeout_cb(dw1000_dev_instance_t * inst){
+    os_error_t err = os_sem_release(&inst->rng->sem);
+    assert(err == OS_OK);
+}
+
+static void 
+rng_rx_error_cb(dw1000_dev_instance_t * inst){
+        inst->control = inst->control_rx_context;
+        if(dw1000_start_rx(inst).start_rx_error){ 
+            os_error_t err = os_sem_release(&inst->rng->sem);   
+            assert(err == OS_OK);
+        }
+}
+
+static void 
 rng_rx_complete_cb(dw1000_dev_instance_t * inst)
 {
-    hal_gpio_toggle(LED_1);
+
     uint16_t code, dst_address; 
     dw1000_rng_config_t * config = inst->rng->config;
 
@@ -228,10 +243,12 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
         return;
     }
     if (dst_address != inst->my_short_address){
-        inst->control = inst->control_current_context;
+        inst->control = inst->control_rx_context;
         dw1000_start_rx(inst); 
         return;
     }
+    
+    hal_gpio_toggle(LED_1);
 
     switch (code){
 #ifdef SS_TWR_ENABLE
@@ -444,6 +461,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
             
                             twr->reception_timestamp = request_timestamp;
                             twr->transmission_timestamp = response_timestamp;
+
                             twr->dst_address = twr->src_address;
                             twr->src_address = inst->my_short_address;
                             twr->code = DWT_DS_TWR_EXT_T1;
@@ -486,8 +504,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             twr->transmission_timestamp = response_timestamp;
 
                             // Final callback, prior to transmission, use this callback to populate the FUSION_EXTENDED_FRAME fields.
-                            if (inst->rng_tx_final_cb != NULL)
-                                inst->rng_tx_final_cb(inst);
+//                            if (inst->rng_tx_final_cb != NULL)
+//                                inst->rng_tx_final_cb(inst);
 
                             dw1000_write_tx(inst, twr->array, 0, sizeof(twr_frame_t));
                             dw1000_write_tx_fctrl(inst, sizeof(twr_frame_t), 0, true); 
@@ -497,6 +515,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                         
                             if (dw1000_start_tx(inst).start_tx_error)
                                 os_sem_release(&inst->rng->sem);  
+
                             break; 
                         }
 
@@ -508,6 +527,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                                 dw1000_read_rx(inst, twr->array, 0, sizeof(twr_frame_t));
                             else 
                                 break;
+
                             inst->rng->twr[0].request_timestamp = inst->rng->twr[1].request_timestamp;
                             inst->rng->twr[0].response_timestamp = inst->rng->twr[1].response_timestamp;
 
@@ -535,7 +555,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             // This marks the completion of the double-single-two-way request. 
                             twr_frame_t * twr = &inst->rng->twr[1];
                             if (inst->frame_len >= sizeof(twr_frame_t))
-                                dw1000_read_rx(inst,  twr->array, 0, sizeof(twr_frame_t));
+                                dw1000_read_rx(inst, twr->array, 0, sizeof(twr_frame_t));
 
                             os_sem_release(&inst->rng->sem);
                             break;
@@ -553,15 +573,5 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
     }  
 }
 
-static void 
-rng_rx_timeout_cb(dw1000_dev_instance_t * inst){
-    os_error_t err = os_sem_release(&inst->rng->sem);
-    assert(err == OS_OK);
-}
 
-static void 
-rng_rx_error_cb(dw1000_dev_instance_t * inst){
-    os_error_t err = os_sem_release(&inst->rng->sem);
-    assert(err == OS_OK);
-}
 

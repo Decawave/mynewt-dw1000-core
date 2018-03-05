@@ -102,18 +102,19 @@ hal_dw1000_inst(uint8_t idx){
 #else
     assert(0);  // no instance for chosen bsp
 #endif
+
+
 }
 
 void  
 hal_dw1000_reset(dw1000_dev_instance_t * inst)
 {
-    
     assert(inst);
 
-//#if MYNEWT_VAL(DW1000_DEVICE_0) || MYNEWT_VAL(DW1000_DEVICE_1) 
-//    os_error_t err = os_mutex_init(&g_spi_mutex);
-//    assert(err == OS_OK);
-//#endif
+#if MYNEWT_VAL(DW1000_DEVICE_0) || MYNEWT_VAL(DW1000_DEVICE_1) 
+    os_error_t err = os_mutex_init(&g_spi_mutex);
+    assert(err == OS_OK);
+#endif
 
     hal_gpio_init_out(inst->ss_pin, 1);
     hal_gpio_init_out(inst->rst_pin, 0);
