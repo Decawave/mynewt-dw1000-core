@@ -20,7 +20,7 @@
 #
 -->
 
-# DW1000 mynewt OS driver 
+# mynewt-dw1000-core
 
 ## Overview
 
@@ -46,7 +46,7 @@ This project is destined to be up-streamed into the mynewt repo Q1 2018:
 * JSON API for register access and cmd/ctrl (see companion repo mynewt-dw1000-diag)
 * Example (see companion repo mynewt-dw1000-apps)
 
-## BSP Supported Hardware
+## Current BSPs and supported hardware
 * DWM1001-DEV
 * DWM1002-DEV
 * DWM1003-DEV
@@ -83,14 +83,8 @@ This project is destined to be up-streamed into the mynewt repo Q1 2018:
 │               └── dw1000_rng.c                // Ranging services
 ```
 
-## Supported Hardware
-* Decawave dwm1001 TWR-node/tag
-* Decawave dwm1002 AoA-node (Pending)
-* Decawave dwm1003 AoA-tag (Pending)
-
 ## Building
 
 See the companion repo mynewt-dw1000-apps for building instructions, recall that this driver will is pulled into projects as a dependency and will be build from within that project. As such build instructions are light here. 
 
-The dw1000 driver make use of c99 anonymous union extensions, this need to be enabled within the mynewt build enviorement. A patch is provided for the apache-mynewt-core distribution, this can be found at ./mynewt-dw1000-apps/repos/.patches/apache-mynewt-core.patch. This patch simply adds -fms-extensions to the cflag.
 
