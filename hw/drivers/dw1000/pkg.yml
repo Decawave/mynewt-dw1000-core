@@ -29,7 +29,7 @@ pkg.deps:
 pkg.req_apis: 
 
 pkg.init:
-    dw1000_pkg_init: 0
+    dw1000_pkg_init: 400
 
 pkg.cflags:
     - "-std=gnu99"

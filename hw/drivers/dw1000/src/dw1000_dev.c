@@ -131,23 +131,42 @@ dw1000_softreset(dw1000_dev_instance_t * inst)
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_SOFTRESET_OFFSET, PMSC_CTRL0_RESET_CLEAR, sizeof(uint8_t)); // Clear reset
 }
 
-dw1000_dev_instance_t * 
-dw1000_dev_init(dw1000_dev_instance_t * inst, uint8_t spi_num)
+/**
+ * Callback to initialize an dw1000_dev_instance_t structure from the os device
+ * initialization callback.  
+ *
+ * @param1 os device ptr
+ * @param2 struct dw1000_dev_cfg ptr
+ * @return OS_OK on success
+ */
+int 
+dw1000_dev_init(struct os_dev *odev, void *arg)
 {
-    int rc;
-
+    struct dw1000_dev_cfg *cfg = (struct dw1000_dev_cfg*)arg;
+    dw1000_dev_instance_t *inst = (dw1000_dev_instance_t *)odev;
+    
     if (inst == NULL ) {
         inst = (dw1000_dev_instance_t *) malloc(sizeof(dw1000_dev_instance_t));
         assert(inst);
         memset(inst,0,sizeof(dw1000_dev_instance_t));
         inst->status.selfmalloc = 1;
     }
+
+    inst->spi_mutex = cfg->spi_mutex;
+    inst->spi_num  = cfg->spi_num;
+
     os_error_t err = os_mutex_init(&inst->mutex);
     assert(err == OS_OK);
     
-    inst->spi_num  = spi_num;
-    inst->spi_settings.baudrate = MYNEWT_VAL(DW1000_DEVICE_BAUDRATE_LOW);
+    return OS_OK;
+}
 
+int 
+dw1000_dev_config(dw1000_dev_instance_t * inst)
+{
+    int rc;
+
+    inst->spi_settings.baudrate = MYNEWT_VAL(DW1000_DEVICE_BAUDRATE_LOW);
     hal_dw1000_reset(inst);
     rc = hal_spi_disable(inst->spi_num);
     assert(rc == 0);
@@ -161,8 +180,6 @@ dw1000_dev_init(dw1000_dev_instance_t * inst, uint8_t spi_num)
     assert(inst->status.initialized);
     inst->timestamp = (uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN);
 
-    //dw1000_phy_init(inst, NULL);
-
     inst->spi_settings.baudrate = MYNEWT_VAL(DW1000_DEVICE_BAUDRATE_HIGH);
     rc = hal_spi_disable(inst->spi_num);
     assert(rc == 0);
@@ -171,7 +188,7 @@ dw1000_dev_init(dw1000_dev_instance_t * inst, uint8_t spi_num)
     rc = hal_spi_enable(inst->spi_num);
     assert(rc == 0);
 
-    return inst;
+    return OS_OK;
 }
 
 void 

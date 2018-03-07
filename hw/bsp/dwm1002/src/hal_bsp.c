@@ -74,6 +74,7 @@ static const struct uart_bitbang_conf os_bsp_uart1_cfg = {
 #endif
 
 #if MYNEWT_VAL(SPI_0_MASTER)
+struct os_mutex g_spi0_mutex;
 /*
  * NOTE: Our HAL expects that the SS pin, if used, is treated as a gpio line
  * and is handled outside the SPI routines.
@@ -83,6 +84,29 @@ static const struct nrf52_hal_spi_cfg os_bsp_spi0m_cfg = {
     .mosi_pin     =  20,
     .miso_pin     =  18,
 };
+
+#if MYNEWT_VAL(DW1000_DEVICE_0)
+/* 
+ * dw1000 device structure defined in dw1000_hal.c 
+ */
+static dw1000_dev_instance_t *dw1000_0 = 0;
+static const struct dw1000_dev_cfg dw1000_0_cfg = {
+    .spi_mutex = &g_spi0_mutex,
+    .spi_num = 0,
+};
+#endif
+
+#if MYNEWT_VAL(DW1000_DEVICE_1)
+/* 
+ * dw1000 device structure defined in dw1000_hal.c 
+ */
+static dw1000_dev_instance_t *dw1000_1 = 0;
+static const struct dw1000_dev_cfg dw1000_1_cfg = {
+    .spi_mutex = &g_spi0_mutex,
+    .spi_num = 0,
+};
+#endif
+
 #endif
 
 
@@ -367,6 +391,20 @@ void hal_bsp_init(void)
     assert(rc == 0);
 #endif
 
+#if MYNEWT_VAL(DW1000_DEVICE_0)
+    dw1000_0 = hal_dw1000_inst(0);
+    rc = os_dev_create((struct os_dev *) dw1000_0, "dw1000_0",
+      OS_DEV_INIT_PRIMARY, 0, dw1000_dev_init, (void *)&dw1000_0_cfg);
+    assert(rc == 0);
+#endif
+
+#if MYNEWT_VAL(DW1000_DEVICE_1)
+    dw1000_1 = hal_dw1000_inst(1);
+    rc = os_dev_create((struct os_dev *) dw1000_1, "dw1000_1",
+      OS_DEV_INIT_PRIMARY, 0, dw1000_dev_init, (void *)&dw1000_1_cfg);
+    assert(rc == 0);
+#endif
+    
 #if MYNEWT_VAL(SPI_0_SLAVE)
     rc = hal_spi_init(0, (void *)&os_bsp_spi0s_cfg, HAL_SPI_TYPE_SLAVE);
     assert(rc == 0);
