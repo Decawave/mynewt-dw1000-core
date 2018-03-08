@@ -356,3 +356,4 @@ void dw1000_phy_interrupt_mask(dw1000_dev_instance_t * inst, uint32_t bitmask, u
     err = os_mutex_release(&inst->mutex);
     assert(err == OS_OK);
 }
+

@@ -75,8 +75,7 @@ dw1000_lwip_free(dw1000_lwip_instance_t * inst){
 }
 
 void 
-dw1000_lwip_set_callbacks(dw1000_lwip_instance_t * inst, dw1000_dev_cb_t tx_complete_cb, dw1000_dev_cb_t rx_complete_cb,  dw1000_dev_cb_t rx_timeout_cb,  dw1000_dev_cb_t rx_error_cb)
-{
+dw1000_lwip_set_callbacks(dw1000_lwip_instance_t * inst, dw1000_dev_cb_t tx_complete_cb, dw1000_dev_cb_t rx_complete_cb,  dw1000_dev_cb_t rx_timeout_cb,  dw1000_dev_cb_t rx_error_cb){
     inst->dev->tx_complete_cb = tx_complete_cb;
     inst->dev->rx_complete_cb = rx_complete_cb;
     inst->dev->rx_timeout_cb = rx_timeout_cb;

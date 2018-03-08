@@ -101,6 +101,19 @@ typedef union {
     uint8_t array[sizeof(struct _twr_frame_t)];
 } twr_frame_t;
 
+typedef struct _dw1000_rng_callbacks_t{
+    void (* rng_tx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* rng_rx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* rng_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
+    void (* rng_rx_error_cb) (struct _dw1000_dev_instance_t *);
+    void (* rng_tx_final_cb) (struct _dw1000_dev_instance_t *);
+}dw1000_rng_callbacks_t;
+
+typedef struct{
+    void (* rng_rx_timeout_extension_cb) (struct _dw1000_dev_instance_t *);
+    void (* rng_rx_error_extension_cb) (struct _dw1000_dev_instance_t *);
+    void (* rng_interface_extension_cb) (struct _dw1000_dev_instance_t *);
+}dw1000_rng_callbacks_extension_t;
 
 typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * dev;
@@ -116,15 +129,17 @@ dw1000_rng_instance_t * dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng
 void dw1000_rng_free(dw1000_rng_instance_t * inst);
 dw1000_dev_status_t dw1000_rng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config);
 void dw1000_rng_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_tx_complete_cb, dw1000_dev_cb_t rng_rx_complete_cb, dw1000_dev_cb_t rng_rx_timeout_cb,  dw1000_dev_cb_t rng_rx_error_cb);
+void dw1000_rng_set_callbacks_extension(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_rx_timeout_extension_cb, dw1000_dev_cb_t rng_rx_error_extension_cb,  dw1000_dev_cb_t rng_interface_extension_cb);
 dw1000_dev_status_t dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t protocal);
 void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, twr_frame_t twr[], uint16_t nframes);
 float dw1000_rng_twr_to_tof(twr_frame_t * twr, dw1000_rng_modes_t code);
 uint32_t dw1000_rng_twr_to_tof_sym(twr_frame_t * twr, dw1000_rng_modes_t code);
 
 #define dw1000_rng_tof_to_meters(ToF) (float)(ToF * 299792458 * (1.0/499.2e6/128.0)) 
-#define dw1000_rng_set_extension_cb(inst, rng_interface_extension_cb) inst->rng_interface_extension_cb = rng_interface_extension_cb 
-#define dw1000_rng_set_tx_final_cb(inst, rng_tx_final_cb) inst->rng_tx_final_cb = rng_tx_final_cb 
-
+#define dw1000_rng_set_interface_extension_cb(inst, cb) inst->rng_interface_extension_cb = cb 
+#define dw1000_rng_rx_timeout_extension_cb(inst, rcb) inst->rng_rx_timeout_extension_cb = cb 
+#define dw1000_rng_set_extension_cb(inst, cb) inst->rng_rx_error_extension_cb = cb 
+#define dw1000_rng_set_tx_final_cb(inst, cb) inst->rng_tx_final_cb = cb 
 
 #ifdef __cplusplus
 }

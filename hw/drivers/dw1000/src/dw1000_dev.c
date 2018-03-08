@@ -165,7 +165,9 @@ int
 dw1000_dev_config(dw1000_dev_instance_t * inst)
 {
     int rc;
+    int timeout = 3;
 
+retry:
     inst->spi_settings.baudrate = MYNEWT_VAL(DW1000_DEVICE_BAUDRATE_LOW);
     hal_dw1000_reset(inst);
     rc = hal_spi_disable(inst->spi_num);
@@ -177,6 +179,13 @@ dw1000_dev_config(dw1000_dev_instance_t * inst)
 
     inst->device_id = dw1000_read_reg(inst, DEV_ID_ID, 0, sizeof(uint32_t));
     inst->status.initialized = (inst->device_id == DWT_DEVICE_ID);
+    if (!inst->status.initialized && --timeout)
+    {
+        /* In case dw1000 was sleeping */
+        dw1000_dev_wakeup(inst);
+        goto retry;
+    }
+
     assert(inst->status.initialized);
     inst->timestamp = (uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN);
 
@@ -201,3 +210,110 @@ dw1000_dev_free(dw1000_dev_instance_t * inst){
     else
         inst->status.initialized = 0;
 }
+
+
+/*! 
+ * @fn dw1000_mac_configure_sleep()
+ *
+ *  @brief configures the device for both DEEP_SLEEP and SLEEP modes, and on-wake mode
+ *  I.e. before entering the sleep, the device should be programmed for TX or RX, then upon "waking up" the TX/RX settings
+ *  will be preserved and the device can immediately perform the desired action TX/RX
+ *
+ * NOTE: e.g. Tag operation - after deep sleep, the device needs to just load the TX buffer and send the frame
+ *
+ *
+ *      mode: the array and LDE code (OTP/ROM) and LDO tune, and set sleep persist
+ *      DWT_LOADLDO      0x1000 - load LDO tune value from OTP
+ *      DWT_LOADUCODE    0x0800 - load ucode from OTP
+ *      DWT_PRESRV_SLEEP 0x0100 - preserve sleep
+ *      DWT_LOADOPSET    0x0080 - load operating parameter set on wakeup
+ *      DWT_CONFIG       0x0040 - download the AON array into the HIF (configuration download)
+ *      DWT_LOADEUI      0x0008
+ *      DWT_GOTORX       0x0002
+ *      DWT_TANDV        0x0001
+ *
+ *      wake: wake up parameters
+ *      DWT_XTAL_EN      0x10 - keep XTAL running during sleep
+ *      DWT_WAKE_SLPCNT  0x8 - wake up after sleep count
+ *      DWT_WAKE_CS      0x4 - wake up on chip select
+ *      DWT_WAKE_WK      0x2 - wake up on WAKEUP PIN
+ *      DWT_SLP_EN       0x1 - enable sleep/deep sleep functionality
+ *
+ * input parameters
+ * @param mode - config on-wake parameters
+ * @param wake - config wake up parameters
+ *
+ * output parameters
+ *
+ * no return value
+ */
+void
+dw1000_dev_configure_sleep(dw1000_dev_instance_t * inst, uint16_t mode, uint8_t wake)
+{
+    inst->sleep_mode = mode;
+    dw1000_write(inst, AON_ID, AON_WCFG_OFFSET, (uint8_t*)&mode, sizeof(uint16_t));
+    dw1000_write(inst, AON_ID, AON_CFG0_OFFSET, &wake, sizeof(uint8_t));
+}
+
+
+dw1000_dev_status_t
+dw1000_dev_enter_sleep(dw1000_dev_instance_t * inst)
+{
+    uint8_t buf[1];
+    buf[0] = 0x00;
+    dw1000_write(inst, AON_ID,AON_CTRL_OFFSET,buf,1);
+    buf[0] = 0x02;
+    dw1000_write(inst, AON_ID,AON_CTRL_OFFSET,buf,1);
+    inst->status.sleeping = 1;
+    return inst->status;
+}
+
+
+dw1000_dev_status_t
+dw1000_dev_wakeup(dw1000_dev_instance_t * inst)
+{
+    int timeout=5;
+    uint32_t devid = dw1000_read_reg(inst, DEV_ID_ID, 0, sizeof(uint32_t));
+    while (devid != 0xDECA0130 && --timeout)
+    {
+        hal_dw1000_wakeup(inst);
+        devid = dw1000_read_reg(inst, DEV_ID_ID, 0, sizeof(uint32_t));
+    }
+    inst->status.sleeping = (devid != DWT_DEVICE_ID);
+    return inst->status;
+}
+
+
+/*! 
+ * @fn dw1000_dev_enter_sleep_after_tx(int enable)
+ *
+ *  @brief sets the auto TX to sleep bit. This means that after a frame
+ *  transmission the device will enter deep sleep mode. The dwt_setdeepsleep() function
+ *  needs to be called before this to configure the on-wake settings
+ *
+ * NOTE: the IRQ line has to be low/inactive (i.e. no pending events)
+ *
+ * input parameters
+ * @param enable - 1 to configure the device to enter deep sleep after TX, 0 - disables the configuration
+ *
+ * output parameters
+ *
+ * no return value
+ */
+void
+dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, int enable)
+{
+    uint32_t reg = dw1000_read_reg(inst, PMSC_ID, PMSC_CTRL1_OFFSET, sizeof(uint32_t));
+
+    //set the auto TX -> sleep bit
+    if(enable)
+    {
+        reg |= PMSC_CTRL1_ATXSLP;
+    }
+    else
+    {
+        reg &= ~(PMSC_CTRL1_ATXSLP);
+    }
+    dw1000_write(inst, PMSC_ID, PMSC_CTRL1_OFFSET, (uint8_t*)&reg, sizeof(uint32_t));
+}
+

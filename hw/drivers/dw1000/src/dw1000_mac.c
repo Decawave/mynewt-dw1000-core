@@ -451,8 +451,9 @@ inline dw1000_dev_status_t dw1000_set_delay_start(dw1000_dev_instance_t * inst, 
 
 dw1000_dev_status_t dw1000_start_rx(dw1000_dev_instance_t * inst)
 {
-    inst->status.rx_error = 0;
-    inst->status.rx_timeout_error = 0;
+
+
+    inst->status.rx_error = inst->status.rx_timeout_error = inst->status.rx_ranging_frame = 0;
 
     inst->sys_ctrl_reg = SYS_CTRL_RXENAB;
     if (inst->control.start_rx_syncbuf_enabled)
@@ -495,8 +496,6 @@ dw1000_dev_status_t dw1000_start_rx(dw1000_dev_instance_t * inst)
 inline dw1000_dev_status_t dw1000_set_wait4resp(dw1000_dev_instance_t * inst, bool enable)
 {
     inst->control.wait4resp_enabled = enable;
-//    dw1000_set_wait4resp_delay(inst, delay);
-//    dw1000_set_rx_timeout(inst, timeout);
 
     return inst->status;
 }
@@ -939,11 +938,13 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
         dw1000_phy_rx_reset(inst);
 
         // Call the corresponding ranging frame services callback if present
-        if(inst->rng_rx_timeout_cb != NULL )//&& inst->status.tx_ranging_frame)
+        if(inst->rng_rx_timeout_cb != NULL )
             inst->rng_rx_timeout_cb(inst);
-        // Call the corresponding callback if present
-        else if(inst->rx_timeout_cb != NULL)
-            inst->rx_timeout_cb(inst);   
+        if(inst->rng_rx_timeout_extension_cb != NULL)
+            inst->rng_rx_timeout_extension_cb(inst);     
+        if(inst->rx_timeout_cb != NULL)
+            inst->rx_timeout_cb(inst);
+         
     }
 
     // Handle RX errors events
@@ -957,10 +958,14 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
         dw1000_phy_forcetrxoff(inst);
         dw1000_phy_rx_reset(inst);
 
-        if(inst->rng_rx_error_cb != NULL )//&& inst->status.tx_ranging_frame)
+        // Call the corresponding ranging frame services callback if present
+        if(inst->rng_rx_error_cb != NULL )
             inst->rng_rx_error_cb(inst);
-        // Call the corresponding callback if present
-        else if(inst->rx_error_cb != NULL)
+        if(inst->rng_rx_error_extension_cb != NULL)
+            inst->rng_rx_error_extension_cb(inst);       
+        if(inst->rx_error_cb != NULL)
             inst->rx_error_cb(inst);
     }
 }
+
+

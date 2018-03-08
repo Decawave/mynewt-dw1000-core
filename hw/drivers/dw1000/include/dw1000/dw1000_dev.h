@@ -65,6 +65,7 @@ typedef struct _dw1000_dev_status_t{
     uint32_t rx_ranging_frame:1;     //Range Request bit set for inbound frame
     uint32_t tx_ranging_frame:1;     //Range Request bit set for outbound frame
     uint32_t request_timeout:1;
+    uint32_t sleeping:1;
 }dw1000_dev_status_t;
 
 typedef struct _dw1000_dev_control_t{
@@ -93,23 +94,37 @@ typedef struct _dw1000_dev_rxdiag_t{
     uint16_t    preamble_cnt;       // Count of preamble symbols accumulated
 }dw1000_dev_rxdiag_t;
 
+
 typedef struct _dw1000_dev_instance_t{
     struct os_dev ioexp_dev;     /** Has to be here for cast in create_dev to work */
     struct os_mutex *spi_mutex;  /** Pointer to global spi mutex if available  */
+
     
     void (* tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rx_timeout_cb) (struct _dw1000_dev_instance_t *);
     void (* rx_error_cb) (struct _dw1000_dev_instance_t *);
-    
+/*
+    struct _dw1000_mac_callbacks_t;
+    struct _dw1000_rng_callbacks_t;
+    struct _dw1000_rng_callbacks_extension_t;
+    struct _dw1000_lwip_callbacks_t;
+ */   
     void (* rng_tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
+    void (* rng_rx_timeout_extension_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_rx_error_cb) (struct _dw1000_dev_instance_t *);
-   
+    void (* rng_rx_error_extension_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_tx_final_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_interface_extension_cb) (struct _dw1000_dev_instance_t *);
+  
+    void (* lwip_tx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* lwip_rx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* lwip_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
+    void (* lwip_rx_error_cb) (struct _dw1000_dev_instance_t *);
 
+         
     uint16_t fctrl;             // Reported frame control
     uint16_t frame_len;      // Reported frame length
     uint8_t spi_num;
@@ -167,6 +182,11 @@ dw1000_dev_status_t dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uin
 uint64_t dw1000_read_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, size_t nsize);
 void dw1000_write_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint64_t val, size_t nsize);
 
+void dw1000_dev_configure_sleep(dw1000_dev_instance_t * inst, uint16_t mode, uint8_t wake);
+dw1000_dev_status_t dw1000_dev_enter_sleep(dw1000_dev_instance_t * inst);
+dw1000_dev_status_t dw1000_dev_wakeup(dw1000_dev_instance_t * inst);
+void dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, int enable);
+    
 #ifdef __cplusplus
 }
 #endif

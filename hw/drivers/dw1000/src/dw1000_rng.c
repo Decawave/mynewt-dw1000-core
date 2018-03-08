@@ -38,8 +38,10 @@
 
 static void rng_tx_complete_cb(dw1000_dev_instance_t * inst);
 static void rng_rx_complete_cb(dw1000_dev_instance_t * inst);
+
 static void rng_rx_timeout_cb(dw1000_dev_instance_t * inst);
 static void rng_rx_error_cb(dw1000_dev_instance_t * inst);
+
 static void rng_tx_final_cb(dw1000_dev_instance_t * inst);
 
 dw1000_rng_instance_t * 
@@ -82,6 +84,13 @@ dw1000_rng_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_tx_c
     inst->rng_rx_complete_cb = rng_rx_complete_cb;
     inst->rng_rx_timeout_cb = rng_rx_timeout_cb;
     inst->rng_rx_error_cb = rng_rx_error_cb;
+}
+
+void 
+dw1000_rng_set_callbacks_extension(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_rx_timeout_extension_cb, dw1000_dev_cb_t rng_rx_error_extension_cb,  dw1000_dev_cb_t rng_interface_extension_cb){
+    inst->rng_rx_timeout_extension_cb = rng_rx_timeout_extension_cb;
+    inst->rng_rx_error_extension_cb = rng_rx_error_extension_cb;
+    inst->rng_interface_extension_cb = rng_interface_extension_cb;
 }
 
 inline void 
@@ -216,17 +225,19 @@ rng_tx_complete_cb(dw1000_dev_instance_t * inst)
 
 static void 
 rng_rx_timeout_cb(dw1000_dev_instance_t * inst){
-    os_error_t err = os_sem_release(&inst->rng->sem);
-    assert(err == OS_OK);
+    if (inst->status.tx_ranging_frame){ 
+        os_error_t err = os_sem_release(&inst->rng->sem);
+        assert(err == OS_OK);
+    }
 }
 
 static void 
 rng_rx_error_cb(dw1000_dev_instance_t * inst){
-        inst->control = inst->control_rx_context;
-        if(dw1000_start_rx(inst).start_rx_error){ 
-            os_error_t err = os_sem_release(&inst->rng->sem);   
-            assert(err == OS_OK);
-        }
+    inst->control = inst->control_rx_context;
+    if(dw1000_start_rx(inst).start_rx_error){ 
+        os_error_t err = os_sem_release(&inst->rng->sem);   
+        assert(err == OS_OK);
+    }
 }
 
 static void 
@@ -504,8 +515,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             twr->transmission_timestamp = response_timestamp;
 
                             // Final callback, prior to transmission, use this callback to populate the FUSION_EXTENDED_FRAME fields.
-//                            if (inst->rng_tx_final_cb != NULL)
-//                                inst->rng_tx_final_cb(inst);
+                            if (inst->rng_tx_final_cb != NULL)
+                                inst->rng_tx_final_cb(inst);
 
                             dw1000_write_tx(inst, twr->array, 0, sizeof(twr_frame_t));
                             dw1000_write_tx_fctrl(inst, sizeof(twr_frame_t), 0, true); 
