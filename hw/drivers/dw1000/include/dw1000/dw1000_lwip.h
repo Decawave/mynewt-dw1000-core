@@ -50,6 +50,14 @@ typedef struct _dw1000_lwip_status_t{
     uint16_t initialized:1;
 }dw1000_lwip_status_t;
 
+typedef struct _dw1000_lwip_callbacks_t{
+    void (* lwip_tx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* lwip_rx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* lwip_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
+    void (* lwip_rx_error_cb) (struct _dw1000_dev_instance_t *);
+    void (* lwip_tx_final_cb) (struct _dw1000_dev_instance_t *);
+}dw1000_lwip_callbacks_t;
+
 typedef struct _dw1000_lwip_instance_t{
     struct _dw1000_dev_instance_t * dev;
     struct os_sem sem;

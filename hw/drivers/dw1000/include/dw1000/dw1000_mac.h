@@ -205,6 +205,12 @@ typedef struct _dw1000_mac_deviceentcnts_t{
     uint16_t TXW ;                    //power up warn
 } dw1000_mac_deviceentcnts_t ;
 
+typedef struct _dw1000_mac_callbacks_t{
+    void (* tx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* rx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* rx_timeout_cb) (struct _dw1000_dev_instance_t *);
+    void (* rx_error_cb) (struct _dw1000_dev_instance_t *);
+}dw1000_mac_callbacks_t;
 
 dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *config);
 void dw1000_tasks_init(dw1000_dev_instance_t * inst);

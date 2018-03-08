@@ -93,23 +93,37 @@ typedef struct _dw1000_dev_rxdiag_t{
     uint16_t    preamble_cnt;       // Count of preamble symbols accumulated
 }dw1000_dev_rxdiag_t;
 
+
 typedef struct _dw1000_dev_instance_t{
     struct os_dev ioexp_dev;     /** Has to be here for cast in create_dev to work */
     struct os_mutex *spi_mutex;  /** Pointer to global spi mutex if available  */
+
     
     void (* tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rx_timeout_cb) (struct _dw1000_dev_instance_t *);
     void (* rx_error_cb) (struct _dw1000_dev_instance_t *);
-    
+/*
+    struct _dw1000_mac_callbacks_t;
+    struct _dw1000_rng_callbacks_t;
+    struct _dw1000_rng_callbacks_extension_t;
+    struct _dw1000_lwip_callbacks_t;
+ */   
     void (* rng_tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
+    void (* rng_rx_timeout_extension_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_rx_error_cb) (struct _dw1000_dev_instance_t *);
-   
+    void (* rng_rx_error_extension_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_tx_final_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_interface_extension_cb) (struct _dw1000_dev_instance_t *);
+  
+    void (* lwip_tx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* lwip_rx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* lwip_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
+    void (* lwip_rx_error_cb) (struct _dw1000_dev_instance_t *);
 
+         
     uint16_t fctrl;             // Reported frame control
     uint16_t frame_len;      // Reported frame length
     uint8_t spi_num;
