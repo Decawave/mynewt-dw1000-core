@@ -967,3 +967,5 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
             inst->rx_error_cb(inst);
     }
 }
+
+

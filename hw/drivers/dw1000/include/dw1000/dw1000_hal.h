@@ -36,6 +36,8 @@ void hal_dw1000_reset(dw1000_dev_instance_t * inst);
 void hal_dw1000_read(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
 void hal_dw1000_write(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
 
+void hal_dw1000_wakeup(dw1000_dev_instance_t * inst);
+    
 #ifdef __cplusplus
 }
 #endif

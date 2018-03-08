@@ -168,3 +168,35 @@ hal_dw1000_write(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_
         assert(err == OS_OK);
     }
 }
+
+void 
+hal_dw1000_wakeup(dw1000_dev_instance_t * inst)
+{
+    os_error_t err;
+    os_sr_t sr;
+    OS_ENTER_CRITICAL(sr);
+    if (inst->spi_mutex) {
+        err = os_mutex_pend(inst->spi_mutex, 0);
+        assert(err == OS_OK);
+    }
+    
+    hal_spi_disable(inst->spi_num);
+    hal_gpio_write(inst->ss_pin, 0);
+
+    // Need to hold chip select for a minimum of 600us
+    os_cputime_delay_usecs(2000);
+
+    hal_gpio_write(inst->ss_pin, 1);
+    hal_spi_enable(inst->spi_num);
+
+    if (inst->spi_mutex) {
+        err = os_mutex_release(inst->spi_mutex);
+        assert(err == OS_OK);
+    }
+
+    // Waiting for XTAL to start and stabilise - 5ms safe
+    // (check PLL bit in IRQ?)
+    os_cputime_delay_usecs(5000);
+
+    OS_EXIT_CRITICAL(sr);
+}
