@@ -261,6 +261,8 @@ void hal_bsp_init(void)
 #if MYNEWT_VAL(SPI_0_MASTER)
     rc = hal_spi_init(0, (void *)&os_bsp_spi0m_cfg, HAL_SPI_TYPE_MASTER);
     assert(rc == 0);
+    rc = os_mutex_init(&g_spi0_mutex);
+    assert(rc == 0);
 #endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
