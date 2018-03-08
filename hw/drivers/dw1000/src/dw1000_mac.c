@@ -405,6 +405,7 @@ dw1000_dev_status_t dw1000_start_tx(dw1000_dev_instance_t * inst)
         inst->status.start_tx_error = 0;
     }
 
+    inst->control_tx_context = inst->control;
     inst->control = (dw1000_dev_control_t){
         .wait4resp_enabled=0,
         .wait4resp_delay_enabled=0,
@@ -470,7 +471,7 @@ dw1000_dev_status_t dw1000_start_rx(dw1000_dev_instance_t * inst)
     }else
         inst->status.start_rx_error = 0;
 
-    inst->control_current_context = inst->control;
+    inst->control_rx_context = inst->control;
     inst->control = (dw1000_dev_control_t){
         .wait4resp_enabled=0,
         .wait4resp_delay_enabled=0,

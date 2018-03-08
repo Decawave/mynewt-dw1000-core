@@ -35,6 +35,7 @@
 #include "hal/hal_i2c.h"
 #include "hal/hal_gpio.h"
 #include "mcu/nrf52_hal.h"
+
 #if MYNEWT_VAL(DW1000_DEVICE_0)
 #include "dw1000/dw1000_dev.h"
 #include "dw1000/dw1000_hal.h"
@@ -64,6 +65,7 @@ static const struct nrf52_uart_cfg os_bsp_uart0_cfg = {
 #endif
 
 #if MYNEWT_VAL(SPI_0_MASTER)
+struct os_mutex g_spi0_mutex;
 /*
  * NOTE: Our HAL expects that the SS pin, if used, is treated as a gpio line
  * and is handled outside the SPI routines.
@@ -73,6 +75,18 @@ static const struct nrf52_hal_spi_cfg os_bsp_spi0m_cfg = {
     .mosi_pin     =  8,
     .miso_pin     =  7,
 };
+
+#if MYNEWT_VAL(DW1000_DEVICE_0)
+/* 
+ * dw1000 device structure defined in dw1000_hal.c 
+ */
+static dw1000_dev_instance_t *dw1000_0 = 0;
+static const struct dw1000_dev_cfg dw1000_0_cfg = {
+    .spi_mutex = &g_spi0_mutex,
+    .spi_num = 0,
+};
+#endif
+
 #endif
 
 
@@ -247,24 +261,26 @@ void hal_bsp_init(void)
 #if MYNEWT_VAL(SPI_0_MASTER)
     rc = hal_spi_init(0, (void *)&os_bsp_spi0m_cfg, HAL_SPI_TYPE_MASTER);
     assert(rc == 0);
-#endif
-
-#if MYNEWT_VAL(SPI_0_SLAVE)
-    rc = hal_spi_init(0, (void *)&os_bsp_spi0s_cfg, HAL_SPI_TYPE_SLAVE);
-    assert(rc == 0);
-#endif
-
-#if MYNEWT_VAL(UART_0)
-    rc = os_dev_create((struct os_dev *) &os_bsp_uart0, "uart0",
-      OS_DEV_INIT_PRIMARY, 0, uart_hal_init, (void *)&os_bsp_uart0_cfg);
+    rc = os_mutex_init(&g_spi0_mutex);
     assert(rc == 0);
 #endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
     hal_gpio_init_out(DW1000_ENABLE_N_PIN, 0);
     os_cputime_delay_usecs(10000);
+
+    dw1000_0 = hal_dw1000_inst(0);
+    rc = os_dev_create((struct os_dev *) dw1000_0, "dw1000_0",
+      OS_DEV_INIT_PRIMARY, 0, dw1000_dev_init, (void *)&dw1000_0_cfg);
+    assert(rc == 0);
 #else
     hal_gpio_init_out(DW1000_ENABLE_N_PIN, 1);
+#endif
+
+#if MYNEWT_VAL(UART_0)
+    rc = os_dev_create((struct os_dev *) &os_bsp_uart0, "uart0",
+      OS_DEV_INIT_PRIMARY, 0, uart_hal_init, (void *)&os_bsp_uart0_cfg);
+    assert(rc == 0);
 #endif
 
     sensor_dev_create();

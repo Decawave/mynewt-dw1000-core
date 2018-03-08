@@ -29,6 +29,7 @@
 extern "C" {
 #endif
 
+#include <os/os_dev.h>
 #include <os/os_mutex.h>
 #include <hal/hal_spi.h>
 #include <dw1000/dw1000_regs.h>
@@ -93,7 +94,9 @@ typedef struct _dw1000_dev_rxdiag_t{
 }dw1000_dev_rxdiag_t;
 
 typedef struct _dw1000_dev_instance_t{
-
+    struct os_dev ioexp_dev;     /** Has to be here for cast in create_dev to work */
+    struct os_mutex *spi_mutex;  /** Pointer to global spi mutex if available  */
+    
     void (* tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rx_timeout_cb) (struct _dw1000_dev_instance_t *);
@@ -144,13 +147,20 @@ typedef struct _dw1000_dev_instance_t{
     dw1000_dev_rxdiag_t rxdiag;
     dw1000_dev_config_t config;
     dw1000_dev_control_t control;
-    dw1000_dev_control_t control_current_context; 
+    dw1000_dev_control_t control_rx_context;
+    dw1000_dev_control_t control_tx_context; 
     dw1000_dev_status_t status; 
 }dw1000_dev_instance_t;
 
+/* Used to pass data to init function from bsp_hal */
+struct dw1000_dev_cfg {
+    struct os_mutex *spi_mutex;
+    int spi_num;
+};
 
 typedef void (* dw1000_dev_cb_t)(dw1000_dev_instance_t * inst);
-dw1000_dev_instance_t * dw1000_dev_init(dw1000_dev_instance_t * inst, uint8_t spi_num);
+int dw1000_dev_init(struct os_dev *odev, void *arg);
+int dw1000_dev_config(dw1000_dev_instance_t * inst);
 void dw1000_softreset(dw1000_dev_instance_t * inst);
 dw1000_dev_status_t dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length);
 dw1000_dev_status_t dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length);
