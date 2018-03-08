@@ -35,13 +35,13 @@
 void dw1000_pkg_init(void){
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    dw1000_dev_init(hal_dw1000_inst(0), MYNEWT_VAL(DW1000_DEVICE_0_SPI_IDX));
+    dw1000_dev_config(hal_dw1000_inst(0));
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
-    dw1000_dev_init(hal_dw1000_inst(1), MYNEWT_VAL(DW1000_DEVICE_1_SPI_IDX));
+    dw1000_dev_config(hal_dw1000_inst(1));
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-    dw1000_dev_init(hal_dw1000_inst(2), MYNEWT_VAL(DW1000_DEVICE_2_SPI_IDX));
+    dw1000_dev_config(hal_dw1000_inst(2));
 #endif
 
 }
