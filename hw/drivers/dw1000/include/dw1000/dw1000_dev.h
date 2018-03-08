@@ -65,6 +65,7 @@ typedef struct _dw1000_dev_status_t{
     uint32_t rx_ranging_frame:1;     //Range Request bit set for inbound frame
     uint32_t tx_ranging_frame:1;     //Range Request bit set for outbound frame
     uint32_t request_timeout:1;
+    uint32_t sleeping:1;
 }dw1000_dev_status_t;
 
 typedef struct _dw1000_dev_control_t{
@@ -167,6 +168,11 @@ dw1000_dev_status_t dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uin
 uint64_t dw1000_read_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, size_t nsize);
 void dw1000_write_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint64_t val, size_t nsize);
 
+void dw1000_dev_configure_sleep(dw1000_dev_instance_t * inst, uint16_t mode, uint8_t wake);
+dw1000_dev_status_t dw1000_dev_enter_sleep(dw1000_dev_instance_t * inst);
+dw1000_dev_status_t dw1000_dev_wakeup(dw1000_dev_instance_t * inst);
+void dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, int enable);
+    
 #ifdef __cplusplus
 }
 #endif
