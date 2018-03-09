@@ -138,7 +138,7 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     dw1000_set_rx_timeout(inst, config->rx_timeout_period); 
     dw1000_start_tx(inst);
     
-    err = os_sem_pend(&inst->rng->sem, OS_TICKS_PER_SEC/100); // Wait for completion of transactions units os_clicks
+    err = os_sem_pend(&inst->rng->sem, OS_TICKS_PER_SEC/25); // Wait for completion of transactions units os_clicks
     inst->status.request_timeout = (err == OS_TIMEOUT);
     os_sem_release(&inst->rng->sem);
     
@@ -225,19 +225,15 @@ rng_tx_complete_cb(dw1000_dev_instance_t * inst)
 
 static void 
 rng_rx_timeout_cb(dw1000_dev_instance_t * inst){
-    if (inst->status.tx_ranging_frame){ 
         os_error_t err = os_sem_release(&inst->rng->sem);
         assert(err == OS_OK);
-    }
+
 }
 
 static void 
 rng_rx_error_cb(dw1000_dev_instance_t * inst){
-    inst->control = inst->control_rx_context;
-    if(dw1000_start_rx(inst).start_rx_error){ 
         os_error_t err = os_sem_release(&inst->rng->sem);   
         assert(err == OS_OK);
-    }
 }
 
 static void 

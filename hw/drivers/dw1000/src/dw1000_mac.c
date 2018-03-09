@@ -219,6 +219,8 @@ dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *
     inst->longFrames = config->phrMode;
     inst->sys_cfg_reg &= ~SYS_CFG_PHR_MODE_11;
     inst->sys_cfg_reg |= (SYS_CFG_PHR_MODE_11 & (config->phrMode << SYS_CFG_PHR_MODE_SHFT));
+    if (inst->config.rxauto_enable) 
+        inst->sys_cfg_reg |=SYS_CFG_RXAUTR; 
 
     dw1000_write_reg(inst, SYS_CFG_ID, 0, inst->sys_cfg_reg, sizeof(uint32_t));
     dw1000_write_reg(inst, LDE_IF_ID, LDE_REPC_OFFSET, reg16, sizeof(uint16_t)); // Set the lde_replicaCoeff 
@@ -842,6 +844,20 @@ void dw1000_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t tx_comp
     inst->rx_error_cb = rx_error_cb;
 }
 
+void sys_status_json_encode(uint64_t sys_status){
+    
+    printf("{\n\tsys_status:,\n");
+    if (sys_status & SYS_STATUS_RXPHE) printf("\tRXPHE,");
+    if (sys_status & SYS_STATUS_RXFCE) printf("\tRXFCE,");
+    if (sys_status & SYS_STATUS_RXSFDTO) printf("\tRXSFDTO,");
+    if (sys_status & SYS_STATUS_AFFREJ) printf("\tAFFREJ,");
+    if (sys_status & SYS_STATUS_LDEERR) printf("\tLDEERR\n");
+    printf("}\n");
+    return;
+}
+
+
+
 /*! ------------------------------------------------------------------------------------------------------------------
  * @fn dw1000_interrupt_ev_cb()
  *
@@ -873,7 +889,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
 
     // Handle RX good frame event
     if(inst->sys_status & SYS_STATUS_RXFCG){
-        // printf("SYS_STATUS_RXFCG %08lX\n", inst->sys_status);
+    // printf("SYS_STATUS_RXFCG %08lX\n", inst->sys_status);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_GOOD, sizeof(uint32_t));     // Clear all receive status bits
         uint16_t finfo = dw1000_read_reg(inst, RX_FINFO_ID, RX_FINFO_OFFSET, sizeof(uint16_t)); // Read frame info - Only the first two bytes of the register are used here.
         inst->frame_len = finfo & RX_FINFO_RXFL_MASK_1023;          // Report frame length - Standard frame length up to 127, extended frame length up to 1023 bytes
@@ -950,7 +966,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
     // Handle RX errors events
     inst->status.rx_error = (inst->sys_status & SYS_STATUS_ALL_RX_ERR) !=0 ;
     if(inst->status.rx_error){
-    //    printf("SYS_STATUS_ALL_RX_ERR %08lX\n", inst->sys_status);
+        printf("SYS_STATUS_ALL_RX_ERR %08lX\n", inst->sys_status);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_ERR, sizeof(uint32_t)); // Clear RX error event bits
         // Because of an issue with receiver restart after error conditions, an RX reset must be applied after any error or timeout event to ensure
         // the next good frame's timestamp is computed correctly.
@@ -965,6 +981,8 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
             inst->rng_rx_error_extension_cb(inst);       
         if(inst->rx_error_cb != NULL)
             inst->rx_error_cb(inst);
+
+        sys_status_json_encode(inst->sys_status);
     }
 }
 

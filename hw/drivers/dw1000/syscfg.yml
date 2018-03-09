@@ -1,11 +1,18 @@
 
 syscfg.defs:
+
     LOCAL_COORDINATE_X:
-        description: 'Board X-location in space'
-        value:  0
+        description: >
+            Default Anchor X Coordinate  
+        value: ((float){0.0f})
+
     LOCAL_COORDINATE_Y:
-        description: 'Board Y-location in space'
-        value:  0
+        description: >
+            Default Anchor Y Coordinate  
+        value: ((float){0.0f})
+        
     LOCAL_COORDINATE_Z:
-        description: 'Board Z-location in space'
-        value:  0
+        description: >
+            Default Anchor Z Coordinate  
+        value: ((float){0.0f})
+        

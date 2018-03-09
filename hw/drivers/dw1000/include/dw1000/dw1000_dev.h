@@ -85,6 +85,7 @@ typedef struct _dw1000_dev_config_t{
     uint32_t dblbuffon_enabled:1;
     uint32_t framefilter_enabled:1;
     uint32_t rxdiag_enable:1;
+    uint32_t rxauto_enable:1;
 }dw1000_dev_config_t;
 
 typedef struct _dw1000_dev_rxdiag_t{
