@@ -844,19 +844,6 @@ void dw1000_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t tx_comp
     inst->rx_error_cb = rx_error_cb;
 }
 
-void sys_status_json_encode(uint64_t sys_status){
-    
-    printf("{\n\tsys_status:,\n");
-    if (sys_status & SYS_STATUS_RXPHE) printf("\tRXPHE,");
-    if (sys_status & SYS_STATUS_RXFCE) printf("\tRXFCE,");
-    if (sys_status & SYS_STATUS_RXSFDTO) printf("\tRXSFDTO,");
-    if (sys_status & SYS_STATUS_AFFREJ) printf("\tAFFREJ,");
-    if (sys_status & SYS_STATUS_LDEERR) printf("\tLDEERR\n");
-    printf("}\n");
-    return;
-}
-
-
 
 /*! ------------------------------------------------------------------------------------------------------------------
  * @fn dw1000_interrupt_ev_cb()
@@ -982,7 +969,6 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
         if(inst->rx_error_cb != NULL)
             inst->rx_error_cb(inst);
 
-        sys_status_json_encode(inst->sys_status);
     }
 }
 
