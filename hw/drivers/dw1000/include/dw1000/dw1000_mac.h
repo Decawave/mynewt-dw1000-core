@@ -65,7 +65,6 @@ extern "C" {
 #define DWT_PLEN_64     0x04    //! Standard preamble length 64 symbols
 
 #define DWT_SFDTOC_DEF              0x1041  // default SFD timeout value
-
 #define DWT_PHRMODE_STD             0x0     // standard PHR mode
 #define DWT_PHRMODE_EXT             0x3     // DW proprietary extended frames PHR mode
 
@@ -96,19 +95,6 @@ typedef enum _dw1000_start_rx_modes_t {
 #define DWT_FF_MAC_EN               0x020           // mac control frames allowed
 #define DWT_FF_RSVD_EN              0x040           // reserved frame types allowed
 
-//DW1000 interrupt events
-#define DWT_INT_TFRS            0x00000080          // frame sent
-#define DWT_INT_LDED            0x00000400          // micro-code has finished execution
-#define DWT_INT_RFCG            0x00004000          // frame received with good CRC
-#define DWT_INT_RPHE            0x00001000          // receiver PHY header error
-#define DWT_INT_RFCE            0x00008000          // receiver CRC error
-#define DWT_INT_RFSL            0x00010000          // receiver sync loss error
-#define DWT_INT_RFTO            0x00020000          // frame wait timeout
-#define DWT_INT_RXOVRR          0x00100000          // receiver overrun
-#define DWT_INT_RXPTO           0x00200000          // preamble detect timeout
-#define DWT_INT_SFDT            0x04000000          // SFD timeout
-#define DWT_INT_ARFE            0x20000000          // frame rejected (due to frame filtering configuration)
-
 
 //DW1000 SLEEP and WAKEUP configuration parameters
 #define DWT_PRESRV_SLEEP 0x0100                      // PRES_SLEEP - on wakeup preserve sleep bit
@@ -132,8 +118,6 @@ typedef enum _dw1000_start_rx_modes_t {
 #define DWT_OPSET_64LEN   0x0
 #define DWT_OPSET_TIGHT   0x1
 #define DWT_OPSET_DEFLT   0x2
-
-
 
 // IEEE 802.15.4-2011 MAC Frame format
 #define MAC_FFORMAT_FCTRL 0x0

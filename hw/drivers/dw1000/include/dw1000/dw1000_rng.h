@@ -85,9 +85,10 @@ typedef struct _twr_frame_final_t{
 
 typedef struct _twr_data_t{
                 uint64_t utime;
-                triad_t local_coordinate;       // position triad 
-                triad_t spherical_coordinate;   // spherical triad 
-                triad_t variance;               // variance triad 
+                triad_t spherical;                  // measurement triad spherical coordinates
+                triad_t spherical_variance;         // measurement variance triad 
+                triad_t cartesian;                  // position triad local coordinates
+          //      triad_t cartesian_variance;         // position estimated variance triad 
 }twr_data_t;
 
 typedef union {
@@ -121,19 +122,18 @@ typedef struct _dw1000_rng_instance_t{
     dw1000_rng_config_t * config;
     dw1000_rng_status_t status;
     uint16_t nframes;
-    twr_frame_t twr[];
+    twr_frame_t * twr[];
 }dw1000_rng_instance_t; 
 
-
-dw1000_rng_instance_t * dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config);
+dw1000_rng_instance_t * dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes);
 void dw1000_rng_free(dw1000_rng_instance_t * inst);
 dw1000_dev_status_t dw1000_rng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config);
 void dw1000_rng_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_tx_complete_cb, dw1000_dev_cb_t rng_rx_complete_cb, dw1000_dev_cb_t rng_rx_timeout_cb,  dw1000_dev_cb_t rng_rx_error_cb);
 void dw1000_rng_set_callbacks_extension(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_rx_timeout_extension_cb, dw1000_dev_cb_t rng_rx_error_extension_cb,  dw1000_dev_cb_t rng_interface_extension_cb);
 dw1000_dev_status_t dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t protocal);
 void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, twr_frame_t twr[], uint16_t nframes);
-float dw1000_rng_twr_to_tof(twr_frame_t * twr, dw1000_rng_modes_t code);
-uint32_t dw1000_rng_twr_to_tof_sym(twr_frame_t * twr, dw1000_rng_modes_t code);
+float dw1000_rng_twr_to_tof(twr_frame_t twr[], dw1000_rng_modes_t code);
+uint32_t dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code);
 
 #define dw1000_rng_tof_to_meters(ToF) (float)(ToF * 299792458 * (1.0/499.2e6/128.0)) 
 #define dw1000_rng_set_interface_extension_cb(inst, cb) inst->rng_interface_extension_cb = cb 

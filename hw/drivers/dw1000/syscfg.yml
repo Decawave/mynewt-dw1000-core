@@ -15,4 +15,7 @@ syscfg.defs:
         description: >
             Default Anchor Z Coordinate  
         value: ((float){0.0f})
-        
+    RANGE_VARIANCE:
+        description: >
+            Range Measurement Variance 
+        value: ((float){5.4444e-04})
