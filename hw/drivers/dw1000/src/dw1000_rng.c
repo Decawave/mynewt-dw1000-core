@@ -118,7 +118,7 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
 
     // This function executes on the device that initiates a request 
     /* Semaphore lock for multi-threaded applications */
-    os_error_t err = os_sem_pend(&inst->rng->sem, OS_TIMEOUT_NEVER);
+    os_error_t err = os_sem_pend(&inst->rng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
     for (uint16_t i = 0; i < inst->rng->nframes; i++)
@@ -138,8 +138,7 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     dw1000_set_rx_timeout(inst, config->rx_timeout_period); 
     dw1000_start_tx(inst);
     
-    err = os_sem_pend(&inst->rng->sem, OS_TICKS_PER_SEC/25); // Wait for completion of transactions units os_clicks
-    inst->status.request_timeout = (err == OS_TIMEOUT);
+    err = os_sem_pend(&inst->rng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
     os_sem_release(&inst->rng->sem);
     
     if (inst->status.start_tx_error || inst->status.start_rx_error || inst->status.rx_error || inst->status.request_timeout ||  inst->status.rx_timeout_error)
