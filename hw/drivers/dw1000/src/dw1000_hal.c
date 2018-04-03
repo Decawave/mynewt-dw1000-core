@@ -127,7 +127,7 @@ hal_dw1000_read(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_s
 {
     os_error_t err;
     if (inst->spi_mutex) {
-        err = os_mutex_pend(inst->spi_mutex, 0);
+        err = os_mutex_pend(inst->spi_mutex, OS_WAIT_FOREVER);
         assert(err == OS_OK);
     }
   
@@ -151,7 +151,7 @@ hal_dw1000_write(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_
 {
     os_error_t err;
     if (inst->spi_mutex) {
-        err = os_mutex_pend(inst->spi_mutex, 0);
+        err = os_mutex_pend(inst->spi_mutex, OS_WAIT_FOREVER);
         assert(err == OS_OK);
     }
 
@@ -177,7 +177,7 @@ hal_dw1000_wakeup(dw1000_dev_instance_t * inst)
     os_sr_t sr;
     OS_ENTER_CRITICAL(sr);
     if (inst->spi_mutex) {
-        err = os_mutex_pend(inst->spi_mutex, 0);
+        err = os_mutex_pend(inst->spi_mutex, OS_WAIT_FOREVER);
         assert(err == OS_OK);
     }
     
