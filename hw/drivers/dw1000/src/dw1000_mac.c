@@ -302,7 +302,7 @@ dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *
 
 
 /*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_mac_write()
+ * @fn dw1000_write_tx()
  *
  * @brief This API function writes the supplied TX data into the DW1000's
  * TX buffer.  The input parameters are the data length in bytes and a pointer
@@ -325,7 +325,6 @@ dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *
 dw1000_dev_status_t dw1000_write_tx(dw1000_dev_instance_t * inst,  uint8_t * txFrameBytes, uint16_t txBufferOffset, uint16_t txFrameLength)
 {
 #ifdef DW1000_API_ERROR_CHECK
-    assert(txFrameLength >= 2);
     assert((pdw1000local->longFrames && (txFrameLength <= 1023)) || (txFrameLength <= 127));
     assert((txBufferOffset + txFrameLength) <= 1024);
 #endif
