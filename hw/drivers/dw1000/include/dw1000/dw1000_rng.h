@@ -26,13 +26,13 @@
 #include <stdint.h>
 #include "dw1000/triad.h"
 
-#ifndef SS_TWR_ENABLE
+#if MYNEWT_VAL(DW1000_SS_TWR_ENABLED)
 #define SS_TWR_ENABLE
 #endif
-#ifndef DS_TWR_ENABLE
+#if MYNEWT_VAL(DW1000_DS_TWR_ENABLED)
 #define DS_TWR_ENABLE
 #endif
-#ifndef DS_TWR_EXT_ENABLE
+#if MYNEWT_VAL(DW1000_DS_TWR_EXT_ENABLED)
 #define DS_TWR_EXT_ENABLE
 #endif
 
@@ -138,7 +138,7 @@ uint32_t dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code);
 #define dw1000_rng_tof_to_meters(ToF) (float)(ToF * 299792458 * (1.0/499.2e6/128.0)) 
 #define dw1000_rng_set_interface_extension_cb(inst, cb) inst->rng_interface_extension_cb = cb 
 #define dw1000_rng_rx_timeout_extension_cb(inst, rcb) inst->rng_rx_timeout_extension_cb = cb 
-#define dw1000_rng_set_extension_cb(inst, cb) inst->rng_rx_error_extension_cb = cb 
+#define dw1000_rng_set_error_extension_cb(inst, cb) inst->rng_rx_error_extension_cb = cb
 #define dw1000_rng_set_tx_final_cb(inst, cb) inst->rng_tx_final_cb = cb 
 
 #ifdef __cplusplus
