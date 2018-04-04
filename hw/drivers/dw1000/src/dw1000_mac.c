@@ -780,24 +780,28 @@ void dw1000_read_rxdiag(dw1000_dev_instance_t * inst, dw1000_dev_rxdiag_t * diag
  */
 void dw1000_tasks_init(dw1000_dev_instance_t * inst)
 {
-    /* Use a dedicate event queue for timer and interrupt events */
-    os_eventq_init(&inst->interrupt_eventq);  
-    /* 
-     * Create the task to process timer and interrupt events from the
-     * my_timer_interrupt_eventq event queue.
-     */
-    inst->interrupt_ev.ev_cb = dw1000_interrupt_ev_cb;
-    inst->interrupt_ev.ev_arg = (void *)inst;
-    
-    os_task_init(&inst->interrupt_task_str, "dw1000_irq", 
-                 dw1000_interrupt_task, 
-                 (void *) inst, 
-                 DW1000_DEV_TASK_PRIO, OS_WAIT_FOREVER, 
-                 inst->interrupt_task_stack, 
-                 DW1000_DEV_TASK_STACK_SZ);
+    /* Check if the tasks are already initiated */
+    if (!os_eventq_inited(&inst->interrupt_eventq))
+    {
+        /* Use a dedicate event queue for timer and interrupt events */
+        os_eventq_init(&inst->interrupt_eventq);
+        /*
+         * Create the task to process timer and interrupt events from the
+         * my_timer_interrupt_eventq event queue.
+         */
+        inst->interrupt_ev.ev_cb = dw1000_interrupt_ev_cb;
+        inst->interrupt_ev.ev_arg = (void *)inst;
 
-    hal_gpio_irq_init(inst->irq_pin, dw1000_irq, inst, HAL_GPIO_TRIG_RISING, HAL_GPIO_PULL_UP);
-    hal_gpio_irq_enable(inst->irq_pin);
+        os_task_init(&inst->interrupt_task_str, "dw1000_irq",
+                     dw1000_interrupt_task,
+                     (void *) inst,
+                     DW1000_DEV_TASK_PRIO, OS_WAIT_FOREVER,
+                     inst->interrupt_task_stack,
+                     DW1000_DEV_TASK_STACK_SZ);
+
+        hal_gpio_irq_init(inst->irq_pin, dw1000_irq, inst, HAL_GPIO_TRIG_RISING, HAL_GPIO_PULL_UP);
+        hal_gpio_irq_enable(inst->irq_pin);
+    }
 
     //dw1000_phy_interrupt_mask(inst, DWT_INT_TFRS | DWT_INT_RFCG | DWT_INT_RFTO | DWT_INT_RXPTO | DWT_INT_RPHE | DWT_INT_RFCE | DWT_INT_RFSL | DWT_INT_SFDT | DWT_INT_ARFE, true);
     
