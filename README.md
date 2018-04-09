@@ -37,13 +37,10 @@ A single DW1000 UWB transceiver can be used to form a 6LowPAN mesh network while
 
 This project is destined to be up-streamed into the mynewt repo Q1 2018:
 
-* DW1000 Device Driver 
+* DW1000 Device Driver
 * DW1000 TWR Services
-* DW1000 AoA Services
-* DW1000 TDOA Services
-* DW1000 TDMA Services
 * DW1000 LWIP Driver
-* JSON API for register access and cmd/ctrl (see companion repo mynewt-dw1000-diag)
+* DW1000 CCP Driver
 * Example (see companion repo mynewt-dw1000-apps)
 
 ## Current BSPs and supported hardware
@@ -55,32 +52,34 @@ This project is destined to be up-streamed into the mynewt repo Q1 2018:
 
 ## File Description
 ```
-└── drivers
-│       └── dw1000
-│           ├── include
-│           │   └── dw1000
-│           │       ├── dw1000_dev.h
-│           │       ├── dw1000_ftypes.h         // Frame types
-│           │       ├── dw1000_gpio.h
-│           │       ├── dw1000_hal.h
-│           │       ├── dw1000_lwip.h
-│           │       ├── dw1000_mac.h
-│           │       ├── dw1000_otp.h
-│           │       ├── dw1000_phy.h
-│           │       ├── dw1000_regs.h
-│           │       ├── dw1000_regulatory.h
-│           │       └── dw1000_rng.h
-│           ├── pkg.yml
-│           └── src
-│               ├── dw1000_dev.c                // Driver instance
-│               ├── dw1000_gpio.c               // DW1000 gpio interface
-│               ├── dw1000_hal.c                // Hardware abstraction
-│               ├── dw1000_lwip.c               // raw-lwip stack
-│               ├── dw1000_mac.c                // MAC lowerlevel
-│               ├── dw1000_otp.c                // One Time Programming
-│               ├── dw1000_phy.c                // Physical layer controller
-│               ├── dw1000_regulatory.c         // Regulatory profiles 
-│               └── dw1000_rng.c                // Ranging services
+dw1000/
+├── include
+│   └── dw1000
+│       ├── dw1000_ccp.h
+│       ├── dw1000_dev.h
+│       ├── dw1000_ftypes.h
+│       ├── dw1000_gpio.h
+│       ├── dw1000_hal.h
+│       ├── dw1000_lwip.h
+│       ├── dw1000_mac.h
+│       ├── dw1000_otp.h
+│       ├── dw1000_phy.h
+│       ├── dw1000_regs.h
+│       ├── dw1000_rng.h
+│       └── triad.h
+├── pkg.yml
+├── src
+│   ├── dw1000_ccp.c     // Clock calibration packets
+│   ├── dw1000_dev.c     // Driver instance
+│   ├── dw1000_gpio.c    // GPIO interface
+│   ├── dw1000_hal.c     // Hardware abstraction
+│   ├── dw1000_lwip.c    // lwip stack lower layer
+│   ├── dw1000_mac.c     // MAC lower layer
+│   ├── dw1000_otp.c     // One Time Programming
+│   ├── dw1000_phy.c     // Physical layer controller
+│   ├── dw1000_pkg.c
+│   └── dw1000_rng.c    // Ranging services
+└── syscfg.yml
 ```
 
 ## Building
