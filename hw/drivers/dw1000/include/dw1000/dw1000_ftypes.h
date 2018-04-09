@@ -29,15 +29,18 @@
 extern "C" {
 #endif
 
+#define FCNTL_IEEE_BLINK_CCP_64 0xC5
+#define FCNTL_IEEE_BLINK_TAG_64 0x56 
+#define FCNTL_IEEE_RANGE_16 0x8841
 
 // IEEE 802.15.4e standard blink. It is a 12-byte frame composed of the following fields
 typedef union{
-    struct _ieee_blink_frame{
+    struct _ieee_blink_frame_t{
         uint8_t fctrl;              // frame type (0xC5 for a blink) using 64-bit addressing
         uint8_t seq_num;            // sequence number, incremented for each new frame.
         uint64_t ext_address;       // device ID
     }__attribute__((__packed__));
-    uint8_t array[sizeof(struct _ieee_blink_frame)];
+    uint8_t array[sizeof(struct _ieee_blink_frame_t)];
 }ieee_blink_frame_t;
 
 // ISO/IEC 24730-62:2013 standard blink. It is a 14-byte frame composed of the following fields

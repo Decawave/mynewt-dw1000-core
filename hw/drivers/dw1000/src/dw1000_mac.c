@@ -331,11 +331,13 @@ dw1000_dev_status_t dw1000_write_tx(dw1000_dev_instance_t * inst,  uint8_t * txF
 
     if ((txBufferOffset + txFrameLength) <= 1024){
         dw1000_write(inst, TX_BUFFER_ID, txBufferOffset,  txFrameBytes, txFrameLength);
+        for (uint8_t i = 0; i< sizeof(inst->fctrl); i++)
+            inst->fctrl_array[i] =  txFrameBytes[i];
         inst->status.tx_frame_error = 0;
     }
     else
         inst->status.tx_frame_error = 1;
-
+    
     return inst->status;
 }
 

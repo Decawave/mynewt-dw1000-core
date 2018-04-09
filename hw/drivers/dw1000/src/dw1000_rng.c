@@ -223,6 +223,11 @@ rng_tx_complete_cb(dw1000_dev_instance_t * inst)
             }
     }
 #endif
+    if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){ 
+        // Clock Calibration Packet Received
+        if (inst->ccp_tx_complete_cb != NULL)
+            inst->ccp_tx_complete_cb(inst); 
+    }
 }
 
 static void 
@@ -244,12 +249,20 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
 
     uint16_t code, dst_address; 
     dw1000_rng_config_t * config = inst->rng->config;
-
-    if (inst->fctrl == 0x8841){ 
+    if (inst->fctrl == FCNTL_IEEE_RANGE_16){ 
         dw1000_read_rx(inst, (uint8_t *) &code, offsetof(ieee_rng_request_frame_t,code), sizeof(uint16_t));
         dw1000_read_rx(inst, (uint8_t *) &dst_address, offsetof(ieee_rng_request_frame_t,dst_address), sizeof(uint16_t));    
-    }else{
-        return;
+    }
+    else if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){ 
+        uint64_t clock_master;
+        dw1000_read_rx(inst, (uint8_t *) &clock_master, offsetof(ieee_blink_frame_t,ext_address), sizeof(uint64_t));    
+       
+        if (inst->ccp_rx_complete_cb != NULL && inst->clock_master == clock_master)
+            inst->ccp_rx_complete_cb(inst);   
+        
+        inst->control = inst->control_rx_context;
+        dw1000_start_rx(inst); 
+        return;  
     }
     if (dst_address != inst->my_short_address){
         inst->control = inst->control_rx_context;
@@ -577,7 +590,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
         default: 
             // Use this callback to extend interface and ranging services
             if (inst->rng_interface_extension_cb != NULL)
-               inst->rng_interface_extension_cb(inst);
+                inst->rng_interface_extension_cb(inst);
             break;
     }  
 }

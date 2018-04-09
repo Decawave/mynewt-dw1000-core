@@ -95,7 +95,6 @@ typedef struct _dw1000_dev_rxdiag_t{
     uint16_t    preamble_cnt;       // Count of preamble symbols accumulated
 }dw1000_dev_rxdiag_t;
 
-
 typedef struct _dw1000_dev_instance_t{
     struct os_dev ioexp_dev;     /** Has to be here for cast in create_dev to work */
     struct os_mutex *spi_mutex;  /** Pointer to global spi mutex if available  */
@@ -125,8 +124,13 @@ typedef struct _dw1000_dev_instance_t{
     void (* lwip_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
     void (* lwip_rx_error_cb) (struct _dw1000_dev_instance_t *);
 
-         
-    uint16_t fctrl;             // Reported frame control
+    void (* ccp_rx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* ccp_tx_complete_cb) (struct _dw1000_dev_instance_t *);
+
+    union {
+        uint16_t fctrl;                         // Reported frame control 
+        uint8_t fctrl_array[sizeof(uint16_t)];  //endianness safe interface
+    };
     uint16_t frame_len;      // Reported frame length
     uint8_t spi_num;
     uint8_t irq_pin;        
@@ -134,6 +138,8 @@ typedef struct _dw1000_dev_instance_t{
     uint8_t rst_pin;
     uint32_t device_id;
     uint16_t my_short_address;
+    uint64_t my_ext_address;
+    uint64_t clock_master;
     uint64_t timestamp;
     uint64_t rxtimestamp;
     uint64_t txtimestamp;
@@ -160,6 +166,7 @@ typedef struct _dw1000_dev_instance_t{
     os_stack_t interrupt_task_stack[DW1000_DEV_TASK_STACK_SZ];
     struct _dw1000_rng_instance_t * rng;
     struct _dw1000_lwip_instance_t * lwip;
+    struct _dw1000_ccp_instance_t * ccp;
     dw1000_dev_rxdiag_t rxdiag;
     dw1000_dev_config_t config;
     dw1000_dev_control_t control;

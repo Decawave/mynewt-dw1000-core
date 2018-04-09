@@ -28,3 +28,8 @@ syscfg.defs:
         description: >
             Range Measurement Variance 
         value: ((float){5.4444e-04})
+
+    CCP_PERIOD:
+        description: >
+            Clock Calibration Packets Period 
+        value: ((uint32_t){0x20000})
