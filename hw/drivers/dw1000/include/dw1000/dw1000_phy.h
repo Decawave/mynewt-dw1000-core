@@ -82,7 +82,6 @@ void dw1000_phy_sysclk_PLL(dw1000_dev_instance_t * inst);
 void dw1000_phy_sysclk_SEQ(dw1000_dev_instance_t * inst);
 void dw1000_phy_sysclk_ACC(dw1000_dev_instance_t * inst, uint8_t mode);
 void dw1000_phy_disable_sequencing(dw1000_dev_instance_t * inst);
-void dw1000_phy_delayed_txrxtime(dw1000_dev_instance_t * inst, uint32_t starttime);
 void dw1000_phy_config_lde(dw1000_dev_instance_t * inst, int prfIndex);
 void dw1000_phy_config_txrf(dw1000_dev_instance_t * inst, dw1000_phy_txrf_config_t * config);
 void dw1000_phy_rx_reset(dw1000_dev_instance_t * inst);

@@ -42,6 +42,10 @@ extern "C" {
 #define DW1000_DEV_TASK_PRIO        MYNEWT_VAL(DW1000_DEV_TASK_PRIO)
 #define DW1000_DEV_TASK_STACK_SZ    512
 
+typedef enum _dw1000_dev_modes_t{
+    DWT_BLOCKING,
+    DWT_NONBLOCKING
+}dw1000_dev_modes_t;
 
 typedef struct _dw1000_cmd{
     uint32_t reg:6;
@@ -127,6 +131,9 @@ typedef struct _dw1000_dev_instance_t{
     void (* ccp_rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* ccp_tx_complete_cb) (struct _dw1000_dev_instance_t *);
 
+    void (* discovery_rx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* discovery_tx_complete_cb) (struct _dw1000_dev_instance_t *);
+
     union {
         uint16_t fctrl;                         // Reported frame control 
         uint8_t fctrl_array[sizeof(uint16_t)];  //endianness safe interface
@@ -167,6 +174,7 @@ typedef struct _dw1000_dev_instance_t{
     struct _dw1000_rng_instance_t * rng;
     struct _dw1000_lwip_instance_t * lwip;
     struct _dw1000_ccp_instance_t * ccp;
+    struct _dw1000_discovery_instance_t * discovery;
     dw1000_dev_rxdiag_t rxdiag;
     dw1000_dev_config_t config;
     dw1000_dev_control_t control;

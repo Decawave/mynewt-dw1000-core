@@ -211,7 +211,7 @@ dw1000_ccp_blink(dw1000_dev_instance_t * inst, dw1000_ccp_modes_t mode){
 
 void 
 dw1000_ccp_start(dw1000_dev_instance_t * inst){
-    // Initialise previous frame timestamp to current time
+    // Initialise frame timestamp to current time
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     ccp->idx = 0x0;  
     ccp->status.valid = false;

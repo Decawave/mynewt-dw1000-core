@@ -52,6 +52,10 @@ typedef struct _dw1000_rng_config_t{
    uint16_t rx_timeout_period;       // Receive response timeout, in UWB usec.
 }dw1000_rng_config_t;
 
+typedef struct _dw1000_rng_control_t{
+    uint16_t delay_start_enabled:1;
+}dw1000_rng_control_t;
+
 typedef enum _dw1000_rng_modes_t{
     DWT_TWR_INVALID = 0,
     DWT_SS_TWR,
@@ -119,10 +123,13 @@ typedef struct{
 typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * dev;
     struct os_sem sem;
+    uint64_t delay_start_until;
     dw1000_rng_config_t * config;
+    dw1000_rng_control_t control;
     dw1000_rng_status_t status;
+    uint16_t idx;
     uint16_t nframes;
-    twr_frame_t * twr[];
+    twr_frame_t * frames[];
 }dw1000_rng_instance_t; 
 
 dw1000_rng_instance_t * dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes);
@@ -131,8 +138,9 @@ dw1000_dev_status_t dw1000_rng_config(dw1000_dev_instance_t * inst, dw1000_rng_c
 void dw1000_rng_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_tx_complete_cb, dw1000_dev_cb_t rng_rx_complete_cb, dw1000_dev_cb_t rng_rx_timeout_cb,  dw1000_dev_cb_t rng_rx_error_cb);
 void dw1000_rng_set_callbacks_extension(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_rx_timeout_extension_cb, dw1000_dev_cb_t rng_rx_error_extension_cb,  dw1000_dev_cb_t rng_interface_extension_cb);
 dw1000_dev_status_t dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t protocal);
+dw1000_dev_status_t dw1000_rng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t protocal);
 void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, twr_frame_t twr[], uint16_t nframes);
-float dw1000_rng_twr_to_tof(twr_frame_t twr[], dw1000_rng_modes_t code);
+float dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng);
 uint32_t dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code);
 
 #define dw1000_rng_tof_to_meters(ToF) (float)(ToF * 299792458 * (1.0/499.2e6/128.0)) 

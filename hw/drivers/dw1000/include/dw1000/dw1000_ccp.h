@@ -85,4 +85,4 @@ void dw1000_ccp_stop(dw1000_dev_instance_t * inst);
 #ifdef __cplusplus
 }
 #endif
-#endif /* _DW1000_RNG_H_ */
+#endif /* _DW1000_CCP_H_ */
