@@ -173,6 +173,7 @@ lowpan6_get_address_mode(const ip6_addr_t *ip6addr, const struct ieee_802154_add
 
   if ((ip6addr->addr[2] == PP_HTONL(0x000000ffUL)) &&
     ((ip6addr->addr[3]  & PP_HTONL(0xffff0000)) == PP_NTOHL(0xfe000000UL))) {
+    return 2;
   }
 
   return 1;
@@ -191,6 +192,7 @@ lowpan6_get_address_mode_mc(const ip6_addr_t *ip6addr)
               (ip6addr->addr[1] == 0)) {
     if ((ip6addr->addr[2] == 0) &&
         ((ip6addr->addr[3]  & PP_HTONL(0xff000000)) == 0)) {
+      return 2;
     } else if ((ip6addr->addr[2]  & PP_HTONL(0xffffff00)) == 0) {
       return 1;
     }
