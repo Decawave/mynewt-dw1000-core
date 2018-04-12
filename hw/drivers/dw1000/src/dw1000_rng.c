@@ -251,14 +251,18 @@ rng_tx_complete_cb(dw1000_dev_instance_t * inst)
 #endif
     }
     else if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){ 
+#if MYNEWT_VAL(DW1000_CLOCK_CALIBRATION)
         // Clock Calibration Packet Received
         if (inst->ccp_tx_complete_cb != NULL)
-            inst->ccp_tx_complete_cb(inst); 
+            inst->ccp_tx_complete_cb(inst);
+#endif
     }
     else if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_TAG_64){ 
+#if MYNEWT_VAL(DW1000_PAN)
         // PAN Discovery Packet Received
         if (inst->pan_tx_complete_cb != NULL)
-            inst->pan_tx_complete_cb(inst); 
+            inst->pan_tx_complete_cb(inst);
+#endif
     }
 }
 
@@ -281,24 +285,28 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
     uint16_t code, dst_address; 
     dw1000_rng_config_t * config = inst->rng->config;
 
-    if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){ 
+    if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
+#if MYNEWT_VAL(DW1000_CLOCK_CALIBRATION)
         // CCP Packet Received
         uint64_t clock_master;
         dw1000_read_rx(inst, (uint8_t *) &clock_master, offsetof(ieee_blink_frame_t,long_address), sizeof(uint64_t));    
        
         if (inst->ccp_rx_complete_cb != NULL && inst->clock_master == clock_master)
-            inst->ccp_rx_complete_cb(inst);   
+            inst->ccp_rx_complete_cb(inst);
         inst->control = inst->control_rx_context;
         dw1000_start_rx(inst); 
         return;  
+#endif
     }
     else if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_TAG_64){ 
+#if MYNEWT_VAL(DW1000_PAN)
         // PAN Discovery Packet Received
         if (inst->pan_rx_complete_cb != NULL)
-            inst->pan_rx_complete_cb(inst); 
+            inst->pan_rx_complete_cb(inst);
         inst->control = inst->control_rx_context;
-        dw1000_start_rx(inst); 
-        return;  
+        dw1000_start_rx(inst);
+        return;
+#endif
     }
     else if (inst->fctrl == FCNTL_IEEE_RANGE_16){ 
         dw1000_read_rx(inst, (uint8_t *) &code, offsetof(ieee_rng_request_frame_t,code), sizeof(uint16_t));
