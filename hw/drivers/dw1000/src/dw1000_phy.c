@@ -51,7 +51,7 @@ inline void dw1000_phy_sysclk_PLL(dw1000_dev_instance_t * inst){
 }
 
 // Set system clock to LDE
-inline void dw1000_phy_sysclk_LDE(dw1000_dev_instance_t * inst){
+void dw1000_phy_sysclk_LDE(dw1000_dev_instance_t * inst){
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, 0x01, sizeof(uint8_t));
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET + 1 , 0x03, sizeof(uint8_t));
 }
