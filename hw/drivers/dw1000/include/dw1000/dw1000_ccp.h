@@ -34,14 +34,6 @@ extern "C" {
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
 
-#define CCP_OS_LATENCY 1000     // units usec, the assumption is that the OS 
-                                // will be able to schedule the ccp event CCP_OS_LATENCY 
-                                // usec before the next epoch
-
-typedef enum _dw1000_ccp_modes_t{
-    CCP_BLOCKING,
-    CCP_NONBLOCKING
-}dw1000_ccp_modes_t;
 
 typedef union {
     struct _ccp_frame_t{
@@ -58,6 +50,7 @@ typedef struct _dw1000_ccp_status_t{
     uint16_t initialized:1;
     uint16_t valid:1;
     uint16_t start_tx_error:1;
+    uint16_t timer_enabled:1;
 }dw1000_ccp_status_t;
 
 typedef struct _dw1000_ccp_config_t{

@@ -475,6 +475,7 @@ dw1000_dev_status_t dw1000_start_rx(dw1000_dev_instance_t * inst)
     }else
         inst->status.start_rx_error = 0;
 
+    inst->control_rx_context = inst->control;
     inst->control = (dw1000_dev_control_t){
         .wait4resp_enabled=0,
         .wait4resp_delay_enabled=0,
@@ -808,8 +809,6 @@ void dw1000_tasks_init(dw1000_dev_instance_t * inst)
     //dw1000_phy_interrupt_mask(inst, DWT_INT_TFRS | DWT_INT_RFCG | DWT_INT_RFTO | DWT_INT_RXPTO | DWT_INT_RPHE | DWT_INT_RFCE | DWT_INT_RFSL | DWT_INT_SFDT | DWT_INT_ARFE, true);
     
     dw1000_phy_interrupt_mask(inst, SYS_MASK_MRXFCG | SYS_MASK_MTXFRS | SYS_MASK_ALL_RX_TO | SYS_MASK_ALL_RX_ERR, true);
-
-
 }
 
 static void dw1000_irq(void *arg)
@@ -888,7 +887,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
         //printf("SYS_STATUS_RXFCG %08lX\n", inst->sys_status);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_GOOD, sizeof(uint32_t));     // Clear all receive status bits
         uint16_t finfo = dw1000_read_reg(inst, RX_FINFO_ID, RX_FINFO_OFFSET, sizeof(uint16_t)); // Read frame info - Only the first two bytes of the register are used here.
-        inst->frame_len = finfo & RX_FINFO_RXFL_MASK_1023;          // Report frame length - Standard frame length up to 127, extended frame length up to 1023 bytes
+        inst->frame_len = (finfo & RX_FINFO_RXFL_MASK_1023) - 2;          // Report frame length - Standard frame length up to 127, extended frame length up to 1023 bytes
         inst->status.rx_ranging_frame = (finfo & RX_FINFO_RNG) !=0; // Report ranging bit
         inst->fctrl = dw1000_read_reg(inst, RX_BUFFER_ID, MAC_FFORMAT_FCTRL, MAC_FFORMAT_FCTRL_LEN);// Report frame control - First bytes of the received frame.
         

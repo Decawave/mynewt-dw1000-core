@@ -28,8 +28,15 @@ syscfg.defs:
         description: >
             Range Measurement Variance 
         value: ((float){5.4444e-04})
-
     CCP_PERIOD:
         description: >
             Clock Calibration Packets Period 
         value: ((uint32_t){0x20000})
+    PAN_PERIOD:
+        description: >
+            PAN Discovery Packets Period 
+        value: ((uint32_t){0x20000})
+    OS_LATENCY:
+        description: >
+            OS Latency Guardband 
+        value: ((uint32_t){0x1000})

@@ -254,9 +254,9 @@ rng_tx_complete_cb(dw1000_dev_instance_t * inst)
             inst->ccp_tx_complete_cb(inst); 
     }
     else if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_TAG_64){ 
-        // Clock Calibration Packet Received
-        if (inst->discovery_tx_complete_cb != NULL)
-            inst->discovery_tx_complete_cb(inst); 
+        // PAN Discovery Packet Received
+        if (inst->pan_tx_complete_cb != NULL)
+            inst->pan_tx_complete_cb(inst); 
     }
 }
 
@@ -282,7 +282,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
     if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){ 
         // CCP Packet Received
         uint64_t clock_master;
-        dw1000_read_rx(inst, (uint8_t *) &clock_master, offsetof(ieee_blink_frame_t,ext_address), sizeof(uint64_t));    
+        dw1000_read_rx(inst, (uint8_t *) &clock_master, offsetof(ieee_blink_frame_t,long_address), sizeof(uint64_t));    
        
         if (inst->ccp_rx_complete_cb != NULL && inst->clock_master == clock_master)
             inst->ccp_rx_complete_cb(inst);   
@@ -291,9 +291,9 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
         return;  
     }
     else if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_TAG_64){ 
-        // Discovery Packet Received
-        if (inst->discovery_rx_complete_cb != NULL)
-            inst->discovery_rx_complete_cb(inst); 
+        // PAN Discovery Packet Received
+        if (inst->pan_rx_complete_cb != NULL)
+            inst->pan_rx_complete_cb(inst); 
         inst->control = inst->control_rx_context;
         dw1000_start_rx(inst); 
         return;  
@@ -317,8 +317,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
         dw1000_start_rx(inst); 
         return;
     }  
-    // IEEE 802.15.4 standard ranging frames
 
+    // IEEE 802.15.4 standard ranging frames
     hal_gpio_toggle(LED_1);
 
     switch (code){

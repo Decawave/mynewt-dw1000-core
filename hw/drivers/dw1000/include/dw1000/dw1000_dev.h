@@ -131,8 +131,8 @@ typedef struct _dw1000_dev_instance_t{
     void (* ccp_rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* ccp_tx_complete_cb) (struct _dw1000_dev_instance_t *);
 
-    void (* discovery_rx_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* discovery_tx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* pan_rx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* pan_tx_complete_cb) (struct _dw1000_dev_instance_t *);
 
     union {
         uint16_t fctrl;                         // Reported frame control 
@@ -145,18 +145,19 @@ typedef struct _dw1000_dev_instance_t{
     uint8_t rst_pin;
     uint32_t device_id;
     uint16_t my_short_address;
-    uint64_t my_ext_address;
+    uint64_t my_long_address;
     uint64_t clock_master;
     uint64_t timestamp;
     uint64_t rxtimestamp;
     uint64_t txtimestamp;
     uint16_t PANID;
+    uint16_t slot_id;
+    uint32_t partID;
+    uint32_t lotID;
     uint16_t otp_rev;
     uint8_t otp_vbat;
     uint8_t otp_temp;
     uint16_t sleep_mode;
-    uint32_t partID;
-    uint32_t lotID;
     uint8_t xtal_trim;
     uint32_t sys_cfg_reg;
     uint32_t sys_ctrl_reg;
@@ -174,7 +175,7 @@ typedef struct _dw1000_dev_instance_t{
     struct _dw1000_rng_instance_t * rng;
     struct _dw1000_lwip_instance_t * lwip;
     struct _dw1000_ccp_instance_t * ccp;
-    struct _dw1000_discovery_instance_t * discovery;
+    struct _dw1000_pan_instance_t * pan;
     dw1000_dev_rxdiag_t rxdiag;
     dw1000_dev_config_t config;
     dw1000_dev_control_t control;
