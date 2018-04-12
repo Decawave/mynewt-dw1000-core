@@ -92,15 +92,31 @@ typedef struct _dw1000_dev_config_t{
     uint32_t rxauto_enable:1;
 }dw1000_dev_config_t;
 
+typedef struct _dwt_config_t {
+    uint8_t chan ;           //!< channel number {1, 2, 3, 4, 5, 7 }
+    uint8_t prf ;            //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
+    uint8_t txPreambLength ; //!< DWT_PLEN_64..DWT_PLEN_4096
+    uint8_t rxPAC ;          //!< Acquisition Chunk Size (Relates to RX preamble length)
+    uint8_t txCode ;         //!< TX preamble code
+    uint8_t rxCode ;         //!< RX preamble code
+    uint8_t nsSFD ;          //!< Boolean should we use non-standard SFD for better performance
+    uint8_t dataRate ;       //!< Data Rate {DWT_BR_110K, DWT_BR_850K or DWT_BR_6M8}
+    uint8_t phrMode ;        //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
+    uint16_t sfdTO ;         //!< SFD timeout value (in symbols)
+} dwt_config_t ;
+    
 typedef struct _dw1000_dev_rxdiag_t{
     uint16_t    fp_idx;             // First path index (10.6 bits fixed point integer)
     uint16_t    fp_amp;             // Amplitude at floor(index FP) + 1
+    uint16_t    fp_amp2;            // Amplitude at floor(index FP) + 2
+    uint16_t    fp_amp3;            // Amplitude at floor(index FP) + 3
     uint16_t    rx_std;             // Standard deviation of noise
     uint16_t    preamble_cnt;       // Count of preamble symbols accumulated
-}dw1000_dev_rxdiag_t;
+    uint16_t    max_growth_cir;     // Channel Impulse Response max growth CIR
+} dw1000_dev_rxdiag_t;
 
 typedef struct _dw1000_dev_instance_t{
-    struct os_dev ioexp_dev;     /** Has to be here for cast in create_dev to work */
+    struct os_dev uwb_dev;     /** Has to be here for cast in create_dev to work */
     struct os_mutex *spi_mutex;  /** Pointer to global spi mutex if available  */
 
     
@@ -181,6 +197,7 @@ typedef struct _dw1000_dev_instance_t{
     dw1000_dev_control_t control_rx_context;
     dw1000_dev_control_t control_tx_context; 
     dw1000_dev_status_t status; 
+    dwt_config_t mac_config;
 }dw1000_dev_instance_t;
 
 /* Used to pass data to init function from bsp_hal */

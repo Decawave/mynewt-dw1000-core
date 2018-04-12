@@ -97,6 +97,8 @@ typedef enum _dw1000_start_rx_modes_t {
 
 
 //DW1000 SLEEP and WAKEUP configuration parameters
+#define DWT_LOADLDO      0x1000                      // Load LDO tune value from OTP
+#define DWT_LOADUCODE    0x0800                      // Load ucode from OTP
 #define DWT_PRESRV_SLEEP 0x0100                      // PRES_SLEEP - on wakeup preserve sleep bit
 #define DWT_LOADOPSET    0x0080                      // ONW_L64P - on wakeup load operating parameter set for 64 PSR
 #define DWT_CONFIG       0x0040                      // ONW_LDC - on wakeup restore (load) the saved configurations (from AON array into HIF)
@@ -109,10 +111,6 @@ typedef enum _dw1000_start_rx_modes_t {
 #define DWT_WAKE_CS      0x4                        // wake up on chip select
 #define DWT_WAKE_WK      0x2                        // wake up on WAKEUP PIN
 #define DWT_SLP_EN       0x1                        // enable sleep/deep sleep functionality
-
-//DW1000 INIT configuration parameters
-#define DWT_LOADUCODE     0x1
-#define DWT_LOADNONE      0x0
 
 //DW1000 OTP operating parameter set selection
 #define DWT_OPSET_64LEN   0x0
@@ -139,26 +137,6 @@ typedef struct _dw1000_mac_cb_data_t {
 
 // Call-back type for all events
 typedef void (*dw1000_mac_cb_t)(dw1000_dev_instance_t * inst, const dw1000_mac_cb_data_t *);
-
-/*! ------------------------------------------------------------------------------------------------------------------
- * Structure typedef: dwt_config_t
- *
- * Structure for setting device configuration via dwt_configure() function
- *
- */
-typedef struct _dwt_config_t {
-    uint8_t chan ;           //!< channel number {1, 2, 3, 4, 5, 7 }
-    uint8_t prf ;            //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
-    uint8_t txPreambLength ; //!< DWT_PLEN_64..DWT_PLEN_4096
-    uint8_t rxPAC ;          //!< Acquisition Chunk Size (Relates to RX preamble length)
-    uint8_t txCode ;         //!< TX preamble code
-    uint8_t rxCode ;         //!< RX preamble code
-    uint8_t nsSFD ;          //!< Boolean should we use non-standard SFD for better performance
-    uint8_t dataRate ;       //!< Data Rate {DWT_BR_110K, DWT_BR_850K or DWT_BR_6M8}
-    uint8_t phrMode ;        //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
-    uint16_t sfdTO ;         //!< SFD timeout value (in symbols)
-} dwt_config_t ;
-
 
 /*
 typedef struct _dw1000_mac_rxdiag_t {
@@ -213,6 +191,8 @@ dw1000_dev_status_t dw1000_enable_autoack(dw1000_dev_instance_t * inst, uint8_t 
 dw1000_dev_status_t dw1000_set_dblrxbuff(dw1000_dev_instance_t * inst, bool flag);
 void dw1000_set_callbacks(dw1000_dev_instance_t * inst, dw1000_dev_cb_t cb_TxDone, dw1000_dev_cb_t cb_RxOk, dw1000_dev_cb_t cb_RxTo, dw1000_dev_cb_t cb_RxErr);
 dw1000_dev_status_t dw1000_set_rx_timeout(dw1000_dev_instance_t * inst, uint16_t timeout);
+
+int dw1000_get_rssi(dw1000_dev_instance_t * inst, float *rssi);
     
 #define dw1000_set_preamble_timeout(counts) dw1000_write_reg(inst, DRX_CONF_ID, DRX_PRETOC_OFFSET, counts, sizeof(uint16_t))
 #define dw1000_read_rx(inst, buffer, rxBufferOffset, length) dw1000_read(inst, RX_BUFFER_ID,  rxBufferOffset, buffer,  length)
