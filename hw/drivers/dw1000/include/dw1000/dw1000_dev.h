@@ -139,11 +139,13 @@ typedef struct _dw1000_dev_instance_t{
     void (* rng_tx_final_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_interface_extension_cb) (struct _dw1000_dev_instance_t *);
   
+#if MYNEWT_VAL(DW1000_LWIP)
     void (* lwip_tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* lwip_rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* lwip_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
     void (* lwip_rx_error_cb) (struct _dw1000_dev_instance_t *);
-
+#endif
+    
     void (* ccp_rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* ccp_tx_complete_cb) (struct _dw1000_dev_instance_t *);
 
