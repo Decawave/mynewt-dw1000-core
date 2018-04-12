@@ -214,6 +214,7 @@ dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code){
 static void 
 rng_tx_final_cb(dw1000_dev_instance_t * inst){
 
+#ifdef DS_TWR_EXT_ENABLE
     dw1000_rng_instance_t * rng = inst->rng; 
     twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
 
@@ -225,6 +226,7 @@ rng_tx_final_cb(dw1000_dev_instance_t * inst){
     frame->spherical_variance.azimuth = -1;
     frame->spherical_variance.zenith = -1;
     frame->utime = os_cputime_ticks_to_usecs(os_cputime_get32());//dw1000_read_systime(inst)/128;
+#endif
 }
 
 static void 
@@ -246,8 +248,8 @@ rng_tx_complete_cb(dw1000_dev_instance_t * inst)
                     os_sem_release(&inst->rng->sem);  
                 }
         }
-    }
 #endif
+    }
     else if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){ 
         // Clock Calibration Packet Received
         if (inst->ccp_tx_complete_cb != NULL)
@@ -337,7 +339,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             break; 
                     
                         uint64_t request_timestamp = dw1000_read_rxtime(inst);  
-                        uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 15); 
+                        uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 16);
                         uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
         
                         frame->reception_timestamp = request_timestamp;
@@ -413,7 +415,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                                 break; 
 
                             uint64_t request_timestamp = dw1000_read_rxtime(inst);  
-                            uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 15); 
+                            uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 16);
                             uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
             
                             frame->reception_timestamp =  request_timestamp;
@@ -461,17 +463,17 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             frame->code = DWT_DS_TWR_T2;
 
                             uint64_t request_timestamp = dw1000_read_rxtime(inst);  
-                            uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 15); 
+                            uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 16);
                             uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
                             
                             frame->reception_timestamp = request_timestamp;
                             frame->transmission_timestamp = response_timestamp;
 
                             dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_final_t));
-                            dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true); 
-                            dw1000_set_wait4resp(inst, true);    
-                            dw1000_set_delay_start(inst, response_tx_delay);   
-                            dw1000_set_rx_timeout(inst, config->rx_timeout_period); 
+                            dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true);
+                            dw1000_set_wait4resp(inst, true);
+                            dw1000_set_delay_start(inst, response_tx_delay);
+                            dw1000_set_rx_timeout(inst, config->rx_timeout_period);
                         
                             if (dw1000_start_tx(inst).start_tx_error)
                                 os_sem_release(&rng->sem);  
@@ -539,7 +541,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                                 break; 
 
                             uint64_t request_timestamp = dw1000_read_rxtime(inst);  
-                            uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 15); 
+                            uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 16); 
                             uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
             
                             frame->reception_timestamp = request_timestamp;
@@ -586,7 +588,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             frame->code = DWT_DS_TWR_EXT_T2;
 
                             uint64_t request_timestamp = dw1000_read_rxtime(inst);  
-                            uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 15); 
+                            uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 16); 
                             uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
                             
                             frame->reception_timestamp = request_timestamp;

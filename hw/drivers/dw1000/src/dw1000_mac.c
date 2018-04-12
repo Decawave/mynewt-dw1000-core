@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <math.h>
 #include <os/os.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
@@ -208,6 +209,9 @@ dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *
     assert((config->phrMode == DWT_PHRMODE_STD) || (config->phrMode == DWT_PHRMODE_EXT));
 #endif
 
+    /* Keep a copy of the mac_config */
+    memcpy(&inst->mac_config, config, sizeof(dwt_config_t));
+    
     // For 110 kbps we need a special setup
     if(config->dataRate == DWT_BR_110K){
         inst->sys_cfg_reg |= SYS_CFG_RXM110K;
@@ -765,7 +769,10 @@ void dw1000_read_rxdiag(dw1000_dev_instance_t * inst, dw1000_dev_rxdiag_t * diag
     // Read the HW FP index
     diag->fp_idx = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
     diag->fp_amp = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_AMPL1_OFFSET, sizeof(uint16_t));
-    diag->rx_std = dw1000_read_reg(inst, RX_FQUAL_ID, 0, sizeof(uint16_t));   
+    diag->rx_std  = dw1000_read_reg(inst, RX_FQUAL_ID, 0, sizeof(uint16_t));
+    diag->fp_amp2 = dw1000_read_reg(inst, RX_FQUAL_ID, 2, sizeof(uint16_t));
+    diag->fp_amp3 = dw1000_read_reg(inst, RX_FQUAL_ID, 4, sizeof(uint16_t));
+    diag->max_growth_cir = dw1000_read_reg(inst, RX_FQUAL_ID, 6, sizeof(uint16_t));
     diag->preamble_cnt =  (dw1000_read_reg(inst, RX_FINFO_ID, 0, sizeof(uint32_t)) & RX_FINFO_RXPACC_MASK) >> RX_FINFO_RXPACC_SHIFT;
 }
 
@@ -901,8 +908,9 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
             inst->sys_status &= ~SYS_STATUS_AAT; // Clear AAT status bit in callback data register copy
         }
         // Call the corresponding ranging frame services callback if present
-        if(inst->rng_rx_complete_cb != NULL && inst->status.rx_ranging_frame)
+        if(inst->rng_rx_complete_cb != NULL && inst->status.rx_ranging_frame) {
             inst->rng_rx_complete_cb(inst);
+        }
         // Call the corresponding non-ranging frame callback if present
         else if(inst->rx_complete_cb != NULL)
             inst->rx_complete_cb(inst);        
@@ -981,3 +989,35 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
 }
 
 
+/*! 
+ * @fn dw1000_get_rssi(inst, *rssi)
+ *
+ * @brief calculates rssi from last RX in dBm
+ *
+ * Needs config.rxdiag_enable to be set
+ *
+ * Returns 0 on success
+ */
+int
+dw1000_get_rssi(dw1000_dev_instance_t * inst, float *rssi)
+{
+    /* Check if we're reading the diagnostics */
+    if (!inst->config.rxdiag_enable) {
+        return 1;
+    }
+    if (!rssi) {
+        return 1;
+    }
+    
+    float A = (inst->mac_config.prf == DWT_PRF_16M) ? 115.72 : 122.74;
+    if (!inst->rxdiag.max_growth_cir) {
+        *rssi = -A;
+        return 0;
+    }
+
+    float N = inst->rxdiag.preamble_cnt;
+    float C = inst->rxdiag.max_growth_cir;
+    float v = C*0x20000/(N*N);
+    *rssi = 10.0*log10f(v) - A;
+    return 0;
+}

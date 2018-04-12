@@ -186,7 +186,10 @@ retry:
         goto retry;
     }
 
-    assert(inst->status.initialized);
+    if(!inst->status.initialized)
+    {
+        return OS_TIMEOUT;
+    }
     inst->timestamp = (uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN);
 
     inst->spi_settings.baudrate = MYNEWT_VAL(DW1000_DEVICE_BAUDRATE_HIGH);
@@ -251,20 +254,26 @@ void
 dw1000_dev_configure_sleep(dw1000_dev_instance_t * inst, uint16_t mode, uint8_t wake)
 {
     inst->sleep_mode = mode;
-    dw1000_write(inst, AON_ID, AON_WCFG_OFFSET, (uint8_t*)&mode, sizeof(uint16_t));
-    dw1000_write(inst, AON_ID, AON_CFG0_OFFSET, &wake, sizeof(uint8_t));
+    dw1000_write_reg(inst, AON_ID, AON_WCFG_OFFSET, mode, sizeof(uint16_t));
+    dw1000_write_reg(inst, AON_ID, AON_CFG0_OFFSET, wake, sizeof(uint16_t));
 }
 
 
 dw1000_dev_status_t
 dw1000_dev_enter_sleep(dw1000_dev_instance_t * inst)
 {
-    uint8_t buf[1];
-    buf[0] = 0x00;
-    dw1000_write(inst, AON_ID,AON_CTRL_OFFSET,buf,1);
-    buf[0] = 0x02;
-    dw1000_write(inst, AON_ID,AON_CTRL_OFFSET,buf,1);
+    // Critical region, atomic lock with mutex
+    os_error_t err = os_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
+    assert(err == OS_OK);
+    
+    /* Upload always on array configuration and enter sleep */
+    dw1000_write_reg(inst, AON_ID, AON_CTRL_OFFSET, 0x0, sizeof(uint16_t));
+    dw1000_write_reg(inst, AON_ID, AON_CTRL_OFFSET, AON_CTRL_SAVE, sizeof(uint16_t));
     inst->status.sleeping = 1;
+
+    // Critical region, unlock mutex
+    err = os_mutex_release(&inst->mutex);
+    assert(err == OS_OK);
     return inst->status;
 }
 
@@ -273,13 +282,30 @@ dw1000_dev_status_t
 dw1000_dev_wakeup(dw1000_dev_instance_t * inst)
 {
     int timeout=5;
-    uint32_t devid = dw1000_read_reg(inst, DEV_ID_ID, 0, sizeof(uint32_t));
+    uint32_t devid;
+    // Critical region, atomic lock with mutex
+    os_error_t err = os_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
+    assert(err == OS_OK);
+
+    devid = dw1000_read_reg(inst, DEV_ID_ID, 0, sizeof(uint32_t));
+
     while (devid != 0xDECA0130 && --timeout)
     {
         hal_dw1000_wakeup(inst);
         devid = dw1000_read_reg(inst, DEV_ID_ID, 0, sizeof(uint32_t));
     }
     inst->status.sleeping = (devid != DWT_DEVICE_ID);
+    dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_SLP2INIT, sizeof(uint32_t));
+    dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_ERR, sizeof(uint32_t));
+
+    /* Antenna delays lost in deep sleep ? */
+    dw1000_phy_set_rx_antennadelay(inst, inst->rx_antenna_delay);
+    dw1000_phy_set_tx_antennadelay(inst, inst->tx_antenna_delay);
+    
+    // Critical region, unlock mutex
+    err = os_mutex_release(&inst->mutex);
+    assert(err == OS_OK);
+    //hal_gpio_irq_enable(inst->irq_pin);
     return inst->status;
 }
 
@@ -316,4 +342,5 @@ dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, int enable)
     }
     dw1000_write(inst, PMSC_ID, PMSC_CTRL1_OFFSET, (uint8_t*)&reg, sizeof(uint32_t));
 }
+
 

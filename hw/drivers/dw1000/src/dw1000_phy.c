@@ -51,7 +51,7 @@ inline void dw1000_phy_sysclk_PLL(dw1000_dev_instance_t * inst){
 }
 
 // Set system clock to LDE
-inline void dw1000_phy_sysclk_LDE(dw1000_dev_instance_t * inst){
+void dw1000_phy_sysclk_LDE(dw1000_dev_instance_t * inst){
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, 0x01, sizeof(uint8_t));
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET + 1 , 0x03, sizeof(uint8_t));
 }
@@ -292,7 +292,7 @@ void dw1000_phy_forcetrxoff(dw1000_dev_instance_t * inst)
     // event has just happened before the radio was disabled)
     // thus we need to disable interrupt during this operation
 
-    os_error_t err = os_mutex_pend(&inst->mutex, 0);
+    os_error_t err = os_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
     assert(err == OS_OK);
 
     dw1000_write_reg(inst, SYS_MASK_ID, 0, 0, sizeof(uint32_t)) ; // Clear interrupt mask - so we don't get any unwanted events
@@ -340,7 +340,7 @@ void dw1000_phy_forcetrxoff(dw1000_dev_instance_t * inst)
 void dw1000_phy_interrupt_mask(dw1000_dev_instance_t * inst, uint32_t bitmask, uint8_t enable)
 {
     // Critical region, atomic lock with mutex
-    os_error_t err = os_mutex_pend(&inst->mutex, 0);
+    os_error_t err = os_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
     assert(err == OS_OK);
 
     uint32_t mask = dw1000_read_reg(inst, SYS_MASK_ID, 0, sizeof(uint32_t)) ; // Read register

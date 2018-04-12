@@ -98,10 +98,12 @@ typedef struct _twr_data_t{
 typedef union {
     struct _twr_frame_t{
         struct _twr_frame_final_t;
+#ifdef DS_TWR_EXT_ENABLE
         union {
             struct _twr_data_t;
             uint8_t payload[sizeof(struct _twr_data_t)];
         };
+#endif
     } __attribute__((__packed__, aligned(1)));
     uint8_t array[sizeof(struct _twr_frame_t)];
 } twr_frame_t;
