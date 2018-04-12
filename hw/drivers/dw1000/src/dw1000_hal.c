@@ -118,6 +118,7 @@ hal_dw1000_reset(dw1000_dev_instance_t * inst)
 
     hal_gpio_write(inst->rst_pin, 0);
     hal_gpio_write(inst->rst_pin, 1);
+    hal_gpio_init_in(inst->rst_pin, HAL_GPIO_PULL_NONE);
 
     os_time_delay(2 * OS_TICKS_PER_SEC / 1000);
 }
@@ -200,4 +201,12 @@ hal_dw1000_wakeup(dw1000_dev_instance_t * inst)
     os_cputime_delay_usecs(5000);
 
     OS_EXIT_CRITICAL(sr);
+}
+
+/* Read the current level of the rst pin.
+ * When sleeping dw1000 will let this pin should go low */
+int
+hal_dw1000_get_rst(dw1000_dev_instance_t * inst)
+{
+    return hal_gpio_read(inst->rst_pin);
 }
