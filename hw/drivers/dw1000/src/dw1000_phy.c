@@ -112,7 +112,6 @@ dw1000_dev_status_t dw1000_phy_init(dw1000_dev_instance_t * inst, dw1000_phy_txr
         dw1000_write_reg(inst, OTP_IF_ID, OTP_SF, OTP_SF_LDO_KICK, sizeof(uint8_t)); // Set load LDE kick bit
         inst->status.wakeup_LLDO = 1; // LDO tune must be kicked at wake-up
     }
-
     // Load Part and Lot ID from OTP
     inst->partID = _dw1000_otp_read(inst, OTP_PARTID_ADDRESS);
     inst->lotID = _dw1000_otp_read(inst, OTP_LOTID_ADDRESS);
@@ -301,6 +300,7 @@ void dw1000_phy_forcetrxoff(dw1000_dev_instance_t * inst)
     dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_ALL_TX | SYS_STATUS_ALL_RX_ERR | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_GOOD), sizeof(uint32_t));
     dw1000_sync_rxbufptrs(inst);
     dw1000_write_reg(inst, SYS_MASK_ID, 0, mask, sizeof(uint32_t)); // Restore mask to what it was
+    
     // Enable/restore interrupts again...
     err = os_mutex_release(&inst->mutex);
     assert(err == OS_OK);

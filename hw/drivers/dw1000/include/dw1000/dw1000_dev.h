@@ -154,6 +154,7 @@ typedef struct _dw1000_dev_instance_t{
 #if MYNEWT_VAL(DW1000_PAN)
     void (* pan_rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* pan_tx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* pan_rx_timeout_cb) (struct _dw1000_dev_instance_t *);    
 #endif
 
     union {

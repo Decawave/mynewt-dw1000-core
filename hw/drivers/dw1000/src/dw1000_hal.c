@@ -120,7 +120,7 @@ hal_dw1000_reset(dw1000_dev_instance_t * inst)
     hal_gpio_write(inst->rst_pin, 1);
     hal_gpio_init_in(inst->rst_pin, HAL_GPIO_PULL_NONE);
 
-    os_time_delay(2 * OS_TICKS_PER_SEC / 1000);
+    os_cputime_delay_usecs(5000);
 }
 
 void 

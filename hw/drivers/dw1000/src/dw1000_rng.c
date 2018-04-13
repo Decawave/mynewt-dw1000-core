@@ -267,15 +267,21 @@ rng_tx_complete_cb(dw1000_dev_instance_t * inst)
 
 static void 
 rng_rx_timeout_cb(dw1000_dev_instance_t * inst){
-        os_error_t err = os_sem_release(&inst->rng->sem);
-        assert(err == OS_OK);
-
+     
+    if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_TAG_64){ 
+#if MYNEWT_VAL(DW1000_PAN)
+        if (inst->pan_rx_timeout_cb != NULL)
+            inst->pan_rx_timeout_cb(inst);
+#endif
+    }
+    os_error_t err = os_sem_release(&inst->rng->sem);
+    assert(err == OS_OK);
 }
 
 static void 
 rng_rx_error_cb(dw1000_dev_instance_t * inst){
-        os_error_t err = os_sem_release(&inst->rng->sem);   
-        assert(err == OS_OK);
+    os_error_t err = os_sem_release(&inst->rng->sem);   
+    assert(err == OS_OK);
 }
 
 static void 

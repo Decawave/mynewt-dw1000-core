@@ -2,22 +2,22 @@
 syscfg.defs:
     DW1000_SS_TWR_ENABLED:
         description: 'Single sided TWR Enabled'
-        value:  1
+        value: 1
     DW1000_DS_TWR_ENABLED:
         description: 'Double sided TWR Enabled'
-        value:  1
+        value: 1
     DW1000_DS_TWR_EXT_ENABLED:
         description: 'Double sided extended mode Enable'
-        value:  1
+        value: 1
     DW1000_LWIP:
         description: 'Enable LWIP functionality'
-        value:  0
+        value: 0
     DW1000_CLOCK_CALIBRATION:
         description: 'Enable wireless clock calibration'
-        value:  0
+        value: 0
     DW1000_PAN:
         description: 'Private Area Network functionality'
-        value:  0
+        value: 0
     LOCAL_COORDINATE_X:
         description: >
             Default Anchor X Coordinate  
@@ -43,7 +43,7 @@ syscfg.defs:
     PAN_PERIOD:
         description: >
             PAN Discovery Packets Period 
-        value: ((uint32_t){0x20000})
+        value: ((uint32_t){0x200000})
     OS_LATENCY:
         description: >
             OS Latency Guardband 
