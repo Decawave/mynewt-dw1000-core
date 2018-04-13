@@ -26,6 +26,10 @@ pkg.keywords:
     - uwb
 pkg.deps:
     - "@apache-mynewt-core/hw/hal"
+
+pkg.deps.DW1000_LWIP:
+    - "@mynewt-dw1000-core/net/ip/lwip_base"
+
 pkg.req_apis: 
 
 pkg.init:

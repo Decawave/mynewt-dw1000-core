@@ -33,8 +33,10 @@
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_pan.h>
 #include <dw1000/dw1000_ftypes.h>
+
+#if MYNEWT_VAL(DW1000_PAN)
+#include <dw1000/dw1000_pan.h>
 
 
 static pan_frame_t frames[] = {
@@ -398,3 +400,5 @@ dw1000_pan_stop(dw1000_dev_instance_t * inst){
     pan->status.timer_enabled = false;
     os_callout_stop(&pan_callout_timer);
 }
+
+#endif /* MYNEWT_VAL(DW1000_PAN) */

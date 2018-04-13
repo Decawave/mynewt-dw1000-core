@@ -139,16 +139,22 @@ typedef struct _dw1000_dev_instance_t{
     void (* rng_tx_final_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_interface_extension_cb) (struct _dw1000_dev_instance_t *);
   
+#if MYNEWT_VAL(DW1000_LWIP)
     void (* lwip_tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* lwip_rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* lwip_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
     void (* lwip_rx_error_cb) (struct _dw1000_dev_instance_t *);
+#endif
 
+#if MYNEWT_VAL(DW1000_CLOCK_CALIBRATION)
     void (* ccp_rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* ccp_tx_complete_cb) (struct _dw1000_dev_instance_t *);
+#endif
 
+#if MYNEWT_VAL(DW1000_PAN)
     void (* pan_rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* pan_tx_complete_cb) (struct _dw1000_dev_instance_t *);
+#endif
 
     union {
         uint16_t fctrl;                         // Reported frame control 
@@ -162,7 +168,9 @@ typedef struct _dw1000_dev_instance_t{
     uint32_t device_id;
     uint16_t my_short_address;
     uint64_t my_long_address;
+#if MYNEWT_VAL(DW1000_CLOCK_CALIBRATION)
     uint64_t clock_master;
+#endif
     uint64_t timestamp;
     uint64_t rxtimestamp;
     uint64_t txtimestamp;
@@ -189,9 +197,15 @@ typedef struct _dw1000_dev_instance_t{
     struct os_task interrupt_task_str;
     os_stack_t interrupt_task_stack[DW1000_DEV_TASK_STACK_SZ];
     struct _dw1000_rng_instance_t * rng;
+#if MYNEWT_VAL(DW1000_LWIP)
     struct _dw1000_lwip_instance_t * lwip;
+#endif
+#if MYNEWT_VAL(DW1000_CLOCK_CALIBRATION)
     struct _dw1000_ccp_instance_t * ccp;
+#endif
+#if MYNEWT_VAL(DW1000_PAN)
     struct _dw1000_pan_instance_t * pan;
+#endif
     dw1000_dev_rxdiag_t rxdiag;
     dw1000_dev_config_t config;
     dw1000_dev_control_t control;

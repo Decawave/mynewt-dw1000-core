@@ -34,6 +34,8 @@
 #include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_ftypes.h>
+
+#if MYNEWT_VAL(DW1000_CLOCK_CALIBRATION)
 #include <dw1000/dw1000_ccp.h>
 
 static ccp_frame_t frames[] = {
@@ -388,3 +390,5 @@ void
 dw1000_ccp_stop(dw1000_dev_instance_t * inst){
     os_callout_stop(&ccp_callout_timer);
 }
+
+#endif /* MYNEWT_VAL(DW1000_CLOCK_CALIBRATION) */
