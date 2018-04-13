@@ -297,12 +297,9 @@ void dw1000_phy_forcetrxoff(dw1000_dev_instance_t * inst)
 
     dw1000_write_reg(inst, SYS_MASK_ID, 0, 0, sizeof(uint32_t)) ; // Clear interrupt mask - so we don't get any unwanted events
     dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint8_t)SYS_CTRL_TRXOFF, sizeof(uint8_t)) ; // Disable the radio
-
     // Forcing Transceiver off - so we do not want to see any new events that may have happened
     dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_ALL_TX | SYS_STATUS_ALL_RX_ERR | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_GOOD), sizeof(uint32_t));
-
     dw1000_sync_rxbufptrs(inst);
-
     dw1000_write_reg(inst, SYS_MASK_ID, 0, mask, sizeof(uint32_t)); // Restore mask to what it was
     // Enable/restore interrupts again...
     err = os_mutex_release(&inst->mutex);

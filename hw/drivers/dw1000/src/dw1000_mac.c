@@ -492,6 +492,51 @@ dw1000_dev_status_t dw1000_start_rx(dw1000_dev_instance_t * inst)
     return inst->status;
 } 
 
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn dw1000_restart_rx()
+ *
+ * @brief This function attempts to restore the transceiver to the state prior 
+ * to the recent interrupt. Restart_rx  differs from start_rx insofar as errors 
+ * are not cleared. 
+ *
+ * input parameters
+ * 
+ */
+dw1000_dev_status_t dw1000_restart_rx(dw1000_dev_instance_t * inst, dw1000_dev_control_t control)
+{
+    uint32_t sys_ctrl_reg = SYS_CTRL_RXENAB;
+    if (control.start_rx_syncbuf_enabled)
+        dw1000_sync_rxbufptrs(inst);
+    if (control.delay_start_enabled) 
+        sys_ctrl_reg |= SYS_CTRL_RXDLYE;
+
+    dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sys_ctrl_reg, sizeof(uint16_t));
+    if (control.delay_start_enabled){ // check for errors
+        uint8_t sys_status_reg = dw1000_read_reg(inst, SYS_STATUS_ID, 3, sizeof(uint8_t));  // Read 1 byte at offset 3 to get the 4th byte out of 5
+        inst->status.start_rx_error = (sys_status_reg & (SYS_STATUS_HPDWARN >> 24)) != 0;   
+        if (inst->status.start_rx_error){   // if delay has passed do immediate RX on unless DWT_IDLE_ON_DLY_ERR is true
+            dw1000_phy_forcetrxoff(inst);   // turn the delayed receive off
+            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, inst->sys_ctrl_reg, sizeof(uint16_t)); // turn on receiver
+        }
+    }else
+        inst->status.start_rx_error = 0;
+
+/*
+    dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, inst->sys_ctrl_reg, sizeof(uint16_t));
+    if (inst->control.delay_start_enabled){ // check for errors
+        uint8_t sys_status_reg = dw1000_read_reg(inst, SYS_STATUS_ID, 3, sizeof(uint8_t));  // Read 1 byte at offset 3 to get the 4th byte out of 5
+        inst->status.start_rx_error = (sys_status_reg & (SYS_STATUS_HPDWARN >> 24)) != 0;   
+        if (inst->status.start_rx_error){   // if delay has passed do immediate RX on unless DWT_IDLE_ON_DLY_ERR is true
+            dw1000_phy_forcetrxoff(inst);   // turn the delayed receive off
+            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, inst->sys_ctrl_reg, sizeof(uint16_t)); // turn on receiver
+        }
+    }else
+        inst->status.start_rx_error = 0;
+*/
+    return inst->status;
+} 
+
 /*! ------------------------------------------------------------------------------------------------------------------
  * @fn dw1000_set_wait4resp()
  *
@@ -811,10 +856,7 @@ void dw1000_tasks_init(dw1000_dev_instance_t * inst)
 
         hal_gpio_irq_init(inst->irq_pin, dw1000_irq, inst, HAL_GPIO_TRIG_RISING, HAL_GPIO_PULL_UP);
         hal_gpio_irq_enable(inst->irq_pin);
-    }
-
-    //dw1000_phy_interrupt_mask(inst, DWT_INT_TFRS | DWT_INT_RFCG | DWT_INT_RFTO | DWT_INT_RXPTO | DWT_INT_RPHE | DWT_INT_RFCE | DWT_INT_RFSL | DWT_INT_SFDT | DWT_INT_ARFE, true);
-    
+    }    
     dw1000_phy_interrupt_mask(inst, SYS_MASK_MRXFCG | SYS_MASK_MTXFRS | SYS_MASK_ALL_RX_TO | SYS_MASK_ALL_RX_ERR, true);
 }
 

@@ -12,7 +12,7 @@ syscfg.defs:
     DW1000_LWIP_ENABLED:
         description: 'Enable LWIP functionality'
         value:  0
-        
+  
     LOCAL_COORDINATE_X:
         description: >
             Default Anchor X Coordinate  

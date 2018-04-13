@@ -182,6 +182,8 @@ dw1000_dev_status_t dw1000_start_tx(dw1000_dev_instance_t * inst);
 dw1000_dev_status_t dw1000_set_delay_start(dw1000_dev_instance_t * inst, uint64_t delay);
 dw1000_dev_status_t dw1000_set_wait4resp(dw1000_dev_instance_t * inst, bool enable);
 dw1000_dev_status_t dw1000_start_rx(dw1000_dev_instance_t * inst);
+//dw1000_dev_status_t dw1000_restart_rx(dw1000_dev_instance_t * inst, uint32_t sys_ctrl);
+dw1000_dev_status_t dw1000_restart_rx(dw1000_dev_instance_t * inst, dw1000_dev_control_t control);
 void dw1000_write_tx_fctrl(dw1000_dev_instance_t * inst, uint16_t txFrameLength, uint16_t txBufferOffset, bool ranging);
 void dw1000_read_rx(dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t rxBufferOffset, uint16_t length);
 dw1000_dev_status_t dw1000_sync_rxbufptrs(dw1000_dev_instance_t * inst);

@@ -243,10 +243,9 @@ rng_tx_complete_cb(dw1000_dev_instance_t * inst)
 #ifdef  DS_TWR_ENABLE
         else{ 
             twr_frame_t * frame = rng->frames[(rng->idx+1)%rng->nframes];
-            if(inst->rng->nframes > 1) 
-                if (frame->code ==  DWT_DS_TWR_FINAL || frame->code ==  DWT_DS_TWR_EXT_FINAL){
+            if (frame->code ==  DWT_DS_TWR_FINAL || frame->code ==  DWT_DS_TWR_EXT_FINAL){
                     os_sem_release(&inst->rng->sem);  
-                }
+            }
         }
 #endif
     }
@@ -280,6 +279,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
 {
     uint16_t code, dst_address; 
     dw1000_rng_config_t * config = inst->rng->config;
+    dw1000_dev_control_t control = inst->control_rx_context;
+
 
     if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){ 
         // CCP Packet Received
@@ -287,36 +288,36 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
         dw1000_read_rx(inst, (uint8_t *) &clock_master, offsetof(ieee_blink_frame_t,long_address), sizeof(uint64_t));    
        
         if (inst->ccp_rx_complete_cb != NULL && inst->clock_master == clock_master)
-            inst->ccp_rx_complete_cb(inst);   
-        inst->control = inst->control_rx_context;
-        dw1000_start_rx(inst); 
+            inst->ccp_rx_complete_cb(inst); 
+        
+        control = inst->control_rx_context;
+        if (dw1000_restart_rx(inst, control).start_rx_error)
+            inst->rng_rx_error_cb(inst);  
         return;  
     }
     else if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_TAG_64){ 
         // PAN Discovery Packet Received
         if (inst->pan_rx_complete_cb != NULL)
-            inst->pan_rx_complete_cb(inst); 
-        inst->control = inst->control_rx_context;
-        dw1000_start_rx(inst); 
+            inst->pan_rx_complete_cb(inst);     
+        if (dw1000_restart_rx(inst, control).start_rx_error)  
+            inst->rng_rx_error_cb(inst);          
         return;  
     }
     else if (inst->fctrl == FCNTL_IEEE_RANGE_16){ 
         dw1000_read_rx(inst, (uint8_t *) &code, offsetof(ieee_rng_request_frame_t,code), sizeof(uint16_t));
         dw1000_read_rx(inst, (uint8_t *) &dst_address, offsetof(ieee_rng_request_frame_t,dst_address), sizeof(uint16_t));    
     }else{
+        // Unrecognized range request, kicking external
         if (inst->rng_interface_extension_cb != NULL)
-            inst->rng_interface_extension_cb(inst);
-        else{
-            inst->control = inst->control_rx_context;
-            dw1000_start_rx(inst); 
-        }
+            inst->rng_interface_extension_cb(inst); 
         return;
     }
 
     // IEEE 802.15.4 standard ranging frames, software MAC filtering
     if (dst_address != inst->my_short_address){
         inst->control = inst->control_rx_context;
-        dw1000_start_rx(inst); 
+        if (dw1000_restart_rx(inst, control).start_rx_error)  
+            inst->rng_rx_error_cb(inst);    
         return;
     }  
 
