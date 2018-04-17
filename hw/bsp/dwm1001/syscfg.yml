@@ -73,9 +73,6 @@ syscfg.defs:
     DW1000_DEVICE_0_IRQ:
         description: 'Interrupt Request Pin'
         value:  19
-    DW1000_DEV_TASK_PRIO:
-        description: 'Task priority'
-        value:  5
     DW1000_DEVICE_BAUDRATE_LOW:
         description: 'BAUDRATE_LOW 2000kHz'
         value: 2000

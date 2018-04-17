@@ -40,7 +40,7 @@ extern "C" {
 #define DWT_TIME_UNITS          (1.0/499.2e6/128.0)
 
 #define DW1000_DEV_TASK_PRIO        MYNEWT_VAL(DW1000_DEV_TASK_PRIO)
-#define DW1000_DEV_TASK_STACK_SZ    512
+#define DW1000_DEV_TASK_STACK_SZ    MYNEWT_VAL(DW1000_DEV_TASK_STACK_SZ)
 
 typedef enum _dw1000_dev_modes_t{
     DWT_BLOCKING,
