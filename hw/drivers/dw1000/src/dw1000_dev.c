@@ -157,6 +157,9 @@ dw1000_dev_init(struct os_dev *odev, void *arg)
 
     os_error_t err = os_mutex_init(&inst->mutex);
     assert(err == OS_OK);
+
+    err = os_sem_init(&inst->sem, 0x1); 
+    assert(err == OS_OK);
     
     return OS_OK;
 }

@@ -347,8 +347,7 @@ pan_rx_timeout_cb(dw1000_dev_instance_t * inst){
 static dw1000_pan_status_t 
 dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 
-    os_error_t err = os_sem_pend(&inst->rng->sem,  OS_TIMEOUT_NEVER);
-    err |= os_sem_pend(&inst->pan->sem,  OS_TIMEOUT_NEVER);
+    os_error_t err = os_sem_pend(&inst->pan->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
     //printf("dw1000_pan_blink\n");  
@@ -382,7 +381,6 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
         os_sem_release(&inst->pan->sem);
         assert(err == OS_OK);
     }
-   os_sem_release(&inst->rng->sem);
    return pan->status;
 }
 

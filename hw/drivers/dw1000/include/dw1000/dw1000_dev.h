@@ -68,7 +68,6 @@ typedef struct _dw1000_dev_status_t{
     uint32_t wakeup_LLDO:1;
     uint32_t rx_ranging_frame:1;     //Range Request bit set for inbound frame
     uint32_t tx_ranging_frame:1;     //Range Request bit set for outbound frame
-    uint32_t request_timeout:1;
     uint32_t sleeping:1;
 }dw1000_dev_status_t;
 
@@ -118,8 +117,8 @@ typedef struct _dw1000_dev_rxdiag_t{
 typedef struct _dw1000_dev_instance_t{
     struct os_dev uwb_dev;     /** Has to be here for cast in create_dev to work */
     struct os_mutex *spi_mutex;  /** Pointer to global spi mutex if available  */
+    struct os_sem sem;  // semphore for low level mac/phy functions. 
 
-    
     void (* tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rx_timeout_cb) (struct _dw1000_dev_instance_t *);
