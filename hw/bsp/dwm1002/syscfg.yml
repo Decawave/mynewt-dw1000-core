@@ -75,14 +75,14 @@ syscfg.defs:
         description: 'Using SPI0'
         value:  0
     DW1000_DEVICE_0_SS:
-        description: 'Slave Select Pin'
-        value:  17
+        description: 'Slave Select Pin, DW_CS_A, P0.25'
+        value:  25
     DW1000_DEVICE_0_RST:
-        description: 'Reset Pin'
-        value:  24
+        description: 'Reset Pin, DW_RST_A, P0.22'
+        value:  22
     DW1000_DEVICE_0_IRQ:
-        description: 'Interrupt Request Pin'
-        value:  19
+        description: 'Interrupt Request Pin, DW_IRQ_A, P0.23'
+        value:  23
     DW1000_DEVICE_BAUDRATE_LOW:
         description: 'BAUDRATE_LOW 2000kHz'
         value: 2000
@@ -103,13 +103,13 @@ syscfg.defs:
         description: 'Using SPI0'
         value:  0
     DW1000_DEVICE_1_SS:
-        description: 'Slave Select Pin, P1.05 = 32+5'
-        value:  37 
+        description: 'Slave Select Pin, DW_CS_B, P1.01 = 32+1'
+        value:  33
     DW1000_DEVICE_1_RST:
-        description: 'Reset Pin, P1.06 = 32+6'
-        value:  38
+        description: 'Reset Pin, DW_RST_B, P1.02 = 32+2'
+        value:  34
     DW1000_DEVICE_1_IRQ:
-        description: 'Interrupt Request Pin, P1.10 = 32+10'
+        description: 'Interrupt Request Pin, DW_IRQ_B, P1.10 = 32+10'
         value:  42
     DW1000_DEVICE_1_TX_ANT_DLY:
         description: 'TX_ANT_DLY'
@@ -117,6 +117,23 @@ syscfg.defs:
     DW1000_DEVICE_1_RX_ANT_DLY:
         description: 'RX_ANT_DLY'
         value: 0x4050
+    
+    DW1000_DEV_TASK_STACK_SZ:
+        description: 'DEV STACK SIZE remove'
+        value: 128
+    DW1000_DEV_TASK_PRIO:
+        description: 'DEV_TASK_PRIO remove'
+        value: 5
+
+    DW1000_AOA_SYNC_EN:
+        description: 'Sync Enable Pin P1.13, 32+13'
+        value: 45
+    DW1000_AOA_SYNC_CLR:
+        description: 'Sync CLear Pin P1.14, 32+14'
+        value: 46
+    DW1000_AOA_SYNC:
+        description: 'Sync Pin P1.15, 32+15'
+        value: 47
 
     LSM6DSL_ONB:
         description: 'lsm6dsl 3axis acc + 3axis gyro'

@@ -22,7 +22,8 @@
 #include <assert.h>
 #include <string.h>
 #include <sysinit/sysinit.h>
-#include <nrf52.h>
+//#include <nrf52.h>
+#include <nrf52840.h>
 #include "os/os_cputime.h"
 #include "syscfg/syscfg.h"
 #include "sysflash/sysflash.h"
@@ -36,7 +37,8 @@
 #include "hal/hal_gpio.h"
 #include "mcu/nrf52_hal.h"
 
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+
+#if MYNEWT_VAL(DW1000_DEVICE_0) || MYNEWT_VAL(DW1000_DEVICE_1)
 #include "dw1000/dw1000_dev.h"
 #include "dw1000/dw1000_hal.h"
 #endif
@@ -80,9 +82,9 @@ struct os_mutex g_spi0_mutex;
  * and is handled outside the SPI routines.
  */
 static const struct nrf52_hal_spi_cfg os_bsp_spi0m_cfg = {
-    .sck_pin      =  16,
-    .mosi_pin     =  20,
-    .miso_pin     =  18,
+    .sck_pin      =  16,    // P0.16    
+    .mosi_pin     =  20,    // P0.20
+    .miso_pin     =  21,    // P0.21
 };
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)

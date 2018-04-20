@@ -51,7 +51,8 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .dblbuffon_enabled = 1,
                 .rxauto_enable = 1
             },
-            .spi_mutex = 0
+            .spi_mutex = 0,
+            .interrupt_task_prio = 5
     },
     #if  MYNEWT_VAL(DW1000_DEVICE_1)
     [1] = {
@@ -67,7 +68,13 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_1_RX_ANT_DLY),
             .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_1_TX_ANT_DLY),
             .status = {0},
-            .spi_mutex = 0
+            .config = {
+                .rxdiag_enable = 1,
+                .dblbuffon_enabled = 1,
+                .rxauto_enable = 1
+            },
+            .spi_mutex = 0,
+            .interrupt_task_prio = 6
     },
     #if  MYNEWT_VAL(DW1000_DEVICE_2)
     [2] = {
@@ -83,7 +90,13 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_2_RX_ANT_DLY),
             .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_2_TX_ANT_DLY),
             .status = {0},
+             .config = {
+                .rxdiag_enable = 1,
+                .dblbuffon_enabled = 1,
+                .rxauto_enable = 1
+            },
             .spi_mutex = 0
+            .interrupt_task_prio = 7
     }
     #endif
     #endif

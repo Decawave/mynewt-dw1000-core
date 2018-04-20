@@ -86,6 +86,24 @@ syscfg.defs:
         description: 'RX_ANT_DLY'
         value: 0x4010
 
+    DW1000_AOA_SYNC_EN:
+        description: 'Sync Enable Pin P1.13, 32+13'
+        value: 45
+    DW1000_AOA_SYNC_CLR:
+        description: 'Sync CLear Pin P1.14, 32+14'
+        value: 46
+    DW1000_AOA_SYNC:
+        description: 'Sync Pin P1.15, 32+15'
+        value: 47
+
+
+    DW1000_DEV_TASK_STACK_SZ:
+        description: 'DEV STACK SIZE remove'
+        value: 128
+    DW1000_DEV_TASK_PRIO:
+        description: 'DEV_TASK_PRIO remove'
+        value: 5
+
 syscfg.defs.BLE_LP_CLOCK:
     TIMER_0:
         value: 0

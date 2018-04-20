@@ -353,3 +353,29 @@ void dw1000_phy_interrupt_mask(dw1000_dev_instance_t * inst, uint32_t bitmask, u
     assert(err == OS_OK);
 }
 
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn dw1000_phy_external_sync(dw1000_dev_instance_t * inst, uint8_t delay, bool enable)
+ *
+ * @brief This feature is used to synchronise DW1000 with external clocks or events or with other DW1000’s. 
+ * For example, this would be required in a TDOA RTLS system employing wired clock synchronisation of the 
+ * anchor nodes or AoA node for phase measurement.
+ * 
+ * @param inst    -  dw1000_dev_instance_t pointer
+ * @param delay   -  To configure DW1000 for OSTR mode, the delay value is set to the desired delay value
+ * @param enable  -  true/false 
+ * 
+ * no return value
+ */
+void dw1000_phy_external_sync(dw1000_dev_instance_t * inst, uint8_t delay, bool enable){
+
+    uint16_t reg = dw1000_read_reg(inst, EXT_SYNC_ID, EC_CTRL_OFFSET, sizeof(uint16_t));
+    if (enable) {
+        reg &= EC_CTRL_WAIT_MASK; //clear timer value, clear OSTRM
+        reg |= EC_CTRL_OSTRM;
+        reg |= ((((uint16_t) delay) & 0xff) << 3); //set new timer value
+
+    }else {
+        reg &= EC_CTRL_WAIT_MASK ; //clear timer value, clear OSTRM
+    }    
+    dw1000_write_reg(inst, EXT_SYNC_ID, EC_CTRL_OFFSET, reg, sizeof(uint16_t));
+}

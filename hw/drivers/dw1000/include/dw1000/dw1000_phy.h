@@ -97,6 +97,8 @@ void dw1000_phy_interrupt_mask(dw1000_dev_instance_t * inst, uint32_t bitmask, u
 float dw1000_phy_read_wakeuptemp_SI(dw1000_dev_instance_t * inst);
 float dw1000_phy_read_read_wakeupvbat_SI(dw1000_dev_instance_t * inst);
 
+void dw1000_phy_external_sync(dw1000_dev_instance_t * inst, uint8_t delay, bool enable);
+
 #ifdef __cplusplus
 }
 #endif

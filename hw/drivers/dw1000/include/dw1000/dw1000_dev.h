@@ -195,6 +195,7 @@ typedef struct _dw1000_dev_instance_t{
     struct os_eventq interrupt_eventq;
     struct os_event interrupt_ev;
     struct os_task interrupt_task_str;
+    uint8_t interrupt_task_prio;
     os_stack_t interrupt_task_stack[DW1000_DEV_TASK_STACK_SZ];
     struct _dw1000_rng_instance_t * rng;
 #if MYNEWT_VAL(DW1000_LWIP)

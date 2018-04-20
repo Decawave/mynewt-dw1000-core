@@ -27,11 +27,10 @@ pkg.keywords:
     - AoA
     - 10DoF
     - dw1000
-
-pkg.cflags:
-    # Nordic SDK files require these defines.
-    - '-DNRF52'
    
+pkg.cflags:
+    - "-DNRF52840_XXAA"
+       
 pkg.cflags.HARDFLOAT:
     - -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
@@ -55,6 +54,9 @@ pkg.deps.PWM:
 pkg.deps.DW1000_DEVICE_0:
     - '@mynewt-dw1000-core/hw/drivers/dw1000'
 
+pkg.deps.DW1000_DEVICE_1:
+    - '@mynewt-dw1000-core/hw/drivers/dw1000'
+
 pkg.deps.LSM6DSL_ONB:
     - '@mynewt-dw1000-core/hw/drivers/sensors/lsm6dsl'
 
@@ -68,3 +70,4 @@ pkg.init:
   config_lsm6dsl_sensor: 400
   config_lis2mdl_sensor: 400
   config_lps22hb_sensor: 400
+  

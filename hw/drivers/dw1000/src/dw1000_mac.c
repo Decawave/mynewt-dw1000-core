@@ -929,7 +929,7 @@ void dw1000_tasks_init(dw1000_dev_instance_t * inst)
         os_task_init(&inst->interrupt_task_str, "dw1000_irq",
                      dw1000_interrupt_task,
                      (void *) inst,
-                     DW1000_DEV_TASK_PRIO, OS_WAIT_FOREVER,
+                     inst->interrupt_task_prio, OS_WAIT_FOREVER,
                      inst->interrupt_task_stack,
                      DW1000_DEV_TASK_STACK_SZ);
 
