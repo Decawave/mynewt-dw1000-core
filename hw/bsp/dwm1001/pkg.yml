@@ -29,7 +29,6 @@ pkg.keywords:
 pkg.cflags:
     # Nordic SDK files require these defines.
     - '-DNRF52'
-   
 
 pkg.cflags.HARDFLOAT:
     - -mfloat-abi=hard -mfpu=fpv4-sp-d16

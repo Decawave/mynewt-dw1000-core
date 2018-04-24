@@ -454,8 +454,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             // The 1st frame now contains a local copy of the initial first side of the double sided scheme. 
                             // printf("DWT_DS_TWR_T1\n");
                             dw1000_rng_instance_t * rng = inst->rng; 
-                            twr_frame_t * frame = rng->frames[(rng->idx++)%rng->nframes];
-                            twr_frame_t * next_frame = rng->frames[(rng->idx)%rng->nframes];
+                            twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
+                            twr_frame_t * next_frame = rng->frames[(++rng->idx)%rng->nframes];
 
                             if (inst->frame_len >= sizeof(ieee_rng_response_frame_t))
                                 dw1000_read_rx(inst, frame->array, 0, sizeof(ieee_rng_response_frame_t));
@@ -498,8 +498,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             // This code executes on the device that responded to the original request, and is now preparing the final timestamps
                             // printf("DWT_SDS_TWR_T2\n");
                             dw1000_rng_instance_t * rng = inst->rng; 
-                            twr_frame_t * previous_frame = rng->frames[(rng->idx++)%rng->nframes];
-                            twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
+                            twr_frame_t * previous_frame = rng->frames[(rng->idx)%rng->nframes];
+                            twr_frame_t * frame = rng->frames[(++rng->idx)%rng->nframes];
 
                             if (inst->frame_len >= sizeof(twr_frame_final_t))
                                 dw1000_read_rx(inst,  frame->array, 0, sizeof(twr_frame_final_t));
