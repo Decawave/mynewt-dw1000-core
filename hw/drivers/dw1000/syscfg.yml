@@ -1,5 +1,11 @@
 
 syscfg.defs:
+    DW1000_DEV_TASK_PRIO:
+        description: 'Task priority'
+        value:  5
+    DW1000_DEV_TASK_STACK_SZ:
+        description: 'Size of interrupt task stack'
+        value: 512
     DW1000_SS_TWR_ENABLED:
         description: 'Single sided TWR Enabled'
         value: 1
