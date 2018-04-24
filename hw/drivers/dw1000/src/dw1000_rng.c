@@ -664,7 +664,6 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             twr_frame_t * frame = inst->rng->frames[(rng->idx)%rng->nframes];
                             if (inst->frame_len >= sizeof(twr_frame_t))
                                 dw1000_read_rx(inst, frame->array, 0, sizeof(twr_frame_t));
-
                             os_sem_release(&rng->sem);
                             break;
                         }

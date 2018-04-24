@@ -36,6 +36,10 @@ syscfg.defs:
         description: >
             Range Measurement Variance 
         value: ((float){5.4444e-04})
+    AZIMUTH_VARIANCE:
+        description: >
+            Azimuth Measurement Variance 
+        value: ((float){2.91e-2})
     CCP_PERIOD:
         description: >
             Clock Calibration Packets Period 
