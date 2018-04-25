@@ -117,14 +117,7 @@ syscfg.defs:
     DW1000_DEVICE_1_RX_ANT_DLY:
         description: 'RX_ANT_DLY'
         value: 0x4050
-    
-    DW1000_DEV_TASK_STACK_SZ:
-        description: 'DEV STACK SIZE remove'
-        value: 128
-    DW1000_DEV_TASK_PRIO:
-        description: 'DEV_TASK_PRIO remove'
-        value: 5
-
+        
     DW1000_AOA_SYNC_EN:
         description: 'Sync Enable Pin P1.13, 32+13'
         value: 45
