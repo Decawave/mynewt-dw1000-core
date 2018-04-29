@@ -334,8 +334,10 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
     }  
 
     // IEEE 802.15.4 standard ranging frames
+#if MYNEWT_VAL(DW1000_RNG_INDICATE_LED)
     hal_gpio_toggle(LED_1);
-
+#endif
+    
     switch (code){
 #ifdef SS_TWR_ENABLE
         case DWT_SS_TWR ... DWT_SS_TWR_FINAL:
