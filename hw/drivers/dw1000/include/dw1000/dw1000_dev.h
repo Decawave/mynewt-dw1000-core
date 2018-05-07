@@ -137,6 +137,7 @@ typedef struct _dw1000_dev_instance_t{
     void (* rng_rx_error_extension_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_tx_final_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_interface_extension_cb) (struct _dw1000_dev_instance_t *);
+    void (* rng_complete_cb) (struct _dw1000_dev_instance_t *);
   
 #if MYNEWT_VAL(DW1000_LWIP)
     void (* lwip_tx_complete_cb) (struct _dw1000_dev_instance_t *);
