@@ -88,9 +88,13 @@ struct os_mutex;
 struct lsm6dsl {
     struct os_dev dev;
     struct sensor sensor;
-    struct os_mutex *i2c_mutex;
+    struct os_mutex *bus_mutex;
     struct lsm6dsl_cfg cfg;
     os_time_t last_read_time;
+#if MYNEWT_VAL(LSM6DSL_USE_SPI)
+    uint8_t ss_pin;
+    uint8_t spi_num;
+#endif
 };
 
 int lsm6dsl_reset(struct lsm6dsl *dev);

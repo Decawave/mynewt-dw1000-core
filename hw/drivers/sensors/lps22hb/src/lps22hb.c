@@ -90,9 +90,9 @@ lps22hb_write8(struct lps22hb *dev, uint8_t reg, uint32_t value)
         .buffer = payload
     };
 
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_pend(dev->i2c_mutex, OS_WAIT_FOREVER);
+        err = os_mutex_pend(dev->bus_mutex, OS_WAIT_FOREVER);
         if (err != OS_OK)
         {
             LPS22HB_ERR("Mutex error=%d\n", err);
@@ -110,9 +110,9 @@ lps22hb_write8(struct lps22hb *dev, uint8_t reg, uint32_t value)
         STATS_INC(g_lps22hb_stats, write_errors);
     }
 
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_release(dev->i2c_mutex);
+        err = os_mutex_release(dev->bus_mutex);
         assert(err == OS_OK);
     }
 
@@ -141,9 +141,9 @@ lps22hb_read8(struct lps22hb *dev, uint8_t reg, uint8_t *value)
         .buffer = &reg
     };
 
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_pend(dev->i2c_mutex, OS_WAIT_FOREVER);
+        err = os_mutex_pend(dev->bus_mutex, OS_WAIT_FOREVER);
         if (err != OS_OK)
         {
             LPS22HB_ERR("Mutex error=%d\n", err);
@@ -172,9 +172,9 @@ lps22hb_read8(struct lps22hb *dev, uint8_t reg, uint8_t *value)
     }
 
 exit:
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_release(dev->i2c_mutex);
+        err = os_mutex_release(dev->bus_mutex);
         assert(err == OS_OK);
     }
 
@@ -204,9 +204,9 @@ lps22hb_read_bytes(struct lps22hb *dev, uint8_t reg, uint8_t *buffer, uint32_t l
         .buffer = &reg
     };
 
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_pend(dev->i2c_mutex, OS_WAIT_FOREVER);
+        err = os_mutex_pend(dev->bus_mutex, OS_WAIT_FOREVER);
         if (err != OS_OK)
         {
             LPS22HB_ERR("Mutex error=%d\n", err);
@@ -236,9 +236,9 @@ lps22hb_read_bytes(struct lps22hb *dev, uint8_t reg, uint8_t *buffer, uint32_t l
     }
 
 exit:
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_release(dev->i2c_mutex);
+        err = os_mutex_release(dev->bus_mutex);
         assert(err == OS_OK);
     }
 

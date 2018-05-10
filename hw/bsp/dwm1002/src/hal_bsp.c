@@ -112,6 +112,21 @@ static const struct dw1000_dev_cfg dw1000_1_cfg = {
 #endif
 
 
+#if MYNEWT_VAL(SPI_2_MASTER)
+struct os_mutex g_spi2_mutex;
+/*
+ * NOTE: Our HAL expects that the SS pin, if used, is treated as a gpio line
+ * and is handled outside the SPI routines.
+ */
+static const struct nrf52_hal_spi_cfg os_bsp_spi2m_cfg = {
+    .sck_pin      =  28,
+    .mosi_pin     =  29,
+    .miso_pin     =  7,
+};
+
+#endif
+
+
 #if MYNEWT_VAL(I2C_1)
 struct os_mutex g_i2c1_mutex;
 static const struct nrf52_hal_i2c_cfg hal_i2c_cfg = {
@@ -123,7 +138,7 @@ static const struct nrf52_hal_i2c_cfg hal_i2c_cfg = {
 #if MYNEWT_VAL(LSM6DSL_ONB)
 #include <lsm6dsl/lsm6dsl.h>
 static struct lsm6dsl lsm6dsl = {
-    .i2c_mutex = &g_i2c1_mutex,
+    .bus_mutex = &g_i2c1_mutex,
 };
 
 static struct sensor_itf i2c_1_itf_lsm = {
@@ -138,7 +153,7 @@ static struct sensor_itf i2c_1_itf_lsm = {
 #if MYNEWT_VAL(LIS2MDL_ONB)
 #include <lis2mdl/lis2mdl.h>
 static struct lis2mdl lis2mdl = {
-    .i2c_mutex = &g_i2c1_mutex,
+    .bus_mutex = &g_i2c1_mutex,
 };
 
 static struct sensor_itf i2c_1_itf_lis = {
@@ -152,7 +167,7 @@ static struct sensor_itf i2c_1_itf_lis = {
 #if MYNEWT_VAL(LPS22HB_ONB)
 #include <lps22hb/lps22hb.h>
 static struct lps22hb lps22hb = {
-    .i2c_mutex = &g_i2c1_mutex,
+    .bus_mutex = &g_i2c1_mutex,
 };
 
 static struct sensor_itf i2c_1_itf_lhb = {
@@ -238,6 +253,7 @@ config_lsm6dsl_sensor(void)
     struct os_dev *dev;
     struct lsm6dsl_cfg cfg;
 
+    hal_gpio_init_out(LSM6DSL_CS_PIN, 1);
     dev = (struct os_dev *) os_dev_open("lsm6dsl_0", OS_TIMEOUT_NEVER, NULL);
     assert(dev != NULL);
 
@@ -274,6 +290,7 @@ config_lis2mdl_sensor(void)
     struct os_dev *dev;
     struct lis2mdl_cfg cfg;
 
+    hal_gpio_init_out(LIS2MDL_CS_PIN, 1);
     dev = (struct os_dev *) os_dev_open("lis2mdl_0", OS_TIMEOUT_NEVER, NULL);
     assert(dev != NULL);
 
@@ -306,6 +323,7 @@ config_lps22hb_sensor(void)
     struct os_dev *dev;
     struct lps22hb_cfg cfg;
 
+    hal_gpio_init_out(LPS22HB_CS_PIN, 1);
     dev = (struct os_dev *) os_dev_open("lps22hb_0", OS_TIMEOUT_NEVER, NULL);
     assert(dev != NULL);
 
@@ -413,6 +431,13 @@ void hal_bsp_init(void)
     dw1000_1 = hal_dw1000_inst(1);
     rc = os_dev_create((struct os_dev *) dw1000_1, "dw1000_1",
       OS_DEV_INIT_PRIMARY, 0, dw1000_dev_init, (void *)&dw1000_1_cfg);
+    assert(rc == 0);
+#endif
+
+#if MYNEWT_VAL(SPI_2_MASTER)
+    rc = hal_spi_init(2, (void *)&os_bsp_spi2m_cfg, HAL_SPI_TYPE_MASTER);
+    assert(rc == 0);
+    rc = os_mutex_init(&g_spi2_mutex);
     assert(rc == 0);
 #endif
     

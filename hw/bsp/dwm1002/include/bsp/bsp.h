@@ -50,6 +50,19 @@ extern uint8_t _ram_start;
 //#define BUTTON_2 (02)
 //#define BUTTON_3 (15)
 //#define BUTTON_4 (16)
+
+/* Signal Pins */
+#define LSM6DSL_CS_PIN   (0x28)   /* P1.08 */
+#define LIS2MDL_CS_PIN   (0x29)   /* P1.09 */
+#define LPS22HB_CS_PIN     (11)
+
+#define LSM6DSL_SDO_PIN     (8)
+#define LPS22HB_SDO_PIN    (12)
+
+#define LSM6DSL_IRQ2_PIN   (13)
+#define LPS22HB_IRQ_PIN    (14)
+#define LIS2MDL_IRQ_PIN    (17)
+#define LSM6DSL_IRQ1_PIN   (19)
     
 #ifdef __cplusplus
 }

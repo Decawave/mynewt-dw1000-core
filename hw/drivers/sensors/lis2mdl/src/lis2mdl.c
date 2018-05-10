@@ -89,9 +89,9 @@ lis2mdl_write8(struct lis2mdl *dev, uint8_t reg, uint32_t value)
         .buffer = payload
     };
 
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_pend(dev->i2c_mutex, OS_WAIT_FOREVER);
+        err = os_mutex_pend(dev->bus_mutex, OS_WAIT_FOREVER);
         if (err != OS_OK)
         {
             LIS2MDL_ERR("Mutex error=%d\n", err);
@@ -109,9 +109,9 @@ lis2mdl_write8(struct lis2mdl *dev, uint8_t reg, uint32_t value)
         STATS_INC(g_lis2mdl_stats, write_errors);
     }
 
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_release(dev->i2c_mutex);
+        err = os_mutex_release(dev->bus_mutex);
         assert(err == OS_OK);
     }
 
@@ -140,9 +140,9 @@ lis2mdl_read8(struct lis2mdl *dev, uint8_t reg, uint8_t *value)
         .buffer = &reg
     };
 
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_pend(dev->i2c_mutex, OS_WAIT_FOREVER);
+        err = os_mutex_pend(dev->bus_mutex, OS_WAIT_FOREVER);
         if (err != OS_OK)
         {
             LIS2MDL_ERR("Mutex error=%d\n", err);
@@ -171,9 +171,9 @@ lis2mdl_read8(struct lis2mdl *dev, uint8_t reg, uint8_t *value)
     }
 
 exit:
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_release(dev->i2c_mutex);
+        err = os_mutex_release(dev->bus_mutex);
         assert(err == OS_OK);
     }
 
@@ -203,9 +203,9 @@ lis2mdl_read_bytes(struct lis2mdl *dev, uint8_t reg, uint8_t *buffer, uint32_t l
         .buffer = &reg
     };
 
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_pend(dev->i2c_mutex, OS_WAIT_FOREVER);
+        err = os_mutex_pend(dev->bus_mutex, OS_WAIT_FOREVER);
         if (err != OS_OK)
         {
             LIS2MDL_ERR("Mutex error=%d\n", err);
@@ -235,9 +235,9 @@ lis2mdl_read_bytes(struct lis2mdl *dev, uint8_t reg, uint8_t *buffer, uint32_t l
     }
 
 exit:
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_release(dev->i2c_mutex);
+        err = os_mutex_release(dev->bus_mutex);
         assert(err == OS_OK);
     }
 

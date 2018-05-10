@@ -25,7 +25,13 @@
 #include "os/os.h"
 #include "os/os_mutex.h"
 #include "sysinit/sysinit.h"
+
+#if MYNEWT_VAL(LSM6DSL_USE_SPI)
+#include "hal/hal_spi.h"
+#else
 #include "hal/hal_i2c.h"
+#endif
+
 #include "sensor/sensor.h"
 #include "sensor/accel.h"
 #include "sensor/gyro.h"
@@ -84,15 +90,9 @@ lsm6dsl_write8(struct lsm6dsl *dev, uint8_t reg, uint32_t value)
     struct sensor_itf *itf = &dev->sensor.s_itf;
     uint8_t payload[2] = { reg, value & 0xFF };
 
-    struct hal_i2c_master_data data_struct = {
-        .address = itf->si_addr,
-        .len = 2,
-        .buffer = payload
-    };
-
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_pend(dev->i2c_mutex, OS_WAIT_FOREVER);
+        err = os_mutex_pend(dev->bus_mutex, OS_WAIT_FOREVER);
         if (err != OS_OK)
         {
             LSM6DSL_ERR("Mutex error=%d\n", err);
@@ -100,6 +100,22 @@ lsm6dsl_write8(struct lsm6dsl *dev, uint8_t reg, uint32_t value)
             return err;
         }
     }
+
+#if MYNEWT_VAL(LSM6DSL_USE_SPI)
+
+    hal_gpio_write(dev->ss_pin, 0);
+    
+    hal_spi_tx_val(dev->spi_num, reg);
+    hal_spi_tx_val(dev->spi_num, value);
+
+    hal_gpio_write(dev->ss_pin, 0);
+    
+#else
+    struct hal_i2c_master_data data_struct = {
+        .address = itf->si_addr,
+        .len = 2,
+        .buffer = payload
+    };
 
     rc = hal_i2c_master_write(itf->si_num, &data_struct,
                               OS_TICKS_PER_SEC / 10, 1);
@@ -109,10 +125,11 @@ lsm6dsl_write8(struct lsm6dsl *dev, uint8_t reg, uint32_t value)
                     itf->si_addr, reg, value);
         STATS_INC(g_lsm6dsl_stats, write_errors);
     }
-
-    if (dev->i2c_mutex)
+    
+#endif
+    if (dev->bus_mutex)
     {
-        err = os_mutex_release(dev->i2c_mutex);
+        err = os_mutex_release(dev->bus_mutex);
         assert(err == OS_OK);
     }
     
@@ -135,15 +152,9 @@ lsm6dsl_read8(struct lsm6dsl *dev, uint8_t reg, uint8_t *value)
     os_error_t err = 0;
     struct sensor_itf *itf = &dev->sensor.s_itf;
 
-    struct hal_i2c_master_data data_struct = {
-        .address = itf->si_addr,
-        .len = 1,
-        .buffer = &reg
-    };
-
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_pend(dev->i2c_mutex, OS_WAIT_FOREVER);
+        err = os_mutex_pend(dev->bus_mutex, OS_WAIT_FOREVER);
         if (err != OS_OK)
         {
             LSM6DSL_ERR("Mutex error=%d\n", err);
@@ -151,6 +162,24 @@ lsm6dsl_read8(struct lsm6dsl *dev, uint8_t reg, uint8_t *value)
             return err;
         }
     }
+
+#if MYNEWT_VAL(LSM6DSL_USE_SPI)
+
+    hal_gpio_write(dev->ss_pin, 0);
+    
+    hal_spi_tx_val(dev->spi_num, reg);
+    *value = hal_spi_tx_val(dev->spi_num, 0);
+
+    hal_gpio_write(dev->ss_pin, 0);
+    
+#else
+
+    struct hal_i2c_master_data data_struct = {
+        .address = itf->si_addr,
+        .len = 1,
+        .buffer = &reg
+    };
+
 
     /* Register write */
     rc = hal_i2c_master_write(itf->si_num, &data_struct,
@@ -170,11 +199,12 @@ lsm6dsl_read8(struct lsm6dsl *dev, uint8_t reg, uint8_t *value)
         LSM6DSL_ERR("Failed to read from 0x%02X:0x%02X\n", itf->si_addr, reg);
         STATS_INC(g_lsm6dsl_stats, read_errors);
     }
-
+#endif
+    
 exit:
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_release(dev->i2c_mutex);
+        err = os_mutex_release(dev->bus_mutex);
         assert(err == OS_OK);
     }
 
@@ -197,16 +227,10 @@ lsm6dsl_read_bytes(struct lsm6dsl *dev, uint8_t reg, uint8_t *buffer, uint32_t l
     int rc;
     os_error_t err = 0;
     struct sensor_itf *itf = &dev->sensor.s_itf;
- 
-    struct hal_i2c_master_data data_struct = {
-        .address = itf->si_addr,
-        .len = 1,
-        .buffer = &reg
-    };
 
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_pend(dev->i2c_mutex, OS_WAIT_FOREVER);
+        err = os_mutex_pend(dev->bus_mutex, OS_WAIT_FOREVER);
         if (err != OS_OK)
         {
             LSM6DSL_ERR("Mutex error=%d\n", err);
@@ -214,6 +238,26 @@ lsm6dsl_read_bytes(struct lsm6dsl *dev, uint8_t reg, uint8_t *buffer, uint32_t l
             return err;
         }
     }
+
+#if MYNEWT_VAL(LSM6DSL_USE_SPI)
+    int i;
+    
+    hal_gpio_write(dev->ss_pin, 0);
+    
+    hal_spi_tx_val(dev->spi_num, reg);
+    for (i=0;i<length;i++) {
+        buffer[i] = hal_spi_tx_val(dev->spi_num, 0x00);
+    }
+
+    hal_gpio_write(dev->ss_pin, 0);
+    
+#else
+ 
+    struct hal_i2c_master_data data_struct = {
+        .address = itf->si_addr,
+        .len = 1,
+        .buffer = &reg
+    };
 
     /* Register write */
     rc = hal_i2c_master_write(itf->si_num, &data_struct,
@@ -234,11 +278,11 @@ lsm6dsl_read_bytes(struct lsm6dsl *dev, uint8_t reg, uint8_t *buffer, uint32_t l
         LSM6DSL_ERR("Failed to read from 0x%02X:0x%02X\n", itf->si_addr, reg);
         STATS_INC(g_lsm6dsl_stats, read_errors);
     }
-
+#endif
 exit:
-    if (dev->i2c_mutex)
+    if (dev->bus_mutex)
     {
-        err = os_mutex_release(dev->i2c_mutex);
+        err = os_mutex_release(dev->bus_mutex);
         assert(err == OS_OK);
     }
 

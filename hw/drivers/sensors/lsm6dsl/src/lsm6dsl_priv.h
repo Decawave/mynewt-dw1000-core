@@ -132,9 +132,9 @@ enum lsm6dsl_registers {
     LSM6DSL_Z_OFS_USR                   = 0x75,
 };
 
-int lsm6dsl_write8(struct sensor_itf *itf, uint8_t reg, uint32_t value);
-int lsm6dsl_read8(struct sensor_itf *itf, uint8_t reg, uint8_t *value);
-int lsm6dsl_read_bytes(struct sensor_itf *itf, uint8_t reg, uint8_t *buffer, uint32_t length);
+int lsm6dsl_write8(struct lsm6dsl *dev, uint8_t reg, uint32_t value);
+int lsm6dsl_read8(struct lsm6dsl *dev, uint8_t reg, uint8_t *value);
+int lsm6dsl_read_bytes(struct lsm6dsl *dev, uint8_t reg, uint8_t *buffer, uint32_t length);
 
 #ifdef __cplusplus
 }

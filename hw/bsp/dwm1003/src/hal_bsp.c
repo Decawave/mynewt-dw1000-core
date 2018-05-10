@@ -110,7 +110,7 @@ static const struct nrf52_hal_i2c_cfg hal_i2c_cfg = {
 #if MYNEWT_VAL(LSM6DSL_ONB)
 #include <lsm6dsl/lsm6dsl.h>
 static struct lsm6dsl lsm6dsl = {
-    .i2c_mutex = &g_i2c1_mutex,
+    .bus_mutex = &g_i2c1_mutex,
 };
 
 static struct sensor_itf i2c_1_itf_lsm = {
@@ -125,7 +125,7 @@ static struct sensor_itf i2c_1_itf_lsm = {
 #if MYNEWT_VAL(LIS2MDL_ONB)
 #include <lis2mdl/lis2mdl.h>
 static struct lis2mdl lis2mdl = {
-    .i2c_mutex = &g_i2c1_mutex,
+    .bus_mutex = &g_i2c1_mutex,
 };
 
 static struct sensor_itf i2c_1_itf_lis = {
@@ -139,7 +139,7 @@ static struct sensor_itf i2c_1_itf_lis = {
 #if MYNEWT_VAL(LPS22HB_ONB)
 #include <lps22hb/lps22hb.h>
 static struct lps22hb lps22hb = {
-    .i2c_mutex = &g_i2c1_mutex,
+    .bus_mutex = &g_i2c1_mutex,
 };
 
 static struct sensor_itf i2c_1_itf_lhb = {
