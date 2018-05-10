@@ -122,12 +122,18 @@ syscfg.defs:
         description: 'Sync Enable Pin P1.13, 32+13'
         value: 45
     DW1000_AOA_SYNC_CLR:
-        description: 'Sync CLear Pin P1.14, 32+14'
+        description: 'Sync Clear Pin P1.14, 32+14'
         value: 46
     DW1000_AOA_SYNC:
         description: 'Sync Pin P1.15, 32+15'
         value: 47
 
+    MEMS_ON_SPI:
+        description: 'Use SPI for connecting acc, mag and baro'
+        value: 0
+        restrictions:
+            - "!I2C_1"
+        
     LSM6DSL_ONB:
         description: 'lsm6dsl 3axis acc + 3axis gyro'
         value:  0
@@ -145,6 +151,11 @@ syscfg.defs.BLE_LP_CLOCK:
     TIMER_5:
         value: 1
 
+syscfg.vals.MEMS_ON_SPI:
+    LSM6DSL_USE_SPI: 1
+    LIS2MDL_USE_SPI: 1
+    LPS22HB_USE_SPI: 1
+        
 syscfg.vals:
     CONFIG_FCB_FLASH_AREA: FLASH_AREA_NFFS
     REBOOT_LOG_FLASH_AREA: FLASH_AREA_REBOOT_LOG
@@ -153,11 +164,8 @@ syscfg.vals:
     MCU_DCDC_ENABLED: 1
     XTAL_32768: 1
     BOOT_SERIAL_DETECT_PIN: 2  # Button 1
-    # Enable the shell task.
-    SHELL_TASK: 1
-    SHELL_PROMPT_MODULE: 1
     SPI_0_MASTER: 1
-    SENSOR_OIC : 0
+    SPI_2_MASTER: 1
     
 syscfg.vals.BLE_LP_CLOCK:
     OS_CPUTIME_FREQ: 32768
