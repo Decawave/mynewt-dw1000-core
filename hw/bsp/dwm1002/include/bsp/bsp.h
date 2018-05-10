@@ -36,17 +36,18 @@ extern "C" {
 #define bssnz_t         sec_bss_nz_core
 
 extern uint8_t _ram_start;
-#define RAM_SIZE        0x10000
+#define RAM_SIZE        0x40000
 
 /* LED pins */
-#define LED_1           (-1)
-#define LED_2           (-1)
-#define LED_3           (-1)
+#define LED_1           (0x14)
+#define LED_2           (0x15)
+#define LED_3           (0x16)
+#define LED_4           (0x17)
 #define LED_BLINK_PIN   (LED_1)
 
 /* Buttons */
 
-#define BUTTON_1 (-1)
+#define BUTTON_1  (02)
 //#define BUTTON_2 (02)
 //#define BUTTON_3 (15)
 //#define BUTTON_4 (16)
