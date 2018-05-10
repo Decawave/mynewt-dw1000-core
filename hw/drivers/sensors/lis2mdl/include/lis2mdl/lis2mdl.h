@@ -45,9 +45,12 @@ struct lis2mdl_cfg {
     sensor_type_t mask;
 };
 
+struct os_mutex;
+
 struct lis2mdl {
     struct os_dev dev;
     struct sensor sensor;
+    struct os_mutex *i2c_mutex;
     struct lis2mdl_cfg cfg;
     os_time_t last_read_time;
 };
@@ -64,6 +67,8 @@ int lis2mdl_enable_interrupt(struct sensor_itf *itf, uint8_t enable);
 int lis2mdl_init(struct os_dev *, void *);
 int lis2mdl_config(struct lis2mdl *, struct lis2mdl_cfg *);
 
+int lis2mdl_read_raw(struct lis2mdl *dev, int16_t val[]);
+    
 #ifdef __cplusplus
 }
 #endif
