@@ -56,7 +56,7 @@ struct lps22hb_cfg {
 struct lps22hb {
     struct os_dev dev;
     struct sensor sensor;
-    struct os_mutex *i2c_mutex;
+    struct os_mutex *bus_mutex;
     struct lps22hb_cfg cfg;
     os_time_t last_read_time;
 };

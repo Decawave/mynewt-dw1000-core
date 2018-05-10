@@ -53,9 +53,9 @@ enum lis2mdl_registers {
     LIS2MDL_TEMP_OUT_H_REG		    = 0x6F,
 };
 
-int lis2mdl_write8(struct sensor_itf *itf, uint8_t reg, uint32_t value);
-int lis2mdl_read8(struct sensor_itf *itf, uint8_t reg, uint8_t *value);
-int lis2mdl_read_bytes(struct sensor_itf *itf, uint8_t reg, uint8_t *buffer, uint32_t length);
+int lis2mdl_write8(struct lis2mdl *dev, uint8_t reg, uint32_t value);
+int lis2mdl_read8(struct lis2mdl *dev, uint8_t reg, uint8_t *value);
+int lis2mdl_read_bytes(struct lis2mdl *dev, uint8_t reg, uint8_t *buffer, uint32_t length);
 
 #ifdef __cplusplus
 }
