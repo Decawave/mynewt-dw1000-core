@@ -103,7 +103,6 @@ lsm6dsl_write8(struct lsm6dsl *dev, uint8_t reg, uint32_t value)
 
 #if MYNEWT_VAL(LSM6DSL_USE_SPI)
     rc=0;
-    rc=0;
     hal_gpio_write(itf->si_cs_pin, 0);
     
     hal_spi_tx_val(itf->si_num, reg);

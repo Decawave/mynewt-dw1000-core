@@ -155,6 +155,7 @@ syscfg.vals.MEMS_ON_SPI:
     LSM6DSL_USE_SPI: 1
     LIS2MDL_USE_SPI: 1
     LPS22HB_USE_SPI: 1
+    SPI_2_MASTER: 1
         
 syscfg.vals:
     CONFIG_FCB_FLASH_AREA: FLASH_AREA_NFFS
@@ -165,7 +166,6 @@ syscfg.vals:
     XTAL_32768: 1
     BOOT_SERIAL_DETECT_PIN: 2  # Button 1
     SPI_0_MASTER: 1
-    SPI_2_MASTER: 1
     
 syscfg.vals.BLE_LP_CLOCK:
     OS_CPUTIME_FREQ: 32768

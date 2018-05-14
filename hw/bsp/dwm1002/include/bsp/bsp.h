@@ -52,6 +52,12 @@ extern uint8_t _ram_start;
 //#define BUTTON_3 (15)
 //#define BUTTON_4 (16)
 
+/* I2C address */
+#define LSM6DSL_I2C_ADDR (0b1101011)
+#define LIS2MDL_I2C_ADDR (0b0011110)
+#define LPS22HB_I2C_ADDR (0b1011101)
+
+
 /* Signal Pins */
 #define LSM6DSL_CS_PIN   (0x28)   /* P1.08 */
 #define LIS2MDL_CS_PIN   (0x29)   /* P1.09 */

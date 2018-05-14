@@ -46,13 +46,17 @@ struct lis2mdl_cfg {
 };
 
 struct os_mutex;
-
+struct nrf52_hal_spi_cfg;
+    
 struct lis2mdl {
     struct os_dev dev;
     struct sensor sensor;
     struct os_mutex *bus_mutex;
     struct lis2mdl_cfg cfg;
     os_time_t last_read_time;
+#if MYNEWT_VAL(LIS2MDL_USE_SPI)
+    void (*spi_read_cb)(int en);
+#endif
 };
 
 int lis2mdl_reset(struct lis2mdl *dev);
