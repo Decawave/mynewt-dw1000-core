@@ -28,6 +28,7 @@
 
 #if MYNEWT_VAL(LSM6DSL_USE_SPI)
 #include "hal/hal_spi.h"
+#include "hal/hal_gpio.h"
 #else
 #include "hal/hal_i2c.h"
 #endif
@@ -88,7 +89,6 @@ lsm6dsl_write8(struct lsm6dsl *dev, uint8_t reg, uint32_t value)
     int rc;
     os_error_t err = 0;
     struct sensor_itf *itf = &dev->sensor.s_itf;
-    uint8_t payload[2] = { reg, value & 0xFF };
 
     if (dev->bus_mutex)
     {
@@ -102,15 +102,16 @@ lsm6dsl_write8(struct lsm6dsl *dev, uint8_t reg, uint32_t value)
     }
 
 #if MYNEWT_VAL(LSM6DSL_USE_SPI)
-
-    hal_gpio_write(dev->ss_pin, 0);
+    rc=0;
+    hal_gpio_write(itf->si_cs_pin, 0);
     
-    hal_spi_tx_val(dev->spi_num, reg);
-    hal_spi_tx_val(dev->spi_num, value);
+    hal_spi_tx_val(itf->si_num, reg);
+    hal_spi_tx_val(itf->si_num, value);
 
-    hal_gpio_write(dev->ss_pin, 0);
+    hal_gpio_write(itf->si_cs_pin, 1);
     
 #else
+    uint8_t payload[2] = { reg, value & 0xFF };
     struct hal_i2c_master_data data_struct = {
         .address = itf->si_addr,
         .len = 2,
@@ -164,16 +165,15 @@ lsm6dsl_read8(struct lsm6dsl *dev, uint8_t reg, uint8_t *value)
     }
 
 #if MYNEWT_VAL(LSM6DSL_USE_SPI)
-
-    hal_gpio_write(dev->ss_pin, 0);
+    rc=0;
+    hal_gpio_write(itf->si_cs_pin, 0);
     
-    hal_spi_tx_val(dev->spi_num, reg);
-    *value = hal_spi_tx_val(dev->spi_num, 0);
+    hal_spi_tx_val(itf->si_num, reg | 0x80);
+    *value = hal_spi_tx_val(itf->si_num, 0);
 
-    hal_gpio_write(dev->ss_pin, 0);
+    hal_gpio_write(itf->si_cs_pin, 1);
     
 #else
-
     struct hal_i2c_master_data data_struct = {
         .address = itf->si_addr,
         .len = 1,
@@ -199,9 +199,9 @@ lsm6dsl_read8(struct lsm6dsl *dev, uint8_t reg, uint8_t *value)
         LSM6DSL_ERR("Failed to read from 0x%02X:0x%02X\n", itf->si_addr, reg);
         STATS_INC(g_lsm6dsl_stats, read_errors);
     }
+exit:
 #endif
     
-exit:
     if (dev->bus_mutex)
     {
         err = os_mutex_release(dev->bus_mutex);
@@ -241,18 +241,17 @@ lsm6dsl_read_bytes(struct lsm6dsl *dev, uint8_t reg, uint8_t *buffer, uint32_t l
 
 #if MYNEWT_VAL(LSM6DSL_USE_SPI)
     int i;
+    rc=0;
+    hal_gpio_write(itf->si_cs_pin, 0);
     
-    hal_gpio_write(dev->ss_pin, 0);
-    
-    hal_spi_tx_val(dev->spi_num, reg);
+    hal_spi_tx_val(itf->si_num, reg | 0x80);
     for (i=0;i<length;i++) {
-        buffer[i] = hal_spi_tx_val(dev->spi_num, 0x00);
+        buffer[i] = hal_spi_tx_val(itf->si_num, 0x00);
     }
 
-    hal_gpio_write(dev->ss_pin, 0);
+    hal_gpio_write(itf->si_cs_pin, 1);
     
 #else
- 
     struct hal_i2c_master_data data_struct = {
         .address = itf->si_addr,
         .len = 1,
@@ -278,8 +277,8 @@ lsm6dsl_read_bytes(struct lsm6dsl *dev, uint8_t reg, uint8_t *buffer, uint32_t l
         LSM6DSL_ERR("Failed to read from 0x%02X:0x%02X\n", itf->si_addr, reg);
         STATS_INC(g_lsm6dsl_stats, read_errors);
     }
-#endif
 exit:
+#endif
     if (dev->bus_mutex)
     {
         err = os_mutex_release(dev->bus_mutex);
@@ -584,7 +583,13 @@ lsm6dsl_sensor_read(struct sensor *sensor, sensor_type_t type,
     lsm = (struct lsm6dsl *) SENSOR_GET_DEVICE(sensor);
 
     if (type & (SENSOR_TYPE_ACCELEROMETER|SENSOR_TYPE_GYROSCOPE)) {
+#if 1
         rc = lsm6dsl_read_bytes(lsm, LSM6DSL_OUT_TEMP_L, payload, 14);
+#else
+        for (int i=0;i<14;i++) {
+            rc = lsm6dsl_read8(lsm, LSM6DSL_OUT_TEMP_L+i, payload+i);
+        }
+#endif
         if (rc) {
             return rc;
         }

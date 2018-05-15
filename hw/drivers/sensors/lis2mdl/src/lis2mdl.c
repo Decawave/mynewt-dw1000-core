@@ -25,7 +25,14 @@
 #include "os/os.h"
 #include "os/os_mutex.h"
 #include "sysinit/sysinit.h"
+
+#if MYNEWT_VAL(LIS2MDL_USE_SPI)
+#include "hal/hal_spi.h"
+#include "hal/hal_gpio.h"
+#else
 #include "hal/hal_i2c.h"
+#endif
+
 #include "sensor/sensor.h"
 #include "sensor/mag.h"
 #include "lis2mdl/lis2mdl.h"
@@ -81,13 +88,6 @@ lis2mdl_write8(struct lis2mdl *dev, uint8_t reg, uint32_t value)
     int rc;
     os_error_t err = 0;
     struct sensor_itf *itf = &dev->sensor.s_itf;
-    uint8_t payload[2] = { reg, value & 0xFF };
-
-    struct hal_i2c_master_data data_struct = {
-        .address = itf->si_addr,
-        .len = 2,
-        .buffer = payload
-    };
 
     if (dev->bus_mutex)
     {
@@ -100,6 +100,23 @@ lis2mdl_write8(struct lis2mdl *dev, uint8_t reg, uint32_t value)
         }
     }
 
+#if MYNEWT_VAL(LIS2MDL_USE_SPI)
+    rc=0;
+    hal_gpio_write(itf->si_cs_pin, 0);
+    
+    hal_spi_tx_val(itf->si_num, reg);
+    hal_spi_tx_val(itf->si_num, value);
+
+    hal_gpio_write(itf->si_cs_pin, 1);
+    
+#else
+    uint8_t payload[2] = { reg, value & 0xFF };
+    struct hal_i2c_master_data data_struct = {
+        .address = itf->si_addr,
+        .len = 2,
+        .buffer = payload
+    };
+
     rc = hal_i2c_master_write(itf->si_num, &data_struct,
                               OS_TICKS_PER_SEC / 10, 1);
 
@@ -108,6 +125,7 @@ lis2mdl_write8(struct lis2mdl *dev, uint8_t reg, uint32_t value)
                        itf->si_addr, reg, value);
         STATS_INC(g_lis2mdl_stats, write_errors);
     }
+#endif
 
     if (dev->bus_mutex)
     {
@@ -134,12 +152,6 @@ lis2mdl_read8(struct lis2mdl *dev, uint8_t reg, uint8_t *value)
     os_error_t err = 0;
     struct sensor_itf *itf = &dev->sensor.s_itf;
 
-    struct hal_i2c_master_data data_struct = {
-        .address = itf->si_addr,
-        .len = 1,
-        .buffer = &reg
-    };
-
     if (dev->bus_mutex)
     {
         err = os_mutex_pend(dev->bus_mutex, OS_WAIT_FOREVER);
@@ -150,6 +162,27 @@ lis2mdl_read8(struct lis2mdl *dev, uint8_t reg, uint8_t *value)
             return err;
         }
     }
+
+#if MYNEWT_VAL(LIS2MDL_USE_SPI)
+
+    rc=0;
+    hal_gpio_write(itf->si_cs_pin, 0);
+    
+    hal_spi_tx_val(itf->si_num, reg | 0x80);
+
+    /* Reconfig spi for reading from 3wire */
+    dev->spi_read_cb(1);
+    *value = hal_spi_tx_val(itf->si_num, 0xff);
+    dev->spi_read_cb(0);
+
+    hal_gpio_write(itf->si_cs_pin, 1);
+    
+#else
+    struct hal_i2c_master_data data_struct = {
+        .address = itf->si_addr,
+        .len = 1,
+        .buffer = &reg
+    };
 
     /* Register write */
     rc = hal_i2c_master_write(itf->si_num, &data_struct,
@@ -169,8 +202,9 @@ lis2mdl_read8(struct lis2mdl *dev, uint8_t reg, uint8_t *value)
          LIS2MDL_ERR("Failed to read from 0x%02X:0x%02X\n", itf->si_addr, reg);
          STATS_INC(g_lis2mdl_stats, read_errors);
     }
-
 exit:
+#endif
+    
     if (dev->bus_mutex)
     {
         err = os_mutex_release(dev->bus_mutex);
@@ -197,12 +231,6 @@ lis2mdl_read_bytes(struct lis2mdl *dev, uint8_t reg, uint8_t *buffer, uint32_t l
     os_error_t err = 0;
     struct sensor_itf *itf = &dev->sensor.s_itf;
     
-    struct hal_i2c_master_data data_struct = {
-        .address = itf->si_addr,
-        .len = 1,
-        .buffer = &reg
-    };
-
     if (dev->bus_mutex)
     {
         err = os_mutex_pend(dev->bus_mutex, OS_WAIT_FOREVER);
@@ -213,6 +241,27 @@ lis2mdl_read_bytes(struct lis2mdl *dev, uint8_t reg, uint8_t *buffer, uint32_t l
             return err;
         }
     }
+
+#if MYNEWT_VAL(LIS2MDL_USE_SPI)
+    int i;
+    rc=0;
+    hal_gpio_write(itf->si_cs_pin, 0);
+    
+    hal_spi_tx_val(itf->si_num, reg | 0x80);
+    dev->spi_read_cb(1);
+    for (i=0;i<length;i++) {
+        buffer[i] = hal_spi_tx_val(itf->si_num, 0xff);
+    }
+    dev->spi_read_cb(0);
+
+    hal_gpio_write(itf->si_cs_pin, 1);
+#else
+    struct hal_i2c_master_data data_struct = {
+        .address = itf->si_addr,
+        .len = 1,
+        .buffer = &reg
+    };
+
 
     /* Register write */
     rc = hal_i2c_master_write(itf->si_num, &data_struct,
@@ -235,6 +284,7 @@ lis2mdl_read_bytes(struct lis2mdl *dev, uint8_t reg, uint8_t *buffer, uint32_t l
     }
 
 exit:
+#endif
     if (dev->bus_mutex)
     {
         err = os_mutex_release(dev->bus_mutex);

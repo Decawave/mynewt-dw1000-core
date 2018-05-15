@@ -19,8 +19,8 @@ OUTPUT_FORMAT ("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
 
 MEMORY
 {
-  FLASH (rx) : ORIGIN =  0x00042000, LENGTH = 0x3a000
-  RAM  (rwx) : ORIGIN =  0x20000000, LENGTH = 0x10000
+  FLASH (rx) : ORIGIN =  0x00082000, LENGTH = 0x76000
+  RAM  (rwx) : ORIGIN =  0x20000000, LENGTH = 0x40000
 }
 
 /* Linker script to place sections and symbol values. Should be used together
@@ -111,7 +111,7 @@ SECTIONS
 
     __etext = .;
 
-    /* save RAM used by the split image. This assumes that 
+    /* save RAM used by the split image. This assumes that
      * the loader uses all the RAM up to its HeapBase  */
     .loader_ram_contents :
     {
@@ -122,7 +122,7 @@ SECTIONS
         _loader_ram_end = .;
     } > RAM
 
-    .data :
+    .data : AT (__etext)
     {
         __data_start__ = .;
         *(.data*)
@@ -151,15 +151,11 @@ SECTIONS
         . = ALIGN(4);
         /* All data end */
         __data_end__ = .;
-    } > RAM AT > FLASH
+    } > RAM
 
     /* Non-zeroed BSS.  This section is similar to BSS, with the following two
      * caveats:
      *    1. It does not get zeroed at init-time.
-     *    2. You cannot use it as source memory for EasyDMA.
-     *
-     * This section exists because of a hardware defect; see errata 33 and 34
-     * in nrf52 errata sheet.
      */
     .bssnz :
     {
@@ -181,6 +177,7 @@ SECTIONS
     } > RAM
 
     /* Heap starts after BSS */
+    . = ALIGN(8);
     __HeapBase = .;
 
     /* .stack_dummy section doesn't contains any symbols. It is only
