@@ -34,7 +34,9 @@
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_ftypes.h>
 #include <dw1000/dw1000_rng.h>
-
+#if MYNEWT_VAL(DW1000_PROVISION)
+#include <dw1000/dw1000_provision.h>
+#endif
 
 static void rng_tx_complete_cb(dw1000_dev_instance_t * inst);
 static void rng_rx_complete_cb(dw1000_dev_instance_t * inst);
@@ -275,12 +277,32 @@ rng_rx_timeout_cb(dw1000_dev_instance_t * inst){
             inst->pan_rx_timeout_cb(inst);
 #endif
     }
+#if MYNEWT_VAL(DW1000_PROVISION)
+    if(inst->provision != NULL){
+        if(inst->provision->status.valid == true){
+            if(inst->provision_rx_timeout_cb != NULL){
+                inst->provision_rx_timeout_cb(inst);
+                return;
+            }
+        }
+    }
+#endif
     os_error_t err = os_sem_release(&inst->rng->sem);
     assert(err == OS_OK);
 }
 
 static void 
 rng_rx_error_cb(dw1000_dev_instance_t * inst){
+#if MYNEWT_VAL(DW1000_PROVISION)
+    if(inst->provision != NULL){
+        if(inst->provision->status.valid == true){
+            if(inst->provision_rx_error_cb != NULL){
+                inst->provision_rx_error_cb(inst);
+                return;
+            }
+        }
+    }
+#endif
     os_error_t err = os_sem_release(&inst->rng->sem);   
     assert(err == OS_OK);
 }
@@ -322,12 +344,22 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
     }else{
         // Unrecognized range request, kicking external
         if (inst->rng_interface_extension_cb != NULL)
-            inst->rng_interface_extension_cb(inst); 
+            inst->rng_interface_extension_cb(inst);
+#if MYNEWT_VAL(DW1000_PROVISION)
+        else{
+            if(dw1000_restart_rx(inst, control).start_rx_error)
+                inst->rng_rx_error_cb(inst);
+        }
+#endif
         return;
     }
 
     // IEEE 802.15.4 standard ranging frames, software MAC filtering
+#if MYNEWT_VAL(DW1000_PROVISION)
+    if (dst_address != inst->my_short_address && dst_address != BROADCAST_ADDRESS){
+#else
     if (dst_address != inst->my_short_address){
+#endif
         inst->control = inst->control_rx_context;
         if (dw1000_restart_rx(inst, control).start_rx_error)  
             inst->rng_rx_error_cb(inst);    
@@ -338,8 +370,25 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
 #if MYNEWT_VAL(DW1000_RNG_INDICATE_LED)
     hal_gpio_toggle(LED_1);
 #endif
-    
+
     switch (code){
+        case DWT_PROVISION_START ... DWT_PROVISION_RESP:
+#if MYNEWT_VAL(DW1000_PROVISION)
+            if(code == DWT_PROVISION_START && inst->dev_type == TAG){
+                inst->control = inst->control_rx_context;
+                if (dw1000_restart_rx(inst, control).start_rx_error)
+                    inst->rng_rx_error_cb(inst);
+                return;
+            }
+            if(inst->provision_rx_complete_cb != NULL){
+                inst->provision_rx_complete_cb(inst);
+            }
+#else
+            inst->control = inst->control_rx_context;
+            if (dw1000_restart_rx(inst, control).start_rx_error)
+                inst->rng_rx_error_cb(inst);
+#endif
+            break;
 #ifdef SS_TWR_ENABLE
         case DWT_SS_TWR ... DWT_SS_TWR_FINAL:
             switch(code){
