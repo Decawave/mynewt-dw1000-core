@@ -118,13 +118,13 @@ syscfg.defs:
         description: 'RX_ANT_DLY'
         value: 0x4050
         
-    DW1000_AOA_SYNC_EN:
+    DW1000_PDOA_SYNC_EN:
         description: 'Sync Enable Pin P1.13, 32+13'
         value: 45
-    DW1000_AOA_SYNC_CLR:
+    DW1000_PDOA_SYNC_CLR:
         description: 'Sync Clear Pin P1.14, 32+14'
         value: 46
-    DW1000_AOA_SYNC:
+    DW1000_PDOA_SYNC:
         description: 'Sync Pin P1.15, 32+15'
         value: 47
 

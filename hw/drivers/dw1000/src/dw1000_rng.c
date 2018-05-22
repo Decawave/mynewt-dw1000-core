@@ -275,12 +275,19 @@ rng_rx_timeout_cb(dw1000_dev_instance_t * inst){
             inst->pan_rx_timeout_cb(inst);
 #endif
     }
+    if (inst->rng_rx_timeout_extension_cb!= NULL)
+            inst->rng_rx_timeout_extension_cb(inst); 
+
     os_error_t err = os_sem_release(&inst->rng->sem);
     assert(err == OS_OK);
 }
 
 static void 
 rng_rx_error_cb(dw1000_dev_instance_t * inst){
+    
+    if (inst->rng_rx_error_extension_cb!= NULL)
+            inst->rng_rx_error_extension_cb(inst); 
+
     os_error_t err = os_sem_release(&inst->rng->sem);   
     assert(err == OS_OK);
 }
