@@ -72,6 +72,8 @@ typedef enum _dw1000_rng_modes_t{
     DWT_DS_TWR_EXT_T2,
     DWT_DS_TWR_EXT_FINAL,
     DWT_DS_TWR_EXT_END,
+    DWT_PROVISION_START,
+    DWT_PROVISION_RESP,
 }dw1000_rng_modes_t;
 
 typedef struct _dw1000_rng_status_t{
