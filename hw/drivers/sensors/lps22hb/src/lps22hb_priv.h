@@ -58,9 +58,9 @@ enum lps22hb_registers {
 #define LPS22HB_REG2_RESET (1<<2)
 #define LPS22HB_REG3_DRDY (1<<2)
     
-int lps22hb_write8(struct sensor_itf *itf, uint8_t reg, uint32_t value);
-int lps22hb_read8(struct sensor_itf *itf, uint8_t reg, uint8_t *value);
-int lps22hb_read_bytes(struct sensor_itf *itf, uint8_t reg, uint8_t *buffer, uint32_t length);
+int lps22hb_write8(struct lps22hb *dev, uint8_t reg, uint32_t value);
+int lps22hb_read8(struct lps22hb *dev, uint8_t reg, uint8_t *value);
+int lps22hb_read_bytes(struct lps22hb *dev, uint8_t reg, uint8_t *buffer, uint32_t length);
 
 #ifdef __cplusplus
 }

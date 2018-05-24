@@ -42,10 +42,18 @@ extern "C" {
 #define DW1000_DEV_TASK_PRIO        MYNEWT_VAL(DW1000_DEV_TASK_PRIO)
 #define DW1000_DEV_TASK_STACK_SZ    MYNEWT_VAL(DW1000_DEV_TASK_STACK_SZ)
 
+#define BROADCAST_ADDRESS          0xffff
+
 typedef enum _dw1000_dev_modes_t{
     DWT_BLOCKING,
     DWT_NONBLOCKING
 }dw1000_dev_modes_t;
+
+typedef enum _dw1000_dev_role_t{
+    NODE_0,
+    NODE,
+    TAG
+}dw1000_dev_role_t;
 
 typedef struct _dw1000_cmd{
     uint32_t reg:6;
@@ -114,6 +122,7 @@ typedef struct _dw1000_dev_rxdiag_t{
     uint16_t    max_growth_cir;     // Channel Impulse Response max growth CIR
 } dw1000_dev_rxdiag_t;
 
+
 typedef struct _dw1000_dev_instance_t{
     struct os_dev uwb_dev;     /** Has to be here for cast in create_dev to work */
     struct os_mutex *spi_mutex;  /** Pointer to global spi mutex if available  */
@@ -137,6 +146,7 @@ typedef struct _dw1000_dev_instance_t{
     void (* rng_rx_error_extension_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_tx_final_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_interface_extension_cb) (struct _dw1000_dev_instance_t *);
+    void (* rng_complete_cb) (struct _dw1000_dev_instance_t *);
   
 #if MYNEWT_VAL(DW1000_LWIP)
     void (* lwip_tx_complete_cb) (struct _dw1000_dev_instance_t *);
@@ -156,6 +166,12 @@ typedef struct _dw1000_dev_instance_t{
     void (* pan_rx_timeout_cb) (struct _dw1000_dev_instance_t *);    
 #endif
 
+#if MYNEWT_VAL(DW1000_PROVISION)
+    void (* provision_tx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* provision_rx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* provision_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
+    void (* provision_rx_error_cb) (struct _dw1000_dev_instance_t *);
+#endif
     union {
         uint16_t fctrl;                         // Reported frame control 
         uint8_t fctrl_array[sizeof(uint16_t)];  //endianness safe interface
@@ -196,10 +212,14 @@ typedef struct _dw1000_dev_instance_t{
     struct os_event interrupt_ev;
     struct os_task interrupt_task_str;
     uint8_t interrupt_task_prio;
-    os_stack_t interrupt_task_stack[DW1000_DEV_TASK_STACK_SZ];
+    os_stack_t interrupt_task_stack[DW1000_DEV_TASK_STACK_SZ]
+        __attribute__((aligned(OS_STACK_ALIGNMENT)));
     struct _dw1000_rng_instance_t * rng;
 #if MYNEWT_VAL(DW1000_LWIP)
     struct _dw1000_lwip_instance_t * lwip;
+#endif
+#if MYNEWT_VAL(DW1000_PROVISION)
+    struct _dw1000_provision_instance_t *provision;
 #endif
 #if MYNEWT_VAL(DW1000_CLOCK_CALIBRATION)
     struct _dw1000_ccp_instance_t * ccp;
@@ -213,6 +233,7 @@ typedef struct _dw1000_dev_instance_t{
     dw1000_dev_control_t control_rx_context;
     dw1000_dev_control_t control_tx_context; 
     dw1000_dev_status_t status; 
+    dw1000_dev_role_t dev_type;
     dwt_config_t mac_config;
 }dw1000_dev_instance_t;
 

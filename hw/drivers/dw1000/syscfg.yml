@@ -24,10 +24,16 @@ syscfg.defs:
     DW1000_PAN:
         description: 'Private Area Network functionality'
         value: 0
+    DW1000_PROVISION:
+        description: 'Enable independent provision module'
+        value:  0
     LOCAL_COORDINATE_X:
         description: >
             Default Anchor X Coordinate  
         value: ((float){0.0f})
+    DW1000_RNG_INDICATE_LED:
+        description: 'Toggle LED_1 for every range packet received'
+        value: 0
 
     LOCAL_COORDINATE_Y:
         description: >
@@ -54,6 +60,10 @@ syscfg.defs:
         description: >
             PAN Discovery Packets Period 
         value: ((uint32_t){0x200000})
+    PROVISION_PERIOD:
+        description: >
+            Provision packet period(in ms)
+        value: ((uint32_t){100})
     OS_LATENCY:
         description: >
             OS Latency Guardband 

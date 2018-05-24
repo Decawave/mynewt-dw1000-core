@@ -34,10 +34,10 @@ FILE_NAME=$BIN_BASENAME.elf
 
 if [ $# -gt 2 ]; then
     SPLIT_ELF_NAME=$3.elf
-    # TODO -- this magic number 0x42000 is the location of the second image
+    # TODO -- this magic number 0x82000 is the location of the second image
     # slot. we should either get this from a flash map file or somehow learn
     # this from the image itself
-    EXTRA_GDB_CMDS="add-symbol-file $SPLIT_ELF_NAME 0x8000 -readnow"
+    EXTRA_GDB_CMDS="add-symbol-file $SPLIT_ELF_NAME 0xc000 -readnow"
 fi
 
 JLINK_DEV="nRF52"

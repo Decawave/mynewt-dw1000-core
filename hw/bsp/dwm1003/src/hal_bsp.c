@@ -100,6 +100,7 @@ static const struct dw1000_dev_cfg dw1000_0_cfg = {
 
 
 #if MYNEWT_VAL(I2C_1)
+struct os_mutex g_i2c1_mutex;
 static const struct nrf52_hal_i2c_cfg hal_i2c_cfg = {
     .scl_pin = 28,
     .sda_pin = 29,
@@ -108,7 +109,9 @@ static const struct nrf52_hal_i2c_cfg hal_i2c_cfg = {
 
 #if MYNEWT_VAL(LSM6DSL_ONB)
 #include <lsm6dsl/lsm6dsl.h>
-static struct lsm6dsl lsm6dsl;
+static struct lsm6dsl lsm6dsl = {
+    .bus_mutex = &g_i2c1_mutex,
+};
 
 static struct sensor_itf i2c_1_itf_lsm = {
     .si_type = SENSOR_ITF_I2C,
@@ -121,7 +124,9 @@ static struct sensor_itf i2c_1_itf_lsm = {
 
 #if MYNEWT_VAL(LIS2MDL_ONB)
 #include <lis2mdl/lis2mdl.h>
-static struct lis2mdl lis2mdl;
+static struct lis2mdl lis2mdl = {
+    .bus_mutex = &g_i2c1_mutex,
+};
 
 static struct sensor_itf i2c_1_itf_lis = {
     .si_type = SENSOR_ITF_I2C,
@@ -133,7 +138,9 @@ static struct sensor_itf i2c_1_itf_lis = {
 
 #if MYNEWT_VAL(LPS22HB_ONB)
 #include <lps22hb/lps22hb.h>
-static struct lps22hb lps22hb;
+static struct lps22hb lps22hb = {
+    .bus_mutex = &g_i2c1_mutex,
+};
 
 static struct sensor_itf i2c_1_itf_lhb = {
     .si_type = SENSOR_ITF_I2C,
@@ -372,6 +379,8 @@ void hal_bsp_init(void)
 
 #if MYNEWT_VAL(I2C_1)
     rc = hal_i2c_init(1, (void *)&hal_i2c_cfg);
+    assert(rc == 0);
+    rc = os_mutex_init(&g_i2c1_mutex);
     assert(rc == 0);
 #endif
 

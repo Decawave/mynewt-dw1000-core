@@ -45,25 +45,35 @@ struct lis2mdl_cfg {
     sensor_type_t mask;
 };
 
+struct os_mutex;
+struct nrf52_hal_spi_cfg;
+    
 struct lis2mdl {
     struct os_dev dev;
     struct sensor sensor;
+    struct os_mutex *bus_mutex;
     struct lis2mdl_cfg cfg;
     os_time_t last_read_time;
+#if MYNEWT_VAL(LIS2MDL_USE_SPI)
+    void (*spi_read_cb)(int en);
+#endif
 };
 
-int lis2mdl_reset(struct sensor_itf *itf);
-int lis2mdl_sleep(struct sensor_itf *itf);
-int lis2mdl_set_lpf(struct sensor_itf *itf, uint8_t cfg);
-int lis2mdl_get_lpf(struct sensor_itf *itf, uint8_t *cfg);
-int lis2mdl_set_output_rate(struct sensor_itf *itf, enum lis2mdl_output_rate rate);
-int lis2mdl_get_output_rate(struct sensor_itf *itf, enum lis2mdl_output_rate *rate);
+int lis2mdl_reset(struct lis2mdl *dev);
+int lis2mdl_sleep(struct lis2mdl *dev);
+int lis2mdl_set_lpf(struct lis2mdl *dev, uint8_t cfg);
+int lis2mdl_get_lpf(struct lis2mdl *dev, uint8_t *cfg);
+int lis2mdl_set_output_rate(struct lis2mdl *dev, enum lis2mdl_output_rate rate);
+int lis2mdl_get_output_rate(struct lis2mdl *dev, enum lis2mdl_output_rate *rate);
 
-int lis2mdl_enable_interrupt(struct sensor_itf *itf, uint8_t enable);
+int lis2mdl_enable_interrupt(struct lis2mdl *dev, uint8_t enable);
 
 int lis2mdl_init(struct os_dev *, void *);
 int lis2mdl_config(struct lis2mdl *, struct lis2mdl_cfg *);
 
+int lis2mdl_read_raw(struct lis2mdl *dev, int16_t val[]);
+
+    
 #ifdef __cplusplus
 }
 #endif

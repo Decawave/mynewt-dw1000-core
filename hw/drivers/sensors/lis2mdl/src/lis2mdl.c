@@ -23,31 +23,41 @@
 
 #include "defs/error.h"
 #include "os/os.h"
+#include "os/os_mutex.h"
 #include "sysinit/sysinit.h"
+
+#if MYNEWT_VAL(LIS2MDL_USE_SPI)
+#include "hal/hal_spi.h"
+#include "hal/hal_gpio.h"
+#else
 #include "hal/hal_i2c.h"
+#endif
+
 #include "sensor/sensor.h"
 #include "sensor/mag.h"
 #include "lis2mdl/lis2mdl.h"
 #include "lis2mdl_priv.h"
 #include "log/log.h"
-#include "stats/stats.h"
+#include <stats/stats.h>
 
-/* Define the stats section and records */
-STATS_SECT_START(lis2mdl_stat_section)
+STATS_SECT_START(lis2mdl_stats)
     STATS_SECT_ENTRY(read_errors)
     STATS_SECT_ENTRY(write_errors)
+    STATS_SECT_ENTRY(mutex_errors)
 STATS_SECT_END
 
-/* Define stat names for querying */
-STATS_NAME_START(lis2mdl_stat_section)
-    STATS_NAME(lis2mdl_stat_section, read_errors)
-    STATS_NAME(lis2mdl_stat_section, write_errors)
-STATS_NAME_END(lis2mdl_stat_section)
-
 /* Global variable used to hold stats data */
-STATS_SECT_DECL(lis2mdl_stat_section) g_lis2mdlstats;
+STATS_SECT_DECL(lis2mdl_stats) g_lis2mdl_stats;
 
-#define LOG_MODULE_LIS2MDL    (2000)
+/* Define the stats section and records */
+STATS_NAME_START(lis2mdl_stats)
+    STATS_NAME(lis2mdl_stats, read_errors)
+    STATS_NAME(lis2mdl_stats, write_errors)
+    STATS_NAME(lis2mdl_stats, mutex_errors)
+STATS_NAME_END(lis2mdl_stats)
+
+
+#define LOG_MODULE_LIS2MDL    (81)
 #define LIS2MDL_INFO(...)     LOG_INFO(&_log, LOG_MODULE_LIS2MDL, __VA_ARGS__)
 #define LIS2MDL_ERR(...)      LOG_ERROR(&_log, LOG_MODULE_LIS2MDL, __VA_ARGS__)
 static struct log _log;
@@ -73,11 +83,34 @@ static const struct sensor_driver g_lis2mdl_sensor_driver = {
  * @return 0 on success, non-zero error on failure.
  */
 int
-lis2mdl_write8(struct sensor_itf *itf, uint8_t reg, uint32_t value)
+lis2mdl_write8(struct lis2mdl *dev, uint8_t reg, uint32_t value)
 {
     int rc;
-    uint8_t payload[2] = { reg, value & 0xFF };
+    os_error_t err = 0;
+    struct sensor_itf *itf = &dev->sensor.s_itf;
 
+    if (dev->bus_mutex)
+    {
+        err = os_mutex_pend(dev->bus_mutex, OS_WAIT_FOREVER);
+        if (err != OS_OK)
+        {
+            LIS2MDL_ERR("Mutex error=%d\n", err);
+            STATS_INC(g_lis2mdl_stats, mutex_errors);
+            return err;
+        }
+    }
+
+#if MYNEWT_VAL(LIS2MDL_USE_SPI)
+    rc=0;
+    hal_gpio_write(itf->si_cs_pin, 0);
+    
+    hal_spi_tx_val(itf->si_num, reg);
+    hal_spi_tx_val(itf->si_num, value);
+
+    hal_gpio_write(itf->si_cs_pin, 1);
+    
+#else
+    uint8_t payload[2] = { reg, value & 0xFF };
     struct hal_i2c_master_data data_struct = {
         .address = itf->si_addr,
         .len = 2,
@@ -90,7 +123,14 @@ lis2mdl_write8(struct sensor_itf *itf, uint8_t reg, uint32_t value)
     if (rc) {
         LIS2MDL_ERR("Failed to write to 0x%02X:0x%02X with value 0x%02X\n",
                        itf->si_addr, reg, value);
-        STATS_INC(g_lis2mdlstats, read_errors);
+        STATS_INC(g_lis2mdl_stats, write_errors);
+    }
+#endif
+
+    if (dev->bus_mutex)
+    {
+        err = os_mutex_release(dev->bus_mutex);
+        assert(err == OS_OK);
     }
 
     return rc;
@@ -106,10 +146,38 @@ lis2mdl_write8(struct sensor_itf *itf, uint8_t reg, uint32_t value)
  * @return 0 on success, non-zero error on failure.
  */
 int
-lis2mdl_read8(struct sensor_itf *itf, uint8_t reg, uint8_t *value)
+lis2mdl_read8(struct lis2mdl *dev, uint8_t reg, uint8_t *value)
 {
     int rc;
+    os_error_t err = 0;
+    struct sensor_itf *itf = &dev->sensor.s_itf;
 
+    if (dev->bus_mutex)
+    {
+        err = os_mutex_pend(dev->bus_mutex, OS_WAIT_FOREVER);
+        if (err != OS_OK)
+        {
+            LIS2MDL_ERR("Mutex error=%d\n", err);
+            STATS_INC(g_lis2mdl_stats, mutex_errors);
+            return err;
+        }
+    }
+
+#if MYNEWT_VAL(LIS2MDL_USE_SPI)
+
+    rc=0;
+    hal_gpio_write(itf->si_cs_pin, 0);
+    
+    hal_spi_tx_val(itf->si_num, reg | 0x80);
+
+    /* Reconfig spi for reading from 3wire */
+    dev->spi_read_cb(1);
+    *value = hal_spi_tx_val(itf->si_num, 0xff);
+    dev->spi_read_cb(0);
+
+    hal_gpio_write(itf->si_cs_pin, 1);
+    
+#else
     struct hal_i2c_master_data data_struct = {
         .address = itf->si_addr,
         .len = 1,
@@ -121,8 +189,8 @@ lis2mdl_read8(struct sensor_itf *itf, uint8_t reg, uint8_t *value)
                               OS_TICKS_PER_SEC / 10, 0);
     if (rc) {
         LIS2MDL_ERR("I2C access failed at address 0x%02X\n", itf->si_addr);
-        STATS_INC(g_lis2mdlstats, write_errors);
-        return rc;
+        STATS_INC(g_lis2mdl_stats, write_errors);
+        goto exit;
     }
 
     /* Read one byte back */
@@ -132,8 +200,17 @@ lis2mdl_read8(struct sensor_itf *itf, uint8_t reg, uint8_t *value)
 
     if (rc) {
          LIS2MDL_ERR("Failed to read from 0x%02X:0x%02X\n", itf->si_addr, reg);
-         STATS_INC(g_lis2mdlstats, read_errors);
+         STATS_INC(g_lis2mdl_stats, read_errors);
     }
+exit:
+#endif
+    
+    if (dev->bus_mutex)
+    {
+        err = os_mutex_release(dev->bus_mutex);
+        assert(err == OS_OK);
+    }
+
     return rc;
 }
 
@@ -148,23 +225,51 @@ lis2mdl_read8(struct sensor_itf *itf, uint8_t reg, uint8_t *value)
  * @return 0 on success, non-zero error on failure.
  */
 int
-lis2mdl_read_bytes(struct sensor_itf *itf, uint8_t reg, uint8_t *buffer, uint32_t length)
+lis2mdl_read_bytes(struct lis2mdl *dev, uint8_t reg, uint8_t *buffer, uint32_t length)
 {
     int rc;
+    os_error_t err = 0;
+    struct sensor_itf *itf = &dev->sensor.s_itf;
+    
+    if (dev->bus_mutex)
+    {
+        err = os_mutex_pend(dev->bus_mutex, OS_WAIT_FOREVER);
+        if (err != OS_OK)
+        {
+            LIS2MDL_ERR("Mutex error=%d\n", err);
+            STATS_INC(g_lis2mdl_stats, mutex_errors);
+            return err;
+        }
+    }
 
+#if MYNEWT_VAL(LIS2MDL_USE_SPI)
+    int i;
+    rc=0;
+    hal_gpio_write(itf->si_cs_pin, 0);
+    
+    hal_spi_tx_val(itf->si_num, reg | 0x80);
+    dev->spi_read_cb(1);
+    for (i=0;i<length;i++) {
+        buffer[i] = hal_spi_tx_val(itf->si_num, 0xff);
+    }
+    dev->spi_read_cb(0);
+
+    hal_gpio_write(itf->si_cs_pin, 1);
+#else
     struct hal_i2c_master_data data_struct = {
         .address = itf->si_addr,
         .len = 1,
         .buffer = &reg
     };
 
+
     /* Register write */
     rc = hal_i2c_master_write(itf->si_num, &data_struct,
                               OS_TICKS_PER_SEC / 10, 0);
     if (rc) {
         LIS2MDL_ERR("I2C access failed at address 0x%02X\n", itf->si_addr);
-        STATS_INC(g_lis2mdlstats, write_errors);
-        return rc;
+        STATS_INC(g_lis2mdl_stats, write_errors);
+        goto exit;
     }
 
     /* Read n bytes back */
@@ -174,60 +279,69 @@ lis2mdl_read_bytes(struct sensor_itf *itf, uint8_t reg, uint8_t *buffer, uint32_
                              OS_TICKS_PER_SEC / 10, 1);
 
     if (rc) {
-         LIS2MDL_ERR("Failed to read from 0x%02X:0x%02X\n", itf->si_addr, reg);
-         STATS_INC(g_lis2mdlstats, read_errors);
+        LIS2MDL_ERR("Failed to read from 0x%02X:0x%02X\n", itf->si_addr, reg);
+        STATS_INC(g_lis2mdl_stats, read_errors);
     }
+
+exit:
+#endif
+    if (dev->bus_mutex)
+    {
+        err = os_mutex_release(dev->bus_mutex);
+        assert(err == OS_OK);
+    }
+
     return rc;
 }
 
 int
-lis2mdl_reset(struct sensor_itf *itf)
+lis2mdl_reset(struct lis2mdl *dev)
 {
     int rc;
     uint8_t reg;
-    lis2mdl_read8(itf, LIS2MDL_CFG_REG_A, &reg);
+    lis2mdl_read8(dev, LIS2MDL_CFG_REG_A, &reg);
     // Reset
-    rc = lis2mdl_write8(itf, LIS2MDL_CFG_REG_A, reg | 0x20);
+    rc = lis2mdl_write8(dev, LIS2MDL_CFG_REG_A, reg | 0x20);
     if (rc) {
         return rc;
     }
     os_cputime_delay_usecs(1000);
     // Boot
-    rc = lis2mdl_write8(itf, LIS2MDL_CFG_REG_A, reg | 0x40);
+    rc = lis2mdl_write8(dev, LIS2MDL_CFG_REG_A, reg | 0x40);
     return rc;
 }
 
 int
-lis2mdl_sleep(struct sensor_itf *itf)
+lis2mdl_sleep(struct lis2mdl *dev)
 {
     uint8_t reg;
-    lis2mdl_read8(itf, LIS2MDL_CFG_REG_A, &reg);
+    lis2mdl_read8(dev, LIS2MDL_CFG_REG_A, &reg);
     // Reset
-    return lis2mdl_write8(itf, LIS2MDL_CFG_REG_A, reg | 0x20);
+    return lis2mdl_write8(dev, LIS2MDL_CFG_REG_A, reg | 0x20);
 }
 
 int
-lis2mdl_set_output_rate(struct sensor_itf *itf, enum lis2mdl_output_rate rate)
+lis2mdl_set_output_rate(struct lis2mdl *dev, enum lis2mdl_output_rate rate)
 {
     int rc;
     uint8_t reg;
     // 0x80 - temperature compensation, continuous mode (bits 0:1 == 00)
-    rc = lis2mdl_read8(itf, LIS2MDL_CFG_REG_A, &reg);
+    rc = lis2mdl_read8(dev, LIS2MDL_CFG_REG_A, &reg);
     if (rc) {
         return rc;
     }
 
     reg = (reg & (~0xC)) | ((uint8_t)rate << 2);
-    return lis2mdl_write8(itf, LIS2MDL_CFG_REG_A, reg);
+    return lis2mdl_write8(dev, LIS2MDL_CFG_REG_A, reg);
 }
 
 int
-lis2mdl_get_output_rate(struct sensor_itf *itf, enum lis2mdl_output_rate *rate)
+lis2mdl_get_output_rate(struct lis2mdl *dev, enum lis2mdl_output_rate *rate)
 {
     int rc;
     uint8_t reg;
 
-    rc = lis2mdl_read8(itf, LIS2MDL_CFG_REG_A, &reg);
+    rc = lis2mdl_read8(dev, LIS2MDL_CFG_REG_A, &reg);
     if (rc) {
         return rc;
     }
@@ -239,12 +353,12 @@ lis2mdl_get_output_rate(struct sensor_itf *itf, enum lis2mdl_output_rate *rate)
 
 
 int
-lis2mdl_enable_interrupt(struct sensor_itf *itf, uint8_t enable)
+lis2mdl_enable_interrupt(struct lis2mdl *dev, uint8_t enable)
 {
     int rc;
     uint8_t reg;
     // 0x80 - temperature compensation, continuous mode (bits 0:1 == 00)
-    rc = lis2mdl_read8(itf, LIS2MDL_CFG_REG_C, &reg);
+    rc = lis2mdl_read8(dev, LIS2MDL_CFG_REG_C, &reg);
     if (rc) {
         return rc;
     }
@@ -254,17 +368,17 @@ lis2mdl_enable_interrupt(struct sensor_itf *itf, uint8_t enable)
     else
         reg &= ~(0x01);
     
-    return lis2mdl_write8(itf, LIS2MDL_CFG_REG_A, reg);
+    return lis2mdl_write8(dev, LIS2MDL_CFG_REG_A, reg);
 }
 
 
 int
-lis2mdl_set_lpf(struct sensor_itf *itf, uint8_t enable)
+lis2mdl_set_lpf(struct lis2mdl *dev, uint8_t enable)
 {
     int rc;
     uint8_t reg;
 
-    rc = lis2mdl_read8(itf, LIS2MDL_CFG_REG_B, &reg);
+    rc = lis2mdl_read8(dev, LIS2MDL_CFG_REG_B, &reg);
     if (rc) {
         return rc;
     }
@@ -274,21 +388,38 @@ lis2mdl_set_lpf(struct sensor_itf *itf, uint8_t enable)
     else
         reg &= ~(0x01);
     
-    return lis2mdl_write8(itf, LIS2MDL_CFG_REG_B, reg);
+    return lis2mdl_write8(dev, LIS2MDL_CFG_REG_B, reg);
 }
 
 int
-lis2mdl_get_lpf(struct sensor_itf *itf, uint8_t *cfg)
+lis2mdl_get_lpf(struct lis2mdl *dev, uint8_t *cfg)
 {
-    return lis2mdl_read8(itf, LIS2MDL_CFG_REG_B, cfg);
+    return lis2mdl_read8(dev, LIS2MDL_CFG_REG_B, cfg);
 }
 
+static int lis2mdl_suspend(struct os_dev *dev, os_time_t suspend_t , int force)
+{
+    struct lis2mdl *lis;
+    lis = (struct lis2mdl *) dev;
+    lis2mdl_sleep(lis);
+    LIS2MDL_INFO("Lis suspend\n");
+    return OS_OK;
+}
+
+static int lis2mdl_resume(struct os_dev *dev)
+{
+    struct lis2mdl *lis = (struct lis2mdl*)dev;
+    lis2mdl_reset(lis);
+    
+    LIS2MDL_INFO("Lis resume\n");
+    return lis2mdl_config(lis, &lis->cfg);
+}
 
 /**
  * Expects to be called back through os_dev_create().
  *
  * @param The device object associated with this accellerometer
- * @param Argument passed to OS device init, unused
+ * @param Argument passed to OS device init
  *
  * @return 0 on success, non-zero error on failure.
  */
@@ -311,22 +442,12 @@ lis2mdl_init(struct os_dev *dev, void *arg)
 
     sensor = &lis->sensor;
 
-    /* Initialise the stats entry */
-    rc = stats_init(
-        STATS_HDR(g_lis2mdlstats),
-        STATS_SIZE_INIT_PARMS(g_lis2mdlstats, STATS_SIZE_32),
-        STATS_NAME_INIT_PARMS(lis2mdl_stat_section));
-    SYSINIT_PANIC_ASSERT(rc == 0);
-    /* Register the entry with the stats registry */
-    rc = stats_register(dev->od_name, STATS_HDR(g_lis2mdlstats));
-    SYSINIT_PANIC_ASSERT(rc == 0);
-
     rc = sensor_init(sensor, dev);
     if (rc) {
         return rc;
     }
 
-    /* Add the accelerometer/gyroscope driver */
+    /* Add the magnetometer driver */
     rc = sensor_set_driver(sensor, SENSOR_TYPE_MAGNETIC_FIELD,
          (struct sensor_driver *) &g_lis2mdl_sensor_driver);
     if (rc) {
@@ -338,6 +459,9 @@ lis2mdl_init(struct os_dev *dev, void *arg)
         return rc;
     }
 
+    dev->od_handlers.od_suspend = lis2mdl_suspend;
+    dev->od_handlers.od_resume = lis2mdl_resume;
+    
     return sensor_mgr_register(sensor);
 }
 
@@ -345,12 +469,15 @@ int
 lis2mdl_config(struct lis2mdl *lis, struct lis2mdl_cfg *cfg)
 {
     int rc;
-    struct sensor_itf *itf;
-
-    itf = SENSOR_GET_ITF(&(lis->sensor));
-
     uint8_t val;
-    rc = lis2mdl_read8(itf, LIS2MDL_WHO_AM_I, &val);
+
+    /* Init stats */
+    rc = stats_init_and_reg(
+        STATS_HDR(g_lis2mdl_stats), STATS_SIZE_INIT_PARMS(g_lis2mdl_stats,
+        STATS_SIZE_32), STATS_NAME_INIT_PARMS(lis2mdl_stats), "sen_lis2mdl");
+    SYSINIT_PANIC_ASSERT(rc == 0);
+    
+    rc = lis2mdl_read8(lis, LIS2MDL_WHO_AM_I, &val);
     if (rc) {
         return rc;
     }
@@ -358,25 +485,25 @@ lis2mdl_config(struct lis2mdl *lis, struct lis2mdl_cfg *cfg)
         return SYS_EINVAL;
     }
 
-    rc = lis2mdl_set_output_rate(itf, cfg->output_rate);
+    rc = lis2mdl_set_output_rate(lis, cfg->output_rate);
     if (rc) {
         return rc;
     }
     lis->cfg.output_rate = lis->cfg.output_rate;
 
-    rc = lis2mdl_set_lpf(itf, cfg->lpf_enable);
+    rc = lis2mdl_set_lpf(lis, cfg->lpf_enable);
     if (rc) {
         return rc;
     }
     lis->cfg.lpf_enable = lis->cfg.lpf_enable;
 	
 	// enable block data read (bit 4 == 1)
-    rc = lis2mdl_write8(itf, LIS2MDL_CFG_REG_C, 0x10);
+    rc = lis2mdl_write8(lis, LIS2MDL_CFG_REG_C, 0x10);
     if (rc) {
         return rc;
     }
     
-    rc = lis2mdl_enable_interrupt(itf, cfg->int_enable);
+    rc = lis2mdl_enable_interrupt(lis, cfg->int_enable);
     if (rc) {
         return rc;
     }
@@ -392,6 +519,29 @@ lis2mdl_config(struct lis2mdl *lis, struct lis2mdl_cfg *cfg)
     return 0;
 }
 
+int
+lis2mdl_read_raw(struct lis2mdl *dev, int16_t val[])
+{
+    int rc;
+    int16_t x, y, z;
+    uint8_t payload[8];
+    rc = lis2mdl_read_bytes(dev, LIS2MDL_OUTX_L_REG, payload, 8);
+    if (rc) {
+        return rc;
+    }
+    x = (((int16_t)payload[1] << 8) | payload[0]);
+    y = (((int16_t)payload[3] << 8) | payload[2]);
+    z = (((int16_t)payload[5] << 8) | payload[4]);
+
+    if (val)
+    {
+        val[0] = x;
+        val[1] = y;
+        val[2] = z;
+    }
+    return 0;
+}
+
 static int
 lis2mdl_sensor_read(struct sensor *sensor, sensor_type_t type,
         sensor_data_func_t data_func, void *data_arg, uint32_t timeout)
@@ -400,7 +550,6 @@ lis2mdl_sensor_read(struct sensor *sensor, sensor_type_t type,
     int rc;
     int16_t x, y, z;
     uint8_t payload[8];
-    struct sensor_itf *itf;
     union {
         struct sensor_mag_data smd;
     } databuf;
@@ -410,11 +559,11 @@ lis2mdl_sensor_read(struct sensor *sensor, sensor_type_t type,
         return SYS_EINVAL;
     }
 
-    itf = SENSOR_GET_ITF(sensor);
-
+    struct lis2mdl *dev = (struct lis2mdl *)SENSOR_GET_DEVICE(sensor);
+    
     /* Get a new accelerometer sample */
     if (type & SENSOR_TYPE_MAGNETIC_FIELD) {
-        rc = lis2mdl_read_bytes(itf, LIS2MDL_OUTX_L_REG, payload, 8);
+        rc = lis2mdl_read_bytes(dev, LIS2MDL_OUTX_L_REG, payload, 8);
         if (rc) {
             return rc;
         }

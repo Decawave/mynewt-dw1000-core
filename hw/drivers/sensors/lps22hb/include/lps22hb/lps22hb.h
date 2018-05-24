@@ -56,22 +56,26 @@ struct lps22hb_cfg {
 struct lps22hb {
     struct os_dev dev;
     struct sensor sensor;
+    struct os_mutex *bus_mutex;
     struct lps22hb_cfg cfg;
     os_time_t last_read_time;
 };
 
-int lps22hb_reset(struct sensor_itf *itf);
-int lps22hb_sleep(struct sensor_itf *itf);
-int lps22hb_set_lpf(struct sensor_itf *itf, enum lps22hb_lpf_config cfg);
-int lps22hb_get_lpf(struct sensor_itf *itf, enum lps22hb_lpf_config *cfg);
-int lps22hb_set_output_rate(struct sensor_itf *itf, enum lps22hb_output_rate rate);
-int lps22hb_get_output_rate(struct sensor_itf *itf, enum lps22hb_output_rate *rate);
+int lps22hb_reset(struct lps22hb *dev);
+int lps22hb_sleep(struct lps22hb *dev);
+int lps22hb_set_lpf(struct lps22hb *dev, enum lps22hb_lpf_config cfg);
+int lps22hb_get_lpf(struct lps22hb *dev, enum lps22hb_lpf_config *cfg);
+int lps22hb_set_output_rate(struct lps22hb *dev, enum lps22hb_output_rate rate);
+int lps22hb_get_output_rate(struct lps22hb *dev, enum lps22hb_output_rate *rate);
 
-int lps22hb_enable_interrupt(struct sensor_itf *itf, uint8_t enable);
+int lps22hb_enable_interrupt(struct lps22hb *dev, uint8_t enable);
 
 int lps22hb_init(struct os_dev *, void *);
 int lps22hb_config(struct lps22hb *, struct lps22hb_cfg *);
 
+int lps22hb_read_raw(struct lps22hb *dev, uint32_t *pressure);
+
+    
 #ifdef __cplusplus
 }
 #endif

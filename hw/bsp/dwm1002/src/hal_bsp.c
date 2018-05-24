@@ -112,51 +112,153 @@ static const struct dw1000_dev_cfg dw1000_1_cfg = {
 #endif
 
 
+#if MYNEWT_VAL(SPI_2_MASTER)
+struct os_mutex g_spi2_mutex;
+/*
+ * NOTE: Our HAL expects that the SS pin, if used, is treated as a gpio line
+ * and is handled outside the SPI routines.
+ */
+static const struct nrf52_hal_spi_cfg os_bsp_spi2m_cfg = {
+    .sck_pin      =  28,
+    .mosi_pin     =  29,
+    .miso_pin     =  LSM6DSL_SDO_PIN,
+};
+
+static struct hal_spi_settings os_bsp_spi2m_settings = {
+    .data_order = HAL_SPI_MSB_FIRST,
+    .data_mode = HAL_SPI_MODE3,
+    .baudrate = 4000,
+    .word_size = HAL_SPI_WORD_SIZE_8BIT,
+};
+
+
+static void
+spi2_three_wire_read(int en)
+{
+    int rc;
+    struct nrf52_hal_spi_cfg spi_read_cfg = {
+        .sck_pin      =  os_bsp_spi2m_cfg.sck_pin,
+        .mosi_pin     =  0xff, /* Not used */
+        .miso_pin     =  os_bsp_spi2m_cfg.mosi_pin,
+    };
+
+    hal_gpio_init_in(os_bsp_spi2m_cfg.sck_pin, HAL_GPIO_PULL_UP);
+    
+    if (en) {
+        /* Reconfig spi for reading from 3wire */
+        hal_spi_disable(2);
+        rc = hal_spi_init(2, (void *)&spi_read_cfg, HAL_SPI_TYPE_MASTER);
+        assert(rc == 0);
+        rc = hal_spi_config(2, &os_bsp_spi2m_settings);
+        assert(rc == 0);
+        rc = hal_spi_enable(2);
+        assert(rc == 0);
+    } else {
+        /* Normal 4 wire config */
+        hal_spi_disable(2);
+        rc = hal_spi_init(2, (void *)&os_bsp_spi2m_cfg, HAL_SPI_TYPE_MASTER);
+        assert(rc == 0);
+        rc = hal_spi_config(2, &os_bsp_spi2m_settings);
+        assert(rc == 0);
+        rc = hal_spi_enable(2);
+        assert(rc == 0);
+    }
+
+}
+
+#endif
+
+
 #if MYNEWT_VAL(I2C_1)
+struct os_mutex g_i2c1_mutex;
 static const struct nrf52_hal_i2c_cfg hal_i2c_cfg = {
     .scl_pin = 28,
     .sda_pin = 29,
     .i2c_frequency = 400    /* 400 kHz */
 };
+#endif
+
 
 #if MYNEWT_VAL(LSM6DSL_ONB)
 #include <lsm6dsl/lsm6dsl.h>
-static struct lsm6dsl lsm6dsl;
+static struct lsm6dsl lsm6dsl = {
+#if MYNEWT_VAL(LSM6DSL_USE_SPI)
+    .bus_mutex = &g_spi2_mutex,
+#else
+    .bus_mutex = &g_i2c1_mutex,
+#endif
+};
 
-static struct sensor_itf i2c_1_itf_lsm = {
+#if MYNEWT_VAL(LSM6DSL_USE_SPI)
+static struct sensor_itf itf_lsm = {
+    .si_type = SENSOR_ITF_SPI,
+    .si_num  = 2,
+    .si_cs_pin = LSM6DSL_CS_PIN,
+};
+#else
+static struct sensor_itf itf_lsm = {
     .si_type = SENSOR_ITF_I2C,
     .si_num  = 1,
-    .si_addr = 0b1101011
+    .si_addr = LSM6DSL_I2C_ADDR
 };
+#endif
 
 #endif
 
 
 #if MYNEWT_VAL(LIS2MDL_ONB)
 #include <lis2mdl/lis2mdl.h>
-static struct lis2mdl lis2mdl;
 
-static struct sensor_itf i2c_1_itf_lis = {
+static struct lis2mdl lis2mdl = {
+#if MYNEWT_VAL(LIS2MDL_USE_SPI)
+    .bus_mutex = &g_spi2_mutex,
+    .spi_read_cb = spi2_three_wire_read,
+#else
+    .bus_mutex = &g_i2c1_mutex,
+#endif
+};
+
+#if MYNEWT_VAL(LIS2MDL_USE_SPI)
+static struct sensor_itf itf_lis = {
+    .si_type = SENSOR_ITF_SPI,
+    .si_num  = 2,
+    .si_cs_pin = LIS2MDL_CS_PIN,
+};
+#else
+static struct sensor_itf itf_lis = {
     .si_type = SENSOR_ITF_I2C,
     .si_num  = 1,
-    .si_addr = 0b0011110
+    .si_addr = LIS2MDL_I2C_ADDR
 };
+#endif
 
 #endif
 
 #if MYNEWT_VAL(LPS22HB_ONB)
 #include <lps22hb/lps22hb.h>
-static struct lps22hb lps22hb;
-
-static struct sensor_itf i2c_1_itf_lhb = {
-    .si_type = SENSOR_ITF_I2C,
-    .si_num  = 1,
-    .si_addr = 0b1011100
+static struct lps22hb lps22hb = {
+#if MYNEWT_VAL(LPS22HB_USE_SPI)
+    .bus_mutex = &g_spi2_mutex,
+#else
+    .bus_mutex = &g_i2c1_mutex,
+#endif
 };
 
+#if MYNEWT_VAL(LPS22HB_USE_SPI)
+static struct sensor_itf itf_lhb = {
+    .si_type = SENSOR_ITF_SPI,
+    .si_num  = 2,
+    .si_cs_pin = LPS22HB_CS_PIN,
+};
+#else
+static struct sensor_itf itf_lhb = {
+    .si_type = SENSOR_ITF_I2C,
+    .si_num  = 1,
+    .si_addr = LPS22HB_I2C_ADDR
+};
 #endif
 
-#endif /* end MYNEWT_VAL(I2C_1) */
+#endif
 
 
 /*
@@ -325,19 +427,19 @@ sensor_dev_create(void)
     
 #if MYNEWT_VAL(LSM6DSL_ONB)
     rc = os_dev_create((struct os_dev *) &lsm6dsl, "lsm6dsl_0",
-      OS_DEV_INIT_PRIMARY, 0, lsm6dsl_init, (void *)&i2c_1_itf_lsm);
+      OS_DEV_INIT_PRIMARY, 0, lsm6dsl_init, (void *)&itf_lsm);
     assert(rc == 0);
 #endif
 
 #if MYNEWT_VAL(LIS2MDL_ONB)
     rc = os_dev_create((struct os_dev *) &lis2mdl, "lis2mdl_0",
-      OS_DEV_INIT_PRIMARY, 0, lis2mdl_init, (void *)&i2c_1_itf_lis);
+      OS_DEV_INIT_PRIMARY, 0, lis2mdl_init, (void *)&itf_lis);
     assert(rc == 0);
 #endif
 
 #if MYNEWT_VAL(LPS22HB_ONB)
     rc = os_dev_create((struct os_dev *) &lps22hb, "lps22hb_0",
-      OS_DEV_INIT_PRIMARY, 0, lps22hb_init, (void *)&i2c_1_itf_lhb);
+      OS_DEV_INIT_PRIMARY, 0, lps22hb_init, (void *)&itf_lhb);
     assert(rc == 0);
 #endif
     
@@ -386,6 +488,12 @@ void hal_bsp_init(void)
 #if MYNEWT_VAL(I2C_1)
     rc = hal_i2c_init(1, (void *)&hal_i2c_cfg);
     assert(rc == 0);
+    hal_gpio_init_in(LSM6DSL_SDO_PIN, HAL_GPIO_PULL_UP);
+    hal_gpio_init_in(LPS22HB_SDO_PIN, HAL_GPIO_PULL_UP);
+
+    hal_gpio_init_out(LSM6DSL_CS_PIN, 1);
+    hal_gpio_init_out(LIS2MDL_CS_PIN, 1);
+    hal_gpio_init_out(LPS22HB_CS_PIN, 1);
 #endif
 
 #if MYNEWT_VAL(SPI_0_MASTER)
@@ -406,6 +514,26 @@ void hal_bsp_init(void)
     dw1000_1 = hal_dw1000_inst(1);
     rc = os_dev_create((struct os_dev *) dw1000_1, "dw1000_1",
       OS_DEV_INIT_PRIMARY, 0, dw1000_dev_init, (void *)&dw1000_1_cfg);
+    assert(rc == 0);
+#endif
+
+#if MYNEWT_VAL(SPI_2_MASTER)
+    hal_gpio_init_out(LSM6DSL_CS_PIN, 1);
+    hal_gpio_init_out(LIS2MDL_CS_PIN, 1);
+    hal_gpio_init_out(LPS22HB_CS_PIN, 1);
+    hal_gpio_init_in(LSM6DSL_SDO_PIN, HAL_GPIO_PULL_UP);
+    hal_gpio_init_in(LPS22HB_SDO_PIN, HAL_GPIO_PULL_UP);
+
+    rc = hal_spi_init(2, (void *)&os_bsp_spi2m_cfg, HAL_SPI_TYPE_MASTER);
+    assert(rc == 0);
+
+    hal_spi_disable(2);
+    rc = hal_spi_config(2, &os_bsp_spi2m_settings);
+    assert(rc == 0);
+    rc = hal_spi_enable(2);
+    assert(rc == 0);
+
+    rc = os_mutex_init(&g_spi2_mutex);
     assert(rc == 0);
 #endif
     

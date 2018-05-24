@@ -83,31 +83,36 @@ struct lsm6dsl_cfg {
     sensor_type_t mask;
 };
 
+struct os_mutex;
+    
 struct lsm6dsl {
     struct os_dev dev;
     struct sensor sensor;
+    struct os_mutex *bus_mutex;
     struct lsm6dsl_cfg cfg;
     os_time_t last_read_time;
 };
 
-int lsm6dsl_reset(struct sensor_itf *itf);
-int lsm6dsl_sleep(struct sensor_itf *itf);
-int lsm6dsl_set_lpf(struct sensor_itf *itf, uint8_t cfg);
-int lsm6dsl_get_lpf(struct sensor_itf *itf, uint8_t *cfg);
-int lsm6dsl_set_gyro_rate_range(struct sensor_itf *itf,
+int lsm6dsl_reset(struct lsm6dsl *dev);
+int lsm6dsl_sleep(struct lsm6dsl *dev);
+int lsm6dsl_set_lpf(struct lsm6dsl *dev, uint8_t cfg);
+int lsm6dsl_get_lpf(struct lsm6dsl *dev, uint8_t *cfg);
+int lsm6dsl_set_gyro_rate_range(struct lsm6dsl *dev,
     enum lsm6dsl_gyro_rate rate , enum lsm6dsl_gyro_range range);
-int lsm6dsl_get_gyro_rate_range(struct sensor_itf *itf,
+int lsm6dsl_get_gyro_rate_range(struct lsm6dsl *dev,
     enum lsm6dsl_gyro_rate *rate, enum lsm6dsl_gyro_range *range);
-int lsm6dsl_set_accel_rate_range(struct sensor_itf *itf,
+int lsm6dsl_set_accel_rate_range(struct lsm6dsl *dev,
     enum lsm6dsl_accel_rate rate , enum lsm6dsl_accel_range range);
-int lsm6dsl_get_accel_rate_range(struct sensor_itf *itf,
+int lsm6dsl_get_accel_rate_range(struct lsm6dsl *dev,
     enum lsm6dsl_accel_rate *rate, enum lsm6dsl_accel_range *range);
 
-int lsm6dsl_enable_interrupt(struct sensor_itf *itf, uint8_t enable);
+int lsm6dsl_enable_interrupt(struct lsm6dsl *dev, uint8_t enable);
 
 int lsm6dsl_init(struct os_dev *, void *);
 int lsm6dsl_config(struct lsm6dsl *, struct lsm6dsl_cfg *);
 
+int lsm6dsl_read_raw(struct lsm6dsl *dev, int16_t gyro[], int16_t acc[]);
+    
 #ifdef __cplusplus
 }
 #endif

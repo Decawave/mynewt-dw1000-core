@@ -34,7 +34,8 @@ expected to be copied into the application project folder prior to its use!
 */
 
     .syntax unified
-    .arch armv7-m
+    .arch armv7e-m
+
     .section .stack
     .align 3
     .equ    Stack_Size, 432

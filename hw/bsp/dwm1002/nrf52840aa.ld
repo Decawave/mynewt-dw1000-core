@@ -1,4 +1,4 @@
-/*/*
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -16,4 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+MEMORY
+{
+  FLASH (rx) : ORIGIN = 0x0000c000, LENGTH = 0x76000
+  RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 0x40000
+}
 
+/* This linker script is used for images and thus contains an image header */
+_imghdr_size = 0x20;
