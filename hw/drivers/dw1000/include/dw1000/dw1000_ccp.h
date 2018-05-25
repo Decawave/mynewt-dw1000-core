@@ -60,6 +60,8 @@ typedef struct _dw1000_ccp_config_t{
 typedef struct _dw1000_ccp_instance_t{
     struct _dw1000_dev_instance_t * parent;
     struct os_sem sem;
+    struct os_callout callout_timer;
+    struct os_callout callout_postprocess;
     dw1000_ccp_status_t status;
     dw1000_ccp_config_t config;
     uint32_t period;

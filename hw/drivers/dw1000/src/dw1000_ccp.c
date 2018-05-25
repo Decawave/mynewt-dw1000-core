@@ -38,25 +38,10 @@
 #if MYNEWT_VAL(DW1000_CLOCK_CALIBRATION)
 #include <dw1000/dw1000_ccp.h>
 
-static ccp_frame_t frames[] = {
-    [0] = {
-        .fctrl = FCNTL_IEEE_BLINK_CCP_64,    // frame control (FCNTL_IEEE_BLINK_64 to indicate a data frame using 16-bit addressing).
-        .seq_num = 0xFE,
-        .correction_factor = 1.0f
-    },
-    [1] = {
-        .fctrl = FCNTL_IEEE_BLINK_CCP_64,    // frame control (FCNTL_IEEE_BLINK_64 to indicate a data frame using 16-bit addressing).
-        .seq_num = 0xFF,
-        .correction_factor = 1.0f
-    }
-};
-
 static void ccp_rx_complete_cb(dw1000_dev_instance_t * inst);
 static void ccp_tx_complete_cb(dw1000_dev_instance_t * inst);
 static dw1000_ccp_status_t dw1000_ccp_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 static void ccp_postprocess(struct os_event * ev);
-static struct os_callout ccp_callout_timer;
-static struct os_callout ccp_callout_postprocess;
 
 /*! 
  * @fn ccp_timer_ev_cb(struct os_event *ev)
@@ -81,7 +66,7 @@ ccp_timer_ev_cb(struct os_event *ev) {
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     if(dw1000_ccp_blink(inst, DWT_BLOCKING).start_tx_error)
-      os_callout_reset(&ccp_callout_timer, OS_TICKS_PER_SEC * (ccp->period - MYNEWT_VAL(OS_LATENCY)) * 1e-6);
+      os_callout_reset(&ccp->callout_timer, OS_TICKS_PER_SEC * (ccp->period - MYNEWT_VAL(OS_LATENCY)) * 1e-6);
 }
 
 /*! 
@@ -98,9 +83,10 @@ ccp_timer_ev_cb(struct os_event *ev) {
  */
 static void 
 ccp_timer_init(dw1000_dev_instance_t * inst) {
-    os_callout_init(&ccp_callout_timer, os_eventq_dflt_get(), ccp_timer_ev_cb, (void *) inst);
-    os_callout_reset(&ccp_callout_timer, OS_TICKS_PER_SEC/100);
+
     dw1000_ccp_instance_t * ccp = inst->ccp; 
+    os_callout_init(&ccp->callout_timer, os_eventq_dflt_get(), ccp_timer_ev_cb, (void *) inst);
+    os_callout_reset(&ccp->callout_timer, OS_TICKS_PER_SEC/100);
     ccp->status.timer_enabled = true;
 }
 
@@ -126,6 +112,7 @@ ccp_timer_init(dw1000_dev_instance_t * inst) {
 dw1000_ccp_instance_t * 
 dw1000_ccp_init(dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t clock_master){
     assert(inst);
+    assert(nframes > 1);
 
     if (inst->ccp == NULL ) {
         inst->ccp = (dw1000_ccp_instance_t *) malloc(sizeof(dw1000_ccp_instance_t) + nframes * sizeof(ccp_frame_t *)); 
@@ -133,9 +120,24 @@ dw1000_ccp_init(dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t clock_m
         memset(inst->ccp, 0, sizeof(dw1000_ccp_instance_t));
         inst->ccp->status.selfmalloc = 1;
         inst->ccp->nframes = nframes; 
+
+        ccp_frame_t ccp_default = {
+            .fctrl = FCNTL_IEEE_BLINK_CCP_64,    // frame control (FCNTL_IEEE_BLINK_64 to indicate a data frame using 16-bit addressing).
+            .correction_factor = 1.0f,
+            .seq_num = 0xFF
+        };
+
+        for (uint16_t i = 0; i < inst->ccp->nframes; i++){
+            inst->ccp->frames[i] = (ccp_frame_t *) malloc(sizeof(ccp_frame_t)); 
+            memcpy(inst->ccp->frames[i], &ccp_default, sizeof(ccp_frame_t));
+            inst->ccp->frames[i]->seq_num -= nframes - i + 1;
+        }
+
     }else{
         assert(inst->ccp->nframes == nframes);
     }
+   
+    
     inst->ccp->parent = inst;
     inst->ccp->period = MYNEWT_VAL(CCP_PERIOD);
     inst->ccp->config = (dw1000_ccp_config_t){
@@ -146,8 +148,8 @@ dw1000_ccp_init(dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t clock_m
     os_error_t err = os_sem_init(&inst->ccp->sem, 0x1); 
     assert(err == OS_OK);
 
-    for (uint16_t i = 0; i < inst->ccp->nframes; i++)
-        inst->ccp->frames[i] = &frames[i];
+   // for (uint16_t i = 0; i < inst->ccp->nframes; i++)
+   //     inst->ccp->frames[i] = &frames[i];
 
     dw1000_ccp_set_callbacks(inst, ccp_rx_complete_cb, ccp_tx_complete_cb);
     dw1000_ccp_set_postprocess(inst, &ccp_postprocess);
@@ -159,20 +161,23 @@ dw1000_ccp_init(dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t clock_m
 }
 
 /*! 
- * @fn dw1000_ccp_free(dw1000_dev_instance_t * inst)
+ * @fn dw1000_ccp_free(dw1000_ccp_instance_t * inst)
  *
  * @brief Deconstructor
  * 
  * input parameters
- * @param inst - dw1000_dev_instance_t * 
+ * @param inst - dw1000_cpp_instance_t * 
  *
  * returns none
  */
 void 
 dw1000_ccp_free(dw1000_ccp_instance_t * inst){
     assert(inst);  
-    if (inst->status.selfmalloc)
+    if (inst->status.selfmalloc){
+        for (uint16_t i = 0; i < inst->nframes; i++)
+            free(inst->frames[i]);
         free(inst);
+    }
     else
         inst->status.initialized = 0;
 }
@@ -197,8 +202,8 @@ dw1000_ccp_set_callbacks(dw1000_dev_instance_t * inst, dw1000_dev_cb_t ccp_rx_co
  */
 void 
 dw1000_ccp_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * ccp_postprocess){
-    os_callout_init(&ccp_callout_postprocess, os_eventq_dflt_get(), ccp_postprocess, (void *) inst);
     dw1000_ccp_instance_t * ccp = inst->ccp; 
+    os_callout_init(&ccp->callout_postprocess, os_eventq_dflt_get(), ccp_postprocess, (void *) inst);
     ccp->config.postprocess = true;
 }
 
@@ -223,7 +228,6 @@ static void ccp_postprocess(struct os_event * ev){
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
 
     printf("{\"utime\": %lu,\"ccp\":[%llu,%llu],\"correction\":%lu,\"seq_num\":%d}\n", 
-//    printf("{\"utime\": %lu,\"ccp\":[\"%llX\",\"%llX\"],\"seq_num\":%d}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),
         frame->reception_timestamp,
         (uint64_t)((uint64_t)(frame->reception_timestamp) - (uint64_t)(previous_frame->reception_timestamp)) & 0xFFFFFFFFF,
@@ -259,9 +263,10 @@ ccp_rx_complete_cb(dw1000_dev_instance_t * inst){
         int32_t tracking_offset = (int32_t) dw1000_read_reg(inst, RX_TTCKO_ID, 0, sizeof(int32_t)) & RX_TTCKO_RXTOFS_MASK;
         frame->correction_factor = 1.0f + ((float)tracking_offset) / tracking_interval;
         if (ccp->config.postprocess) 
-            os_eventq_put(os_eventq_dflt_get(), &ccp_callout_postprocess.c_ev);
+            os_eventq_put(os_eventq_dflt_get(), &ccp->callout_postprocess.c_ev);
     }
 }
+
 
 
 /*! 
@@ -284,9 +289,8 @@ static void
 ccp_tx_complete_cb(dw1000_dev_instance_t * inst){
     //Advance frame idx 
     dw1000_ccp_instance_t * ccp = inst->ccp; 
-    ccp_frame_t * previous_frame = ccp->frames[(ccp->idx-1)%ccp->nframes]; 
-    ccp_frame_t * frame = ccp->frames[(ccp->idx++)%ccp->nframes];
-   
+    ccp_frame_t * previous_frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
+    ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
 
     printf("{\"utime\": %lu,\"ccp_tx\":[\"%llX\",\"%llX\"],\"seq_num\":%d}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),
@@ -294,9 +298,8 @@ ccp_tx_complete_cb(dw1000_dev_instance_t * inst){
         (uint64_t)((uint64_t)(frame->transmission_timestamp) - (uint64_t)(previous_frame->transmission_timestamp)) & 0xFFFFFFFFF,
         frame->seq_num
     );
-
     if (ccp->status.timer_enabled) 
-        os_callout_reset(&ccp_callout_timer, OS_TICKS_PER_SEC * (ccp->period - MYNEWT_VAL(OS_LATENCY)) * 1e-6);    
+        os_callout_reset(&ccp->callout_timer, OS_TICKS_PER_SEC * (ccp->period - MYNEWT_VAL(OS_LATENCY)) * 1e-6);    
     os_sem_release(&inst->ccp->sem);  
 }
 
@@ -325,11 +328,11 @@ dw1000_ccp_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     assert(err == OS_OK);
 
     dw1000_ccp_instance_t * ccp = inst->ccp; 
-    ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes];
     ccp_frame_t * previous_frame = ccp->frames[(ccp->idx-1)%ccp->nframes];
+    ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes];
 
     frame->transmission_timestamp = previous_frame->transmission_timestamp + 2 * ((uint64_t)inst->ccp->period << 15);
-    frame->seq_num+=inst->ccp->nframes;
+    frame->seq_num += inst->ccp->nframes;
     frame->long_address = inst->my_short_address;
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_blink_frame_t));
@@ -390,7 +393,8 @@ dw1000_ccp_start(dw1000_dev_instance_t * inst){
  */
 void 
 dw1000_ccp_stop(dw1000_dev_instance_t * inst){
-    os_callout_stop(&ccp_callout_timer);
+    dw1000_ccp_instance_t * ccp = inst->ccp; 
+    os_callout_stop(&ccp->callout_timer);
 }
 
 #endif /* MYNEWT_VAL(DW1000_CLOCK_CALIBRATION) */
