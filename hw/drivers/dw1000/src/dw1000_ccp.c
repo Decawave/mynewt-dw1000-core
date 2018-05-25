@@ -148,9 +148,6 @@ dw1000_ccp_init(dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t clock_m
     os_error_t err = os_sem_init(&inst->ccp->sem, 0x1); 
     assert(err == OS_OK);
 
-   // for (uint16_t i = 0; i < inst->ccp->nframes; i++)
-   //     inst->ccp->frames[i] = &frames[i];
-
     dw1000_ccp_set_callbacks(inst, ccp_rx_complete_cb, ccp_tx_complete_cb);
     dw1000_ccp_set_postprocess(inst, &ccp_postprocess);
     dw1000_ccp_instance_t * ccp = inst->ccp; 
@@ -227,7 +224,7 @@ static void ccp_postprocess(struct os_event * ev){
     ccp_frame_t * previous_frame = ccp->frames[(ccp->idx-1)%ccp->nframes]; 
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
 
-    printf("{\"utime\": %lu,\"ccp\":[%llu,%llu],\"correction\":%lu,\"seq_num\":%d}\n", 
+    printf("{\"utime\":%lu,\"ccp\":[%llu,%llu],\"correction\":%lu,\"seq_num\":%d}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),
         frame->reception_timestamp,
         (uint64_t)((uint64_t)(frame->reception_timestamp) - (uint64_t)(previous_frame->reception_timestamp)) & 0xFFFFFFFFF,
@@ -292,7 +289,7 @@ ccp_tx_complete_cb(dw1000_dev_instance_t * inst){
     ccp_frame_t * previous_frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
     ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
 
-    printf("{\"utime\": %lu,\"ccp_tx\":[\"%llX\",\"%llX\"],\"seq_num\":%d}\n", 
+    printf("{\"utime\":%lu,\"ccp_tx\":[\"%llX\",\"%llX\"],\"seq_num\":%d}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),
         frame->transmission_timestamp,
         (uint64_t)((uint64_t)(frame->transmission_timestamp) - (uint64_t)(previous_frame->transmission_timestamp)) & 0xFFFFFFFFF,
