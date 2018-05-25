@@ -382,12 +382,6 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
     switch (code){
         case DWT_PROVISION_START ... DWT_PROVISION_RESP:
 #if MYNEWT_VAL(DW1000_PROVISION)
-            if(code == DWT_PROVISION_START && inst->dev_type == TAG){
-                inst->control = inst->control_rx_context;
-                if (dw1000_restart_rx(inst, control).start_rx_error)
-                    inst->rng_rx_error_cb(inst);
-                return;
-            }
             if(inst->provision_rx_complete_cb != NULL){
                 inst->provision_rx_complete_cb(inst);
             }
