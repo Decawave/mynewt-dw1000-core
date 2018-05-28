@@ -24,6 +24,9 @@ syscfg.defs:
     DW1000_PAN:
         description: 'Private Area Network functionality'
         value: 0
+    DW1000_MAC_FILTERING:
+        description: 'Enable the mac filtering'
+        value: 0
     DW1000_PROVISION:
         description: 'Enable independent provision module'
         value:  0
