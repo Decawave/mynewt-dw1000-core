@@ -34,12 +34,10 @@ syscfg.defs:
     DW1000_RNG_INDICATE_LED:
         description: 'Toggle LED_1 for every range packet received'
         value: 0
-
     LOCAL_COORDINATE_Y:
         description: >
             Default Anchor Y Coordinate  
         value: ((float){0.0f})
-        
     LOCAL_COORDINATE_Z:
         description: >
             Default Anchor Z Coordinate  
