@@ -301,6 +301,12 @@ dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *
     dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_TXSTRT | SYS_CTRL_TRXOFF, sizeof(uint8_t)); // Request TX start and TRX off at the same time
     dw1000_tasks_init(inst);
 
+#if MYNEWT_VAL(DW1000_MAC_FILTERING)
+    if(inst->config.framefilter_enabled){
+        dw1000_mac_framefilter(inst, DWT_FF_BEACON_EN | DWT_FF_DATA_EN );
+    }
+#endif
+    
     return inst->status;
 } 
 

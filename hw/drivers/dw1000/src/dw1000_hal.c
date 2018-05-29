@@ -49,6 +49,9 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             .config = {
                 .rxdiag_enable = 1,
                 .dblbuffon_enabled = 1,
+#if MYNEWT_VAL(DW1000_MAC_FILTERING)
+                .framefilter_enabled = 1,
+#endif
                 .rxauto_enable = 1
             },
             .spi_mutex = 0,
@@ -71,7 +74,10 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             .config = {
                 .rxdiag_enable = 1,
                 .dblbuffon_enabled = 1,
-                .rxauto_enable = 1
+#if MYNEWT_VAL(DW1000_MAC_FILTERING)
+                .framefilter_enabled = 1,
+#endif
+                .rxauto_enable = 1,
             },
             .spi_mutex = 0,
             .interrupt_task_prio = 6
@@ -93,6 +99,9 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
              .config = {
                 .rxdiag_enable = 1,
                 .dblbuffon_enabled = 1,
+#if MYNEWT_VAL(DW1000_MAC_FILTERING)
+                .framefilter_enabled = 1,
+#endif
                 .rxauto_enable = 1
             },
             .spi_mutex = 0
