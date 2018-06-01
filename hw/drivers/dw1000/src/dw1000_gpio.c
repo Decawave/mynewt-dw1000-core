@@ -47,7 +47,7 @@
  *
  * no return value
  */
-void dw1000_gpio_config_leds(dw1000_dev_instance_t * inst, uint8_t mode)
+void dw1000_gpio_config_leds(dw1000_dev_instance_t * inst, dw1000_led_modes_t mode)
 {
     uint32_t reg;
 
