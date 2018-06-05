@@ -50,20 +50,12 @@ inline void dw1000_phy_sysclk_PLL(dw1000_dev_instance_t * inst){
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, reg, sizeof(uint8_t));
 }
 
-// Set system clock to LDE
-void dw1000_phy_sysclk_LDE(dw1000_dev_instance_t * inst){
-    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, 0x01, sizeof(uint8_t));
-    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET + 1 , 0x03, sizeof(uint8_t));
-}
-
 // Set system clock to SEQ All
 inline void dw1000_phy_sysclk_SEQ(dw1000_dev_instance_t * inst){
 
     uint8_t reg = (uint8_t) dw1000_read_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, sizeof(uint8_t));
     reg &= (uint8_t)~PMSC_CTRL0_SYSCLKS_19M & (uint8_t)~PMSC_CTRL0_SYSCLKS_125M;
-
-    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, 0, sizeof(uint8_t));
-    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET+1, reg, sizeof(uint8_t));
+    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, reg, sizeof(uint8_t));
 }
 
 // Set system clock to SEQ All
