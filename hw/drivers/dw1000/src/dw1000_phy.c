@@ -49,13 +49,43 @@ inline void dw1000_phy_sysclk_PLL(dw1000_dev_instance_t * inst){
     reg |= (uint8_t) PMSC_CTRL0_SYSCLKS_125M;
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, reg, sizeof(uint8_t));
 }
+
+// Set system clock to LDE
+void dw1000_phy_sysclk_LDE(dw1000_dev_instance_t * inst){
+    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, 0x01, sizeof(uint8_t));
+    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET + 1 , 0x03, sizeof(uint8_t));
+}
+
 // Set system clock to SEQ All
 inline void dw1000_phy_sysclk_SEQ(dw1000_dev_instance_t * inst){
 
     uint8_t reg = (uint8_t) dw1000_read_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, sizeof(uint8_t));
     reg &= (uint8_t)~PMSC_CTRL0_SYSCLKS_19M & (uint8_t)~PMSC_CTRL0_SYSCLKS_125M;
-    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, reg, sizeof(uint8_t));
+
+    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, 0, sizeof(uint8_t));
+    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET+1, reg, sizeof(uint8_t));
 }
+
+// Set system clock to SEQ All
+inline void dw1000_phy_sysclk_ACC(dw1000_dev_instance_t * inst, uint8_t mode){
+
+    uint8_t pmsc_ctrl_lo = (uint8_t) dw1000_read_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, sizeof(uint8_t));
+    uint8_t pmsc_ctrl_hi = (uint8_t) dw1000_read_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET + 1, sizeof(uint8_t));
+
+    switch(mode){
+        case true:
+            pmsc_ctrl_lo  =  0x48 | (pmsc_ctrl_lo & 0xb3);
+            pmsc_ctrl_hi  =  0x80 | pmsc_ctrl_hi;
+            break;
+        default:
+            pmsc_ctrl_lo  =  pmsc_ctrl_lo & 0xb3;
+            pmsc_ctrl_hi  =  0x7f & pmsc_ctrl_hi ;
+            break;
+    }
+    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, pmsc_ctrl_lo, sizeof(uint8_t));
+    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET+1, pmsc_ctrl_hi, sizeof(uint8_t));
+}
+
 
 // Disable sequencing and go to state "INIT"
 void dw1000_phy_disable_sequencing(dw1000_dev_instance_t * inst){ 
@@ -128,7 +158,7 @@ dw1000_dev_status_t dw1000_phy_init(dw1000_dev_instance_t * inst, dw1000_phy_txr
 void _dw1000_phy_load_microcode(dw1000_dev_instance_t * inst)
 {
     // Set up clocks
-    dw1000_phy_sysclk_XTAL(inst);
+    dw1000_phy_sysclk_LDE(inst);
 
     // Kick off the LDE Load
     dw1000_write_reg(inst, OTP_IF_ID, OTP_CTRL, OTP_CTRL_LDELOAD, sizeof(uint16_t)); // Set load LDE kick bit
