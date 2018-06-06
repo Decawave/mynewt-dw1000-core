@@ -503,6 +503,8 @@ dw1000_dev_status_t dw1000_start_rx(dw1000_dev_instance_t * inst)
         inst->status.start_rx_error = (sys_status_reg & (SYS_STATUS_HPDWARN >> 24)) != 0;   
         if (inst->status.start_rx_error){   // if delay has passed do immediate RX on unless DWT_IDLE_ON_DLY_ERR is true
             dw1000_phy_forcetrxoff(inst);   // turn the delayed receive off
+            if (inst->control.delay_start_enabled) 
+                inst->sys_ctrl_reg &= ~SYS_CTRL_RXDLYE;
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, inst->sys_ctrl_reg, sizeof(uint16_t)); // turn on receiver        
         }
     }else
@@ -551,6 +553,8 @@ dw1000_dev_status_t dw1000_restart_rx(dw1000_dev_instance_t * inst, dw1000_dev_c
         inst->status.start_rx_error = (sys_status_reg & (SYS_STATUS_HPDWARN >> 24)) != 0;   
         if (inst->status.start_rx_error){   // if delay has passed do immediate RX on unless DWT_IDLE_ON_DLY_ERR is true
             dw1000_phy_forcetrxoff(inst);   // turn the delayed receive off
+            if (inst->control.delay_start_enabled) 
+                inst->sys_ctrl_reg &= ~SYS_CTRL_RXDLYE;
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, inst->sys_ctrl_reg, sizeof(uint16_t)); // turn on receiver
         }
     }else
