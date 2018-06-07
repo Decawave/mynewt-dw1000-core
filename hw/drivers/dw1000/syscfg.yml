@@ -30,6 +30,9 @@ syscfg.defs:
     DW1000_PROVISION:
         description: 'Enable independent provision module'
         value:  0
+    DW1000_RANGE:
+        description: 'TWR Ranging functionality'
+        value:  0
     LOCAL_COORDINATE_X:
         description: >
             Default Anchor X Coordinate  
@@ -61,6 +64,10 @@ syscfg.defs:
         description: >
             PAN Discovery Packets Period 
         value: ((uint32_t){0x200000})
+    RANGE_PERIOD:
+        description: >
+            Ranging period
+        value: ((uint32_t){0x3000})
     PROVISION_PERIOD:
         description: >
             Provision packet period(in ms)
