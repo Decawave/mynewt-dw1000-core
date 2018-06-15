@@ -127,7 +127,7 @@ typedef struct{
 typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * dev;
     struct os_sem sem;
-    uint64_t delay_start_until;
+    uint64_t delay;
     dw1000_rng_config_t * config;
     dw1000_rng_control_t control;
     dw1000_rng_status_t status;

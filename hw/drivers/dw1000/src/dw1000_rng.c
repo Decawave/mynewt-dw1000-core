@@ -141,7 +141,7 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     dw1000_set_wait4resp(inst, true);    
     dw1000_set_rx_timeout(inst, config->rx_timeout_period); 
     if (rng->control.delay_start_enabled) 
-        dw1000_set_delay_start(inst, rng->delay_start_until);   
+        dw1000_set_delay_start(inst, rng->delay);   
     dw1000_start_tx(inst);
     
     err = os_sem_pend(&inst->rng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
@@ -151,12 +151,12 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
 }
 
 dw1000_dev_status_t 
-dw1000_rng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_address, uint64_t delay_start_until, dw1000_rng_modes_t code){
+dw1000_rng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t code){
     
     dw1000_rng_instance_t * rng = inst->rng;    
   
     rng->control.delay_start_enabled = 1;
-    rng->delay_start_until = delay_start_until;
+    rng->delay = delay;
     dw1000_rng_request(inst, dst_address, code);
     rng->control.delay_start_enabled = 0;
     

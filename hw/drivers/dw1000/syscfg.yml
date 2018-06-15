@@ -56,7 +56,7 @@ syscfg.defs:
     CCP_PERIOD:
         description: >
             Clock Calibration Packets Period 
-        value: ((uint32_t){0x020000})
+        value: ((uint32_t){0x200000})
     PAN_PERIOD:
         description: >
             PAN Discovery Packets Period 
