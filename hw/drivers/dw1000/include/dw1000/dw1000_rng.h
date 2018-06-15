@@ -144,7 +144,11 @@ void dw1000_rng_set_callbacks_extension(dw1000_dev_instance_t * inst,  dw1000_de
 dw1000_dev_status_t dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t protocal);
 dw1000_dev_status_t dw1000_rng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t protocal);
 void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, twr_frame_t twr[], uint16_t nframes);
+#if MYNEWT_VAL(DW1000_RANGE)
+float dw1000_rng_twr_to_tof(twr_frame_t *fframe, twr_frame_t *nframe);
+#else
 float dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng);
+#endif
 uint32_t dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code);
 
 #define dw1000_rng_tof_to_meters(ToF) (float)(ToF * 299792458 * (1.0/499.2e6/128.0)) 

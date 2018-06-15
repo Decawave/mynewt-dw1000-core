@@ -165,7 +165,10 @@ typedef struct _dw1000_dev_instance_t{
     void (* pan_tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* pan_rx_timeout_cb) (struct _dw1000_dev_instance_t *);    
 #endif
-
+#if MYNEWT_VAL(DW1000_RANGE)
+    void (* range_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* range_error_cb) (struct _dw1000_dev_instance_t *);
+#endif
 #if MYNEWT_VAL(DW1000_PROVISION)
     void (* provision_tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* provision_rx_complete_cb) (struct _dw1000_dev_instance_t *);
@@ -226,6 +229,9 @@ typedef struct _dw1000_dev_instance_t{
 #endif
 #if MYNEWT_VAL(DW1000_PAN)
     struct _dw1000_pan_instance_t * pan;
+#endif
+#if MYNEWT_VAL(DW1000_RANGE)
+    struct _dw1000_range_instance_t * range;
 #endif
     dw1000_dev_rxdiag_t rxdiag;
     dw1000_dev_config_t config;
