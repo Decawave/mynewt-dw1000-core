@@ -222,18 +222,6 @@ struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst
     assert((config->rx.phrMode == DWT_PHRMODE_STD) || (config->rx.phrMode == DWT_PHRMODE_EXT));
 #endif
     
-    printf(".channel %d\n",config->channel);
-    printf(".dataRate %d\n",config->dataRate);
-    printf(".prf %d\n",config->prf);
-    printf(".rx.pacLength %d\n",config->rx.pacLength);
-    printf(".rx.sfdTimeout %d\n",config->rx.sfdTimeout);
-    printf(".rx.sfdType %d\n",config->rx.sfdType);
-    printf(".rx.phrMode %d\n",config->rx.phrMode);
-    printf(".tx.preambleLength %d\n",config->tx.preambleLength);
-    printf(".rx.preambleCodeIndex %d\n",config->rx.preambleCodeIndex);
-    printf(".tx.preambleCodeIndex %d\n",config->tx.preambleCodeIndex);
-
-
     // For 110 kbps we need a special setup
     if(config->dataRate == DWT_BR_110K){
         inst->sys_cfg_reg |= SYS_CFG_RXM110K;
