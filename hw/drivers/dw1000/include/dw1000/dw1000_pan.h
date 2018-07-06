@@ -35,7 +35,6 @@ extern "C" {
 #include <dw1000/dw1000_rng.h>
 #include <dw1000/dw1000_ftypes.h>
 
-
 typedef union{
     struct _pan_frame_resp_t{
         struct _ieee_blink_frame_t;

@@ -21,31 +21,58 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include <assert.h>
 #include <os/os.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
 #include "bsp/bsp.h"
 
-
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_hal.h>
-#include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_ftypes.h>
-
-#if MYNEWT_VAL(DW1000_CLOCK_CALIBRATION)
+#if MYNEWT_VAL(DW1000_CCP_ENABLED)
 #include <dw1000/dw1000_ccp.h>
 
-#if MYNEWT_VAL(CLOCK_CALIBRATION)
+#if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
 #include <clkcal/clkcal.h>
 #endif
 
-static void ccp_rx_complete_cb(dw1000_dev_instance_t * inst);
-static void ccp_tx_complete_cb(dw1000_dev_instance_t * inst);
-static dw1000_ccp_status_t dw1000_ccp_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
-#if MYNEWT_VAL(CLOCK_CALIBRATION) !=1
+#if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED) 
+
+/*	%Lowpass design
+ Fs = 1
+ Fc = 0.2
+ [z,p,k] = cheby2(6,80,Fc/Fs);
+ [sos]=zp2sos(z,p,k);
+ fvtool(sos);
+ info = stepinfo(zp2tf(p,z,k));
+ sprintf("#define FS_XTALT_SETTLINGTIME %d", 2*ceil(info.SettlingTime))
+ sos2c(sos,'g_fs_xtalt')
+*/
+#define FS_XTALT_SETTLINGTIME 17
+static float g_fs_xtalt_b[] ={
+     	2.160326e-04, 9.661246e-05, 2.160326e-04, 
+     	1.000000e+00, -1.302658e+00, 1.000000e+00, 
+     	1.000000e+00, -1.593398e+00, 1.000000e+00, 
+     	};
+static float g_fs_xtalt_a[] ={
+     	1.000000e+00, -1.555858e+00, 6.083635e-01, 
+     	1.000000e+00, -1.661260e+00, 7.136943e-01, 
+     	1.000000e+00, -1.836731e+00, 8.911796e-01, 
+     	};
+/*
+% From Figure 29 PPM vs Crystal Trim
+p=polyfit([30,20,0,-18],[0,5,17,30],2) 
+mat2c(p,'g_fs_xtalt_poly')
+*/
+static float g_fs_xtalt_poly[] ={
+     	3.252948e-03, -6.641957e-01, 1.699287e+01, 
+     	};
+#endif
+
+
+static void ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst);
+static void ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst);
+static struct _dw1000_ccp_status_t dw1000_ccp_blink(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
+#if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED) !=1
 static void ccp_postprocess(struct os_event * ev);
 #endif
 /*! 
@@ -87,7 +114,7 @@ ccp_timer_ev_cb(struct os_event *ev) {
  * returns none
  */
 static void 
-ccp_timer_init(dw1000_dev_instance_t * inst) {
+ccp_timer_init(struct _dw1000_dev_instance_t * inst) {
 
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     os_callout_init(&ccp->callout_timer, os_eventq_dflt_get(), ccp_timer_ev_cb, (void *) inst);
@@ -115,7 +142,7 @@ ccp_timer_init(dw1000_dev_instance_t * inst) {
  * returns dw1000_ccp_instance_t * 
  */
 dw1000_ccp_instance_t * 
-dw1000_ccp_init(dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t clock_master){
+dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t clock_master){
     assert(inst);
     assert(nframes > 1);
 
@@ -144,6 +171,9 @@ dw1000_ccp_init(dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t clock_m
     inst->ccp->period = MYNEWT_VAL(CCP_PERIOD);
     inst->ccp->config = (dw1000_ccp_config_t){
         .postprocess = false,
+#if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED) 
+        .fs_xtalt_autotune = true,
+#endif
     };
     inst->clock_master = clock_master;
 
@@ -152,7 +182,7 @@ dw1000_ccp_init(dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t clock_m
 
     dw1000_ccp_set_callbacks(inst, ccp_rx_complete_cb, ccp_tx_complete_cb);
 
-#if MYNEWT_VAL(CLOCK_CALIBRATION)
+#if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
     inst->ccp->clkcal = clkcal_init(NULL, inst->ccp);      // Using clkcal process
 #else
     dw1000_ccp_set_postprocess(inst->ccp, &ccp_postprocess);            // Using default process
@@ -160,7 +190,17 @@ dw1000_ccp_init(dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t clock_m
 
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
+
+#if MYNEWT_VAL(CLOCK_CALIBRATION)
+    frame->transmission_timestamp = _dw1000_read_systime(inst);
+#else
     frame->transmission_timestamp = dw1000_read_systime(inst);
+#endif
+
+#if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED) 
+    inst->ccp->xtalt_sos = sosfilt_init(NULL, sizeof(g_fs_xtalt_b)/sizeof(float)/BIQUAD_N);
+#endif
+
     inst->ccp->status.initialized = 1;
     return inst->ccp;
 }
@@ -178,9 +218,12 @@ dw1000_ccp_init(dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t clock_m
 void 
 dw1000_ccp_free(dw1000_ccp_instance_t * inst){
     assert(inst);  
-#if MYNEWT_VAL(CLOCK_CALIBRATION)
+#if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
     clkcal_free(inst->clkcal);
-#endif            
+#endif         
+#if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED) 
+    sosfilt_free(inst->xtalt_sos);
+#endif   
     if (inst->status.selfmalloc){
         for (uint16_t i = 0; i < inst->nframes; i++)
             free(inst->frames[i]);
@@ -191,7 +234,7 @@ dw1000_ccp_free(dw1000_ccp_instance_t * inst){
 }
 
 void 
-dw1000_ccp_set_callbacks(dw1000_dev_instance_t * inst, dw1000_dev_cb_t ccp_rx_complete_cb, dw1000_dev_cb_t ccp_tx_complete_cb){
+dw1000_ccp_set_callbacks(struct _dw1000_dev_instance_t * inst, dw1000_dev_cb_t ccp_rx_complete_cb, dw1000_dev_cb_t ccp_tx_complete_cb){
     inst->ccp_rx_complete_cb = ccp_rx_complete_cb;
     inst->ccp_tx_complete_cb = ccp_tx_complete_cb;
 }
@@ -214,7 +257,7 @@ dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, os_event_fn * ccp_postp
     inst->config.postprocess = true;
 }
 
-#if MYNEWT_VAL(CLOCK_CALIBRATION) !=1
+#if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED) !=1
 /*! 
  * @fn ccp_postprocess(dw1000_dev_instance_t * inst)
  *
@@ -244,12 +287,19 @@ static void ccp_postprocess(struct os_event * ev){
 }
 #endif
 
+
 /*! 
  * @fn ccp_rx_complete_cb(dw1000_dev_instance_t * inst)
  *
  * @brief Precise timing is achieved using the reception_timestamp and tracking intervals along with  
  * the correction factor. For timescale processing, a postprocessing 
  * callback is placed in the eventq
+ * 
+ * This callback with FS_XTALT_AUTOTUNE_ENABLED set, uses the RX_TTCKO_ID register to compensate for crystal offset and drift. This is an
+ * adaptive loop with a time constant of minutes. By aligning the crystals within the network RF TX power is optimum. 
+ * Note: Precise RTLS timing still relies on timescale algorithm. 
+ * 
+ * The fs_xtalt adjustments align crystals to 1us (1PPM) while timescale processing resolves timestamps to sub 1ns.
  *
  * input parameters
  * @param inst - dw1000_dev_instance_t * 
@@ -259,19 +309,52 @@ static void ccp_postprocess(struct os_event * ev){
  * returns none 
  */
 static void 
-ccp_rx_complete_cb(dw1000_dev_instance_t * inst){
+ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
     
     dw1000_read_rx(inst, frame->array, 0, sizeof(ieee_blink_frame_t));
-    frame->reception_timestamp = dw1000_read_rxtime(inst); 
+
+#if MYNEWT_VAL(ADAPTIVE_TIMESCALE_ENABLED) 
+    frame->reception_timestamp = _dw1000_read_rxtime_raw(inst); 
+#else
+    frame->reception_timestamp = dw1000_read_rxtime(inst);
+#endif
+
     int32_t tracking_interval = (int32_t) dw1000_read_reg(inst, RX_TTCKI_ID, 0, sizeof(int32_t));
-    int32_t tracking_offset = (int32_t) dw1000_read_reg(inst, RX_TTCKO_ID, 0, sizeof(int32_t)) & RX_TTCKO_RXTOFS_MASK;
-    frame->correction_factor = 1.0f + ((float)tracking_offset) / tracking_interval;
+    int32_t tracking_offset = (int32_t)(((uint32_t) dw1000_read_reg(inst, RX_TTCKO_ID, 0, sizeof(uint32_t)) & RX_TTCKO_RXTOFS_MASK) << 13) >> 13;
+    frame->correction_factor = 1.0f +((float)tracking_offset) / tracking_interval;
 
     ccp->status.valid |= ccp->idx > ccp->nframes;
     if (ccp->config.postprocess && ccp->status.valid) 
         os_eventq_put(os_eventq_dflt_get(), &ccp->callout_postprocess.c_ev);
+
+#if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED) 
+    if (ccp->config.fs_xtalt_autotune && ccp->status.valid){  
+        float fs_xtalt_offset = sosfilt(ccp->xtalt_sos,  1e6 * ((float)tracking_offset) / tracking_interval, g_fs_xtalt_b, g_fs_xtalt_a);  
+        if(ccp->xtalt_sos->clk % FS_XTALT_SETTLINGTIME == 0){ 
+            int8_t reg = dw1000_read_reg(inst, FS_CTRL_ID, FS_XTALT_OFFSET, sizeof(uint8_t)) & FS_XTALT_MASK;
+            int8_t trim_code = (int8_t) roundf(polyval(g_fs_xtalt_poly, fs_xtalt_offset, sizeof(g_fs_xtalt_poly)/sizeof(float)) 
+                                - polyval(g_fs_xtalt_poly, 0, sizeof(g_fs_xtalt_poly)/sizeof(float)));
+            if(reg - trim_code < 0)
+                reg = 0;
+            else if(reg - trim_code > FS_XTALT_MASK)
+                reg = FS_XTALT_MASK;
+            else
+                reg = ((reg - trim_code) & FS_XTALT_MASK);
+
+//            printf("{\"utime\":%lu,\"xtalt_trim\": [%d,%d],\"ppm\": %lu}\n", 
+//                os_cputime_ticks_to_usecs(os_cputime_get32()),
+//                reg,
+//                trim_code,
+//                *(uint32_t *)&fs_xtalt_offset
+//            );
+            dw1000_write_reg(inst, FS_CTRL_ID, FS_XTALT_OFFSET,  (3 << 5) | reg, sizeof(uint8_t));
+        }
+    }
+#endif
+
+
 }
 
 
@@ -293,7 +376,7 @@ ccp_rx_complete_cb(dw1000_dev_instance_t * inst){
  * returns none 
  */
 static void 
-ccp_tx_complete_cb(dw1000_dev_instance_t * inst){
+ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
     //Advance frame idx 
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     ccp_frame_t * previous_frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
@@ -329,7 +412,7 @@ ccp_tx_complete_cb(dw1000_dev_instance_t * inst){
  * returns dw1000_ccp_status_t 
  */
 static dw1000_ccp_status_t 
-dw1000_ccp_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
+dw1000_ccp_blink(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 
     os_error_t err = os_sem_pend(&inst->ccp->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
@@ -346,7 +429,7 @@ dw1000_ccp_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     dw1000_write_tx_fctrl(inst, sizeof(ieee_blink_frame_t), 0, true); 
     dw1000_set_wait4resp(inst, false);    
     dw1000_set_delay_start(inst, frame->transmission_timestamp); 
-
+   
     ccp->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
     if (ccp->status.start_tx_error){
         // Half Period Delay Warning occured try for the next epoch
@@ -376,7 +459,7 @@ dw1000_ccp_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
  * no return value
  */
 void 
-dw1000_ccp_start(dw1000_dev_instance_t * inst){
+dw1000_ccp_start(struct _dw1000_dev_instance_t * inst){
     // Initialise frame timestamp to current time
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     ccp->idx = 0x0;  
@@ -404,4 +487,4 @@ dw1000_ccp_stop(dw1000_dev_instance_t * inst){
     os_callout_stop(&ccp->callout_timer);
 }
 
-#endif /* MYNEWT_VAL(DW1000_CLOCK_CALIBRATION) */
+#endif /* MYNEWT_VAL(DW1000_CCP_ENABLED) */

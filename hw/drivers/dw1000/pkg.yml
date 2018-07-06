@@ -19,13 +19,14 @@
 
 pkg.name: hw/drivers/dw1000
 pkg.description: Driver for DW1000 Transeiver 
-pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
-pkg.homepage: "http://mynewt.apache.org/"
+pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
+pkg.homepage: "http:/www.decawave.com/"
 pkg.keywords:
     - dw1000
     - uwb
 pkg.deps:
     - "@apache-mynewt-core/hw/hal"
+    - "@mynewt-dw1000-core/lib/dsp"
 
 pkg.deps.DW1000_LWIP:
     - "@mynewt-dw1000-core/net/ip/lwip_base"

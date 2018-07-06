@@ -40,9 +40,9 @@ typedef enum _dw1000_led_modes_t{
     DWT_LEDS_INIT_BLINK = 1 << 2 
 }dw1000_led_modes_t;
 
-void dw1000_gpio_config_leds(dw1000_dev_instance_t * inst, dw1000_led_modes_t mode);
-void dw1000_gpio_set_value(dw1000_dev_instance_t * inst, uint32_t gpioNum, uint32_t value);
-void dw1000_gpio_set_direction(dw1000_dev_instance_t * inst, uint32_t gpioNum, uint32_t direction);
+void dw1000_gpio_config_leds(struct _dw1000_dev_instance_t * inst, dw1000_led_modes_t mode);
+void dw1000_gpio_set_value(struct _dw1000_dev_instance_t * inst, uint32_t gpioNum, uint32_t value);
+void dw1000_gpio_set_direction(struct _dw1000_dev_instance_t * inst, uint32_t gpioNum, uint32_t direction);
 
 #ifdef __cplusplus
 }

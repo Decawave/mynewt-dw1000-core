@@ -25,13 +25,15 @@
 #include <os/os.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
-#include <dw1000/dw1000_dev.h>
+
 #include <dw1000/dw1000_regs.h>
+#include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_phy.h>
+#include <dw1000/dw1000_otp.h>
 
 
-void dw1000_phy_otp_read(dw1000_dev_instance_t * inst, uint32_t address, uint32_t * buffer, uint16_t length)
+void dw1000_phy_otp_read(struct _dw1000_dev_instance_t * inst, uint32_t address, uint32_t * buffer, uint16_t length)
 {
     dw1000_phy_sysclk_XTAL(inst); // NOTE: Set system clock to XTAL - this is necessary to make sure the values read by _dwt_otpread are reliable
 
@@ -41,7 +43,7 @@ void dw1000_phy_otp_read(dw1000_dev_instance_t * inst, uint32_t address, uint32_
     dw1000_phy_sysclk_SEQ(inst);
 }
 
-uint32_t _dw1000_otp_read(dw1000_dev_instance_t * inst, uint16_t address)
+uint32_t _dw1000_otp_read(struct _dw1000_dev_instance_t * inst, uint16_t address)
 {
     // Write the address
     dw1000_write_reg(inst, OTP_IF_ID, OTP_ADDR, address, sizeof(uint16_t));

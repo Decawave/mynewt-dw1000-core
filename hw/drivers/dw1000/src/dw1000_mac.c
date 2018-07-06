@@ -33,6 +33,10 @@
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_mac.h>
 
+#if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
+#include <dw1000/dw1000_ccp.h>
+#endif
+
 static void dw1000_interrupt_task(void *arg);
 static void dw1000_interrupt_ev_cb(struct os_event *ev);
 static void dw1000_irq(void *arg);
@@ -185,33 +189,51 @@ const double txpwr_compensation[] = {
     0.0
 };
 
-
-dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *config)
+struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst, dw1000_dev_config_t * config)
 {
+
+    if (config == NULL)
+        config = &inst->config;
+    else
+        memcpy(&inst->config, config, sizeof(dw1000_dev_config_t));
+    
     uint8_t nsSfd_result  = 0;
     uint8_t useDWnsSFD = 0;
-    uint8_t chan = config->chan ;
+    uint8_t chan = config->channel;
     uint8_t prfIndex = config->prf - DWT_PRF_16M;
     uint8_t bw = ((chan == 4) || (chan == 7)) ? 1 : 0 ; // Select wide or narrow band
-    uint16_t reg16 = lde_replicaCoeff[config->rxCode];
-
+    uint16_t reg16 = lde_replicaCoeff[config->rx.preambleCodeIndex];
+    
 #ifdef DW1000_API_ERROR_CHECK
     assert(config->dataRate <= DWT_BR_6M8);
-    assert(config->rxPAC <= DWT_PAC64);
+    assert(config->rx.pacLength <= DWT_PAC64);
     assert((chan >= 1) && (chan <= 7) && (chan != 6));
-    assert(((config->prf == DWT_PRF_64M) && (config->txCode >= 9) && (config->txCode <= 24))
-           || ((config->prf == DWT_PRF_16M) && (config->txCode >= 1) && (config->txCode <= 8)));
-    assert(((config->prf == DWT_PRF_64M) && (config->rxCode >= 9) && (config->rxCode <= 24))
-           || ((config->prf == DWT_PRF_16M) && (config->rxCode >= 1) && (config->rxCode <= 8)));
-    assert((config->txPreambLength == DWT_PLEN_64) || (config->txPreambLength == DWT_PLEN_128) || (config->txPreambLength == DWT_PLEN_256)
-           || (config->txPreambLength == DWT_PLEN_512) || (config->txPreambLength == DWT_PLEN_1024) || (config->txPreambLength == DWT_PLEN_1536)
-           || (config->txPreambLength == DWT_PLEN_2048) || (config->txPreambLength == DWT_PLEN_4096));
-    assert((config->phrMode == DWT_PHRMODE_STD) || (config->phrMode == DWT_PHRMODE_EXT));
-#endif
-
-    /* Keep a copy of the mac_config */
-    memcpy(&inst->mac_config, config, sizeof(dwt_config_t));
     
+    assert(((config->prf == DWT_PRF_64M) && (config->tx.preambleCodeIndex >= 9) && (config->tx.preambleCodeIndex <= 24))
+           || ((config->prf == DWT_PRF_16M) && (config->tx.preambleCodeIndex >= 1) && (config->tx.preambleCodeIndex <= 8)));
+
+    assert(((config->prf == DWT_PRF_64M) && (config->rx.preambleCodeIndex >= 9) && (config->rx.preambleCodeIndex <= 24))
+           || ((config->prf == DWT_PRF_16M) && (config->rx.preambleCodeIndex >= 1) && (config->rx.preambleCodeIndex <= 8)));
+
+    assert((config->tx.preambleLength == DWT_PLEN_64) || (config->tx.preambleLength == DWT_PLEN_128) || (config->tx.preambleLength == DWT_PLEN_256)
+           || (config->tx.preambleLength == DWT_PLEN_512) || (config->tx.preambleLength == DWT_PLEN_1024) || (config->tx.preambleLength == DWT_PLEN_1536)
+           || (config->tx.preambleLength == DWT_PLEN_2048) || (config->tx.preambleLength == DWT_PLEN_4096));
+
+    assert((config->rx.phrMode == DWT_PHRMODE_STD) || (config->rx.phrMode == DWT_PHRMODE_EXT));
+#endif
+    
+    printf(".channel %d\n",config->channel);
+    printf(".dataRate %d\n",config->dataRate);
+    printf(".prf %d\n",config->prf);
+    printf(".rx.pacLength %d\n",config->rx.pacLength);
+    printf(".rx.sfdTimeout %d\n",config->rx.sfdTimeout);
+    printf(".rx.sfdType %d\n",config->rx.sfdType);
+    printf(".rx.phrMode %d\n",config->rx.phrMode);
+    printf(".tx.preambleLength %d\n",config->tx.preambleLength);
+    printf(".rx.preambleCodeIndex %d\n",config->rx.preambleCodeIndex);
+    printf(".tx.preambleCodeIndex %d\n",config->tx.preambleCodeIndex);
+
+
     // For 110 kbps we need a special setup
     if(config->dataRate == DWT_BR_110K){
         inst->sys_cfg_reg |= SYS_CFG_RXM110K;
@@ -220,9 +242,9 @@ dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *
         inst->sys_cfg_reg &= (~SYS_CFG_RXM110K);
     }
 
-    inst->longFrames = config->phrMode;
     inst->sys_cfg_reg &= ~SYS_CFG_PHR_MODE_11;
-    inst->sys_cfg_reg |= (SYS_CFG_PHR_MODE_11 & (config->phrMode << SYS_CFG_PHR_MODE_SHFT));
+    inst->sys_cfg_reg |= (SYS_CFG_PHR_MODE_11 & (config->rx.phrMode << SYS_CFG_PHR_MODE_SHFT));
+    
     if (inst->config.rxauto_enable) 
         inst->sys_cfg_reg |=SYS_CFG_RXAUTR; 
 
@@ -244,14 +266,14 @@ dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *
 
     // Configure the baseband parameters (for specified PRF, bit rate, PAC, and SFD settings)
     // DTUNE0
-    dw1000_write_reg(inst, DRX_CONF_ID, DRX_TUNE0b_OFFSET, sftsh[config->dataRate][config->nsSFD], sizeof(uint16_t));
+    dw1000_write_reg(inst, DRX_CONF_ID, DRX_TUNE0b_OFFSET, sftsh[config->dataRate][config->rx.sfdType], sizeof(uint16_t));
     // DTUNE1
     dw1000_write_reg(inst, DRX_CONF_ID, DRX_TUNE1a_OFFSET, dtune1[prfIndex], sizeof(uint16_t));
 
     if(config->dataRate == DWT_BR_110K){
         dw1000_write_reg(inst, DRX_CONF_ID, DRX_TUNE1b_OFFSET, DRX_TUNE1b_110K, sizeof(uint16_t));
     }else{
-        if(config->txPreambLength == DWT_PLEN_64){
+        if(config->tx.preambleLength == DWT_PLEN_64){
             dw1000_write_reg(inst, DRX_CONF_ID, DRX_TUNE1b_OFFSET, DRX_TUNE1b_6M8_PRE64, sizeof(uint16_t));
             dw1000_write_reg(inst, DRX_CONF_ID, DRX_TUNE4H_OFFSET, DRX_TUNE4H_PRE64, sizeof(uint16_t));
         }else{
@@ -261,21 +283,21 @@ dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *
     }
 
     // DTUNE2
-    dw1000_write_reg(inst, DRX_CONF_ID, DRX_TUNE2_OFFSET, digital_bb_config[prfIndex][config->rxPAC], sizeof(uint16_t));
+    dw1000_write_reg(inst, DRX_CONF_ID, DRX_TUNE2_OFFSET, digital_bb_config[prfIndex][config->rx.pacLength], sizeof(uint16_t));
 
     // DTUNE3 (SFD timeout)
     // Don't allow 0 - SFD timeout will always be enabled
-    if(config->sfdTO == 0)
-        config->sfdTO = DWT_SFDTOC_DEF;
+    if(config->rx.sfdTimeout == 0)
+        config->rx.sfdTimeout= DWT_SFDTOC_DEF;
     
-    dw1000_write_reg(inst, DRX_CONF_ID, DRX_SFDTOC_OFFSET, config->sfdTO, sizeof(uint16_t));
+    dw1000_write_reg(inst, DRX_CONF_ID, DRX_SFDTOC_OFFSET, config->rx.sfdTimeout, sizeof(uint16_t));
 
     // Configure AGC parameters
     dw1000_write_reg(inst, AGC_CTRL_ID, AGC_TUNE2_OFFSET, agc_config.lo32, sizeof(uint32_t));
     dw1000_write_reg(inst, AGC_CTRL_ID, AGC_TUNE1_OFFSET, agc_config.target[prfIndex], sizeof(uint32_t));
 
     // Set (non-standard) user SFD for improved performance,
-    if(config->nsSFD){
+    if(config->rx.sfdType){
         // Write non standard (DW) SFD length
         dw1000_write_reg(inst, USR_SFD_ID, 0x0, dwnsSFDlen[config->dataRate], sizeof(uint8_t));
         nsSfd_result = 3 ;
@@ -286,13 +308,13 @@ dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *
               (CHAN_CTRL_RXFPRF_MASK & (config->prf << CHAN_CTRL_RXFPRF_SHIFT)) | // RX PRF
               ((CHAN_CTRL_TNSSFD|CHAN_CTRL_RNSSFD) & (nsSfd_result << CHAN_CTRL_TNSSFD_SHIFT)) | // nsSFD enable RX&TX
               (CHAN_CTRL_DWSFD & (useDWnsSFD << CHAN_CTRL_DWSFD_SHIFT)) | // Use DW nsSFD
-              (CHAN_CTRL_TX_PCOD_MASK & (config->txCode << CHAN_CTRL_TX_PCOD_SHIFT)) | // TX Preamble Code
-              (CHAN_CTRL_RX_PCOD_MASK & (config->rxCode << CHAN_CTRL_RX_PCOD_SHIFT)) ; // RX Preamble Code
+              (CHAN_CTRL_TX_PCOD_MASK & (config->tx.preambleCodeIndex << CHAN_CTRL_TX_PCOD_SHIFT)) | // TX Preamble Code
+              (CHAN_CTRL_RX_PCOD_MASK & (config->rx.preambleCodeIndex << CHAN_CTRL_RX_PCOD_SHIFT)) ; // RX Preamble Code
 
     dw1000_write_reg(inst, CHAN_CTRL_ID, 0, regval, sizeof(uint32_t)) ;
 
     // Set up TX Preamble Size, PRF and Data Rate
-    inst->tx_fctrl = ((config->txPreambLength | config->prf) << TX_FCTRL_TXPRF_SHFT) | (config->dataRate << TX_FCTRL_TXBR_SHFT);
+    inst->tx_fctrl = ((config->tx.preambleLength | config->prf) << TX_FCTRL_TXPRF_SHFT) | (config->dataRate << TX_FCTRL_TXBR_SHFT);
     dw1000_write_reg(inst, TX_FCTRL_ID, 0, inst->tx_fctrl, sizeof(uint32_t));
     // The SFD transmit pattern is initialised by the DW1000 upon a user TX request, but (due to an IC issue) it is not done for an auto-ACK TX. The
     // SYS_CTRL write below works around this issue, by simultaneously initiating and aborting a transmission, which correctly initialises the SFD
@@ -309,7 +331,6 @@ dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *
     
     return inst->status;
 } 
-
 
 /*! ------------------------------------------------------------------------------------------------------------------
  * @fn dw1000_write_tx()
@@ -332,10 +353,10 @@ dw1000_dev_status_t dw1000_mac_init(dw1000_dev_instance_t * inst, dwt_config_t *
  * returns DWT_SUCCESS for success, or DWT_ERROR for error
  */
 
-dw1000_dev_status_t dw1000_write_tx(dw1000_dev_instance_t * inst,  uint8_t * txFrameBytes, uint16_t txBufferOffset, uint16_t txFrameLength)
+struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst,  uint8_t * txFrameBytes, uint16_t txBufferOffset, uint16_t txFrameLength)
 {
 #ifdef DW1000_API_ERROR_CHECK
-    assert((pdw1000local->longFrames && (txFrameLength <= 1023)) || (txFrameLength <= 127));
+    assert((config->rx.phrMode && (txFrameLength <= 1023)) || (txFrameLength <= 127));
     assert((txBufferOffset + txFrameLength) <= 1024);
 #endif
 
@@ -373,7 +394,7 @@ dw1000_dev_status_t dw1000_write_tx(dw1000_dev_instance_t * inst,  uint8_t * txF
  *
  * no return value
  */
-inline void dw1000_write_tx_fctrl(dw1000_dev_instance_t * inst, uint16_t txFrameLength, uint16_t txBufferOffset, bool ranging)
+inline void dw1000_write_tx_fctrl(struct _dw1000_dev_instance_t * inst, uint16_t txFrameLength, uint16_t txBufferOffset, bool ranging)
 {
 #ifdef DW1000_API_ERROR_CHECK
     assert((inst->longFrames && ((txFrameLength + 2) <= 1023)) || ((txFrameLength +2) <= 127));
@@ -397,7 +418,7 @@ inline void dw1000_write_tx_fctrl(dw1000_dev_instance_t * inst, uint16_t txFrame
  * @brief This call initiates the transmission, input parameter indicates which TX mode is used see below
  *
  */
-dw1000_dev_status_t dw1000_start_tx(dw1000_dev_instance_t * inst)
+struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst)
 {
     os_error_t err = os_sem_pend(&inst->sem,  OS_TIMEOUT_NEVER); // Released by a SYS_STATUS_TXFRS event
     assert(err == OS_OK);
@@ -459,7 +480,7 @@ dw1000_dev_status_t dw1000_start_tx(dw1000_dev_instance_t * inst)
  * 
  * output parameters
  */
-inline dw1000_dev_status_t dw1000_set_delay_start(dw1000_dev_instance_t * inst, uint64_t delay)
+inline struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t delay)
 {
     os_error_t err = os_sem_pend(&inst->sem,  OS_TIMEOUT_NEVER); // Released by a SYS_STATUS_TXFRS event
     assert(err == OS_OK);
@@ -484,7 +505,7 @@ inline dw1000_dev_status_t dw1000_set_delay_start(dw1000_dev_instance_t * inst, 
  * 
  */
 
-dw1000_dev_status_t dw1000_start_rx(dw1000_dev_instance_t * inst)
+struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst)
 {
     inst->status.rx_error = inst->status.rx_timeout_error = 0;
 
@@ -536,7 +557,7 @@ dw1000_dev_status_t dw1000_start_rx(dw1000_dev_instance_t * inst)
  * input parameters
  * 
  */
-dw1000_dev_status_t dw1000_restart_rx(dw1000_dev_instance_t * inst, dw1000_dev_control_t control)
+struct _dw1000_dev_status_t dw1000_restart_rx(struct _dw1000_dev_instance_t * inst, dw1000_dev_control_t control)
 {
     uint32_t sys_ctrl_reg = SYS_CTRL_RXENAB;
     if (control.start_rx_syncbuf_enabled)
@@ -574,7 +595,7 @@ dw1000_dev_status_t dw1000_restart_rx(dw1000_dev_instance_t * inst, dw1000_dev_c
  * output parameters
  *
  */
-inline dw1000_dev_status_t dw1000_set_wait4resp(dw1000_dev_instance_t * inst, bool enable)
+inline struct _dw1000_dev_status_t dw1000_set_wait4resp(struct _dw1000_dev_instance_t * inst, bool enable)
 {
     inst->control.wait4resp_enabled = enable;
     return inst->status;
@@ -595,7 +616,7 @@ inline dw1000_dev_status_t dw1000_set_wait4resp(dw1000_dev_instance_t * inst, bo
  *
  */
 
-dw1000_dev_status_t dw1000_set_rx_timeout(dw1000_dev_instance_t * inst, uint16_t timeout)
+struct _dw1000_dev_status_t dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
 {
 
     os_error_t err = os_sem_pend(&inst->sem,  OS_TIMEOUT_NEVER); // Block if request pending
@@ -636,7 +657,7 @@ dw1000_dev_status_t dw1000_set_rx_timeout(dw1000_dev_instance_t * inst, uint16_t
  *
  * no return value
  */
-dw1000_dev_status_t dw1000_sync_rxbufptrs(dw1000_dev_instance_t * inst)
+struct _dw1000_dev_status_t dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t * inst)
 {
     uint8_t  buff;
     os_error_t err = os_sem_pend(&inst->sem,  OS_TIMEOUT_NEVER); // Block if request pending
@@ -671,7 +692,7 @@ dw1000_dev_status_t dw1000_sync_rxbufptrs(dw1000_dev_instance_t * inst)
  * output parameters
  *
  */
-dw1000_dev_status_t dw1000_read_accdata(dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t accOffset, uint16_t len)
+struct _dw1000_dev_status_t dw1000_read_accdata(struct _dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t accOffset, uint16_t len)
 {
     os_error_t err = os_sem_pend(&inst->sem,  OS_TIMEOUT_NEVER); // Block if request pending
     assert(err == OS_OK);
@@ -707,7 +728,7 @@ dw1000_dev_status_t dw1000_read_accdata(dw1000_dev_instance_t * inst, uint8_t *b
  *
  */
 
-dw1000_dev_status_t dw1000_mac_framefilter(dw1000_dev_instance_t * inst, uint16_t enable)
+struct _dw1000_dev_status_t dw1000_mac_framefilter(struct _dw1000_dev_instance_t * inst, uint16_t enable)
 {
     os_error_t err = os_sem_pend(&inst->sem,  OS_TIMEOUT_NEVER); // Block if request pending
     assert(err == OS_OK);
@@ -743,7 +764,7 @@ dw1000_dev_status_t dw1000_mac_framefilter(dw1000_dev_instance_t * inst, uint16_
  * output parameters
  *
  */
-dw1000_dev_status_t dw1000_set_autoack(dw1000_dev_instance_t * inst, bool enable)
+struct _dw1000_dev_status_t dw1000_set_autoack(struct _dw1000_dev_instance_t * inst, bool enable)
 {
     assert(inst->config.framefilter_enabled);
 
@@ -787,7 +808,7 @@ dw1000_dev_status_t dw1000_set_autoack(dw1000_dev_instance_t * inst, bool enable
  * output parameters
  *
  */
-dw1000_dev_status_t dw1000_set_autoack_delay(dw1000_dev_instance_t * inst, uint8_t delay)
+struct _dw1000_dev_status_t dw1000_set_autoack_delay(struct _dw1000_dev_instance_t * inst, uint8_t delay)
 {
     assert(inst->config.framefilter_enabled);
 
@@ -825,7 +846,7 @@ dw1000_dev_status_t dw1000_set_autoack_delay(dw1000_dev_instance_t * inst, uint8
  * output parameters
  *
  */
-dw1000_dev_status_t dw1000_set_wait4resp_delay(dw1000_dev_instance_t * inst, uint32_t delay)
+struct _dw1000_dev_status_t dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay)
 {
     os_error_t err = os_sem_pend(&inst->sem,  OS_TIMEOUT_NEVER); // Block if request pending
     assert(err == OS_OK);
@@ -861,7 +882,7 @@ dw1000_dev_status_t dw1000_set_wait4resp_delay(dw1000_dev_instance_t * inst, uin
  * output parameters
  *
  */
-dw1000_dev_status_t dw1000_set_dblrxbuff(dw1000_dev_instance_t * inst, bool enable)
+struct _dw1000_dev_status_t dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool enable)
 {
     os_error_t err = os_sem_pend(&inst->sem,  OS_TIMEOUT_NEVER); // Block if request pending
     assert(err == OS_OK);
@@ -898,7 +919,7 @@ dw1000_dev_status_t dw1000_set_dblrxbuff(dw1000_dev_instance_t * inst, bool enab
  *
  * no return value
  */
-void dw1000_read_rxdiag(dw1000_dev_instance_t * inst, dw1000_dev_rxdiag_t * diag)
+void dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag)
 {  
     // Read the HW FP index
     diag->fp_idx = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
@@ -906,8 +927,8 @@ void dw1000_read_rxdiag(dw1000_dev_instance_t * inst, dw1000_dev_rxdiag_t * diag
     diag->rx_std  = dw1000_read_reg(inst, RX_FQUAL_ID, 0, sizeof(uint16_t));
     diag->fp_amp2 = dw1000_read_reg(inst, RX_FQUAL_ID, 2, sizeof(uint16_t));
     diag->fp_amp3 = dw1000_read_reg(inst, RX_FQUAL_ID, 4, sizeof(uint16_t));
-    diag->max_growth_cir = dw1000_read_reg(inst, RX_FQUAL_ID, 6, sizeof(uint16_t));
-    diag->preamble_cnt =  (dw1000_read_reg(inst, RX_FINFO_ID, 0, sizeof(uint32_t)) & RX_FINFO_RXPACC_MASK) >> RX_FINFO_RXPACC_SHIFT;
+    diag->cir_pwr = dw1000_read_reg(inst, RX_FQUAL_ID, 6, sizeof(uint16_t));
+    diag->pacc_cnt =  (dw1000_read_reg(inst, RX_FINFO_ID, 0, sizeof(uint32_t)) & RX_FINFO_RXPACC_MASK) >> RX_FINFO_RXPACC_SHIFT;
 }
 
 
@@ -922,7 +943,7 @@ void dw1000_read_rxdiag(dw1000_dev_instance_t * inst, dw1000_dev_rxdiag_t * diag
  * output parameters
  *
  */
-void dw1000_tasks_init(dw1000_dev_instance_t * inst)
+void dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
 {
     /* Check if the tasks are already initiated */
     if (!os_eventq_inited(&inst->interrupt_eventq))
@@ -982,7 +1003,7 @@ static void dw1000_interrupt_task(void *arg)
  * output parameters
  *
  */
-void dw1000_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t tx_complete_cb,  dw1000_dev_cb_t rx_complete_cb,  dw1000_dev_cb_t rx_timeout_cb,  dw1000_dev_cb_t rx_error_cb)
+void dw1000_set_callbacks(struct _dw1000_dev_instance_t * inst,  dw1000_dev_cb_t tx_complete_cb,  dw1000_dev_cb_t rx_complete_cb,  dw1000_dev_cb_t rx_timeout_cb,  dw1000_dev_cb_t rx_error_cb)
 {
     inst->tx_complete_cb = tx_complete_cb;
     inst->rx_complete_cb = rx_complete_cb;
@@ -1062,7 +1083,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
         }
 
         // Call the corresponding ranging frame services callback if present
-        if(inst->rng_rx_complete_cb != NULL && inst->status.rx_ranging_frame) 
+        if(inst->rng_rx_complete_cb != NULL && inst->status.rx_ranging_frame && (inst->sys_status & SYS_STATUS_LDEDONE))
             inst->rng_rx_complete_cb(inst);
         // Call the corresponding non-ranging frame callback if present
         else if(inst->rx_complete_cb != NULL)
@@ -1089,8 +1110,8 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
         // Call the corresponding ranging frame services callback if present
         if(inst->rng_rx_timeout_cb != NULL )
             inst->rng_rx_timeout_cb(inst);
-        if(inst->rng_rx_timeout_extension_cb != NULL)
-            inst->rng_rx_timeout_extension_cb(inst);     
+//        if(inst->rng_rx_timeout_extension_cb != NULL)
+//            inst->rng_rx_timeout_extension_cb(inst);     
         if(inst->rx_timeout_cb != NULL)
             inst->rx_timeout_cb(inst); 
     }
@@ -1109,8 +1130,8 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
         // Call the corresponding ranging frame services callback if present
         if(inst->rng_rx_error_cb != NULL )
             inst->rng_rx_error_cb(inst);
-        if(inst->rng_rx_error_extension_cb != NULL)
-            inst->rng_rx_error_extension_cb(inst);       
+//        if(inst->rng_rx_error_extension_cb != NULL)
+//            inst->rng_rx_error_extension_cb(inst);       
         if(inst->rx_error_cb != NULL)
             inst->rx_error_cb(inst);
     }
@@ -1124,28 +1145,228 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
  *
  * Needs config.rxdiag_enable to be set
  *
- * Returns 0 on success
+ * Returns rssi on success
  */
-int
-dw1000_get_rssi(dw1000_dev_instance_t * inst, float *rssi)
+float 
+dw1000_get_rssi(struct _dw1000_dev_instance_t * inst)
 {
-    /* Check if we're reading the diagnostics */
-    if (!inst->config.rxdiag_enable) {
-        return 1;
-    }
-    if (!rssi) {
-        return 1;
-    }
+    if (!inst->config.rxdiag_enable) 
+        return -INFINITY;
     
-    float A = (inst->mac_config.prf == DWT_PRF_16M) ? 115.72 : 122.74;
-    if (!inst->rxdiag.max_growth_cir) {
-        *rssi = -A;
-        return 0;
-    }
-
-    float N = inst->rxdiag.preamble_cnt;
-    float C = inst->rxdiag.max_growth_cir;
-    float v = C*0x20000/(N*N);
-    *rssi = 10.0*log10f(v) - A;
-    return 0;
+    float rssi = 10.0f * log10f(inst->rxdiag.cir_pwr * 0x20000/(inst->rxdiag.pacc_cnt * inst->rxdiag.pacc_cnt)) 
+                - ((inst->config.prf == DWT_PRF_16M) ? 115.72 : 122.74);
+    //printf("{\"utime\":%lu,\"cir_pwr\": %u,\"pacc_cnt\": %u, \"rssi\":\"%lu\"}\n",
+    //            os_cputime_ticks_to_usecs(os_cputime_get32()),
+    //            inst->rxdiag.cir_pwr,
+    //            inst->rxdiag.pacc_cnt,
+    //            *(uint32_t *)(&rssi)
+    //);
+    return rssi;
 }
+
+#if MYNEWT_VAL(ADAPTIVE_TIMESCALE_ENABLED)
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn dw1000_read_systime(dw1000_dev_instance_t * inst)
+ *
+ * @brief With CLOCK_CLAIBRATION enabled all time local clock are adjusted to master clock frequency. 
+ * The compensated local clock value are offset from the master clock, but the frequency is adjusted 
+ * such that any derived values will be the same. CLOCK_CLAIBRATION is usefull for TDOA and 
+ * Single-Sided TWR applciaitons.
+ *
+ * input parameters dw1000_dev_instance_t 
+ *
+ * output parameters
+ *
+ * no return value
+ */
+
+inline uint64_t dw1000_read_systime(struct _dw1000_dev_instance_t * inst){
+    clkcal_instance_t * clk = inst->ccp->clkcal;
+    assert(clk);
+   
+    uint64_t time = ((uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN)) & 0x0FFFFFFFFFFUL;
+    
+    if (clk->status.valid)
+        time *= inst->ccp->clkcal->skew;
+
+    return time & 0x0FFFFFFFFFFUL;
+}
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn _dw1000_read_systime(dw1000_dev_instance_t * inst)
+ *
+ * @brief see dw1000_read_systime
+ * 
+ *  _dw1000_read_systime provide the raw uncompensated systime.
+ *
+ * input parameters dw1000_dev_instance_t 
+ *
+ * output parameters
+ *
+ * no return value
+ */
+
+inline uint64_t _dw1000_read_systime(struct _dw1000_dev_instance_t * inst){
+    uint64_t time = ((uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN)) & 0x0FFFFFFFFFFUL;
+    return time;
+}
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn dw1000_read_systime_lo(dw1000_dev_instance_t * inst)
+ *
+ * @brief see dw1000_read_systime
+ *
+ * input parameters dw1000_dev_instance_t 
+ *
+ * output parameters
+ *
+ * no return value
+ */
+
+inline uint32_t dw1000_read_systime_lo(struct _dw1000_dev_instance_t * inst){
+    clkcal_instance_t * clk = inst->ccp->clkcal;
+    assert(clk);
+   
+    uint32_t time = (uint32_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, sizeof(uint32_t));
+    
+    if (clk->status.valid)
+        time *= inst->ccp->clkcal->skew;
+
+    return time;
+}
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn dw1000_read_rxtime()
+ *
+ * @brief see dw1000_read_systime
+ *
+ * input parameters
+ *
+ * output parameters
+ *
+ * no return value
+ */
+
+inline uint64_t dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst){
+    clkcal_instance_t * clk = inst->ccp->clkcal;
+    assert(clk);
+
+    uint64_t time = (uint64_t)  dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFUL;
+    if (clk->status.valid)
+        time *= inst->ccp->clkcal->skew;
+    return time & 0x0FFFFFFFFFFUL;
+}
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn _dw1000_read_rxtime()
+ *
+ * @brief With CLOCK_CLAIBRATION enabled all time local clock are adjusted to master clock frequency. 
+ * The compensated local clock value is offset from the master clock, but the frequency is adjusted 
+ * such that any derived values will be the same. CLOCK_CLAIBRATION is usefull for TDOA and 
+ * Single-Sided TWR applciaitons. 
+ * 
+ * _dw1000_read_rxtime is the exception to the rule provide the raw uncompensated 
+ * timestamp to the clkcal algorithm.
+ *
+ * input parameters
+ *
+ * output parameters
+ *
+ * no return value
+ */
+
+inline uint64_t _dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst){
+    return (uint64_t)  dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFUL;
+}
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn _dw1000_read_rxtime_raw()
+ *
+ * @brief With CLOCK_CLAIBRATION enabled all time local clock are adjusted to master clock frequency. 
+ * The compensated local clock value is offset from the master clock, but the frequency is adjusted 
+ * such that any derived values will be the same. CLOCK_CLAIBRATION is usefull for TDOA and 
+ * Single-Sided TWR applciaitons. 
+ * 
+ * _dw1000_read_rxtime is the exception to the rule provide the raw uncompensated 
+ * timestamp to the clkcal algorithm.
+ *
+ * input parameters
+ *
+ * output parameters
+ *
+ * no return value
+ */
+
+inline uint64_t _dw1000_read_rxtime_raw(struct _dw1000_dev_instance_t * inst){
+    return (uint64_t)  dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_RAWST_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFUL;
+}
+
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn dw1000_read_rxtime_lo()
+ *
+ * @brief see dw1000_read_systime
+ *
+ * input parameters
+ *
+ * output parameters
+ *
+ * no return value
+ */
+
+inline uint32_t dw1000_read_rxtime_lo(struct _dw1000_dev_instance_t * inst){
+    clkcal_instance_t * clk = inst->ccp->clkcal;
+    assert(clk);
+
+    uint64_t time = (uint32_t) dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, sizeof(uint32_t));
+    if (clk->status.valid)
+        time *= inst->ccp->clkcal->skew;
+    return time;
+}
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn dw1000_read_txtime()
+ *
+ * @brief see dw1000_read_systime
+ *
+ * input parameters
+ *
+ * output parameters
+ *
+ * no return value
+ */
+
+inline uint64_t dw1000_read_txtime(struct _dw1000_dev_instance_t * inst){
+    clkcal_instance_t * clk = inst->ccp->clkcal;
+    assert(clk);
+
+    uint64_t time = (uint64_t) dw1000_read_reg(inst, TX_TIME_ID, TX_TIME_TX_STAMP_OFFSET, TX_TIME_TX_STAMP_LEN) & 0x0FFFFFFFFFFUL;
+    if (clk->status.valid)
+        time *= inst->ccp->clkcal->skew;
+    return time & 0x0FFFFFFFFFFUL;
+}
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn dw1000_read_txtime_lo()
+ *
+ * @brief see dw1000_read_systime
+ *
+ * input parameters
+ *
+ * output parameters
+ *
+ * no return value
+ */
+
+inline uint32_t dw1000_read_txtime_lo(struct _dw1000_dev_instance_t * inst){
+    clkcal_instance_t * clk = inst->ccp->clkcal;
+    assert(clk);
+
+    uint32_t time = (uint32_t) dw1000_read_reg(inst, TX_TIME_ID, TX_TIME_TX_STAMP_OFFSET, sizeof(uint32_t));
+    if (clk->status.valid)
+        time *= inst->ccp->clkcal->skew;
+    return time;
+}
+
+#endif

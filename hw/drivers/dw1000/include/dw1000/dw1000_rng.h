@@ -50,6 +50,7 @@ typedef struct _dw1000_rng_config_t{
    uint32_t rx_holdoff_delay;        // Delay between frames, in UWB usec.
    uint32_t tx_holdoff_delay;        // Delay between frames, in UWB usec.
    uint16_t rx_timeout_period;       // Receive response timeout, in UWB usec.
+   uint16_t bias_correction:1;       // Enable range bias correction
 }dw1000_rng_config_t;
 
 typedef struct _dw1000_rng_control_t{
@@ -149,8 +150,10 @@ float dw1000_rng_twr_to_tof(twr_frame_t *fframe, twr_frame_t *nframe);
 #else
 float dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng);
 #endif
-uint32_t dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code);
 
+float dw1000_rng_path_loss(float Pt, float G, float fc, float R);
+float dw1000_rng_bias_correction(dw1000_dev_instance_t * inst, float Pr);
+uint32_t dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code);
 #define dw1000_rng_tof_to_meters(ToF) (float)(ToF * 299792458 * (1.0/499.2e6/128.0)) 
 #define dw1000_rng_set_interface_extension_cb(inst, cb) inst->rng_interface_extension_cb = cb 
 #define dw1000_rng_set_rx_timeout_extension_cb(inst, cb) inst->rng_rx_timeout_extension_cb = cb 

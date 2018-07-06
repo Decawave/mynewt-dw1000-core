@@ -30,13 +30,15 @@ extern "C" {
 #endif
 
 #include <dw1000/dw1000_dev.h>
+#include <dw1000/dw1000_phy.h>
 
-dw1000_dev_instance_t * hal_dw1000_inst(uint8_t idx);
-void hal_dw1000_reset(dw1000_dev_instance_t * inst);
-void hal_dw1000_read(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
-void hal_dw1000_write(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
-void hal_dw1000_wakeup(dw1000_dev_instance_t * inst);
-int hal_dw1000_get_rst(dw1000_dev_instance_t * inst);
+struct _dw1000_dev_instance_t * hal_dw1000_inst(uint8_t idx);
+void hal_dw1000_reset(struct _dw1000_dev_instance_t * inst);
+void hal_dw1000_read(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
+void hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
+void hal_dw1000_wakeup(struct _dw1000_dev_instance_t * inst);
+int hal_dw1000_get_rst(struct _dw1000_dev_instance_t * inst);
+
 #ifdef __cplusplus
 }
 #endif

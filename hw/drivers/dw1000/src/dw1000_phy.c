@@ -25,17 +25,12 @@
 #include <os/os.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_gpio.h>
-#include <dw1000/dw1000_otp.h>
 
-static inline void _dw1000_phy_load_microcode(dw1000_dev_instance_t * inst);
+static inline void _dw1000_phy_load_microcode(struct _dw1000_dev_instance_t * inst);
 
 // Set system clock to XTAL
-inline void dw1000_phy_sysclk_XTAL(dw1000_dev_instance_t * inst){
+inline void dw1000_phy_sysclk_XTAL(struct _dw1000_dev_instance_t * inst){
  uint8_t reg = (uint8_t) dw1000_read_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, sizeof(uint8_t));
     reg &= (uint8_t)~PMSC_CTRL0_SYSCLKS_19M & (uint8_t)~PMSC_CTRL0_SYSCLKS_125M;
     reg |= (uint8_t) PMSC_CTRL0_SYSCLKS_19M;
@@ -43,7 +38,7 @@ inline void dw1000_phy_sysclk_XTAL(dw1000_dev_instance_t * inst){
 }
 
 // Set system clock to PLL
-inline void dw1000_phy_sysclk_PLL(dw1000_dev_instance_t * inst){
+inline void dw1000_phy_sysclk_PLL(struct _dw1000_dev_instance_t * inst){
  uint8_t reg = (uint8_t) dw1000_read_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, sizeof(uint8_t));
     reg &= (uint8_t)~PMSC_CTRL0_SYSCLKS_19M & (uint8_t)~PMSC_CTRL0_SYSCLKS_125M;
     reg |= (uint8_t) PMSC_CTRL0_SYSCLKS_125M;
@@ -51,20 +46,20 @@ inline void dw1000_phy_sysclk_PLL(dw1000_dev_instance_t * inst){
 }
 
 // Set system clock to LDE
-void dw1000_phy_sysclk_LDE(dw1000_dev_instance_t * inst){
+void dw1000_phy_sysclk_LDE(struct _dw1000_dev_instance_t * inst){
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, 0x01, sizeof(uint8_t));
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET + 1 , 0x03, sizeof(uint8_t));
 }
 
 // Set system clock to SEQ All
-inline void dw1000_phy_sysclk_SEQ(dw1000_dev_instance_t * inst){
+inline void dw1000_phy_sysclk_SEQ(struct _dw1000_dev_instance_t * inst){
     uint8_t reg = (uint8_t) dw1000_read_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, sizeof(uint8_t));
     reg &= (uint8_t)~PMSC_CTRL0_SYSCLKS_19M & (uint8_t)~PMSC_CTRL0_SYSCLKS_125M;
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, reg, sizeof(uint8_t));
 }
 
 // Set system clock to SEQ All
-inline void dw1000_phy_sysclk_ACC(dw1000_dev_instance_t * inst, uint8_t mode){
+inline void dw1000_phy_sysclk_ACC(struct _dw1000_dev_instance_t * inst, uint8_t mode){
 
     uint8_t pmsc_ctrl_lo = (uint8_t) dw1000_read_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, sizeof(uint8_t));
     uint8_t pmsc_ctrl_hi = (uint8_t) dw1000_read_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET + 1, sizeof(uint8_t));
@@ -85,13 +80,18 @@ inline void dw1000_phy_sysclk_ACC(dw1000_dev_instance_t * inst, uint8_t mode){
 
 
 // Disable sequencing and go to state "INIT"
-void dw1000_phy_disable_sequencing(dw1000_dev_instance_t * inst){ 
+void dw1000_phy_disable_sequencing(struct _dw1000_dev_instance_t * inst){ 
     dw1000_phy_sysclk_XTAL(inst);
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL1_OFFSET, PMSC_CTRL1_PKTSEQ_DISABLE, sizeof(uint16_t)); // Disable PMSC ctrl of RF and RX clk blocks
 }
 
 
-dw1000_dev_status_t dw1000_phy_init(dw1000_dev_instance_t * inst, dw1000_phy_txrf_config_t * txrf_config){
+dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, dw1000_dev_txrf_config_t * txrf_config){
+
+    if (txrf_config == NULL)
+         txrf_config = &inst->config.txrf;
+    else
+        memcpy(&inst->config.txrf, txrf_config, sizeof(dw1000_dev_txrf_config_t));
 
     dw1000_softreset(inst);
     dw1000_gpio_config_leds(inst, DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
@@ -142,8 +142,7 @@ dw1000_dev_status_t dw1000_phy_init(dw1000_dev_instance_t * inst, dw1000_phy_txr
     dw1000_phy_set_tx_antennadelay(inst, inst->tx_antenna_delay);
 
     // Apply tx power settings */
-    if (txrf_config != NULL)  
-        dw1000_phy_config_txrf(inst, txrf_config);
+    dw1000_phy_config_txrf(inst, txrf_config);
 
     // Read system register / store local copy
     inst->sys_cfg_reg = dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)) ; // Read sysconfig register
@@ -152,7 +151,7 @@ dw1000_dev_status_t dw1000_phy_init(dw1000_dev_instance_t * inst, dw1000_phy_txr
 }
 
 
-void _dw1000_phy_load_microcode(dw1000_dev_instance_t * inst)
+void _dw1000_phy_load_microcode(struct _dw1000_dev_instance_t * inst)
 {
     // Set up clocks
     dw1000_phy_sysclk_LDE(inst);
@@ -175,7 +174,7 @@ void _dw1000_phy_load_microcode(dw1000_dev_instance_t * inst)
  *
  * no return value
  */
-void dw1000_phy_config_lde(dw1000_dev_instance_t * inst, int prfIndex)
+void dw1000_phy_config_lde(struct _dw1000_dev_instance_t * inst, int prfIndex)
 {
     dw1000_write_reg(inst, LDE_IF_ID, LDE_CFG1_OFFSET, LDE_PARAM1, sizeof(uint8_t)); // 8-bit configuration register
 
@@ -200,7 +199,7 @@ void dw1000_phy_config_lde(dw1000_dev_instance_t * inst, int prfIndex)
  *
  * no return value
  */
-void dw1000_phy_config_txrf(dw1000_dev_instance_t * inst, dw1000_phy_txrf_config_t *config)
+void dw1000_phy_config_txrf(struct _dw1000_dev_instance_t * inst, dw1000_dev_txrf_config_t *config)
 {
     // Configure RF TX PG_DELAY
     dw1000_write_reg(inst, TX_CAL_ID, TC_PGDELAY_OFFSET, config->PGdly, sizeof(uint8_t));
@@ -223,7 +222,7 @@ void dw1000_phy_config_txrf(dw1000_dev_instance_t * inst, dw1000_phy_txrf_config
  *
  * returns: float value for temperature sensor in SI units (Degrees C)
  */
-float dw1000_phy_read_wakeuptemp_SI(dw1000_dev_instance_t * inst)
+float dw1000_phy_read_wakeuptemp_SI(struct _dw1000_dev_instance_t * inst)
 {
    return 1.14 * (dw1000_phy_read_wakeuptemp(inst) - inst->otp_temp) + 23;
 }
@@ -241,7 +240,7 @@ float dw1000_phy_read_wakeuptemp_SI(dw1000_dev_instance_t * inst)
  *
  * returns: float battery voltage sensor in SI units (Volts)
  */
-float dw1000_phy_read_read_wakeupvbat_SI(dw1000_dev_instance_t * inst)
+float dw1000_phy_read_read_wakeupvbat_SI(struct _dw1000_dev_instance_t * inst)
 {
     return (1.0/173) * (dw1000_phy_read_wakeupvbat(inst) - inst->otp_vbat) + 3.3;
 }
@@ -257,7 +256,7 @@ float dw1000_phy_read_read_wakeupvbat_SI(dw1000_dev_instance_t * inst)
  *
  * no return value
  */
-void dw1000_phy_rx_reset(dw1000_dev_instance_t * inst)
+void dw1000_phy_rx_reset(struct _dw1000_dev_instance_t * inst)
 {
     // Set RX reset
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_SOFTRESET_OFFSET, PMSC_CTRL0_RESET_RX, sizeof(uint8_t));
@@ -277,7 +276,7 @@ void dw1000_phy_rx_reset(dw1000_dev_instance_t * inst)
  *
  * no return value
  */
-void dw1000_phy_forcetrxoff(dw1000_dev_instance_t * inst)
+void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
 {
     uint32_t mask;
 
@@ -330,7 +329,7 @@ void dw1000_phy_forcetrxoff(dw1000_dev_instance_t * inst)
  *
  * no return value
  */
-void dw1000_phy_interrupt_mask(dw1000_dev_instance_t * inst, uint32_t bitmask, uint8_t enable)
+void dw1000_phy_interrupt_mask(struct _dw1000_dev_instance_t * inst, uint32_t bitmask, uint8_t enable)
 {
     // Critical region, atomic lock with mutex
     os_error_t err = os_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
@@ -363,7 +362,7 @@ void dw1000_phy_interrupt_mask(dw1000_dev_instance_t * inst, uint32_t bitmask, u
  * 
  * no return value
  */
-void dw1000_phy_external_sync(dw1000_dev_instance_t * inst, uint8_t delay, bool enable){
+void dw1000_phy_external_sync(struct _dw1000_dev_instance_t * inst, uint8_t delay, bool enable){
 
     uint16_t reg = dw1000_read_reg(inst, EXT_SYNC_ID, EC_CTRL_OFFSET, sizeof(uint16_t));
     if (enable) {

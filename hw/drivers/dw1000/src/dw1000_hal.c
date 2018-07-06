@@ -27,7 +27,6 @@
 #include <syscfg/syscfg.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
-#include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_hal.h>
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
@@ -47,10 +46,34 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_0_TX_ANT_DLY),
             .status = {0},
             .config = {
+                .channel = 5,                       //!< channel number {1, 2, 3, 4, 5, 7 }
+                .prf = DWT_PRF_64M,                 //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
+                .dataRate = DWT_BR_6M8,             //!< Data Rate {DWT_BR_110K, DWT_BR_850K or DWT_BR_6M8}
+                .rx = {
+                    .pacLength = DWT_PAC8,          //!< Acquisition Chunk Size DWT_PAC8..DWT_PAC64 (Relates to RX preamble length)
+                    .preambleCodeIndex = 9,         //!< RX preamble code
+                    .sfdType = 0,                   //!< Boolean should we use non-standard SFD for better performance
+                    .phrMode = DWT_PHRMODE_STD,     //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
+                    .sfdTimeout = (256 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
+                },
+                .tx ={
+                    .preambleCodeIndex = 9,         //!< TX preamble code
+                    .preambleLength = DWT_PLEN_256  //!< DWT_PLEN_64..DWT_PLEN_4096
+                },
+                .txrf={
+                    .PGdly = TC_PGDELAY_CH5,
+                    .BOOSTNORM = dw1000_power_value(DW1000_txrf_config_9db, 5),
+                    .BOOSTP500 = dw1000_power_value(DW1000_txrf_config_9db, 5),
+                    .BOOSTP250 = dw1000_power_value(DW1000_txrf_config_9db, 5),
+                    .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_9db, 5)
+                }, 
                 .rxdiag_enable = 1,
                 .dblbuffon_enabled = 1,
 #if MYNEWT_VAL(DW1000_MAC_FILTERING)
                 .framefilter_enabled = 1,
+#endif
+#if MYNEWT_VAL(DW1000_BIAS_CORRECTION_ENABLED)
+                .bias_correction_enable = 1,
 #endif
                 .rxauto_enable = 1
             },
@@ -72,6 +95,27 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_1_TX_ANT_DLY),
             .status = {0},
             .config = {
+                .channel = 5,                       //!< channel number {1, 2, 3, 4, 5, 7 }
+                .prf = DWT_PRF_64M,                 //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
+                .dataRate = DWT_BR_6M8,             // Data rate. 
+                .rx = {
+                    .pacLength = DWT_PAC8,          //!< Acquisition Chunk Size (Relates to RX preamble length)
+                    .preambleCodeIndex = 9,         //!< RX preamble code
+                    .sfdType = 0,                   //!< Boolean should we use non-standard SFD for better performance
+                    .phrMode = DWT_PHRMODE_STD,     //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
+                    .sfdTimeout = (256 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
+                },
+                .tx ={
+                    .preambleCodeIndex = 9,         //!< TX preamble code
+                    .preambleLength = DWT_PLEN_256  //!< DWT_PLEN_64..DWT_PLEN_4096
+                },
+                .txrf={
+                    .PGdly = TC_PGDELAY_CH5,
+                    .BOOSTNORM = dw1000_power_value(DW1000_txrf_config_0db, 0),
+                    .BOOSTP500 = dw1000_power_value(DW1000_txrf_config_0db, 0),
+                    .BOOSTP250 = dw1000_power_value(DW1000_txrf_config_0db, 0),
+                    .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_0db, 0)
+                }, 
                 .rxdiag_enable = 1,
                 .dblbuffon_enabled = 1,
 #if MYNEWT_VAL(DW1000_MAC_FILTERING)
@@ -97,6 +141,27 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_2_TX_ANT_DLY),
             .status = {0},
              .config = {
+                .channel = 5,                       //!< channel number {1, 2, 3, 4, 5, 7 }
+                .prf = DWT_PRF_64M,                 //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
+                .dataRate = DWT_BR_6M8,             // Data rate. 
+                .rx = {
+                    .pacLength = DWT_PAC8,          //!< Acquisition Chunk Size (Relates to RX preamble length)
+                    .preambleCodeIndex = 9,         //!< RX preamble code
+                    .sfdType = 0,                   //!< Boolean should we use non-standard SFD for better performance
+                    .phrMode = DWT_PHRMODE_STD,     //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
+                    .sfdTimeout = (256 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
+                },
+                .tx ={
+                    .preambleCodeIndex = 9,         //!< TX preamble code
+                    .preambleLength = DWT_PLEN_256  //!< DWT_PLEN_64..DWT_PLEN_4096
+                },
+                .txrf={
+                    .PGdly = TC_PGDELAY_CH5,
+                    .BOOSTNORM = dw1000_power_value(DW1000_txrf_config_0db, 0),
+                    .BOOSTP500 = dw1000_power_value(DW1000_txrf_config_0db, 0),
+                    .BOOSTP250 = dw1000_power_value(DW1000_txrf_config_0db, 0),
+                    .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_0db, 0)
+                }, 
                 .rxdiag_enable = 1,
                 .dblbuffon_enabled = 1,
 #if MYNEWT_VAL(DW1000_MAC_FILTERING)
@@ -113,7 +178,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
 };
 #endif
 
-dw1000_dev_instance_t * 
+struct _dw1000_dev_instance_t * 
 hal_dw1000_inst(uint8_t idx){
     
 #if  MYNEWT_VAL(DW1000_DEVICE_0) 
@@ -131,7 +196,7 @@ hal_dw1000_inst(uint8_t idx){
 }
 
 void  
-hal_dw1000_reset(dw1000_dev_instance_t * inst)
+hal_dw1000_reset(struct _dw1000_dev_instance_t * inst)
 {
     assert(inst);
 
@@ -146,7 +211,7 @@ hal_dw1000_reset(dw1000_dev_instance_t * inst)
 }
 
 void 
-hal_dw1000_read(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
+hal_dw1000_read(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {
     os_error_t err;
     if (inst->spi_mutex) {
@@ -170,7 +235,7 @@ hal_dw1000_read(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_s
 }
 
 void 
-hal_dw1000_write(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
+hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {
     os_error_t err;
     if (inst->spi_mutex) {
@@ -194,7 +259,7 @@ hal_dw1000_write(dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_
 }
 
 void 
-hal_dw1000_wakeup(dw1000_dev_instance_t * inst)
+hal_dw1000_wakeup(struct _dw1000_dev_instance_t * inst)
 {
     os_error_t err;
     os_sr_t sr;
@@ -228,7 +293,7 @@ hal_dw1000_wakeup(dw1000_dev_instance_t * inst)
 /* Read the current level of the rst pin.
  * When sleeping dw1000 will let this pin should go low */
 int
-hal_dw1000_get_rst(dw1000_dev_instance_t * inst)
+hal_dw1000_get_rst(struct _dw1000_dev_instance_t * inst)
 {
     return hal_gpio_read(inst->rst_pin);
 }

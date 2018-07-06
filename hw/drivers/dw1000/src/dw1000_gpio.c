@@ -25,8 +25,6 @@
 #include <os/os.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_gpio.h>
 
 
@@ -47,7 +45,7 @@
  *
  * no return value
  */
-void dw1000_gpio_config_leds(dw1000_dev_instance_t * inst, dw1000_led_modes_t mode)
+void dw1000_gpio_config_leds(struct _dw1000_dev_instance_t * inst, dw1000_led_modes_t mode)
 {
     uint32_t reg;
 
@@ -95,7 +93,7 @@ void dw1000_gpio_config_leds(dw1000_dev_instance_t * inst, dw1000_led_modes_t mo
  *
  * no return value
  */
-void dw1000_gpio_direction(dw1000_dev_instance_t * inst, uint32_t gpioNum, uint32_t direction)
+void dw1000_gpio_direction(struct _dw1000_dev_instance_t * inst, uint32_t gpioNum, uint32_t direction)
 {
     uint8_t buf[GPIO_DIR_LEN];
     uint32_t command = direction | gpioNum;
@@ -120,7 +118,7 @@ void dw1000_gpio_direction(dw1000_dev_instance_t * inst, uint32_t gpioNum, uint3
  *
  * no return value
  */
-void dw1000_gpio_set(dw1000_dev_instance_t * inst, uint32_t gpioNum, uint32_t value)
+void dw1000_gpio_set(struct _dw1000_dev_instance_t * inst, uint32_t gpioNum, uint32_t value)
 {
     uint8_t buf[GPIO_DOUT_LEN];
     uint32_t command = value | gpioNum;

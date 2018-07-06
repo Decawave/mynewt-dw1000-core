@@ -90,36 +90,63 @@ typedef struct _dw1000_dev_control_t{
     uint32_t wakeup_LLDO:1;
 }dw1000_dev_control_t;
 
+typedef struct _dw1000_dev_rx_config_t{
+    uint8_t pacLength;                      //!< Acquisition Chunk Size DWT_PAC8..DWT_PAC64 (Relates to RX preamble length)
+    uint8_t preambleCodeIndex;              //!< RX preamble code
+    uint8_t sfdType;                        //!< Boolean should we use non-standard SFD for better performance
+    uint8_t phrMode;                        //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
+    uint16_t sfdTimeout;                    //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). 
+}dw1000_dev_rx_config_t;
+
+typedef struct _dw1000_dev_tx_config_t{
+    uint8_t preambleCodeIndex;              //!< TX preamble code
+    uint8_t preambleLength;                 //!< DWT_PLEN_64..DWT_PLEN_4096
+}dw1000_dev_tx_config_t;
+
+typedef struct _dw1000_dev_txrf_config_t {
+    uint8_t   PGdly; 
+    union _power {   
+        struct _smart{ 
+            uint8_t BOOSTNORM;      //PWR_TX_DATA_PWR
+            uint8_t BOOSTP500;      //PWR_TX_PHR_PWR
+            uint8_t BOOSTP250;      //PWR_TX_SHR_PWR
+            uint8_t BOOSTP125;      //PWR
+         };
+         struct _manual { 
+            uint8_t _NA1;
+            uint8_t TXPOWPHR;
+            uint8_t TXPOWSD;
+            uint8_t _NA4;
+         };
+        uint32_t power;          
+    };
+}dw1000_dev_txrf_config_t;
+
 typedef struct _dw1000_dev_config_t{
+    uint8_t channel;                        //!< channel number {1, 2, 3, 4, 5, 7 }
+    uint8_t dataRate;                       //!< Data Rate {DWT_BR_110K, DWT_BR_850K or DWT_BR_6M8}
+    uint8_t prf;                            //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
+    struct _dw1000_dev_rx_config_t rx;
+    struct _dw1000_dev_tx_config_t tx;
+    struct _dw1000_dev_txrf_config_t txrf;
     uint32_t autoack_enabled:1;
     uint32_t autoack_delay_enabled:1;
     uint32_t dblbuffon_enabled:1;
     uint32_t framefilter_enabled:1;
     uint32_t rxdiag_enable:1;
     uint32_t rxauto_enable:1;
+    uint32_t bias_correction_enable:1;
 }dw1000_dev_config_t;
 
-typedef struct _dwt_config_t {
-    uint8_t chan ;           //!< channel number {1, 2, 3, 4, 5, 7 }
-    uint8_t prf ;            //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
-    uint8_t txPreambLength ; //!< DWT_PLEN_64..DWT_PLEN_4096
-    uint8_t rxPAC ;          //!< Acquisition Chunk Size (Relates to RX preamble length)
-    uint8_t txCode ;         //!< TX preamble code
-    uint8_t rxCode ;         //!< RX preamble code
-    uint8_t nsSFD ;          //!< Boolean should we use non-standard SFD for better performance
-    uint8_t dataRate ;       //!< Data Rate {DWT_BR_110K, DWT_BR_850K or DWT_BR_6M8}
-    uint8_t phrMode ;        //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
-    uint16_t sfdTO ;         //!< SFD timeout value (in symbols)
-} dwt_config_t ;
-    
+
 typedef struct _dw1000_dev_rxdiag_t{
     uint16_t    fp_idx;             // First path index (10.6 bits fixed point integer)
     uint16_t    fp_amp;             // Amplitude at floor(index FP) + 1
     uint16_t    fp_amp2;            // Amplitude at floor(index FP) + 2
     uint16_t    fp_amp3;            // Amplitude at floor(index FP) + 3
     uint16_t    rx_std;             // Standard deviation of noise
-    uint16_t    preamble_cnt;       // Count of preamble symbols accumulated
-    uint16_t    max_growth_cir;     // Channel Impulse Response max growth CIR
+    uint16_t    cir_pwr;            // Channel Impulse Response max growth CIR
+    uint16_t    pacc_cnt;           // Count of preamble symbols accumulated
 } dw1000_dev_rxdiag_t;
 
 
@@ -155,7 +182,7 @@ typedef struct _dw1000_dev_instance_t{
     void (* lwip_rx_error_cb) (struct _dw1000_dev_instance_t *);
 #endif
 
-#if MYNEWT_VAL(DW1000_CLOCK_CALIBRATION)
+#if MYNEWT_VAL(DW1000_CCP_ENABLED)
     void (* ccp_rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* ccp_tx_complete_cb) (struct _dw1000_dev_instance_t *);
 #endif
@@ -187,7 +214,7 @@ typedef struct _dw1000_dev_instance_t{
     uint32_t device_id;
     uint16_t my_short_address;
     uint64_t my_long_address;
-#if MYNEWT_VAL(DW1000_CLOCK_CALIBRATION)
+#if MYNEWT_VAL(DW1000_CCP_ENABLED)
     uint64_t clock_master;
 #endif
     uint64_t timestamp;
@@ -204,7 +231,6 @@ typedef struct _dw1000_dev_instance_t{
     uint8_t xtal_trim;
     uint32_t sys_cfg_reg;
     uint32_t sys_ctrl_reg;
-    uint8_t longFrames;
     uint32_t tx_fctrl;
     uint32_t sys_status;    // SYS_STATUS_ID for current event
     uint16_t rx_antenna_delay;
@@ -224,7 +250,7 @@ typedef struct _dw1000_dev_instance_t{
 #if MYNEWT_VAL(DW1000_PROVISION)
     struct _dw1000_provision_instance_t *provision;
 #endif
-#if MYNEWT_VAL(DW1000_CLOCK_CALIBRATION)
+#if MYNEWT_VAL(DW1000_CCP_ENABLED)
     struct _dw1000_ccp_instance_t * ccp;
 #endif
 #if MYNEWT_VAL(DW1000_PAN)
@@ -240,7 +266,6 @@ typedef struct _dw1000_dev_instance_t{
     dw1000_dev_control_t control_tx_context; 
     dw1000_dev_status_t status; 
     dw1000_dev_role_t dev_type;
-    dwt_config_t mac_config;
 }dw1000_dev_instance_t;
 
 /* Used to pass data to init function from bsp_hal */

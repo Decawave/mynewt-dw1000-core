@@ -41,8 +41,8 @@ extern "C" {
 #define OTP_VTEMP_ADDRESS  (0x09)
 #define OTP_XTRIM_ADDRESS  (0x1E)
 
-uint32_t _dw1000_otp_read(dw1000_dev_instance_t * inst, uint16_t address);
-void dw1000_opt_read(dw1000_dev_instance_t * inst, uint32_t address, uint32_t * buffer, uint16_t length);
+uint32_t _dw1000_otp_read(struct _dw1000_dev_instance_t * inst, uint16_t address);
+void dw1000_opt_read(struct _dw1000_dev_instance_t * inst, uint32_t address, uint32_t * buffer, uint16_t length);
 
 #ifdef __cplusplus
 }

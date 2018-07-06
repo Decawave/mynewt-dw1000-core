@@ -72,7 +72,7 @@ static const struct nrf52_hal_spi_cfg os_bsp_spi0m_cfg = {
 /* 
  * dw1000 device structure defined in dw1000_hal.c 
  */
-static dw1000_dev_instance_t *dw1000_0 = 0;
+static struct _dw1000_dev_instance_t * dw1000_0 = 0;
 static const struct dw1000_dev_cfg dw1000_0_cfg = {
     .spi_mutex = &g_spi0_mutex,
     .spi_num = 0,

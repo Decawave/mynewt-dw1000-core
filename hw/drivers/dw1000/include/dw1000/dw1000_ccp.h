@@ -30,11 +30,15 @@ extern "C" {
 #endif
 
 #include <hal/hal_spi.h>
-#include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
+#include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_ftypes.h>
-#if MYNEWT_VAL(CLOCK_CALIBRATION)
+#if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
 #include <clkcal/clkcal.h>    
+#endif
+#if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED)
+#include <dsp/sosfilt.h>
+#include <dsp/polyval.h>
 #endif
 
 typedef union {
@@ -57,12 +61,16 @@ typedef struct _dw1000_ccp_status_t{
 
 typedef struct _dw1000_ccp_config_t{
     uint16_t postprocess:1;
+    uint16_t fs_xtalt_autotune:1;
 }dw1000_ccp_config_t;
 
 typedef struct _dw1000_ccp_instance_t{
     struct _dw1000_dev_instance_t * parent;
-#if MYNEWT_VAL(CLOCK_CALIBRATION)
+#if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
     struct _clkcal_instance_t * clkcal;
+#endif
+#if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED)
+    struct _sos_instance_t * xtalt_sos;
 #endif
     struct os_sem sem;
     struct os_callout callout_timer;

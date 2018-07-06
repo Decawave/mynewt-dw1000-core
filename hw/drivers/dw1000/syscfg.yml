@@ -18,7 +18,7 @@ syscfg.defs:
     DW1000_LWIP:
         description: 'Enable LWIP functionality'
         value: 0
-    DW1000_CLOCK_CALIBRATION:
+    DW1000_CCP_ENABLED:
         description: 'Enable wireless clock calibration'
         value: 0
     DW1000_PAN:
@@ -29,10 +29,22 @@ syscfg.defs:
         value: 0
     DW1000_PROVISION:
         description: 'Enable independent provision module'
-        value:  0
+        value: 0
     DW1000_RANGE:
         description: 'TWR Ranging functionality'
-        value:  0
+        value: 0
+    DW1000_BIAS_CORRECTION_ENABLED:
+        description: 'Enable range bias correction polynomial'
+        value: 1
+    DW1000_DEVICE_TX_PWR:
+        description: 'Tx Power dBm'
+        value: ((float){-14.3f})
+    DW1000_DEVICE_ANT_GAIN:
+        description: 'Antenna Gain dB'
+        value: ((float){1.0f})
+    DW1000_DEVICE_FREQ:  
+        description: 'Center frequency Hz'
+        value: ((float){6489.6f})
     LOCAL_COORDINATE_X:
         description: >
             Default Anchor X Coordinate  
@@ -59,7 +71,7 @@ syscfg.defs:
     CCP_PERIOD:
         description: >
             Clock Calibration Packets Period 
-        value: ((uint32_t){0x200000})
+        value: ((uint32_t){0x100000})
     PAN_PERIOD:
         description: >
             PAN Discovery Packets Period 
@@ -76,3 +88,9 @@ syscfg.defs:
         description: >
             OS Latency Guardband 
         value: ((uint32_t){0x1000})
+    FS_XTALT_AUTOTUNE_ENABLED: 
+        description: >
+            Autotune XTALT to Clock Master
+        value: 0
+        restrictions: DW1000_CCP_ENABLED
+        
