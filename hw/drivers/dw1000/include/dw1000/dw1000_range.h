@@ -71,7 +71,7 @@ typedef struct _dw1000_range_instance_t{
 
 dw1000_range_instance_t * dw1000_range_init(dw1000_dev_instance_t * inst, uint16_t nnodes, uint16_t node_addr[]);
 void dw1000_range_free(dw1000_dev_instance_t * inst);
-void dw1000_range_set_callbacks(dw1000_dev_instance_t * inst, dw1000_dev_cb_t dw1000_range_cb, dw1000_dev_cb_t dw1000_error_cb);
+void dw1000_range_set_ext_callbacks(dw1000_dev_instance_t * inst, dw1000_extension_callbacks_t range_cbs);
 void dw1000_range_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * range_postprocess); 
 void dw1000_range_start(dw1000_dev_instance_t * inst, dw1000_rng_modes_t code);
 void dw1000_range_stop(dw1000_dev_instance_t * inst);

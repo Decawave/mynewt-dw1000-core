@@ -40,6 +40,7 @@
 static void postprocess(struct os_event * ev);
 static void range_complete_cb(dw1000_dev_instance_t * inst);
 static void range_error_cb(dw1000_dev_instance_t * inst);
+static void range_tx_complete_cb(dw1000_dev_instance_t* inst);
 static struct os_callout range_callout_timer;
 static struct os_callout range_callout_postprocess;
 
@@ -74,6 +75,18 @@ range_timer_init(dw1000_dev_instance_t *inst) {
 }
 
 static void range_complete_cb(dw1000_dev_instance_t *inst){
+    if(inst->fctrl != FCNTL_IEEE_RANGE_16){
+        if(inst->extension_cb->next != NULL){
+            inst->extension_cb = inst->extension_cb->next;
+            if(inst->extension_cb->rx_complete_cb != NULL)
+                inst->extension_cb->rx_complete_cb(inst);
+        }else{
+            dw1000_dev_control_t control = inst->control_rx_context;
+            inst->control = inst->control_rx_context;
+            dw1000_restart_rx(inst, control);
+        }
+        return;
+    }
     assert(inst);
     assert(inst->range);
     dw1000_range_instance_t *range = inst->range;
@@ -93,6 +106,22 @@ static void range_complete_cb(dw1000_dev_instance_t *inst){
 
 static void range_error_cb(dw1000_dev_instance_t *inst){
     assert(inst);
+    if(inst->fctrl != FCNTL_IEEE_RANGE_16){
+        if(inst->extension_cb->next != NULL){
+            inst->extension_cb = inst->extension_cb->next;
+            if(inst->status.rx_timeout_error == 1){
+                if(inst->extension_cb->rx_timeout_cb != NULL)
+                    inst->extension_cb->rx_timeout_cb(inst);
+            }else if(inst->status.rx_error == 1){
+                if(inst->extension_cb->rx_error_cb != NULL)
+                    inst->extension_cb->rx_error_cb(inst);
+            }else if(inst->status.start_tx_error == 1){
+                if(inst->extension_cb->tx_error_cb != NULL)
+                    inst->extension_cb->tx_error_cb(inst);
+            }
+        }
+        return;
+    }
     assert(inst->range);
     dw1000_range_instance_t *range = inst->range;
     if(range->status.started == 1){
@@ -107,6 +136,18 @@ static void range_error_cb(dw1000_dev_instance_t *inst){
         }
     }
 }
+
+static void
+range_tx_complete_cb(dw1000_dev_instance_t* inst){
+    if(inst->fctrl != FCNTL_IEEE_RANGE_16){
+        if(inst->extension_cb->next != NULL){
+            inst->extension_cb = inst->extension_cb->next;
+            if(inst->extension_cb->tx_complete_cb != NULL)
+                inst->extension_cb->tx_complete_cb(inst);
+        }
+    }
+}
+
 static void range_reg_postprocess(dw1000_dev_instance_t * inst, os_event_fn * rng_postprocess){
     assert(inst);
     assert(inst->range);
@@ -132,7 +173,7 @@ static void postprocess(struct os_event * ev){
 dw1000_range_instance_t * 
 dw1000_range_init(dw1000_dev_instance_t * inst, uint16_t nnodes, uint16_t node_addr[]){
     assert(inst);
-    
+    dw1000_extension_callbacks_t range_cbs;
     if (inst->range == NULL ) {
         inst->range = (dw1000_range_instance_t *) malloc(sizeof(dw1000_range_instance_t) + 
         nnodes * sizeof(uint16_t) + nnodes * sizeof(uint16_t) + nnodes * sizeof(uint16_t)); 
@@ -162,8 +203,15 @@ dw1000_range_init(dw1000_dev_instance_t * inst, uint16_t nnodes, uint16_t node_a
     inst->range->pp_idx_list = &inst->range->var_mem_block[nnodes + nnodes];
 
     dw1000_range_set_nodes(inst, node_addr, nnodes);
-    dw1000_range_set_callbacks(inst, range_complete_cb, range_error_cb);    
-    range_reg_postprocess(inst, &postprocess);
+
+    range_cbs.rx_complete_cb = range_complete_cb;
+    range_cbs.tx_complete_cb = range_tx_complete_cb;
+    range_cbs.rx_timeout_cb =range_error_cb;
+    range_cbs.rx_error_cb = range_error_cb;
+    range_cbs.tx_error_cb = range_error_cb;
+    dw1000_range_set_ext_callbacks(inst, range_cbs);
+ 
+   range_reg_postprocess(inst, &postprocess);
 
     inst->range->status.initialized = 1;
     return inst->range;
@@ -171,7 +219,8 @@ dw1000_range_init(dw1000_dev_instance_t * inst, uint16_t nnodes, uint16_t node_a
 
 void 
 dw1000_range_free(dw1000_dev_instance_t *inst){
-    assert(inst);  
+    assert(inst);
+    dw1000_remove_extension_callbacks(inst, DW1000_RANGE);
     if (inst->range->status.selfmalloc)
         free(inst->range);
     else{
@@ -180,10 +229,10 @@ dw1000_range_free(dw1000_dev_instance_t *inst){
     }
 }
 
-void dw1000_range_set_callbacks(dw1000_dev_instance_t * inst, dw1000_dev_cb_t range_cb, dw1000_dev_cb_t error_cb){
+void dw1000_range_set_ext_callbacks(dw1000_dev_instance_t * inst, dw1000_extension_callbacks_t range_cbs){
     assert(inst);
-    inst->range_complete_cb = range_cb;
-    inst->range_error_cb = error_cb;
+    range_cbs.id = DW1000_RANGE;
+    dw1000_add_extension_callbacks(inst, range_cbs);
 }
 
 void 

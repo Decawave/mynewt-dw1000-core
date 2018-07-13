@@ -51,6 +51,8 @@ static pan_frame_t frames[] = {
 static void pan_rx_complete_cb(dw1000_dev_instance_t * inst);
 static void pan_tx_complete_cb(dw1000_dev_instance_t * inst);
 static void pan_rx_timeout_cb(dw1000_dev_instance_t * inst);
+static void pan_rx_error_cb(dw1000_dev_instance_t * inst);
+static void pan_tx_error_cb(dw1000_dev_instance_t * inst);
 static dw1000_pan_status_t dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 static void pan_postprocess(struct os_event * ev);
 static struct os_callout g_pan_callout_timer;
@@ -61,7 +63,6 @@ pan_timer_ev_cb(struct os_event *ev) {
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
 
-printf("pan_timer_ev_cb\n");
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
     dw1000_pan_instance_t * pan = inst->pan; 
 
@@ -95,6 +96,7 @@ dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config){
     assert(inst);
 
     uint16_t nframes = sizeof(frames)/sizeof(pan_frame_t);
+    dw1000_extension_callbacks_t pan_cbs;
     if (inst->pan == NULL ) {
         inst->pan = (dw1000_pan_instance_t *) malloc(sizeof(dw1000_pan_instance_t) + nframes * sizeof(pan_frame_t *)); 
         assert(inst->pan);
@@ -117,8 +119,15 @@ dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config){
     for (uint16_t i = 0; i < inst->pan->nframes; i++)
         inst->pan->frames[i] = &frames[i];
 
-    dw1000_pan_set_callbacks(inst, pan_rx_complete_cb, pan_tx_complete_cb, pan_rx_timeout_cb);
     dw1000_pan_set_postprocess(inst, pan_postprocess);
+
+    pan_cbs.tx_complete_cb = pan_tx_complete_cb;
+    pan_cbs.rx_complete_cb = pan_rx_complete_cb;
+    pan_cbs.rx_timeout_cb = pan_rx_timeout_cb;
+    pan_cbs.rx_error_cb = pan_rx_error_cb;
+    pan_cbs.tx_error_cb = pan_tx_error_cb;
+    
+    dw1000_pan_set_ext_callbacks(inst, pan_cbs);
 
     dw1000_pan_instance_t * pan = inst->pan; 
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes]; 
@@ -141,8 +150,8 @@ dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config){
  */
 void 
 dw1000_pan_free(dw1000_dev_instance_t * inst){
-    assert(inst->pan);  
-    dw1000_pan_set_callbacks(inst, (dw1000_dev_cb_t) NULL, (dw1000_dev_cb_t) NULL, (dw1000_dev_cb_t) NULL);
+    assert(inst->pan); 
+    dw1000_remove_extension_callbacks(inst, DW1000_PAN); 
     if (inst->status.selfmalloc)
         free(inst->pan);
     else
@@ -164,13 +173,10 @@ dw1000_pan_free(dw1000_dev_instance_t * inst){
  *
  * returns none
  */
-void 
-dw1000_pan_set_callbacks(dw1000_dev_instance_t * inst, dw1000_dev_cb_t  pan_rx_complete_cb, dw1000_dev_cb_t  pan_tx_complete_cb, dw1000_dev_cb_t  pan_rx_timeout_cb){
-    inst->pan_rx_complete_cb = pan_rx_complete_cb;
-    inst->pan_tx_complete_cb = pan_tx_complete_cb;
-    inst->pan_rx_timeout_cb = pan_rx_timeout_cb;
+void dw1000_pan_set_ext_callbacks(dw1000_dev_instance_t * inst, dw1000_extension_callbacks_t pan_cbs){
+    pan_cbs.id = DW1000_PAN;
+    dw1000_add_extension_callbacks(inst , pan_cbs);
 }
-
 
 /*! 
  * @fn dw1000_pan_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * pan_postprocess)
@@ -255,7 +261,25 @@ pan_postprocess(struct os_event * ev){
  */
 static void 
 pan_rx_complete_cb(dw1000_dev_instance_t * inst){
-    //printf("pan_rx_complete_cb\n");
+     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
+        if(inst->extension_cb->next != NULL){
+			inst->extension_cb = inst->extension_cb->next;
+			if(inst->extension_cb->rx_complete_cb != NULL)
+	            inst->extension_cb->rx_complete_cb(inst);
+        //For the range service the fctrl is same as FCNTL_IEEE_RANGE_16
+        //In he range case the decision is always taken by application
+        //So put it back to receive only if the intended packet doesn't match
+        //any of the reserved or range packet
+        }else if(inst->fctrl != FCNTL_IEEE_RANGE_16){
+            dw1000_dev_control_t control = inst->control_rx_context;
+            dw1000_restart_rx(inst, control);
+        }
+        return;
+    }else if(inst->pan->status.valid == true){
+        dw1000_dev_control_t control = inst->control_rx_context;
+        dw1000_restart_rx(inst, control);
+        return;
+    }
     dw1000_pan_instance_t * pan = inst->pan; 
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
 
@@ -300,13 +324,74 @@ pan_rx_complete_cb(dw1000_dev_instance_t * inst){
 static void 
 pan_tx_complete_cb(dw1000_dev_instance_t * inst){
     //printf("pan_tx_complete_cb\n");
-    dw1000_pan_instance_t * pan = inst->pan; 
+   if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
+        if(inst->extension_cb->next != NULL){
+			inst->extension_cb = inst->extension_cb->next;
+			if(inst->extension_cb->tx_complete_cb != NULL)
+	            inst->extension_cb->tx_complete_cb(inst);
+        }
+	return;
+    }
+    dw1000_pan_instance_t * pan = inst->pan;
     if (pan->status.timer_enabled && pan->status.valid == false)
         os_callout_reset(&g_pan_callout_timer, OS_TICKS_PER_SEC * (pan->period - MYNEWT_VAL(OS_LATENCY)) * 1e-6); 
     os_sem_release(&inst->pan->sem);  
     pan->idx++;
 }
 
+/*!
+ * @fn pan_rx_error_cb(dw1000_dev_instance_t * inst)
+ *
+ * @brief This is an internal static function that executes on the TAG/ANCHOR.
+ *
+ * input parameters
+ * @param inst - dw1000_dev_instance_t *
+ *
+ * output parameters
+ *
+ *
+ * returns none
+ */
+static void
+pan_rx_error_cb(dw1000_dev_instance_t * inst){
+    /* Place holder */
+    if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
+        if(inst->extension_cb->next != NULL){
+			inst->extension_cb = inst->extension_cb->next;
+			if(inst->extension_cb->rx_error_cb != NULL)
+	            inst->extension_cb->rx_error_cb(inst);
+        }
+        return;
+    }
+    os_sem_release(&inst->pan->sem);
+}
+
+/*!
+ * @fn pan_tx_error_cb(dw1000_dev_instance_t * inst)
+ *
+ * @brief This is an internal static function that executes on the TAG/ANCHOR.
+ *
+ * input parameters
+ * @param inst - dw1000_dev_instance_t *
+ *
+ * output parameters
+ *
+ *
+ * returns none
+ */
+
+static void
+pan_tx_error_cb(dw1000_dev_instance_t * inst){
+    /* Place holder */
+    if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
+        if(inst->extension_cb->next != NULL){
+			inst->extension_cb = inst->extension_cb->next;
+			if(inst->extension_cb->tx_error_cb != NULL)
+	            inst->extension_cb->tx_error_cb(inst);
+        }
+        return;
+    }
+}
 /*! 
  * @fn pan_rx_timeout_cb(dw1000_dev_instance_t * inst)
  *
@@ -322,13 +407,19 @@ pan_tx_complete_cb(dw1000_dev_instance_t * inst){
 static void 
 pan_rx_timeout_cb(dw1000_dev_instance_t * inst){
     //printf("pan_rx_timeout_cb\n");  
+    if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
+        if(inst->extension_cb->next != NULL){
+			inst->extension_cb = inst->extension_cb->next;
+			if(inst->extension_cb->rx_timeout_cb != NULL)
+	            inst->extension_cb->rx_timeout_cb(inst);
+        }
+        return;
+    }
     dw1000_pan_instance_t * pan = inst->pan;  
-
     if (pan->status.timer_enabled)
         os_callout_reset(&g_pan_callout_timer, OS_TICKS_PER_SEC * (pan->period - MYNEWT_VAL(OS_LATENCY)) * 1e-6);    
     os_sem_release(&inst->pan->sem);  
 }
-
 
 /*! 
  * @fn dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)

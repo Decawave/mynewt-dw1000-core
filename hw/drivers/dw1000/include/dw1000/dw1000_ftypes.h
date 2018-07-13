@@ -32,7 +32,8 @@ extern "C" {
 #define FCNTL_IEEE_BLINK_CCP_64 0xC5
 #define FCNTL_IEEE_BLINK_TAG_64 0x56 
 #define FCNTL_IEEE_BLINK_ANC_64 0x57
-#define FCNTL_IEEE_RANGE_16 0x8841
+#define FCNTL_IEEE_RANGE_16     0x8841
+#define FCNTL_IEEE_PROVISION_16 0x8844
 
 // IEEE 802.15.4e standard blink. It is a 12-byte frame composed of the following fields
 typedef union{

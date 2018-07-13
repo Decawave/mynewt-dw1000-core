@@ -31,6 +31,9 @@
 #include <dw1000/dw1000_phy.h>
 
 
+static int dw1000_find_extension_callbacks_position(dw1000_dev_instance_t *inst, dw1000_extension_id_t id);
+static dw1000_extension_callbacks_t* dw1000_new_extension_callbacks(dw1000_dev_instance_t* inst);
+
 dw1000_dev_status_t 
 dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length){
     assert(reg <= 0x3F); // Record number is limited to 6-bits.
@@ -343,4 +346,69 @@ dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, int enable)
     dw1000_write(inst, PMSC_ID, PMSC_CTRL1_OFFSET, (uint8_t*)&reg, sizeof(uint32_t));
 }
 
+void
+dw1000_add_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_callbacks_t callbacks){
+    assert(inst);
+    dw1000_extension_callbacks_t* new_cbs = dw1000_new_extension_callbacks(inst);
+    assert(new_cbs);
+    memcpy(new_cbs,&callbacks,sizeof(dw1000_extension_callbacks_t));
+    if(inst->extension_cb == NULL){
+        inst->extension_cb = new_cbs;
+        new_cbs->next = NULL;
+        new_cbs->previous =  NULL;
+    }else{
+        dw1000_extension_callbacks_t* temp_head = inst->extension_cb;
+        while(inst->extension_cb->next != NULL){
+            inst->extension_cb = inst->extension_cb->next;
+        }
+        inst->extension_cb->next = new_cbs;
+        new_cbs->next = NULL;
+        new_cbs->previous = inst->extension_cb;
+        inst->extension_cb = temp_head;
+    }
+}
 
+static dw1000_extension_callbacks_t*
+dw1000_new_extension_callbacks(dw1000_dev_instance_t* inst){
+    assert(inst);
+    dw1000_extension_callbacks_t* new_cbs = (dw1000_extension_callbacks_t*)malloc(sizeof(dw1000_extension_callbacks_t));
+    memset(new_cbs, 0, sizeof(dw1000_extension_callbacks_t));
+    return new_cbs;
+}
+
+void
+dw1000_remove_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_id_t id){
+    int count = 0;
+    dw1000_extension_callbacks_t* temp = inst->extension_cb;
+    int pos = dw1000_find_extension_callbacks_position(inst, id);
+    if(pos == 0){
+        inst->extension_cb = inst->extension_cb->next;
+        free(temp);
+        temp = NULL;
+    }else{
+        while(temp != NULL && count < (pos-1)){
+            temp = temp->next;
+            count++;
+        }
+        if(temp == NULL || temp->next == NULL){
+            return;
+        }
+        dw1000_extension_callbacks_t *next = temp->next->next;
+        free(temp->next);
+        temp->next = next;
+    }
+}
+
+static int
+dw1000_find_extension_callbacks_position(dw1000_dev_instance_t *inst, dw1000_extension_id_t id){
+    int count = 0;
+    dw1000_extension_callbacks_t* temp = inst->extension_cb;
+    while(temp != NULL){
+        if(temp->id == id){
+            return count;
+        }
+        temp = temp->next;
+        count++;
+    }
+    return -1;
+}

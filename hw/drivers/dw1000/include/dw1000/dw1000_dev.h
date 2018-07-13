@@ -55,6 +55,13 @@ typedef enum _dw1000_dev_role_t{
     TAG
 }dw1000_dev_role_t;
 
+typedef enum _dw1000_extension_id_t{
+    DW1000_CCP,
+    DW1000_PAN,
+    DW1000_PROVISION,
+    DW1000_RANGE
+}dw1000_extension_id_t;
+
 typedef struct _dw1000_cmd{
     uint32_t reg:6;
     uint32_t subindex:1;
@@ -149,6 +156,18 @@ typedef struct _dw1000_dev_rxdiag_t{
     uint16_t    pacc_cnt;           // Count of preamble symbols accumulated
 } dw1000_dev_rxdiag_t;
 
+struct _dw1000_dev_instance_t;
+typedef struct _dw1000_extension_callback_t dw1000_extension_callbacks_t;
+typedef struct _dw1000_extension_callback_t{
+    dw1000_extension_id_t id;
+    void (* tx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* rx_complete_cb) (struct _dw1000_dev_instance_t *);
+    void (* rx_timeout_cb)  (struct _dw1000_dev_instance_t *);
+    void (* rx_error_cb)    (struct _dw1000_dev_instance_t *);
+    void (* tx_error_cb)    (struct _dw1000_dev_instance_t *);
+    dw1000_extension_callbacks_t * next;
+    dw1000_extension_callbacks_t * previous;
+}dw1000_extension_callbacks_t;
 
 typedef struct _dw1000_dev_instance_t{
     struct os_dev uwb_dev;     /** Has to be here for cast in create_dev to work */
@@ -159,48 +178,18 @@ typedef struct _dw1000_dev_instance_t{
     void (* rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rx_timeout_cb) (struct _dw1000_dev_instance_t *);
     void (* rx_error_cb) (struct _dw1000_dev_instance_t *);
-/*
-    struct _dw1000_mac_callbacks_t;
-    struct _dw1000_rng_callbacks_t;
-    struct _dw1000_rng_callbacks_extension_t;
-    struct _dw1000_lwip_callbacks_t;
- */   
     void (* rng_tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
-    void (* rng_rx_timeout_extension_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_rx_error_cb) (struct _dw1000_dev_instance_t *);
-    void (* rng_rx_error_extension_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_tx_final_cb) (struct _dw1000_dev_instance_t *);
-    void (* rng_interface_extension_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_complete_cb) (struct _dw1000_dev_instance_t *);
-  
+    dw1000_extension_callbacks_t * extension_cb;
 #if MYNEWT_VAL(DW1000_LWIP)
     void (* lwip_tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* lwip_rx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* lwip_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
     void (* lwip_rx_error_cb) (struct _dw1000_dev_instance_t *);
-#endif
-
-#if MYNEWT_VAL(DW1000_CCP_ENABLED)
-    void (* ccp_rx_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* ccp_tx_complete_cb) (struct _dw1000_dev_instance_t *);
-#endif
-
-#if MYNEWT_VAL(DW1000_PAN)
-    void (* pan_rx_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* pan_tx_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* pan_rx_timeout_cb) (struct _dw1000_dev_instance_t *);    
-#endif
-#if MYNEWT_VAL(DW1000_RANGE)
-    void (* range_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* range_error_cb) (struct _dw1000_dev_instance_t *);
-#endif
-#if MYNEWT_VAL(DW1000_PROVISION)
-    void (* provision_tx_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* provision_rx_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* provision_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
-    void (* provision_rx_error_cb) (struct _dw1000_dev_instance_t *);
 #endif
     union {
         uint16_t fctrl;                         // Reported frame control 
@@ -288,6 +277,9 @@ dw1000_dev_status_t dw1000_dev_enter_sleep(dw1000_dev_instance_t * inst);
 dw1000_dev_status_t dw1000_dev_wakeup(dw1000_dev_instance_t * inst);
 void dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, int enable);
     
+void dw1000_add_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_callbacks_t callbacks);
+void dw1000_remove_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_id_t id);
+
 #ifdef __cplusplus
 }
 #endif

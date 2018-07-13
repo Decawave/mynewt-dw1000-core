@@ -88,7 +88,7 @@ typedef struct _dw1000_pan_instance_t{
 
 dw1000_pan_instance_t * dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config);
 void dw1000_pan_free(dw1000_dev_instance_t * inst);
-void dw1000_pan_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t pan_rx_complete_cb, dw1000_dev_cb_t pan_tx_complete_cb, dw1000_dev_cb_t pan_tx_timeout_cb);
+void dw1000_pan_set_ext_callbacks(dw1000_dev_instance_t * inst, dw1000_extension_callbacks_t pan_cbs);
 void dw1000_pan_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * postprocess); 
 void dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 void dw1000_pan_stop(dw1000_dev_instance_t * inst);
