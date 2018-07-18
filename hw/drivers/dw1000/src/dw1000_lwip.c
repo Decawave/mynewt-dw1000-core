@@ -205,8 +205,8 @@ rx_error_cb(dw1000_dev_instance_t * inst){
 
 void
 dw1000_low_level_init( dw1000_dev_instance_t * inst, 
-			dw1000_phy_txrf_config_t * txrf_config,
-			dwt_config_t * mac_config){
+			dw1000_dev_txrf_config_t * txrf_config,
+			dw1000_dev_config_t * mac_config){
 
 	dw1000_phy_init(inst, txrf_config);
 	dw1000_mac_init(inst, mac_config) ;

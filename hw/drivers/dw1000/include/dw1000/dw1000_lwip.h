@@ -100,8 +100,8 @@ dw1000_lwip_write(dw1000_dev_instance_t * inst, struct pbuf *p, dw1000_lwip_mode
 
 void
 dw1000_low_level_init( dw1000_dev_instance_t * inst, 
-			dw1000_phy_txrf_config_t * txrf_config,
-			dwt_config_t * mac_config);
+			dw1000_dev_txrf_config_t * txrf_config,
+			dw1000_dev_config_t * mac_config);
 
 void
 dw1000_netif_config( dw1000_dev_instance_t * inst, struct netif *netif, ip_addr_t *my_ip_addr, bool rx_status);
