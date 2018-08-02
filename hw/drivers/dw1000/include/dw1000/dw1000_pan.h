@@ -79,6 +79,8 @@ typedef struct _dw1000_pan_instance_t{
     struct os_sem sem_waitforsucess;
     dw1000_pan_status_t status;
     dw1000_pan_control_t control;
+    struct os_callout pan_callout_timer;
+    struct os_callout pan_callout_postprocess;
     dw1000_pan_config_t * config;
     uint32_t period;
     uint16_t nframes;
