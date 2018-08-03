@@ -186,11 +186,9 @@ typedef struct _dw1000_dev_instance_t{
     void (* rng_complete_cb) (struct _dw1000_dev_instance_t *);
     dw1000_extension_callbacks_t * extension_cb;
 #if MYNEWT_VAL(DW1000_LWIP)
-    void (* lwip_tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* lwip_rx_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* lwip_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
-    void (* lwip_rx_error_cb) (struct _dw1000_dev_instance_t *);
 #endif
+
     union {
         uint16_t fctrl;                         // Reported frame control 
         uint8_t fctrl_array[sizeof(uint16_t)];  //endianness safe interface
@@ -236,6 +234,7 @@ typedef struct _dw1000_dev_instance_t{
 #if MYNEWT_VAL(DW1000_LWIP)
     struct _dw1000_lwip_instance_t * lwip;
 #endif
+
 #if MYNEWT_VAL(DW1000_PROVISION)
     struct _dw1000_provision_instance_t *provision;
 #endif
