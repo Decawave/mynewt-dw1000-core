@@ -497,7 +497,7 @@ dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 
     pan->idx = 0x1;  
     pan->status.valid = false;
-    pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes]; 
+    pan_frame_t * frame = pan->frames[(pan->idx-1)%pan->nframes]; 
     frame->transmission_timestamp = dw1000_read_systime(inst); 
     pan_timer_init(inst);
 
