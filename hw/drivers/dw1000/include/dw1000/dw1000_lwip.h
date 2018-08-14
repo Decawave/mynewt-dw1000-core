@@ -88,10 +88,6 @@ typedef struct _dw1000_lwip_instance_t{
     char * data_buf[];
 }dw1000_lwip_instance_t;
 
-typedef struct _dw1000_lwip_cb_t{
-   void (*recv)(dw1000_dev_instance_t * inst, uint16_t timeout);
-}dw1000_lwip_cb_t;
-
 typedef struct _dw1000_lwip_context_t{
    dw1000_lwip_cb_t rx_cb;
 }dw1000_lwip_context_t;
@@ -116,7 +112,11 @@ dw1000_config(dw1000_dev_instance_t * inst);
 dw1000_lwip_instance_t *
 dw1000_lwip_init(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config, uint16_t nframes, uint16_t buf_len);
 
-void
+/**
+ * [dw1000_pcb_init Function to initialize a PCB for raw lwip]
+ * @param   inst    [Device/Parent instance]
+ */
+void 
 dw1000_pcb_init(dw1000_dev_instance_t * inst);
 
 /**
@@ -138,9 +138,6 @@ void
 dw1000_lwip_set_callbacks(dw1000_dev_instance_t * inst, dw1000_dev_cb_t tx_complete_cb, 
                             dw1000_dev_cb_t lwip_rx_complete_cb, dw1000_dev_cb_t rx_complete_cb, 
                             dw1000_dev_cb_t rx_timeout_cb, dw1000_dev_cb_t rx_error_cb);
-
-//dw1000_lwip_set_callbacks(dw1000_dev_instance_t * inst, dw1000_dev_cb_t lwip_tx_complete_cb, 
-//    dw1000_dev_cb_t lwip_rx_complete_cb,  dw1000_dev_cb_t lwip_timeout_cb,  dw1000_dev_cb_t lwip_error_cb);
 
 /**
  * [dw1000_lwip_write Function to send lwIP buffer to radio]
@@ -182,9 +179,15 @@ dw1000_netif_config( dw1000_dev_instance_t * inst, struct netif *netif, ip_addr_
 err_t
 dw1000_netif_init( struct netif * dw1000_netif);
 
+/**
+ * [dw1000_lwip_send function to pass the payload to lwIP stack]
+ * @param inst         [Device/Parent instance]
+ * @param payload_size [Size of the payload to be sent]
+ * @param payload      [Pointer to the payload]
+ * @param ipaddr       [Pointer to the IP address of target device]
+ */
 void 
 dw1000_lwip_send(dw1000_dev_instance_t * inst, uint16_t payload_size, char * payload, ip_addr_t * ipaddr);
-//dw1000_lwip_send(struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *ipaddr);
 
 /**
  * [dw1000_ll_output Low Level output function, acts as a brigde between 6lowPAN and radio]
@@ -218,7 +221,16 @@ dw1000_lwip_start_rx(dw1000_dev_instance_t * inst, uint16_t timeout);
  */
 void print_error(err_t error);
 
-uint8_t lwip_rx_cb(void *arg, struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *addr);
+/**
+ * [lwip_rx_cb Received payload is fetched to this function after lwIP stack]
+ * @param  arg  [User defined argument]
+ * @param  pcb  [Pointer to PCB]
+ * @param  p    [Payload pointer]
+ * @param  addr [Device IP address]
+ * @return      [1: Signifies that the payload is received successfully]
+ */
+uint8_t 
+lwip_rx_cb(void *arg, struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *addr);
 
 #ifdef __cplusplus
 }
