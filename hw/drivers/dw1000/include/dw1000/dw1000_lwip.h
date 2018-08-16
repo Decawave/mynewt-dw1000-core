@@ -88,13 +88,13 @@ typedef struct _dw1000_lwip_instance_t{
     char * data_buf[];
 }dw1000_lwip_instance_t;
 
-typedef struct _dw1000_lwip_context_t{
-   dw1000_lwip_cb_t rx_cb;
-}dw1000_lwip_context_t;
-
 typedef struct _dw1000_lwip_cb_t{
     void (*recv)(dw1000_dev_instance_t * inst, uint16_t timeout);
 }dw1000_lwip_cb_t;
+
+typedef struct _dw1000_lwip_context_t{
+   dw1000_lwip_cb_t rx_cb;
+}dw1000_lwip_context_t;
 
 /**
  * [dw1000_lwip_config Function to assign the config parameters]
