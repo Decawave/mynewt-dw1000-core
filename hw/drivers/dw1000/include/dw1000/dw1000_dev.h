@@ -79,10 +79,11 @@ typedef struct _dw1000_dev_status_t{
     uint32_t rx_error:1;
     uint32_t rx_timeout_error:1;
     uint32_t spi_error:1;
-    uint32_t wakeup_LLDE:1;
-    uint32_t wakeup_LLDO:1;
+    uint32_t LDE_enabled:1;
+    uint32_t LDO_enabled:1;
     uint32_t rx_ranging_frame:1;     //Range Request bit set for inbound frame
     uint32_t tx_ranging_frame:1;     //Range Request bit set for outbound frame
+    uint32_t sleep_enabled:1;
     uint32_t sleeping:1;
 }dw1000_dev_status_t;
 
@@ -93,8 +94,9 @@ typedef struct _dw1000_dev_control_t{
     uint32_t autoack_delay_enabled:1;
     uint32_t start_rx_syncbuf_enabled:1;
     uint32_t rx_timeout_enabled:1;
-    uint32_t wakeup_LLDE:1;
-    uint32_t wakeup_LLDO:1;
+    uint32_t on_error_continue_enabled:1;
+    uint32_t sleep_after_tx:1;
+    uint32_t sleep_after_rx:1;
 }dw1000_dev_control_t;
 
 typedef struct _dw1000_dev_rx_config_t{
@@ -143,6 +145,10 @@ typedef struct _dw1000_dev_config_t{
     uint32_t rxdiag_enable:1;
     uint32_t rxauto_enable:1;
     uint32_t bias_correction_enable:1;
+    uint32_t LDE_enable:1;
+    uint32_t LDO_enable:1;
+    uint32_t wakeup_rx_enable:1;
+    uint32_t sleep_enable:1; 
 }dw1000_dev_config_t;
 
 
@@ -171,8 +177,9 @@ typedef struct _dw1000_extension_callback_t{
 
 typedef struct _dw1000_dev_instance_t{
     struct os_dev uwb_dev;     /** Has to be here for cast in create_dev to work */
-    struct os_mutex *spi_mutex;  /** Pointer to global spi mutex if available  */
-    struct os_sem sem;  // semphore for low level mac/phy functions. 
+    struct os_mutex * spi_mutex;  /** Pointer to global spi mutex if available  */
+     struct os_sem sem;  // semphore for low level mac/phy functions. 
+    struct os_mutex mutex;
 
     void (* tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rx_complete_cb) (struct _dw1000_dev_instance_t *);
@@ -184,6 +191,9 @@ typedef struct _dw1000_dev_instance_t{
     void (* rng_rx_error_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_tx_final_cb) (struct _dw1000_dev_instance_t *);
     void (* rng_complete_cb) (struct _dw1000_dev_instance_t *);
+  
+    void (* sleep_timer_cb) (struct _dw1000_dev_instance_t *);
+
     dw1000_extension_callbacks_t * extension_cb;
 #if MYNEWT_VAL(DW1000_LWIP)
     void (* lwip_rx_complete_cb) (struct _dw1000_dev_instance_t *);
@@ -214,21 +224,19 @@ typedef struct _dw1000_dev_instance_t{
     uint16_t otp_rev;
     uint8_t otp_vbat;
     uint8_t otp_temp;
-    uint16_t sleep_mode;
     uint8_t xtal_trim;
     uint32_t sys_cfg_reg;
-    uint32_t sys_ctrl_reg;
     uint32_t tx_fctrl;
     uint32_t sys_status;    // SYS_STATUS_ID for current event
     uint16_t rx_antenna_delay;
     uint16_t tx_antenna_delay;
-    struct os_mutex mutex;
+ 
     struct hal_spi_settings spi_settings;
-    struct os_eventq interrupt_eventq;
+    struct os_eventq eventq;
     struct os_event interrupt_ev;
-    struct os_task interrupt_task_str;
-    uint8_t interrupt_task_prio;
-    os_stack_t interrupt_task_stack[DW1000_DEV_TASK_STACK_SZ]
+    struct os_task task_str;
+    uint8_t task_prio;
+    os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]
         __attribute__((aligned(OS_STACK_ALIGNMENT)));
     struct _dw1000_rng_instance_t * rng;
 #if MYNEWT_VAL(DW1000_LWIP)
@@ -247,6 +255,9 @@ typedef struct _dw1000_dev_instance_t{
 #if MYNEWT_VAL(DW1000_RANGE)
     struct _dw1000_range_instance_t * range;
 #endif
+#if MYNEWT_VAL(TDMA_ENABLED)
+    struct _tdma_instance_t * tdma;
+#endif
     dw1000_dev_rxdiag_t rxdiag;
     dw1000_dev_config_t config;
     dw1000_dev_control_t control;
@@ -258,7 +269,7 @@ typedef struct _dw1000_dev_instance_t{
 
 /* Used to pass data to init function from bsp_hal */
 struct dw1000_dev_cfg {
-    struct os_mutex *spi_mutex;
+    struct os_mutex * spi_mutex;
     int spi_num;
 };
 
@@ -270,11 +281,13 @@ dw1000_dev_status_t dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint
 dw1000_dev_status_t dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length);
 uint64_t dw1000_read_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, size_t nsize);
 void dw1000_write_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint64_t val, size_t nsize);
-
-void dw1000_dev_configure_sleep(dw1000_dev_instance_t * inst, uint16_t mode, uint8_t wake);
+void dw1000_dev_set_sleep_timer(dw1000_dev_instance_t * inst, uint16_t count);
+void dw1000_dev_configure_sleep(dw1000_dev_instance_t * inst);
 dw1000_dev_status_t dw1000_dev_enter_sleep(dw1000_dev_instance_t * inst);
 dw1000_dev_status_t dw1000_dev_wakeup(dw1000_dev_instance_t * inst);
-void dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, int enable);
+dw1000_dev_status_t dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, uint8_t enable);
+dw1000_dev_status_t dw1000_dev_enter_sleep_after_rx(dw1000_dev_instance_t * inst, uint8_t enable);
+void dw1000_dev_set_sleep_callback(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t sleep_timer_cb);
     
 void dw1000_add_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_callbacks_t callbacks);
 void dw1000_remove_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_id_t id);

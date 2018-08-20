@@ -218,47 +218,75 @@ dw1000_dev_free(dw1000_dev_instance_t * inst){
 }
 
 
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn  dw1000_dev_set_sleep_timer(dw1000_dev_instance_t * inst, uint16_t count)
+ *
+ * @brief sets the sleep counter to new value, this function programs the high 16-bits of the 28-bit counter
+ *
+ * NOTE: this function needs to be run before dw1000_dev_configure_sleep, also the SPI freq has to be < 3MHz
+ *
+ * input parameters
+ * @param inst - dw1000_dev_instance_t *
+ * @param count - this it value of the sleep counter to program
+ *
+ * output parameters
+ *
+ * no return value
+ */
+void 
+dw1000_dev_set_sleep_timer(dw1000_dev_instance_t * inst, uint16_t count)
+{
+    dw1000_phy_sysclk_XTAL(inst); // Force system clock to be the 19.2 MHz XTI clock.
+    dw1000_write_reg(inst, AON_ID, AON_CFG1_OFFSET, 0x0, sizeof(uint8_t)); // Disable the sleep counter
+    dw1000_write_reg(inst, AON_ID, AON_CFG0_SLEEP_TIM_OFFSET, count, sizeof(uint16_t));     // Write new sleep counter
+    dw1000_write_reg(inst, AON_ID, AON_CFG1_OFFSET, AON_CFG1_SLEEP_CEN | AON_CFG1_LPOSC_CAL, sizeof(uint8_t));   // Enable the sleep counter
+    dw1000_write_reg(inst, AON_ID, AON_CTRL_OFFSET, AON_CTRL_UPL_CFG, sizeof(uint8_t));     // Upload array 
+    dw1000_write_reg(inst, AON_ID, AON_CTRL_OFFSET, 0, sizeof(uint8_t));                    // Upload array 
+    dw1000_phy_sysclk_SEQ(inst); // The system clock will run off the 19.2 MHz XTI clock until the PLL is calibrated and locked
+}
+
 /*! 
- * @fn dw1000_mac_configure_sleep()
+ * @fn dw1000_dev_configure_sleep()
  *
  *  @brief configures the device for both DEEP_SLEEP and SLEEP modes, and on-wake mode
  *  I.e. before entering the sleep, the device should be programmed for TX or RX, then upon "waking up" the TX/RX settings
  *  will be preserved and the device can immediately perform the desired action TX/RX
- *
- * NOTE: e.g. Tag operation - after deep sleep, the device needs to just load the TX buffer and send the frame
- *
- *
- *      mode: the array and LDE code (OTP/ROM) and LDO tune, and set sleep persist
- *      DWT_LOADLDO      0x1000 - load LDO tune value from OTP
- *      DWT_LOADUCODE    0x0800 - load ucode from OTP
- *      DWT_PRESRV_SLEEP 0x0100 - preserve sleep
- *      DWT_LOADOPSET    0x0080 - load operating parameter set on wakeup
- *      DWT_CONFIG       0x0040 - download the AON array into the HIF (configuration download)
- *      DWT_LOADEUI      0x0008
- *      DWT_GOTORX       0x0002
- *      DWT_TANDV        0x0001
- *
- *      wake: wake up parameters
- *      DWT_XTAL_EN      0x10 - keep XTAL running during sleep
- *      DWT_WAKE_SLPCNT  0x8 - wake up after sleep count
- *      DWT_WAKE_CS      0x4 - wake up on chip select
- *      DWT_WAKE_WK      0x2 - wake up on WAKEUP PIN
- *      DWT_SLP_EN       0x1 - enable sleep/deep sleep functionality
- *
- * input parameters
- * @param mode - config on-wake parameters
- * @param wake - config wake up parameters
  *
  * output parameters
  *
  * no return value
  */
 void
-dw1000_dev_configure_sleep(dw1000_dev_instance_t * inst, uint16_t mode, uint8_t wake)
-{
-    inst->sleep_mode = mode;
-    dw1000_write_reg(inst, AON_ID, AON_WCFG_OFFSET, mode, sizeof(uint16_t));
-    dw1000_write_reg(inst, AON_ID, AON_CFG0_OFFSET, wake, sizeof(uint16_t));
+dw1000_dev_configure_sleep(dw1000_dev_instance_t * inst)
+{    
+    uint16_t reg = dw1000_read_reg(inst, AON_ID, AON_WCFG_OFFSET, sizeof(uint16_t));
+    reg |= AON_WCFG_ONW_L64P | AON_WCFG_ONW_LDC;
+
+    if (inst->status.LDE_enabled)
+        reg |= AON_WCFG_ONW_LLDE;
+    else
+        reg &= ~AON_WCFG_ONW_LLDE;
+
+    if (inst->status.LDO_enabled)
+        reg |= AON_WCFG_ONW_LLDO;
+    else
+        reg &= ~AON_WCFG_ONW_LLDO;
+
+    if (inst->config.wakeup_rx_enable)
+        reg |= AON_WCFG_ONW_RX;
+    else
+        reg &= ~AON_WCFG_ONW_RX;
+        
+    dw1000_write_reg(inst, AON_ID, AON_WCFG_OFFSET, reg, sizeof(uint16_t));
+    reg = dw1000_read_reg(inst, AON_ID, AON_CFG0_OFFSET, sizeof(uint16_t));
+    reg |= AON_CFG0_WAKE_SPI | AON_CFG0_WAKE_PIN; 
+
+    inst->status.sleep_enabled = inst->config.sleep_enable;
+    if (inst->status.sleep_enabled)
+        reg |= AON_CFG0_WAKE_CNT | AON_CFG0_SLEEP_EN;
+    else
+        reg &= ~(AON_CFG0_WAKE_CNT | AON_CFG0_SLEEP_EN);
+    dw1000_write_reg(inst, AON_ID, AON_CFG0_OFFSET, reg, sizeof(uint16_t));
 }
 
 
@@ -308,7 +336,7 @@ dw1000_dev_wakeup(dw1000_dev_instance_t * inst)
     // Critical region, unlock mutex
     err = os_mutex_release(&inst->mutex);
     assert(err == OS_OK);
-    //hal_gpio_irq_enable(inst->irq_pin);
+ 
     return inst->status;
 }
 
@@ -317,7 +345,7 @@ dw1000_dev_wakeup(dw1000_dev_instance_t * inst)
  * @fn dw1000_dev_enter_sleep_after_tx(int enable)
  *
  *  @brief sets the auto TX to sleep bit. This means that after a frame
- *  transmission the device will enter deep sleep mode. The dwt_setdeepsleep() function
+ *  transmission the device will enter deep sleep mode. The dw1000_dev_configure_sleep() function
  *  needs to be called before this to configure the on-wake settings
  *
  * NOTE: the IRQ line has to be low/inactive (i.e. no pending events)
@@ -327,25 +355,59 @@ dw1000_dev_wakeup(dw1000_dev_instance_t * inst)
  *
  * output parameters
  *
- * no return value
+ * return dw1000_dev_status_t
  */
-void
-dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, int enable)
+dw1000_dev_status_t
+dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, uint8_t enable)
 {
-    uint32_t reg = dw1000_read_reg(inst, PMSC_ID, PMSC_CTRL1_OFFSET, sizeof(uint32_t));
 
-    //set the auto TX -> sleep bit
-    if(enable)
-    {
+    inst->control.sleep_after_tx = enable;
+    uint32_t reg = dw1000_read_reg(inst, PMSC_ID, PMSC_CTRL1_OFFSET, sizeof(uint32_t));
+    if(inst->control.sleep_after_tx)
         reg |= PMSC_CTRL1_ATXSLP;
-    }
     else
-    {
         reg &= ~(PMSC_CTRL1_ATXSLP);
-    }
-    dw1000_write(inst, PMSC_ID, PMSC_CTRL1_OFFSET, (uint8_t*)&reg, sizeof(uint32_t));
+    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL1_OFFSET, reg, sizeof(uint32_t));
+
+    return inst->status;
 }
 
+/*! 
+ * @fn dw1000_dev_enter_sleep_after_rx(int enable)
+ *
+ *  @brief sets the auto RX to sleep bit. This means that after a frame
+ *  received the device will enter deep sleep mode. The dw1000_dev_configure_sleep() function
+ *  needs to be called before this to configure the on-wake settings
+ *
+ * NOTE: the IRQ line has to be low/inactive (i.e. no pending events)
+ *
+ * input parameters
+ * @param enable - 1 to configure the device to enter deep sleep after TX, 0 - disables the configuration
+ *
+ * output parameters
+ *
+ * return dw1000_dev_status_t
+ */
+dw1000_dev_status_t
+dw1000_dev_enter_sleep_after_rx(dw1000_dev_instance_t * inst, uint8_t enable)
+{        
+    inst->control.sleep_after_rx = enable;
+    uint32_t reg = dw1000_read_reg(inst, PMSC_ID, PMSC_CTRL1_OFFSET, sizeof(uint32_t));
+    if(inst->control.sleep_after_rx)
+        reg |= PMSC_CTRL1_ARXSLP;
+    else
+        reg &= ~(PMSC_CTRL1_ARXSLP);
+
+    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL1_OFFSET, reg, sizeof(uint32_t));
+
+    return inst->status;
+}
+
+
+inline void 
+dw1000_dev_set_sleep_callback(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t sleep_timer_cb){
+    inst->sleep_timer_cb = sleep_timer_cb;
+}
 void
 dw1000_add_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_callbacks_t callbacks){
     assert(inst);

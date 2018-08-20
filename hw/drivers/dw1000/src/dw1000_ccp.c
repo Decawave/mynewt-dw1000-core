@@ -151,27 +151,26 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
     dw1000_extension_callbacks_t ccp_cbs;
 
     if (inst->ccp == NULL ) {
-        inst->ccp = (dw1000_ccp_instance_t *) malloc(sizeof(dw1000_ccp_instance_t) + nframes * sizeof(ccp_frame_t *)); 
-        assert(inst->ccp);
-        memset(inst->ccp, 0, sizeof(dw1000_ccp_instance_t));
-        inst->ccp->status.selfmalloc = 1;
-        inst->ccp->nframes = nframes; 
-
+        dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *) malloc(sizeof(dw1000_ccp_instance_t) + nframes * sizeof(ccp_frame_t *)); 
+        assert(ccp);
+        memset(ccp, 0, sizeof(dw1000_ccp_instance_t));
+        ccp->status.selfmalloc = 1;
+        ccp->nframes = nframes; 
         ccp_frame_t ccp_default = {
             .fctrl = FCNTL_IEEE_BLINK_CCP_64,    // frame control (FCNTL_IEEE_BLINK_64 to indicate a data frame using 16-bit addressing).
             .correction_factor = 1.0f,
             .seq_num = 0xFF
         };
-        for (uint16_t i = 0; i < inst->ccp->nframes; i++){
-            inst->ccp->frames[i] = (ccp_frame_t *) malloc(sizeof(ccp_frame_t)); 
-            memcpy(inst->ccp->frames[i], &ccp_default, sizeof(ccp_frame_t));
-            inst->ccp->frames[i]->seq_num -= nframes - i + 1;
+        for (uint16_t i = 0; i < ccp->nframes; i++){
+            ccp->frames[i] = (ccp_frame_t *) malloc(sizeof(ccp_frame_t)); 
+            memcpy(ccp->frames[i], &ccp_default, sizeof(ccp_frame_t));
+            ccp->frames[i]->seq_num -= nframes - i + 1;
         }
+        ccp->parent = inst;
+        inst->ccp = ccp;
     }else{
         assert(inst->ccp->nframes == nframes);
     }
-   
-    inst->ccp->parent = inst;
     inst->ccp->period = MYNEWT_VAL(CCP_PERIOD);
     inst->ccp->config = (dw1000_ccp_config_t){
         .postprocess = false,

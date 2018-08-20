@@ -5,7 +5,7 @@ syscfg.defs:
         value:  5
     DW1000_DEV_TASK_STACK_SZ:
         description: 'Size of interrupt task stack'
-        value: 512
+        value: 128
     DW1000_SS_TWR_ENABLED:
         description: 'Single sided TWR Enabled'
         value: 1
@@ -21,6 +21,22 @@ syscfg.defs:
     DW1000_CCP_ENABLED:
         description: 'Enable wireless clock calibration'
         value: 0
+    TDMA_ENABLED:
+        description: 'Enable TDMA Services'
+        value: 0
+        restrictions: CLOCK_CALIBRATION_ENABLED
+        restrictions: DW1000_IDLE_TO_RX_LATENCY
+        restrictions: TDMA_NSLOTS
+        restrictions: TDMA_SUPERFRAME_PERIOD
+    TDMA_NSLOTS:
+        description: 'Enable TDMA Services'
+        value: 160
+    TDMA_SUPERFRAME_PERIOD:
+        description: 'Supoerframe period for TDMA scheme, units dwt usec'
+        value: ((uint32_t){0x100000})
+    DW1000_IDLE_TO_RX_LATENCY:
+        description: 'RX turn on delay, dwt usec units'
+        value: 0x80
     DW1000_PAN:
         description: 'Private Area Network functionality'
         value: 0
@@ -87,10 +103,18 @@ syscfg.defs:
     OS_LATENCY:
         description: >
             OS Latency Guardband 
-        value: ((uint32_t){0x1000})
+        value: ((uint32_t){2000})
     FS_XTALT_AUTOTUNE_ENABLED: 
         description: >
             Autotune XTALT to Clock Master
         value: 0
         restrictions: DW1000_CCP_ENABLED
+    ADAPTIVE_TIMESCALE_ENABLED:
+        description: 'Enable Adaptive timescale adjustments'
+        value: 0
+        restrictions: DW1000_CCP_ENABLED
+        restrictions: CCP_PERIOD
+        restrictions: TIMESCALE_PROCESSING_ENABLED
+
+ 
         

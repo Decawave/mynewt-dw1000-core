@@ -97,7 +97,9 @@ dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, dw1000
     dw1000_gpio_config_leds(inst, DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
 
     // Configure the CPLL lock detect
-    dw1000_write_reg(inst, EXT_SYNC_ID, EC_CTRL_OFFSET, EC_CTRL_PLLLCK, sizeof(uint8_t));
+    uint8_t reg = dw1000_read_reg(inst, EXT_SYNC_ID, EC_CTRL_OFFSET, sizeof(uint8_t));
+    reg |= EC_CTRL_PLLLCK;
+    dw1000_write_reg(inst, EXT_SYNC_ID, EC_CTRL_OFFSET, reg, sizeof(uint8_t));
 
     // Read OTP revision number
     uint32_t otp_addr = (uint32_t) _dw1000_otp_read(inst, OTP_XTRIM_ADDRESS) & 0xffff;    // Read 32 bit value, XTAL trim val is in low octet-0 (5 bits)
@@ -107,7 +109,7 @@ dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, dw1000
     uint32_t ldo_tune = _dw1000_otp_read(inst, OTP_LDOTUNE_ADDRESS);
     if((ldo_tune & 0xFF) != 0){
         dw1000_write_reg(inst, OTP_IF_ID, OTP_SF, OTP_SF_LDO_KICK, sizeof(uint8_t)); // Set load LDE kick bit
-        inst->status.wakeup_LLDO = 1; // LDO tune must be kicked at wake-up
+        inst->status.LDO_enabled = 1; // LDO tune must be kicked at wake-up
     }
     // Load Part and Lot ID from OTP
     inst->partID = _dw1000_otp_read(inst, OTP_PARTID_ADDRESS);
@@ -124,15 +126,18 @@ dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, dw1000
         inst->xtal_trim = FS_XTALT_MIDRANGE ; // Set to mid-range if no calibration value inside
     // The 3 MSb in this 8-bit register must be kept to 0b011 to avoid any malfunction.
 
-    uint8_t reg_val = (3 << 5) | (inst->xtal_trim & FS_XTALT_MASK);
-    dw1000_write_reg(inst, FS_CTRL_ID, FS_XTALT_OFFSET, reg_val, sizeof(uint8_t));
+    reg = (3 << 5) | (inst->xtal_trim & FS_XTALT_MASK);
+    dw1000_write_reg(inst, FS_CTRL_ID, FS_XTALT_OFFSET, reg, sizeof(uint8_t));
 
-    _dw1000_phy_load_microcode(inst);
-    inst->status.wakeup_LLDE = 1;   // Microcode must be loaded at wake-up
+    if(inst->config.LDE_enable)
+        _dw1000_phy_load_microcode(inst);
+
     dw1000_phy_sysclk_SEQ(inst);    // Enable clocks for sequencing
 
     // The 3 bits in AON CFG1 register must be cleared to ensure proper operation of the DW1000 in DEEPSLEEP mode.
-    dw1000_write_reg(inst, AON_ID, AON_CFG1_OFFSET, 0x0, sizeof(uint8_t));
+    reg = dw1000_read_reg(inst, AON_ID, AON_CFG1_OFFSET, sizeof(uint8_t));
+    reg |= ~AON_CFG1_SMXX;
+    dw1000_write_reg(inst, AON_ID, AON_CFG1_OFFSET, reg, sizeof(uint8_t));
 
     // Enable Temp & Vbat SAR onwake mode
     dw1000_write_reg(inst, AON_ID, AON_WCFG_OFFSET , AON_WCFG_ONW_RADC, sizeof(uint16_t));
@@ -160,6 +165,7 @@ void _dw1000_phy_load_microcode(struct _dw1000_dev_instance_t * inst)
     dw1000_write_reg(inst, OTP_IF_ID, OTP_CTRL, OTP_CTRL_LDELOAD, sizeof(uint16_t)); // Set load LDE kick bit
     os_cputime_delay_usecs(120); // Allow time for code to upload (should take up to 120 us)
     dw1000_phy_sysclk_SEQ(inst); // Enable clocks for sequencing
+    inst->status.LDE_enabled = 1;
 }
 
 /*! ------------------------------------------------------------------------------------------------------------------
@@ -258,10 +264,16 @@ float dw1000_phy_read_read_wakeupvbat_SI(struct _dw1000_dev_instance_t * inst)
  */
 void dw1000_phy_rx_reset(struct _dw1000_dev_instance_t * inst)
 {
+    os_error_t err = os_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
+    assert(err == OS_OK);
+
     // Set RX reset
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_SOFTRESET_OFFSET, PMSC_CTRL0_RESET_RX, sizeof(uint8_t));
     // Clear RX reset
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_SOFTRESET_OFFSET, PMSC_CTRL0_RESET_CLEAR, sizeof(uint8_t));
+
+    err = os_mutex_release(&inst->mutex);
+    assert(err == OS_OK);
 }
 
 
@@ -278,9 +290,7 @@ void dw1000_phy_rx_reset(struct _dw1000_dev_instance_t * inst)
  */
 void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
 {
-    uint32_t mask;
-
-    mask = dw1000_read_reg(inst, SYS_MASK_ID, 0 , sizeof(uint32_t)) ; // Read set interrupt mask
+    uint32_t mask = dw1000_read_reg(inst, SYS_MASK_ID, 0 , sizeof(uint32_t)) ; // Read set interrupt mask
 
     // Need to beware of interrupts occurring in the middle of following read modify write cycle
     // We can disable the radio, but before the status is cleared an interrupt can be set (e.g. the
@@ -291,7 +301,7 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
     assert(err == OS_OK);
 
     dw1000_write_reg(inst, SYS_MASK_ID, 0, 0, sizeof(uint32_t)) ; // Clear interrupt mask - so we don't get any unwanted events
-    dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint8_t)SYS_CTRL_TRXOFF, sizeof(uint8_t)) ; // Disable the radio
+    dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t)SYS_CTRL_TRXOFF, sizeof(uint16_t)) ; // Disable the radio
     // Forcing Transceiver off - so we do not want to see any new events that may have happened
     dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_ALL_TX | SYS_STATUS_ALL_RX_ERR | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_GOOD), sizeof(uint32_t));
     dw1000_sync_rxbufptrs(inst);
@@ -366,12 +376,12 @@ void dw1000_phy_external_sync(struct _dw1000_dev_instance_t * inst, uint8_t dela
 
     uint16_t reg = dw1000_read_reg(inst, EXT_SYNC_ID, EC_CTRL_OFFSET, sizeof(uint16_t));
     if (enable) {
-        reg &= EC_CTRL_WAIT_MASK; //clear timer value, clear OSTRM
-        reg |= EC_CTRL_OSTRM;
+        reg &= ~EC_CTRL_WAIT_MASK; //clear timer value, clear OSTRM
+        reg |= EC_CTRL_OSTRM;      //External timebase reset mode enable
         reg |= ((((uint16_t) delay) & 0xff) << 3); //set new timer value
 
     }else {
-        reg &= EC_CTRL_WAIT_MASK ; //clear timer value, clear OSTRM
+        reg &= ~(EC_CTRL_WAIT_MASK | EC_CTRL_OSTRM); //clear timer value, clear OSTRM
     }    
     dw1000_write_reg(inst, EXT_SYNC_ID, EC_CTRL_OFFSET, reg, sizeof(uint16_t));
 }

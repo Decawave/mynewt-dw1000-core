@@ -51,21 +51,22 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .dataRate = DWT_BR_6M8,             //!< Data Rate {DWT_BR_110K, DWT_BR_850K or DWT_BR_6M8}
                 .rx = {
                     .pacLength = DWT_PAC8,          //!< Acquisition Chunk Size DWT_PAC8..DWT_PAC64 (Relates to RX preamble length)
-                    .preambleCodeIndex = 9,         //!< RX preamble code
+                    .preambleCodeIndex = 8,       //!< RX preamble code
                     .sfdType = 0,                   //!< Boolean should we use non-standard SFD for better performance
                     .phrMode = DWT_PHRMODE_STD,     //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
                     .sfdTimeout = (256 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
                 },
                 .tx ={
-                    .preambleCodeIndex = 9,         //!< TX preamble code
+                    .preambleCodeIndex = 8,       //!< TX preamble code
                     .preambleLength = DWT_PLEN_256  //!< DWT_PLEN_64..DWT_PLEN_4096
                 },
                 .txrf={
                     .PGdly = TC_PGDELAY_CH5,
-                    .BOOSTNORM = dw1000_power_value(DW1000_txrf_config_9db, 5),
-                    .BOOSTP500 = dw1000_power_value(DW1000_txrf_config_9db, 5),
-                    .BOOSTP250 = dw1000_power_value(DW1000_txrf_config_9db, 5),
-                    .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_9db, 5)
+                    .power = 0x2A4A6A8A,
+                    //.BOOSTNORM = dw1000_power_value(DW1000_txrf_config_9db, 5),
+                    //.BOOSTP500 = dw1000_power_value(DW1000_txrf_config_9db, 5),
+                    //.BOOSTP250 = dw1000_power_value(DW1000_txrf_config_9db, 5),
+                    //.BOOSTP125 = dw1000_power_value(DW1000_txrf_config_9db, 5)   
                 }, 
                 .rxdiag_enable = 1,
                 .dblbuffon_enabled = 1,
@@ -75,10 +76,14 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
 #if MYNEWT_VAL(DW1000_BIAS_CORRECTION_ENABLED)
                 .bias_correction_enable = 1,
 #endif
-                .rxauto_enable = 1
+                .LDE_enable = 1,
+                .LDO_enable = 0,
+                .sleep_enable = 1,
+                .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
+                .rxauto_enable = 1         //!< On error re-enable
             },
             .spi_mutex = 0,
-            .interrupt_task_prio = 5
+            .task_prio = 5
     },
     #if  MYNEWT_VAL(DW1000_DEVICE_1)
     [1] = {

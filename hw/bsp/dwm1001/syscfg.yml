@@ -81,10 +81,10 @@ syscfg.defs:
         value: 4000
     DW1000_DEVICE_0_TX_ANT_DLY:
         description: 'TX_ANT_DLY'
-        value: 0x4010
+        value: 0x4058
     DW1000_DEVICE_0_RX_ANT_DLY:
         description: 'RX_ANT_DLY'
-        value: 0x4010
+        value: 0x4058
 
 syscfg.defs.BLE_LP_CLOCK:
     TIMER_0:

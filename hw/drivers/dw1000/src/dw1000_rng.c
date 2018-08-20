@@ -497,6 +497,9 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                         dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true);
                         if (dw1000_start_tx(inst).start_tx_error)
                             os_sem_release(&rng->sem);  
+
+                        if (inst->rng_complete_cb)
+                            inst->rng_complete_cb(inst);
                         if(inst->extension_cb != NULL){
                             dw1000_extension_callbacks_t *head = inst->extension_cb;
                             if(inst->extension_cb->rx_complete_cb != NULL){
@@ -654,6 +657,14 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             if (inst->rng_complete_cb) {
                                 inst->rng_complete_cb(inst);
                             }
+                            if(inst->extension_cb != NULL){
+                                dw1000_extension_callbacks_t *head = inst->extension_cb;
+                                if(inst->extension_cb->rx_complete_cb != NULL){
+                                    inst->extension_cb->rx_complete_cb(inst);
+                                }
+                                inst->extension_cb = head;
+                            }
+
                             break;
                         }
                     case  DWT_DS_TWR_FINAL:
