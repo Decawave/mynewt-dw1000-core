@@ -51,7 +51,7 @@ syscfg.defs:
         value: 0
     DW1000_BIAS_CORRECTION_ENABLED:
         description: 'Enable range bias correction polynomial'
-        value: 1
+        value: 0
     DW1000_DEVICE_TX_PWR:
         description: 'Tx Power dBm'
         value: ((float){-14.3f})
