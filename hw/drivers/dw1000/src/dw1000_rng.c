@@ -44,6 +44,10 @@
 
 #include <dsp/polyval.h>
 
+//#define DIAGMSG(s,u) printf(s,u)
+#ifndef DIAGMSG
+#define DIAGMSG(s,u)
+#endif
 
 /*
 % From APS011 Table 2 
@@ -422,6 +426,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
     }else{
         //No extension callbacks also in place. So just return to receive mode again
         inst->control = inst->control_rx_context;
+        dw1000_set_on_error_continue(inst, true);
         if (dw1000_restart_rx(inst, control).start_rx_error)  
             inst->rng_rx_error_cb(inst);
         return;
@@ -430,6 +435,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
     // IEEE 802.15.4 standard ranging frames, software MAC filtering
     if (dst_address != inst->my_short_address){
         inst->control = inst->control_rx_context;
+         dw1000_set_on_error_continue(inst, true);
         if (dw1000_restart_rx(inst, control).start_rx_error)  
             inst->rng_rx_error_cb(inst);    
         return;
@@ -447,7 +453,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                 case DWT_SS_TWR:
                     {
                         // This code executes on the device that is responding to a request
-                        // printf("DWT_SS_TWR\n");
+                        DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_SS_TWR\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+
                         dw1000_rng_instance_t * rng = inst->rng; 
                         twr_frame_t * frame = rng->frames[(++rng->idx)%rng->nframes];
                         if (inst->frame_len >= sizeof(ieee_rng_request_frame_t))
@@ -478,7 +485,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                 case DWT_SS_TWR_T1:
                     {
                         // This code executes on the device that initiated a request, and is now preparing the final timestamps
-                        // printf("DWT_SS_TWR_T1\n");
+                        DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_SS_TWR_T1\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+
                         dw1000_rng_instance_t * rng = inst->rng; 
                         twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                         if (inst->frame_len >= sizeof(ieee_rng_response_frame_t))
@@ -514,7 +522,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                     {
                         // This code executes on the device that responded to the original request, and has now receive the response final timestamp. 
                         // This marks the completion of the single-size-two-way request. This final 4th message is perhaps optional in some applicaiton. 
-                        // printf("DWT_SS_TWR_FINAL\n");
+                        DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_SS_TWR_FINAL\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+
                         dw1000_rng_instance_t * rng = inst->rng; 
                         twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                         if (inst->frame_len >= sizeof(twr_frame_final_t))
@@ -544,7 +553,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                     case DWT_DS_TWR:
                         {
                             // This code executes on the device that is responding to a original request
-                            // printf("DWT_DS_TWR\n");
+                            DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+
                             dw1000_rng_instance_t * rng = inst->rng; 
                             twr_frame_t * frame = rng->frames[(++rng->idx)%rng->nframes];
                             if (inst->frame_len >= sizeof(ieee_rng_request_frame_t))
@@ -576,7 +586,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                         {
                             // This code executes on the device that initiated the original request, and is now preparing the next series of timestamps
                             // The 1st frame now contains a local copy of the initial first side of the double sided scheme. 
-                            // printf("DWT_DS_TWR_T1\n");
+                            DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR_T1\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+
                             dw1000_rng_instance_t * rng = inst->rng; 
                             twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                             twr_frame_t * next_frame = rng->frames[(++rng->idx)%rng->nframes];
@@ -630,7 +641,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                     case DWT_DS_TWR_T2:
                         {
                             // This code executes on the device that responded to the original request, and is now preparing the final timestamps
-                            // printf("DWT_SDS_TWR_T2\n");
+                            DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR_T2\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+
                             dw1000_rng_instance_t * rng = inst->rng; 
                             twr_frame_t * previous_frame = rng->frames[(rng->idx++)%rng->nframes];
                             twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
@@ -681,7 +693,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                         {
                             // This code executes on the device that initialed the original request, and has now receive the final response timestamp. 
                             // This marks the completion of the double-single-two-way request. 
-                            // printf("DWT_SDS_TWR_FINAL\n");
+                            DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR_FINAL\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+
                             dw1000_rng_instance_t * rng = inst->rng; 
                             twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                             if (inst->frame_len >= sizeof(twr_frame_final_t))
@@ -718,6 +731,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                     case DWT_DS_TWR_EXT:
                         {
                             // This code executes on the device that is responding to a original request
+                            DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR_EXT\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+
                             dw1000_rng_instance_t * rng = inst->rng; 
                             twr_frame_t * frame = rng->frames[(++rng->idx)%rng->nframes];
                             if (inst->frame_len >= sizeof(ieee_rng_request_frame_t))
@@ -758,6 +773,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                         {
                             // This code executes on the device that initiated the original request, and is now preparing the next series of timestamps
                             // The 1st frame now contains a local copy of the initial first side of the double sided scheme. 
+                            DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR_T1\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+
                             dw1000_rng_instance_t * rng = inst->rng; 
                             twr_frame_t * frame = rng->frames[(rng->idx++)%rng->nframes];
                             twr_frame_t * next_frame = rng->frames[(rng->idx)%rng->nframes];
@@ -813,6 +830,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                     case DWT_DS_TWR_EXT_T2:
                         {
                             // This code executes on the device that responded to the original request, and is now preparing the final timestamps
+                            DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR_T2\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+
                             dw1000_rng_instance_t * rng = inst->rng; 
                             twr_frame_t * previous_frame = rng->frames[(rng->idx++)%rng->nframes];
                             twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
@@ -867,6 +886,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                         {
                             // This code executes on the device that initialed the original request, and has now receive the final response timestamp. 
                             // This marks the completion of the double-single-two-way request. 
+                            DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR_FINAL\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+
                             dw1000_rng_instance_t * rng = inst->rng; 
                             twr_frame_t * frame = inst->rng->frames[(rng->idx)%rng->nframes];
                             if (inst->frame_len >= sizeof(twr_frame_t))
