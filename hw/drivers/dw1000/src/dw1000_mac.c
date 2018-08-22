@@ -612,6 +612,20 @@ inline struct _dw1000_dev_status_t dw1000_set_wait4resp(struct _dw1000_dev_insta
 
 
 /*! ------------------------------------------------------------------------------------------------------------------
+ * @fn dw1000_on_error_continue()
+ *
+ * @brief enable wait4for feature
+ * 
+ * output parameters
+ *
+ */
+inline struct _dw1000_dev_status_t dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable)
+{
+    inst->control.on_error_continue_enabled = enable;
+    return inst->status;
+}
+
+/*! ------------------------------------------------------------------------------------------------------------------
  * @fn dw1000_set_rx_timeout()
  *
  * @brief The Receive Frame Wait Timeout period is a 16-bit field. The units for this parameter are roughly 1μs, 
