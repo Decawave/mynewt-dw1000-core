@@ -168,6 +168,7 @@ struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst
 struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst);
 struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t delay);
 struct _dw1000_dev_status_t dw1000_set_wait4resp(struct _dw1000_dev_instance_t * inst, bool enable);
+struct _dw1000_dev_status_t dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable);
 struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst);
 //dw1000_dev_status_t dw1000_restart_rx(dw1000_dev_instance_t * inst, uint32_t sys_ctrl);
 struct _dw1000_dev_status_t dw1000_restart_rx(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_control_t control);
