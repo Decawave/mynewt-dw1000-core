@@ -500,6 +500,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
 
                         if (inst->rng_complete_cb)
                             inst->rng_complete_cb(inst);
+
                         if(inst->extension_cb != NULL){
                             dw1000_extension_callbacks_t *head = inst->extension_cb;
                             if(inst->extension_cb->rx_complete_cb != NULL){
@@ -519,9 +520,10 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                         if (inst->frame_len >= sizeof(twr_frame_final_t))
                             dw1000_read_rx(inst, frame->array, 0, sizeof(twr_frame_final_t));
                         os_sem_release(&rng->sem);
-                        if (inst->rng_complete_cb) {
+                        
+                        if (inst->rng_complete_cb) 
                             inst->rng_complete_cb(inst);
-                        }
+                        
                         if(inst->extension_cb != NULL){
                             dw1000_extension_callbacks_t *head = inst->extension_cb;
                             if(inst->extension_cb->rx_complete_cb != NULL){
@@ -651,8 +653,16 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_final_t));
                             dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true); 
 
-                            if (dw1000_start_tx(inst).start_tx_error)
+                            if (dw1000_start_tx(inst).start_tx_error){
+                                if(inst->extension_cb != NULL){
+                                    dw1000_extension_callbacks_t *head = inst->extension_cb;
+                                    if(inst->extension_cb->tx_error_cb != NULL){
+                                        inst->extension_cb->tx_error_cb(inst);
+                                    }
+                                    inst->extension_cb = head;
+                                }
                                 os_sem_release(&rng->sem);  
+							}
                             
                             if (inst->rng_complete_cb) {
                                 inst->rng_complete_cb(inst);
@@ -686,6 +696,14 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             os_sem_release(&rng->sem);
                             if (inst->rng_complete_cb) {
                                 inst->rng_complete_cb(inst);
+                            }
+                            
+                            if(inst->extension_cb != NULL){
+                                dw1000_extension_callbacks_t *head = inst->extension_cb;
+                                if(inst->extension_cb->rx_complete_cb != NULL){
+                                    inst->extension_cb->rx_complete_cb(inst);
+                                }
+                                inst->extension_cb = head;
                             }
                             break;
                         }
@@ -724,8 +742,16 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_set_delay_start(inst, response_tx_delay);   
                             dw1000_set_rx_timeout(inst, config->rx_timeout_period); 
 
-                            if (dw1000_start_tx(inst).start_tx_error)
+                            if (dw1000_start_tx(inst).start_tx_error){
+                                if(inst->extension_cb != NULL){
+                                    dw1000_extension_callbacks_t *head = inst->extension_cb;
+                                    if(inst->extension_cb->tx_error_cb != NULL){
+                                        inst->extension_cb->tx_error_cb(inst);
+                                    }
+                                    inst->extension_cb = head;
+                                }
                                 os_sem_release(&rng->sem);  
+							}
                             break;
                         }
                     case DWT_DS_TWR_EXT_T1:
@@ -771,9 +797,16 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_set_delay_start(inst, response_tx_delay);   
                             dw1000_set_rx_timeout(inst, config->rx_timeout_period); 
                         
-                            if (dw1000_start_tx(inst).start_tx_error)
+                            if (dw1000_start_tx(inst).start_tx_error){
+                                if(inst->extension_cb != NULL){
+                                    dw1000_extension_callbacks_t *head = inst->extension_cb;
+                                    if(inst->extension_cb->tx_error_cb != NULL){
+                                        inst->extension_cb->tx_error_cb(inst);
+                                    }
+                                    inst->extension_cb = head;
+                                }
                                 os_sem_release(&rng->sem);  
-
+							}
                             break; 
                         }
 
@@ -806,11 +839,27 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_t));
                             dw1000_write_tx_fctrl(inst, sizeof(twr_frame_t), 0, true); 
 
-                            if (dw1000_start_tx(inst).start_tx_error)
-                                os_sem_release(&rng->sem);
+                           if (dw1000_start_tx(inst).start_tx_error){
+                                if(inst->extension_cb != NULL){
+                                    dw1000_extension_callbacks_t *head = inst->extension_cb;
+                                    if(inst->extension_cb->tx_error_cb != NULL){
+                                        inst->extension_cb->tx_error_cb(inst);
+                                    }
+                                    inst->extension_cb = head;
+                                }
+                                os_sem_release(&rng->sem);  
+							}
 
                             if (inst->rng_complete_cb) {
                                 inst->rng_complete_cb(inst);
+                            }
+
+                            if(inst->extension_cb != NULL){
+                                dw1000_extension_callbacks_t *head = inst->extension_cb;
+                                if(inst->extension_cb->rx_complete_cb != NULL){
+                                    inst->extension_cb->rx_complete_cb(inst);
+                                }
+                                inst->extension_cb = head;
                             }
                             break;
                         }
