@@ -43,6 +43,11 @@
 #if MYNEWT_VAL(TDMA_ENABLED) 
 #include <dw1000/dw1000_tdma.h>
 
+#define DIAGMSG(s,u) printf(s,u)
+#ifndef DIAGMSG
+#define DIAGMSG(s,u)
+#endif
+
 static void tdma_superframe_event_cb(struct os_event * ev);
 static void slot_timer_cb(void * arg);
 static void slot0_event_cb(struct os_event * ev);
@@ -183,8 +188,7 @@ tdma_superframe_event_cb(struct os_event * ev){
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
 
-//    uint32_t utime = os_cputime_ticks_to_usecs(os_cputime_get32());
-//    printf("{\"utime\": %lu,\"msg\": \"superframe_event_cb\"}\n",utime);
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma_superframe_event_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
     clkcal_instance_t * clkcal = (clkcal_instance_t *)ev->ev_arg;
     dw1000_ccp_instance_t * ccp = (void *)clkcal->ccp; 
@@ -221,9 +225,8 @@ slot0_event_cb(struct os_event * ev){
     tdma_slot_t * slot = (tdma_slot_t *) ev->ev_arg;
     tdma_instance_t * tdma = slot->parent;
     dw1000_dev_instance_t * inst = tdma->parent;
-    
-//    uint32_t utime = os_cputime_ticks_to_usecs(os_cputime_get32());
-//    printf("{\"utime\": %lu,\"msg\": \"slot0_event_cb\"}\n",utime);
+
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"slot0_event_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
  
     if (inst->status.sleeping)
         dw1000_dev_wakeup(inst);
@@ -233,9 +236,12 @@ slot0_event_cb(struct os_event * ev){
             os_cputime_timer_stop(&tdma->slot[i]->timer);
         }
     }
- 
+    // In the event that the rx turned off by another thread, ie an SYS_STATUS_RXFCG from elsewhere
+    //uint32_t cputime = os_cputime_get32() - os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY));
+    //hal_timer_start_at(&tdma->slot[0]->timer, cputime + os_cputime_usecs_to_ticks(dw1000_dwt_usecs_to_usecs(tdma->period)));
+
     tdma->status.awaiting_superframe = 1; 
-    dw1000_set_delay_start(inst, 0);
+    dw1000_set_delay_start(inst, false);
     dw1000_set_rx_timeout(inst, 0);
     if(dw1000_start_rx(inst).start_rx_error){
         uint32_t utime = os_cputime_ticks_to_usecs(os_cputime_get32());
@@ -263,9 +269,8 @@ slot_timer_cb(void * arg){
     tdma_slot_t * slot = (tdma_slot_t *) arg;
     tdma_instance_t * tdma = slot->parent;
 
-  // uint32_t utime = os_cputime_ticks_to_usecs(os_cputime_get32());
-  //  printf("{\"utime\": %lu,\"msg\": \"slot[%d]_timer_cb\"}\n",utime, slot->idx);
-
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"slot_timer_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+  
 #ifdef TDMA_TASKS_ENABLE
     os_eventq_put(&tdma->eventq, &slot->event_cb.c_ev);
 #else
