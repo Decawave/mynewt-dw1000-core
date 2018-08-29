@@ -35,9 +35,9 @@ A single DW1000 UWB transceiver can be used to form a 6LowPAN mesh network while
 * See companion repo mynewt-dw1000-apps
 
 ## Current BSPs and supported hardware
-* DWM1001-DEV   from https://decawave.com
-* DWM1002-DEV   from https://decawave.com
-* DWM1003-DEV   from https://decawave.com
+* DWM1001-DEV   from https://www.decawave.com/products/dwm1001-module
+* DWM1002-DEV   from https://decawave.com (coming soon)
+* DWM1003-DEV   from https://decawave.com (coming soon)
 * lps2mini      from https://loligoelectronics.com
 * lps2nano      from https://loligoelectronics.com
 
