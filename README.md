@@ -35,9 +35,9 @@ A single DW1000 UWB transceiver can be used to form a 6LowPAN mesh network while
 * See companion repo mynewt-dw1000-apps
 
 ## Current BSPs and supported hardware
-* DWM1001-DEV   from https://www.decawave.com/products/dwm1001-module
-* DWM1002-DEV   from https://decawave.com (coming soon)
-* DWM1003-DEV   from https://decawave.com (coming soon)
+* DWM1001   from https://www.decawave.com/products/dwm1001-module
+* DWM1002   from https://decawave.com (coming soon)
+* DWM1003   from https://decawave.com (coming soon)
 * lps2mini      from https://loligoelectronics.com
 * lps2nano      from https://loligoelectronics.com
 
@@ -45,24 +45,7 @@ A single DW1000 UWB transceiver can be used to form a 6LowPAN mesh network while
 ```
 ├── dw1000
 │   ├── include
-│   │   └── dw1000
-│   │       ├── dw1000_ccp.h
-│   │       ├── dw1000_dev.h
-│   │       ├── dw1000_ftypes.h
-│   │       ├── dw1000_gpio.h
-│   │       ├── dw1000_hal.h
-│   │       ├── dw1000_lwip.h
-│   │       ├── dw1000_mac.h
-│   │       ├── dw1000_otp.h
-│   │       ├── dw1000_pan.h
-│   │       ├── dw1000_phy.h
-│   │       ├── dw1000_provision.h
-│   │       ├── dw1000_range.h
-│   │       ├── dw1000_regs.h
-│   │       ├── dw1000_regulatory.h
-│   │       ├── dw1000_rng.h
-│   │       ├── dw1000_tdma.h
-│   │       └── triad.h
+│   │   └── dw1000              // Include files
 │   ├── pkg.yml                 // Project file
 │   ├── src
 │   │   ├── dw1000_ccp.c        // Clock calibration packets
@@ -81,21 +64,15 @@ A single DW1000 UWB transceiver can be used to form a 6LowPAN mesh network while
 │   │   ├── dw1000_rng.c        // TWR services
 │   │   └── dw1000_tdma.c       // TDMA services
 │   └── syscfg.yml              // Project config
-
 ├── bsp                         // Board Support Packages
 │   ├── dwm1001                 // BSP for DWM1001 TWR/TDOA Module
 │   ├── dwm1002                 // BSP for DWM1002 Dual DW1000 PDOA Node
 │   ├── dwm1003                 // BSP for DWM1002 TWR/PDOA/IMU TAG
 │   ├── lps2mini                // BSP for LPS2MINI board from https://loligoelectronics.com
 │   └── lps2nano                // BSP for LPS2NANO board from https://loligoelectronics.com
-
 |── dsp                         // Signal Proceesing library
     ├── include
     │   └── dsp
-    │       ├── biquad.h
-    │       ├── polyval.h
-    │       └── sosfilt.h
-    ├── pkg.yml
     └── src
         ├── biquad.c            // BIQUAD filter implementation
         ├── polyval.c           // polyval polynomial implementation
