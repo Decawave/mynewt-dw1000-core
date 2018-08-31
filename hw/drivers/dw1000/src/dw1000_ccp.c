@@ -78,6 +78,56 @@ static struct _dw1000_ccp_status_t dw1000_ccp_blink(struct _dw1000_dev_instance_
 #if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED) !=1
 static void ccp_postprocess(struct os_event * ev);
 #endif
+
+
+static void ccp_timer_irq(void * arg);
+static void ccp_timer_ev_cb(struct os_event *ev);
+/*! 
+ * @fn ccp_timer_init(dw1000_dev_instance_t * inst)
+ *
+ * @brief  
+ * 
+ * input parameters
+ * @param inst - dw1000_dev_instance_t * 
+ *    
+ * output parameters
+ *
+ * returns none
+ */
+static void 
+ccp_timer_init(struct _dw1000_dev_instance_t * inst) {
+
+    dw1000_ccp_instance_t * ccp = inst->ccp; 
+    ccp->status.timer_enabled = true;
+
+    os_cputime_timer_init(&ccp->timer, ccp_timer_irq, (void *) inst);
+    os_callout_init(&ccp->event_cb, &ccp->eventq, ccp_timer_ev_cb, (void *) inst);
+    os_cputime_timer_relative(&ccp->timer, MYNEWT_VAL(OS_LATENCY));
+}
+
+/*! 
+ * @fn ccp_timer_event(void * arg)
+ *
+ * @brief ccp_timer_event is in the interrupr context and schedules and tasks on the event queue
+ *
+ * input parameters
+ * @param inst - void * arg 
+ *
+ * output parameters
+ *
+ * returns none 
+ */
+static void 
+ccp_timer_irq(void * arg){
+   assert(arg);
+ 
+    dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *) arg;
+    dw1000_ccp_instance_t * ccp = inst->ccp; 
+   
+    os_eventq_put(&ccp->eventq, &ccp->event_cb.c_ev);
+}
+
+
 /*! 
  * @fn ccp_timer_ev_cb(struct os_event *ev)
  *
@@ -100,12 +150,24 @@ ccp_timer_ev_cb(struct os_event *ev) {
 
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
     dw1000_ccp_instance_t * ccp = inst->ccp; 
-    if(dw1000_ccp_blink(inst, DWT_BLOCKING).start_tx_error)
-      os_callout_reset(&ccp->callout_timer, OS_TICKS_PER_SEC * (ccp->period - MYNEWT_VAL(OS_LATENCY)) * 1e-6);
+
+    uint32_t cputime = os_cputime_get32() - os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY));
+    if(dw1000_ccp_blink(inst, DWT_BLOCKING).start_tx_error) 
+      hal_timer_start_at(&ccp->timer, cputime + os_cputime_usecs_to_ticks(dw1000_dwt_usecs_to_usecs(ccp->period)));
 }
 
-/*! 
- * @fn ccp_timer_init(dw1000_dev_instance_t * inst)
+
+static void 
+ccp_task(void *arg)
+{
+    dw1000_ccp_instance_t * inst = arg;
+    while (1) {
+        os_eventq_run(&inst->eventq);
+    }
+}
+
+/*! ------------------------------------------------------------------------------------------------------------------
+ * @fn cpp_tasks_init()
  *
  * @brief The default eventq is used. 
  * 
@@ -117,12 +179,20 @@ ccp_timer_ev_cb(struct os_event *ev) {
  * returns none
  */
 static void 
-ccp_timer_init(struct _dw1000_dev_instance_t * inst) {
-
-    dw1000_ccp_instance_t * ccp = inst->ccp; 
-    os_callout_init(&ccp->callout_timer, os_eventq_dflt_get(), ccp_timer_ev_cb, (void *) inst);
-    os_callout_reset(&ccp->callout_timer, OS_TICKS_PER_SEC/100);
-    ccp->status.timer_enabled = true;
+ccp_tasks_init(struct _dw1000_ccp_instance_t * inst)
+{
+    /* Check if the tasks are already initiated */
+    if (!os_eventq_inited(&inst->eventq))
+    {
+        /* Use a dedicate event queue for tdma events */
+        os_eventq_init(&inst->eventq);
+        os_task_init(&inst->task_str, "dw1000_ccp",
+                     ccp_task,
+                     (void *) inst,
+                     inst->task_prio, OS_WAIT_FOREVER,
+                     inst->task_stack,
+                     DW1000_DEV_TASK_STACK_SZ);
+    }       
 }
 
 
@@ -161,13 +231,17 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
             .correction_factor = 1.0f,
             .seq_num = 0xFF
         };
+        
         for (uint16_t i = 0; i < ccp->nframes; i++){
             ccp->frames[i] = (ccp_frame_t *) malloc(sizeof(ccp_frame_t)); 
             memcpy(ccp->frames[i], &ccp_default, sizeof(ccp_frame_t));
-            ccp->frames[i]->seq_num -= nframes - i + 1;
+            ccp->frames[i]->seq_num = i-1;
         }
+
         ccp->parent = inst;
         inst->ccp = ccp;
+        ccp->task_prio = inst->task_prio + 1;
+
     }else{
         assert(inst->ccp->nframes == nframes);
     }
@@ -210,6 +284,8 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
     inst->ccp->xtalt_sos = sosfilt_init(NULL, sizeof(g_fs_xtalt_b)/sizeof(float)/BIQUAD_N);
 #endif
 
+    ccp_tasks_init(inst->ccp);
+
     inst->ccp->status.initialized = 1;
     return inst->ccp;
 }
@@ -251,7 +327,7 @@ void dw1000_ccp_set_ext_callbacks(dw1000_dev_instance_t * inst, dw1000_extension
 /*! 
  * @fn dw1000_ccp_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * ccp_postprocess)
  *
- * @briefOverrides the default post-processing behaviors, replacing the JSON stream with an alternative 
+ * @brief Overrides the default post-processing behaviors, replacing the JSON stream with an alternative 
  * or an advanced timescale processing algorithm.
  * 
  * input parameters
@@ -278,7 +354,8 @@ dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, os_event_fn * ccp_postp
  *
  * returns none 
  */
-static void ccp_postprocess(struct os_event * ev){
+static void 
+ccp_postprocess(struct os_event * ev){
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)ev->ev_arg;
@@ -368,12 +445,6 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
             else
                 reg = ((reg - trim_code) & FS_XTALT_MASK);
 
-//            printf("{\"utime\":%lu,\"xtalt_trim\": [%d,%d],\"ppm\": %lu}\n", 
-//                os_cputime_ticks_to_usecs(os_cputime_get32()),
-//                reg,
-//                trim_code,
-//                *(uint32_t *)&fs_xtalt_offset
-//            );
             dw1000_write_reg(inst, FS_CTRL_ID, FS_XTALT_OFFSET,  (3 << 5) | reg, sizeof(uint8_t));
         }
     }
@@ -416,8 +487,11 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
         (uint64_t)((uint64_t)(frame->transmission_timestamp) - (uint64_t)(previous_frame->transmission_timestamp)) & 0xFFFFFFFFF,
         frame->seq_num
     );
-    if (ccp->status.timer_enabled) 
-        os_callout_reset(&ccp->callout_timer, OS_TICKS_PER_SEC * (ccp->period - MYNEWT_VAL(OS_LATENCY)) * 1e-6);    
+    if (ccp->status.timer_enabled){
+        uint32_t cputime = os_cputime_get32() - os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY));
+        hal_timer_start_at(&ccp->timer, cputime + os_cputime_usecs_to_ticks(dw1000_dwt_usecs_to_usecs(ccp->period - MYNEWT_VAL(OS_LATENCY))));
+    }
+
     os_sem_release(&inst->ccp->sem);  
     return true;
 }
@@ -556,7 +630,7 @@ dw1000_ccp_start(struct _dw1000_dev_instance_t * inst){
     ccp->idx = 0x0;  
     ccp->status.valid = false;
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
-    frame->transmission_timestamp = dw1000_read_systime(inst);
+    frame->transmission_timestamp = dw1000_read_systime(inst) + (MYNEWT_VAL(OS_LATENCY) << 15);
     ccp_timer_init(inst);
 }
 
@@ -575,7 +649,7 @@ dw1000_ccp_start(struct _dw1000_dev_instance_t * inst){
 void 
 dw1000_ccp_stop(dw1000_dev_instance_t * inst){
     dw1000_ccp_instance_t * ccp = inst->ccp; 
-    os_callout_stop(&ccp->callout_timer);
+   os_cputime_timer_stop(&ccp->timer);
 }
 
 #endif /* MYNEWT_VAL(DW1000_CCP_ENABLED) */

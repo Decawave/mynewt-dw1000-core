@@ -5,7 +5,7 @@ syscfg.defs:
         value:  5
     DW1000_DEV_TASK_STACK_SZ:
         description: 'Size of interrupt task stack'
-        value: 128
+        value: 256
     DW1000_SS_TWR_ENABLED:
         description: 'Single sided TWR Enabled'
         value: 1
@@ -14,6 +14,9 @@ syscfg.defs:
         value: 1
     DW1000_DS_TWR_EXT_ENABLED:
         description: 'Double sided extended mode Enable'
+        value: 1
+    DW1000_SS_TWR_EXT_ENABLED:
+        description: 'Single sided extended mode Enable'
         value: 1
     DW1000_LWIP:
         description: 'Enable LWIP functionality'
@@ -36,7 +39,7 @@ syscfg.defs:
         value: ((uint32_t){0x100000})
     DW1000_IDLE_TO_RX_LATENCY:
         description: 'RX turn on delay, dwt usec units'
-        value: 0x80
+        value: 0x100
     DW1000_PAN:
         description: 'Private Area Network functionality'
         value: 0
@@ -103,7 +106,7 @@ syscfg.defs:
     OS_LATENCY:
         description: >
             OS Latency Guardband 
-        value: ((uint32_t){2000})
+        value: ((uint32_t){1800})
     FS_XTALT_AUTOTUNE_ENABLED: 
         description: >
             Autotune XTALT to Clock Master

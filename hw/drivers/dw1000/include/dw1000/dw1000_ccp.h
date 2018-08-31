@@ -73,13 +73,19 @@ typedef struct _dw1000_ccp_instance_t{
     struct _sos_instance_t * xtalt_sos;
 #endif
     struct os_sem sem;
-    struct os_callout callout_timer;
     struct os_callout callout_postprocess;
     dw1000_ccp_status_t status;
     dw1000_ccp_config_t config;
     uint32_t period;
     uint16_t nframes;
     uint16_t idx;
+    struct hal_timer timer;
+    struct os_eventq eventq;
+    struct os_callout event_cb;
+    struct os_task task_str;
+    uint8_t task_prio;
+    os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]
+        __attribute__((aligned(OS_STACK_ALIGNMENT)));
     ccp_frame_t * frames[];
 }dw1000_ccp_instance_t; 
 

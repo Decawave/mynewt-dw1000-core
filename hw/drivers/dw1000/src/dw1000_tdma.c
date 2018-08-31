@@ -72,7 +72,7 @@ tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots
         tdma->period = period; 
         tdma->parent = inst;
 #ifdef TDMA_TASKS_ENABLE
-        tdma->task_prio = inst->task_prio + 1;
+        tdma->task_prio = inst->task_prio + 2;
 #endif
         inst->tdma = tdma;
     }else{
@@ -153,6 +153,7 @@ tdma_assign_slot(struct _tdma_instance_t * inst, void (* callout )(struct os_eve
     }
     inst->slot[idx]->idx = idx;
     inst->slot[idx]->parent = inst;
+    inst->slot[idx]->arg = arg;
 
     os_cputime_timer_init(&inst->slot[idx]->timer, slot_timer_cb, (void *) inst->slot[idx]);
 #ifdef TDMA_TASKS_ENABLE
@@ -236,12 +237,9 @@ slot0_event_cb(struct os_event * ev){
             os_cputime_timer_stop(&tdma->slot[i]->timer);
         }
     }
-    // In the event that the rx turned off by another thread, ie an SYS_STATUS_RXFCG from elsewhere
-    //uint32_t cputime = os_cputime_get32() - os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY));
-    //hal_timer_start_at(&tdma->slot[0]->timer, cputime + os_cputime_usecs_to_ticks(dw1000_dwt_usecs_to_usecs(tdma->period)));
-
+ 
     tdma->status.awaiting_superframe = 1; 
-    dw1000_set_delay_start(inst, false);
+    dw1000_set_delay_start(inst, 0);
     dw1000_set_rx_timeout(inst, 0);
     if(dw1000_start_rx(inst).start_rx_error){
         uint32_t utime = os_cputime_ticks_to_usecs(os_cputime_get32());
