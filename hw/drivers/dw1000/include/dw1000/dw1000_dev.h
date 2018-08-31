@@ -59,7 +59,8 @@ typedef enum _dw1000_extension_id_t{
     DW1000_CCP,
     DW1000_PAN,
     DW1000_PROVISION,
-    DW1000_RANGE
+    DW1000_RANGE,
+    DW1000_N_RANGES
 }dw1000_extension_id_t;
 
 typedef struct _dw1000_cmd{
@@ -166,13 +167,12 @@ struct _dw1000_dev_instance_t;
 typedef struct _dw1000_extension_callback_t dw1000_extension_callbacks_t;
 typedef struct _dw1000_extension_callback_t{
     dw1000_extension_id_t id;
-    void (* tx_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* rx_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* rx_timeout_cb)  (struct _dw1000_dev_instance_t *);
-    void (* rx_error_cb)    (struct _dw1000_dev_instance_t *);
-    void (* tx_error_cb)    (struct _dw1000_dev_instance_t *);
-    dw1000_extension_callbacks_t * next;
-    dw1000_extension_callbacks_t * previous;
+    bool (* tx_complete_cb) (struct _dw1000_dev_instance_t *);
+    bool (* rx_complete_cb) (struct _dw1000_dev_instance_t *);
+    bool (* rx_timeout_cb)  (struct _dw1000_dev_instance_t *);
+    bool (* rx_error_cb)    (struct _dw1000_dev_instance_t *);
+    bool (* tx_error_cb)    (struct _dw1000_dev_instance_t *);
+    SLIST_ENTRY(_dw1000_extension_callback_t) cbs_next;
 }dw1000_extension_callbacks_t;
 
 typedef struct _dw1000_dev_instance_t{
@@ -193,8 +193,7 @@ typedef struct _dw1000_dev_instance_t{
     void (* rng_complete_cb) (struct _dw1000_dev_instance_t *);
   
     void (* sleep_timer_cb) (struct _dw1000_dev_instance_t *);
-
-    dw1000_extension_callbacks_t * extension_cb;
+	SLIST_HEAD(,_dw1000_extension_callback_t) extension_cbs;
 #if MYNEWT_VAL(DW1000_LWIP)
     void (* lwip_rx_complete_cb) (struct _dw1000_dev_instance_t *);
 #endif

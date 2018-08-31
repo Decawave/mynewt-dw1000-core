@@ -31,7 +31,6 @@
 #include <dw1000/dw1000_phy.h>
 
 
-static int dw1000_find_extension_callbacks_position(dw1000_dev_instance_t *inst, dw1000_extension_id_t id);
 static dw1000_extension_callbacks_t* dw1000_new_extension_callbacks(dw1000_dev_instance_t* inst);
 
 dw1000_dev_status_t 
@@ -411,23 +410,18 @@ dw1000_dev_set_sleep_callback(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t sle
 void
 dw1000_add_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_callbacks_t callbacks){
     assert(inst);
+    dw1000_extension_callbacks_t* prev_cbs = NULL;
+    dw1000_extension_callbacks_t* cur_cbs = NULL;
     dw1000_extension_callbacks_t* new_cbs = dw1000_new_extension_callbacks(inst);
     assert(new_cbs);
     memcpy(new_cbs,&callbacks,sizeof(dw1000_extension_callbacks_t));
-    if(inst->extension_cb == NULL){
-        inst->extension_cb = new_cbs;
-        new_cbs->next = NULL;
-        new_cbs->previous =  NULL;
-    }else{
-        dw1000_extension_callbacks_t* temp_head = inst->extension_cb;
-        while(inst->extension_cb->next != NULL){
-            inst->extension_cb = inst->extension_cb->next;
+    if(!(SLIST_EMPTY(&inst->extension_cbs))){
+        SLIST_FOREACH(cur_cbs, &inst->extension_cbs, cbs_next) {
+            prev_cbs = cur_cbs;
         }
-        inst->extension_cb->next = new_cbs;
-        new_cbs->next = NULL;
-        new_cbs->previous = inst->extension_cb;
-        inst->extension_cb = temp_head;
-    }
+        SLIST_INSERT_AFTER(prev_cbs, new_cbs, cbs_next);
+    }else
+        SLIST_INSERT_HEAD(&inst->extension_cbs, new_cbs, cbs_next);
 }
 
 static dw1000_extension_callbacks_t*
@@ -440,37 +434,11 @@ dw1000_new_extension_callbacks(dw1000_dev_instance_t* inst){
 
 void
 dw1000_remove_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_id_t id){
-    int count = 0;
-    dw1000_extension_callbacks_t* temp = inst->extension_cb;
-    int pos = dw1000_find_extension_callbacks_position(inst, id);
-    if(pos == 0){
-        inst->extension_cb = inst->extension_cb->next;
-        free(temp);
-        temp = NULL;
-    }else{
-        while(temp != NULL && count < (pos-1)){
-            temp = temp->next;
-            count++;
-        }
-        if(temp == NULL || temp->next == NULL){
-            return;
-        }
-        dw1000_extension_callbacks_t *next = temp->next->next;
-        free(temp->next);
-        temp->next = next;
-    }
-}
-
-static int
-dw1000_find_extension_callbacks_position(dw1000_dev_instance_t *inst, dw1000_extension_id_t id){
-    int count = 0;
-    dw1000_extension_callbacks_t* temp = inst->extension_cb;
-    while(temp != NULL){
+    dw1000_extension_callbacks_t* temp;
+    SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next) {
         if(temp->id == id){
-            return count;
+            SLIST_REMOVE(&inst->extension_cbs, temp, _dw1000_extension_callback_t, cbs_next);
+            break;
         }
-        temp = temp->next;
-        count++;
     }
-    return -1;
 }

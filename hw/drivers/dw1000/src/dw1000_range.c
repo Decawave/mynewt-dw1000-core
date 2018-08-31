@@ -38,9 +38,9 @@
 #include <dw1000/dw1000_range.h>
 
 static void postprocess(struct os_event * ev);
-static void range_complete_cb(dw1000_dev_instance_t * inst);
-static void range_error_cb(dw1000_dev_instance_t * inst);
-static void range_tx_complete_cb(dw1000_dev_instance_t* inst);
+static bool range_complete_cb(dw1000_dev_instance_t * inst);
+static bool range_error_cb(dw1000_dev_instance_t * inst);
+static bool range_tx_complete_cb(dw1000_dev_instance_t* inst);
 static struct os_callout range_callout_timer;
 static struct os_callout range_callout_postprocess;
 
@@ -74,18 +74,9 @@ range_timer_init(dw1000_dev_instance_t *inst) {
     range->status.timer_enabled = true;
 }
 
-static void range_complete_cb(dw1000_dev_instance_t *inst){
+static bool range_complete_cb(dw1000_dev_instance_t *inst){
     if(inst->fctrl != FCNTL_IEEE_RANGE_16){
-        if(inst->extension_cb->next != NULL){
-            inst->extension_cb = inst->extension_cb->next;
-            if(inst->extension_cb->rx_complete_cb != NULL)
-                inst->extension_cb->rx_complete_cb(inst);
-        }else{
-            dw1000_dev_control_t control = inst->control_rx_context;
-            inst->control = inst->control_rx_context;
-            dw1000_restart_rx(inst, control);
-        }
-        return;
+        return false;
     }
     assert(inst);
     assert(inst->range);
@@ -102,25 +93,13 @@ static void range_complete_cb(dw1000_dev_instance_t *inst){
             os_eventq_put(os_eventq_dflt_get(), &range_callout_postprocess.c_ev);
         }
     }
+    return true;
 }
 
-static void range_error_cb(dw1000_dev_instance_t *inst){
+static bool range_error_cb(dw1000_dev_instance_t *inst){
     assert(inst);
     if(inst->fctrl != FCNTL_IEEE_RANGE_16){
-        if(inst->extension_cb->next != NULL){
-            inst->extension_cb = inst->extension_cb->next;
-            if(inst->status.rx_timeout_error == 1){
-                if(inst->extension_cb->rx_timeout_cb != NULL)
-                    inst->extension_cb->rx_timeout_cb(inst);
-            }else if(inst->status.rx_error == 1){
-                if(inst->extension_cb->rx_error_cb != NULL)
-                    inst->extension_cb->rx_error_cb(inst);
-            }else if(inst->status.start_tx_error == 1){
-                if(inst->extension_cb->tx_error_cb != NULL)
-                    inst->extension_cb->tx_error_cb(inst);
-            }
-        }
-        return;
+        return false;
     }
     assert(inst->range);
     dw1000_range_instance_t *range = inst->range;
@@ -135,17 +114,15 @@ static void range_error_cb(dw1000_dev_instance_t *inst){
             os_eventq_put(os_eventq_dflt_get(), &range_callout_postprocess.c_ev);
         }
     }
+    return true;
 }
 
-static void
+static bool
 range_tx_complete_cb(dw1000_dev_instance_t* inst){
     if(inst->fctrl != FCNTL_IEEE_RANGE_16){
-        if(inst->extension_cb->next != NULL){
-            inst->extension_cb = inst->extension_cb->next;
-            if(inst->extension_cb->tx_complete_cb != NULL)
-                inst->extension_cb->tx_complete_cb(inst);
-        }
+        return false;
     }
+    return true;
 }
 
 static void range_reg_postprocess(dw1000_dev_instance_t * inst, os_event_fn * rng_postprocess){

@@ -43,7 +43,7 @@
 #if MYNEWT_VAL(TDMA_ENABLED) 
 #include <dw1000/dw1000_tdma.h>
 
-#define DIAGMSG(s,u) printf(s,u)
+//#define DIAGMSG(s,u) printf(s,u)
 #ifndef DIAGMSG
 #define DIAGMSG(s,u)
 #endif

@@ -69,11 +69,11 @@ static float g_fs_xtalt_poly[] ={
 #endif
 
 
-static void ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst);
-static void ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst);
-static void ccp_rx_error_cb(dw1000_dev_instance_t * inst);
-static void ccp_rx_timeout_cb(dw1000_dev_instance_t * inst);
-static void ccp_tx_error_cb(dw1000_dev_instance_t * inst);
+static bool ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst);
+static bool ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst);
+static bool ccp_rx_error_cb(dw1000_dev_instance_t * inst);
+static bool ccp_rx_timeout_cb(dw1000_dev_instance_t * inst);
+static bool ccp_tx_error_cb(dw1000_dev_instance_t * inst);
 static struct _dw1000_ccp_status_t dw1000_ccp_blink(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 #if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED) !=1
 static void ccp_postprocess(struct os_event * ev);
@@ -319,7 +319,7 @@ static void ccp_postprocess(struct os_event * ev){
  *
  * returns none 
  */
-static void 
+static bool 
 ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
     if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
         // CCP Packet Received
@@ -327,25 +327,10 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
         dw1000_read_rx(inst, (uint8_t *) &clock_master, offsetof(ieee_blink_frame_t,long_address), sizeof(uint64_t));
         if(inst->clock_master != clock_master){
             dw1000_restart_rx(inst, inst->control_rx_context);
-            return;
+            return true;
        }
     }else{
-        //The packet is not intended for the CCP. So pass it on to next item on list
-        //If there is not cb in the list go to receive mode again as it is a spurious packet
-        //inst->extension_cb = (dw1000_extension_callbacks_t*)(inst->extension_cb->next);
-        if(inst->extension_cb->next != NULL){
-            inst->extension_cb = inst->extension_cb->next;
-            if(inst->extension_cb->rx_complete_cb != NULL)
-                inst->extension_cb->rx_complete_cb(inst);
-        }
-        //For the range service the fctrl is same as FCNTL_IEEE_RANGE_16
-        //In he range case the decision is always taken by application
-        //So put it back to receive only if the intended packet doesn't match
-        //any of the reserved or range packet
-        else if(inst->fctrl != FCNTL_IEEE_RANGE_16){
-           dw1000_restart_rx(inst, inst->control_rx_context);
-        }
-        return;
+        return false;
     }
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
@@ -393,7 +378,7 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
         }
     }
 #endif
-
+    return true;
 
 }
 
@@ -415,18 +400,10 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
  *
  * returns none 
  */
-static void 
+static bool 
 ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
     if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64){
-        //The packet is not intended for the CCP. So pass it on to next item on list
-        //If there is not cb in the list go to receive mode again as it is a spurious packet
-        //inst->extension_cb = (dw1000_extension_callbacks_t*)(inst->extension_cb->next);
-        if(inst->extension_cb->next != NULL){
-            inst->extension_cb = inst->extension_cb->next;
-            if(inst->extension_cb->tx_complete_cb != NULL)
-                inst->extension_cb->tx_complete_cb(inst);
-        }
-        return;
+        return false;
     }
     //Advance frame idx 
     dw1000_ccp_instance_t * ccp = inst->ccp; 
@@ -442,6 +419,7 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
     if (ccp->status.timer_enabled) 
         os_callout_reset(&ccp->callout_timer, OS_TICKS_PER_SEC * (ccp->period - MYNEWT_VAL(OS_LATENCY)) * 1e-6);    
     os_sem_release(&inst->ccp->sem);  
+    return true;
 }
 
 /*! 
@@ -456,16 +434,13 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
  *
  * returns none 
  */
-static void
+static bool
 ccp_rx_error_cb(struct _dw1000_dev_instance_t * inst){
     /* Place holder */
     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64){
-        if(inst->extension_cb->next != NULL){
-            inst->extension_cb = inst->extension_cb->next;
-            if(inst->extension_cb->rx_error_cb != NULL)
-                inst->extension_cb->rx_error_cb(inst);
-        }
-    }
+			return false;
+	}
+	return true;
 }
 
 /*! 
@@ -480,16 +455,13 @@ ccp_rx_error_cb(struct _dw1000_dev_instance_t * inst){
  *
  * returns none 
  */
-static void
+static bool
 ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst){
     /* Place holder */
     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64){
-        if(inst->extension_cb->next != NULL){
-            inst->extension_cb = inst->extension_cb->next;
-            if(inst->extension_cb->tx_error_cb != NULL)
-                inst->extension_cb->tx_error_cb(inst);
-        }
+        return false;
     }
+    return true;
 }
 
 /*! 
@@ -504,16 +476,13 @@ ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst){
  *
  * returns none 
  */
-static void
+static bool
 ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst){
     /* Place holder */
     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64){
-        if(inst->extension_cb->next != NULL){
-            inst->extension_cb = inst->extension_cb->next;
-            if(inst->extension_cb->rx_timeout_cb != NULL)
-                inst->extension_cb->rx_timeout_cb(inst);
-        }
+        return false;
     }
+    return true;
 }
 
 /*! 

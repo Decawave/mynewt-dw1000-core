@@ -163,12 +163,14 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     if (rng->control.delay_start_enabled) 
         dw1000_set_delay_start(inst, rng->delay);
     if (dw1000_start_tx(inst).start_tx_error){
-        if(inst->extension_cb != NULL){
-            dw1000_extension_callbacks_t *head = inst->extension_cb;
-            if(inst->extension_cb->tx_error_cb != NULL){
-                inst->extension_cb->tx_error_cb(inst);
+        if(!(SLIST_EMPTY(&inst->extension_cbs))){
+            dw1000_extension_callbacks_t *temp = NULL;
+            SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+                if(temp != NULL)
+                    if(temp->tx_error_cb != NULL)
+                        if(temp->tx_error_cb(inst) == true)
+                            break;
             }
-            inst->extension_cb = head;
         }
         os_sem_release(&inst->rng->sem);
     }
@@ -368,23 +370,27 @@ rng_tx_complete_cb(dw1000_dev_instance_t * inst)
         }
 #endif
     }
-    if(inst->extension_cb != NULL){
-        dw1000_extension_callbacks_t *head = inst->extension_cb;
-        if(inst->extension_cb->tx_complete_cb != NULL){
-            inst->extension_cb->tx_complete_cb(inst);
+    if(!(SLIST_EMPTY(&inst->extension_cbs))){
+        dw1000_extension_callbacks_t *temp = NULL;
+        SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+            if(temp != NULL)
+                if(temp->tx_complete_cb != NULL)
+                    if(temp->tx_complete_cb(inst) == true)
+                        break;
         }
-        inst->extension_cb = head;
     }
 }
 
 static void 
 rng_rx_timeout_cb(dw1000_dev_instance_t * inst){
-	if(inst->extension_cb != NULL){
-        dw1000_extension_callbacks_t *head = inst->extension_cb;
-        if(inst->extension_cb->rx_timeout_cb != NULL){
-            inst->extension_cb->rx_timeout_cb(inst);
+    if(!(SLIST_EMPTY(&inst->extension_cbs))){
+        dw1000_extension_callbacks_t *temp = NULL;
+        SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+            if(temp != NULL)
+                if(temp->rx_timeout_cb != NULL)
+                    if(temp->rx_timeout_cb(inst) == true)
+                        break;
         }
-        inst->extension_cb = head;
     }
     if(inst->fctrl == FCNTL_IEEE_RANGE_16){
         os_error_t err = os_sem_release(&inst->rng->sem);
@@ -394,12 +400,14 @@ rng_rx_timeout_cb(dw1000_dev_instance_t * inst){
 
 static void 
 rng_rx_error_cb(dw1000_dev_instance_t * inst){
-	if(inst->extension_cb != NULL){
-        dw1000_extension_callbacks_t *head = inst->extension_cb;
-        if(inst->extension_cb->rx_error_cb != NULL){
-            inst->extension_cb->rx_error_cb(inst);
+    if(!(SLIST_EMPTY(&inst->extension_cbs))){
+        dw1000_extension_callbacks_t *temp = NULL;
+        SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+            if(temp != NULL)
+                if(temp->rx_error_cb != NULL)
+                    if(temp->rx_error_cb(inst) == true)
+                        break;
         }
-        inst->extension_cb = head;
     }
     if(inst->fctrl == FCNTL_IEEE_RANGE_16){
         os_error_t err = os_sem_release(&inst->rng->sem);   
@@ -416,12 +424,21 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
     if (inst->fctrl == FCNTL_IEEE_RANGE_16){
         dw1000_read_rx(inst, (uint8_t *) &code, offsetof(ieee_rng_request_frame_t,code), sizeof(uint16_t));
         dw1000_read_rx(inst, (uint8_t *) &dst_address, offsetof(ieee_rng_request_frame_t,dst_address), sizeof(uint16_t));
-    }else if(inst->extension_cb != NULL){
-        dw1000_extension_callbacks_t *head = inst->extension_cb;
-        if(inst->extension_cb->rx_complete_cb != NULL){
-            inst->extension_cb->rx_complete_cb(inst);
+    }else if(!(SLIST_EMPTY(&inst->extension_cbs))){
+        dw1000_extension_callbacks_t *temp = NULL;
+        SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+            if(temp->rx_complete_cb != NULL){
+                if(temp->rx_complete_cb(inst) == true)
+                    break;
+            }
+            dw1000_extension_callbacks_t *next = SLIST_NEXT(temp, cbs_next);
+            if(next == NULL){
+                inst->control = inst->control_rx_context;
+                if (dw1000_restart_rx(inst, control).start_rx_error)
+                    inst->rng_rx_error_cb(inst);
+            }
+            
         }
-        inst->extension_cb = head;
         return;
     }else{
         //No extension callbacks also in place. So just return to receive mode again
@@ -508,13 +525,14 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
 
                         if (inst->rng_complete_cb)
                             inst->rng_complete_cb(inst);
-
-                        if(inst->extension_cb != NULL){
-                            dw1000_extension_callbacks_t *head = inst->extension_cb;
-                            if(inst->extension_cb->rx_complete_cb != NULL){
-                                inst->extension_cb->rx_complete_cb(inst);
+                        if(!(SLIST_EMPTY(&inst->extension_cbs))){
+                            dw1000_extension_callbacks_t *temp = NULL;
+                            SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+                                if(temp != NULL)
+                                    if(temp->rx_complete_cb != NULL)
+                                        if(temp->rx_complete_cb(inst) == true)
+                                            break;
                             }
-                            inst->extension_cb = head;
                         }
                         break;
                     }
@@ -532,13 +550,14 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                         
                         if (inst->rng_complete_cb) 
                             inst->rng_complete_cb(inst);
-                        
-                        if(inst->extension_cb != NULL){
-                            dw1000_extension_callbacks_t *head = inst->extension_cb;
-                            if(inst->extension_cb->rx_complete_cb != NULL){
-                                inst->extension_cb->rx_complete_cb(inst);
+                        if(!(SLIST_EMPTY(&inst->extension_cbs))){
+                            dw1000_extension_callbacks_t *temp = NULL;
+                            SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+                                if(temp != NULL)
+                                    if(temp->rx_complete_cb != NULL)
+                                        if(temp->rx_complete_cb(inst) == true)
+                                            break;
                             }
-                            inst->extension_cb = head;
                         }
                         break;
                     }
@@ -626,12 +645,14 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_set_rx_timeout(inst, config->rx_timeout_period);
                         
                             if (dw1000_start_tx(inst).start_tx_error){
-                                if(inst->extension_cb != NULL){
-                                    dw1000_extension_callbacks_t *head = inst->extension_cb;
-                                    if(inst->extension_cb->tx_error_cb != NULL){
-                                        inst->extension_cb->tx_error_cb(inst);
+                                if(!(SLIST_EMPTY(&inst->extension_cbs))){
+                                    dw1000_extension_callbacks_t *temp = NULL;
+                                    SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+                                        if(temp != NULL)
+                                            if(temp->tx_error_cb != NULL)
+                                                if(temp->tx_error_cb(inst) == true)
+                                                    break;
                                     }
-                                    inst->extension_cb = head;
                                 }
                                 os_sem_release(&rng->sem);  
 							}
@@ -666,12 +687,14 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true); 
 
                             if (dw1000_start_tx(inst).start_tx_error){
-                                if(inst->extension_cb != NULL){
-                                    dw1000_extension_callbacks_t *head = inst->extension_cb;
-                                    if(inst->extension_cb->tx_error_cb != NULL){
-                                        inst->extension_cb->tx_error_cb(inst);
+                                if(!(SLIST_EMPTY(&inst->extension_cbs))){
+                                    dw1000_extension_callbacks_t *temp = NULL;
+                                    SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+                                        if(temp != NULL)
+                                            if(temp->tx_error_cb != NULL)
+                                                if(temp->tx_error_cb(inst) == true)
+                                                    break;
                                     }
-                                    inst->extension_cb = head;
                                 }
                                 os_sem_release(&rng->sem);  
 							}
@@ -679,12 +702,14 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             if (inst->rng_complete_cb) {
                                 inst->rng_complete_cb(inst);
                             }
-                            if(inst->extension_cb != NULL){
-                                dw1000_extension_callbacks_t *head = inst->extension_cb;
-                                if(inst->extension_cb->rx_complete_cb != NULL){
-                                    inst->extension_cb->rx_complete_cb(inst);
+                            if(!(SLIST_EMPTY(&inst->extension_cbs))){
+                                dw1000_extension_callbacks_t *temp = NULL;
+                                SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+                                    if(temp != NULL)
+                                        if(temp->rx_complete_cb != NULL)
+                                            if(temp->rx_complete_cb(inst) == true)
+                                                break;
                                 }
-                                inst->extension_cb = head;
                             }
 
                             break;
@@ -699,25 +724,19 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                             if (inst->frame_len >= sizeof(twr_frame_final_t))
                                 dw1000_read_rx(inst, frame->array, 0, sizeof(twr_frame_final_t));
-                            if(inst->extension_cb != NULL){
-                                dw1000_extension_callbacks_t *head = inst->extension_cb;
-                                if(inst->extension_cb->rx_complete_cb != NULL){
-                                    inst->extension_cb->rx_complete_cb(inst);
+                            if(!(SLIST_EMPTY(&inst->extension_cbs))){
+                                dw1000_extension_callbacks_t *temp = NULL;
+                                SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+                                    if(temp != NULL)
+                                        if(temp->rx_complete_cb != NULL)
+                                            if(temp->rx_complete_cb(inst) == true)
+                                                break;
                                 }
-                                inst->extension_cb = head;
-                            }  
-                            os_sem_release(&rng->sem);
+                            }
                             if (inst->rng_complete_cb) {
                                 inst->rng_complete_cb(inst);
                             }
-                            
-                            if(inst->extension_cb != NULL){
-                                dw1000_extension_callbacks_t *head = inst->extension_cb;
-                                if(inst->extension_cb->rx_complete_cb != NULL){
-                                    inst->extension_cb->rx_complete_cb(inst);
-                                }
-                                inst->extension_cb = head;
-                            }
+                            os_sem_release(&rng->sem);
                             break;
                         }
                     default: 
@@ -758,12 +777,14 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_set_rx_timeout(inst, config->rx_timeout_period); 
 
                             if (dw1000_start_tx(inst).start_tx_error){
-                                if(inst->extension_cb != NULL){
-                                    dw1000_extension_callbacks_t *head = inst->extension_cb;
-                                    if(inst->extension_cb->tx_error_cb != NULL){
-                                        inst->extension_cb->tx_error_cb(inst);
+                                if(!(SLIST_EMPTY(&inst->extension_cbs))){
+                                    dw1000_extension_callbacks_t *temp = NULL;
+                                    SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+                                        if(temp != NULL)
+                                            if(temp->tx_error_cb != NULL)
+                                                if(temp->tx_error_cb(inst) == true)
+                                                    break;
                                     }
-                                    inst->extension_cb = head;
                                 }
                                 os_sem_release(&rng->sem);  
 							}
@@ -815,15 +836,17 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_set_rx_timeout(inst, config->rx_timeout_period); 
                         
                             if (dw1000_start_tx(inst).start_tx_error){
-                                if(inst->extension_cb != NULL){
-                                    dw1000_extension_callbacks_t *head = inst->extension_cb;
-                                    if(inst->extension_cb->tx_error_cb != NULL){
-                                        inst->extension_cb->tx_error_cb(inst);
+                                if(!(SLIST_EMPTY(&inst->extension_cbs))){
+                                    dw1000_extension_callbacks_t *temp = NULL;
+                                    SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+                                        if(temp != NULL)
+                                            if(temp->tx_error_cb != NULL)
+                                                if(temp->tx_error_cb(inst) == true)
+                                                    break;
                                     }
-                                    inst->extension_cb = head;
                                 }
                                 os_sem_release(&rng->sem);  
-							}
+                            }
                             break; 
                         }
 
@@ -858,27 +881,20 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_t));
                             dw1000_write_tx_fctrl(inst, sizeof(twr_frame_t), 0, true); 
 
-                           if (dw1000_start_tx(inst).start_tx_error){
-                                if(inst->extension_cb != NULL){
-                                    dw1000_extension_callbacks_t *head = inst->extension_cb;
-                                    if(inst->extension_cb->tx_error_cb != NULL){
-                                        inst->extension_cb->tx_error_cb(inst);
-                                    }
-                                    inst->extension_cb = head;
-                                }
-                                os_sem_release(&rng->sem);  
-							}
+                            if (dw1000_start_tx(inst).start_tx_error)
+                                os_sem_release(&rng->sem);
 
+                            if(!(SLIST_EMPTY(&inst->extension_cbs))){
+                                dw1000_extension_callbacks_t *temp = NULL;
+                                SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+                                    if(temp != NULL)
+                                        if(temp->rx_complete_cb != NULL)
+                                            if(temp->rx_complete_cb(inst) == true)
+                                                break;
+                                }
+                            }
                             if (inst->rng_complete_cb) {
                                 inst->rng_complete_cb(inst);
-                            }
-
-                            if(inst->extension_cb != NULL){
-                                dw1000_extension_callbacks_t *head = inst->extension_cb;
-                                if(inst->extension_cb->rx_complete_cb != NULL){
-                                    inst->extension_cb->rx_complete_cb(inst);
-                                }
-                                inst->extension_cb = head;
                             }
                             break;
                         }
@@ -894,15 +910,17 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                                 dw1000_read_rx(inst, frame->array, 0, sizeof(twr_frame_t));
                             os_sem_release(&rng->sem);
 
+                            if(!(SLIST_EMPTY(&inst->extension_cbs))){
+                                dw1000_extension_callbacks_t *temp = NULL;
+                                SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+                                    if(temp != NULL)
+                                        if(temp->rx_complete_cb != NULL)
+                                            if(temp->rx_complete_cb(inst) == true)
+                                                break;
+                                }
+                            }
                             if (inst->rng_complete_cb) {
                                 inst->rng_complete_cb(inst);
-                            }
-                            if(inst->extension_cb != NULL){
-                                dw1000_extension_callbacks_t *head = inst->extension_cb;
-                                if(inst->extension_cb->rx_complete_cb != NULL){
-                                    inst->extension_cb->rx_complete_cb(inst);
-                                }
-                                inst->extension_cb = head;
                             }
                             break;
                         }
@@ -913,11 +931,14 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
 #endif //DS_TWR_EXT_ENABLE
         default: 
             // Use this callback to extend interface and ranging services
-            if(inst->extension_cb != NULL){
-                dw1000_extension_callbacks_t *head = inst->extension_cb;
-                if(inst->extension_cb->rx_complete_cb != NULL)
-                    inst->extension_cb->rx_complete_cb(inst);
-                inst->extension_cb = head;
+            if(!(SLIST_EMPTY(&inst->extension_cbs))){
+                dw1000_extension_callbacks_t *temp = NULL;
+                SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+                    if(temp != NULL)
+                        if(temp->rx_complete_cb != NULL)
+                            if(temp->rx_complete_cb(inst) == true)
+                                break;
+                }
             }
             break;
     }  
