@@ -79,14 +79,6 @@ newt target set twr_node build_profile=debug
 newt run twr_node 0
 
 ```
-To switch from Single-Side to Double-Size, simply comment ./twr_node/main.c as follows: 
-```no-highlight
-
-   //dw1000_rng_request(inst, 0x4321, DWT_DS_TWR);
-   dw1000_rng_request(inst, 0x4321, DWT_SS_TWR);
-
-```
-
 
 5. Both examples are configured to use the Segger RTT console interface. This is covered within the mynewt tutorials/Tooling/SeggarRTT (https://mynewt.apache.org/latest/os/tutorials/segger_rtt/). To launch the console simply telnet localhost 19021. Note at time of writing the newt tools does not support multiple connect dwm1001-dev devices. So it is recomended that you connect twr_tag and twr_node examples to different computers or at least the twr_tag to an external battery. If all going well you should see the twr_node example stream range information on the console. 
 
