@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -38,7 +38,7 @@ extern "C" {
 #endif
 
 /**
- * @brief tryad definition
+ * @brief triad definition
  */
 
 #ifdef TRIAD_INT16

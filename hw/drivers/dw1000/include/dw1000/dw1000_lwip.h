@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -17,6 +17,16 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ */
+
+/**
+ * @file dw1000_lwip.h
+ * @author paul kettle
+ * @date 2018
+ * 
+ * @brief lwip service
+ * @details This is the lwip base class which utilizes the functions to do the configurations related to lwip layer based on dependencies.
+ *
  */
 
 #ifndef _DW1000_LWIP_H_
@@ -39,33 +49,36 @@ extern "C" {
 #include <lwip/netif.h>
 #include <lwip/raw.h>
 
-
+//! Lwip config parameters.
 typedef struct _dw1000_lwip_config_t{
-   uint16_t poll_resp_delay;    // Delay between frames, in UWB microseconds.
-   uint16_t resp_timeout;       // Receive response timeout, in UWB microseconds.
-   uint32_t uwbtime_to_systime;
+   uint16_t poll_resp_delay;    //!< Delay between frames, in UWB microseconds.
+   uint16_t resp_timeout;       //!< Receive response timeout, in UWB microseconds.
+   uint32_t uwbtime_to_systime; //!< UWB time to system time
 }dw1000_lwip_config_t;
 
+//! Lwip modes. 
 typedef enum _dw1000_lwip_modes_t{
-    LWIP_BLOCKING,
-    LWIP_NONBLOCKING
+    LWIP_BLOCKING,              //!< lwip blocking mode
+    LWIP_NONBLOCKING            //!< lwip non-blocking mode
 }dw1000_lwip_modes_t;
 
+//! Lwip status parameters.
 typedef struct _dw1000_lwip_status_t{
-    uint32_t selfmalloc:1;
-    uint32_t initialized:1;
-    uint32_t start_tx_error:1;
-    uint32_t start_rx_error:1;
-    uint32_t tx_frame_error:1;
-    uint32_t rx_error:1;
-    uint32_t rx_timeout_error:1;
-    uint32_t request_timeout:1;
+    uint32_t selfmalloc:1;             //!< Internal flag for memory garbage collection 
+    uint32_t initialized:1;            //!< Instance allocated 
+    uint32_t start_tx_error:1;         //!< Set for start transmit error 
+    uint32_t start_rx_error:1;         //!< Set for start receive error 
+    uint32_t tx_frame_error:1;         //!< Set transmit frame error
+    uint32_t rx_error:1;               //!< Set for receive error
+    uint32_t rx_timeout_error:1;       //!< Set for receive timeout error 
+    uint32_t request_timeout:1;        //!< Set for request timeout
 }dw1000_lwip_status_t;
 
+//! Lwip instance parameters.
 typedef struct _dw1000_lwip_instance_t{
-    struct _dw1000_dev_instance_t * dev;
-    struct os_sem sem;
-    struct os_sem data_sem;
+    struct _dw1000_dev_instance_t * dev;   //!< Structure for DW1000 instance 
+    struct os_sem sem;                     //!< Structure for OS semaphores
+    struct os_sem data_sem;                //!< Structure for data of semaphores
 
 #if MYNEWT_VAL(DW1000_LWIP_P2P)
     struct _dw1000_lwip_p2p_instance_t * lwip_p2p;
@@ -76,31 +89,34 @@ typedef struct _dw1000_lwip_instance_t{
     void (* ext_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
     void (* ext_rx_error_cb) (struct _dw1000_dev_instance_t *);
 
-    dw1000_lwip_config_t * config;
-    dw1000_lwip_status_t status;
-    uint16_t nframes;
-    uint16_t buf_idx;
-    uint16_t buf_len;
-    uint16_t dst_addr;
-    struct netif lwip_netif;
-    struct raw_pcb * pcb;
-    void * payload_ptr;
-    char * data_buf[];
+    dw1000_lwip_config_t * config;         //!< lwip config parameters 
+    dw1000_lwip_status_t status;           //!< lwip status
+    uint16_t nframes;                      //!< Number of buffers defined to store the lwip data  
+    uint16_t buf_idx;                      //!< Indicates number of buffer instances for the chosen bsp 
+    uint16_t buf_len;                      //!< Indicates buffer length 
+    uint16_t dst_addr;                     //!< Destination address    
+    struct netif lwip_netif;               //!< Network interface
+    struct raw_pcb * pcb;                  //!< Pointer to raw_pcb structure                       
+    void * payload_ptr;                    //!< Pointer to payload 
+    char * data_buf[];                     //!< Data buffers 
 }dw1000_lwip_instance_t;
 
+//! Lwip callback. 
 typedef struct _dw1000_lwip_cb_t{
-    void (*recv)(dw1000_dev_instance_t * inst, uint16_t timeout);
+   void (*recv)(dw1000_dev_instance_t * inst, uint16_t timeout);  //!< Keep tracks of lwip tx/rx status
 }dw1000_lwip_cb_t;
 
+//! Lwip context parameters. 
 typedef struct _dw1000_lwip_context_t{
-   dw1000_lwip_cb_t rx_cb;
+   dw1000_lwip_cb_t rx_cb;    //!< DW1000 lwip receive callback
 }dw1000_lwip_context_t;
 
 /**
- * [dw1000_lwip_config Function to assign the config parameters]
- * @param  inst   [Device/Parent instance]
- * @param  config [Sctructure containing the configuration values]
- * @return        [Device Status]
+ * API to configure lwip.
+ *
+ * @param inst  pointer to dw1000_dev_instance_t
+ * @return dw1000_lwip_config_t
+ *
  */
 dw1000_lwip_config_t *
 dw1000_config(dw1000_dev_instance_t * inst);
@@ -173,7 +189,7 @@ dw1000_low_level_init( dw1000_dev_instance_t * inst,
  * @param rx_status    [Defalut mode status]
  */
 void
-dw1000_netif_config( dw1000_dev_instance_t * inst, struct netif *netif, ip_addr_t *my_ip_addr, bool rx_status);
+dw1000_netif_config(dw1000_dev_instance_t * inst, struct netif *netif, ip_addr_t *my_ip_addr, bool rx_status);
 
 /**
  * [dw1000_netif_init Network interface initialization function]

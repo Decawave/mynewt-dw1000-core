@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,6 +19,15 @@
  * under the License.
  */
 
+/**
+ * @file dw1000_gpio.h
+ * @author paul kettle
+ * @date 2018
+ * @brief General Purpose Input Output
+ *
+ * @details This is the gpio base class which utilises functions to enable/disable all the configurations related to GPIO.
+ */
+
 #ifndef _DW1000_GPIO_H_
 #define _DW1000_GPIO_H_
 
@@ -33,11 +42,11 @@ extern "C" {
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
 
-// Defined constants for "mode" bit field parameter passed to dwt_setleds() function.
+//! Defined constants for "mode" bit field parameter passed to dwt_set_leds() function.
 typedef enum _dw1000_led_modes_t{
-    DWT_LEDS_DISABLE = 1 << 0,   
-    DWT_LEDS_ENABLE = 1 << 1,      
-    DWT_LEDS_INIT_BLINK = 1 << 2 
+    DWT_LEDS_DISABLE = 1 << 0,   //!< Set for disabling LEDS
+    DWT_LEDS_ENABLE = 1 << 1,    //!< Set for enabling LEDS
+    DWT_LEDS_INIT_BLINK = 1 << 2 //!< Set for initiation blink
 }dw1000_led_modes_t;
 
 void dw1000_gpio_config_leds(struct _dw1000_dev_instance_t * inst, dw1000_led_modes_t mode);

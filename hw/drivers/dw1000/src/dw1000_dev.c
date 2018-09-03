@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,6 +19,16 @@
  * under the License.
  */
 
+/**
+ * @file dw1000_dev.c
+ * @author paul kettle  
+ * @date 2018 
+ * @brief Device file
+ *
+ * @details This is the dev base class which utilises the functions to perform initialization and necessary configurations on device.
+ *
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -32,6 +42,17 @@
 
 
 static dw1000_extension_callbacks_t* dw1000_new_extension_callbacks(dw1000_dev_instance_t* inst);
+
+/**
+ * API to perform dw1000_read from given address.
+ *
+ * @param inst          Pointer to dw1000_dev_instance_t. 
+ * @param reg           Member of dw1000_cmd_t structure. 
+ * @param subaddress    Member of dw1000_cmd_t structure. 
+ * @param buffer        Result is stored in buffer.
+ * @param length        Represents buffer length.
+ * @return dw1000_dev_status_t
+ */
 
 dw1000_dev_status_t 
 dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length){
@@ -57,6 +78,17 @@ dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uin
 
     return inst->status;
 }
+
+/**
+ * API to performs dw1000_write into given address.
+ *
+ * @param inst          Pointer to dw1000_dev_instance_t. 
+ * @param reg           Member of dw1000_cmd_t structure. 
+ * @param subaddress    Member of dw1000_cmd_t structure. 
+ * @param buffer        Result is stored in buffer.
+ * @param length        Represents buffer length.
+ * @return dw1000_dev_status_t
+ */
 
 dw1000_dev_status_t 
 dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length)
@@ -84,6 +116,16 @@ dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, ui
     return inst->status;
 }
 
+/**
+ * API to read data from dw1000 register based on given parameters.
+ *
+ * @param inst          Pointer to dw1000_dev_instance_t. 
+ * @param reg           Register from where data is read. 
+ * @param subaddress    Address where data is read. 
+ * @param val           value to be read.
+ * @param nbytes        Length of data.
+ * @return   buffer.value
+ */
 uint64_t 
 dw1000_read_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, size_t nbytes)
 {
@@ -98,6 +140,16 @@ dw1000_read_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress,
     return buffer.value;
 } 
 
+/**
+ * API to write data into dw1000 register based on given parameters.
+ *
+ * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param reg           Register from where data is written into.
+ * @param subaddress    Address where writing of data begins. 
+ * @param val           Value to be written. 
+ * @param nbytes        Length of data.
+ * @return   buffer.value
+ */
 void 
 dw1000_write_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint64_t val, size_t nbytes)
 {
@@ -111,6 +163,12 @@ dw1000_write_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress
     dw1000_write(inst, reg, subaddress, buffer.array, nbytes); 
 } 
 
+/**
+ * API to do softreset on dw1000 by writing data into PMSC_CTRL0_SOFTRESET_OFFSET.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t. 
+ * @return void
+ */
 void 
 dw1000_softreset(dw1000_dev_instance_t * inst)
 {
@@ -131,11 +189,10 @@ dw1000_softreset(dw1000_dev_instance_t * inst)
 }
 
 /**
- * Callback to initialize an dw1000_dev_instance_t structure from the os device
- * initialization callback.  
+ * API to initialize a dw1000_dev_instance_t structure from the os device initialization callback.  
  *
- * @param1 os device ptr
- * @param2 struct dw1000_dev_cfg ptr
+ * @param odev  Pointer to struct os_dev. 
+ * @param arg   Argument to set as pointer to struct dw1000_dev_cfg.
  * @return OS_OK on success
  */
 int 
@@ -163,6 +220,12 @@ dw1000_dev_init(struct os_dev *odev, void *arg)
     return OS_OK;
 }
 
+/**
+ * API to configure dw1000.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @returns OS_OK on success
+ */
 int 
 dw1000_dev_config(dw1000_dev_instance_t * inst)
 {
@@ -205,6 +268,12 @@ retry:
     return OS_OK;
 }
 
+/**
+ * API to free the acquired resources.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @return void
+ */
 void 
 dw1000_dev_free(dw1000_dev_instance_t * inst){
     assert(inst);  
@@ -217,20 +286,15 @@ dw1000_dev_free(dw1000_dev_instance_t * inst){
 }
 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn  dw1000_dev_set_sleep_timer(dw1000_dev_instance_t * inst, uint16_t count)
- *
- * @brief sets the sleep counter to new value, this function programs the high 16-bits of the 28-bit counter
+/**
+ * API to set the sleep counter to new value, this function programs the high 16-bits of the 28-bit counter.
  *
  * NOTE: this function needs to be run before dw1000_dev_configure_sleep, also the SPI freq has to be < 3MHz
  *
- * input parameters
- * @param inst - dw1000_dev_instance_t *
- * @param count - this it value of the sleep counter to program
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param count Value of the sleep counter to program.
  *
- * output parameters
- *
- * no return value
+ * @return void
  */
 void 
 dw1000_dev_set_sleep_timer(dw1000_dev_instance_t * inst, uint16_t count)
@@ -244,16 +308,16 @@ dw1000_dev_set_sleep_timer(dw1000_dev_instance_t * inst, uint16_t count)
     dw1000_phy_sysclk_SEQ(inst); // The system clock will run off the 19.2 MHz XTI clock until the PLL is calibrated and locked
 }
 
-/*! 
- * @fn dw1000_dev_configure_sleep()
+/**
+ *  API to configure the device for both DEEP_SLEEP and SLEEP modes, and on-wake mode
+ *  i.e., before entering the sleep, the device should be programmed for TX or RX, then upon "waking up" the TX/RX settings
+ *  will be preserved and the device can immediately perform the desired action TX/RX.
  *
- *  @brief configures the device for both DEEP_SLEEP and SLEEP modes, and on-wake mode
- *  I.e. before entering the sleep, the device should be programmed for TX or RX, then upon "waking up" the TX/RX settings
- *  will be preserved and the device can immediately perform the desired action TX/RX
+ * NOTE: e.g. Tag operation - after deep sleep, the device needs to just load the TX buffer and send the frame.
  *
- * output parameters
+ * @param inst  Pointer to dw1000_dev_instance_t.
  *
- * no return value
+ * @return void
  */
 void
 dw1000_dev_configure_sleep(dw1000_dev_instance_t * inst)
@@ -288,7 +352,12 @@ dw1000_dev_configure_sleep(dw1000_dev_instance_t * inst)
     dw1000_write_reg(inst, AON_ID, AON_CFG0_OFFSET, reg, sizeof(uint16_t));
 }
 
-
+/**
+ * API to enter device into sleep mode.
+ *
+ * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @return dw1000_dev_status_t
+ */
 dw1000_dev_status_t
 dw1000_dev_enter_sleep(dw1000_dev_instance_t * inst)
 {
@@ -307,7 +376,12 @@ dw1000_dev_enter_sleep(dw1000_dev_instance_t * inst)
     return inst->status;
 }
 
-
+/**
+ * API to wakeup device from sleep to init.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @return dw1000_dev_status_t 
+ */
 dw1000_dev_status_t
 dw1000_dev_wakeup(dw1000_dev_instance_t * inst)
 {
@@ -340,21 +414,16 @@ dw1000_dev_wakeup(dw1000_dev_instance_t * inst)
 }
 
 
-/*! 
- * @fn dw1000_dev_enter_sleep_after_tx(int enable)
- *
- *  @brief sets the auto TX to sleep bit. This means that after a frame
- *  transmission the device will enter deep sleep mode. The dw1000_dev_configure_sleep() function
- *  needs to be called before this to configure the on-wake settings
+/** 
+ * API to set the auto TX to sleep bit. This means that after a frame
+ * transmission the device will enter deep sleep mode. The dev_configure_sleep() function
+ * needs to be called before this to configure the on-wake settings.
  *
  * NOTE: the IRQ line has to be low/inactive (i.e. no pending events)
  *
- * input parameters
- * @param enable - 1 to configure the device to enter deep sleep after TX, 0 - disables the configuration
- *
- * output parameters
- *
- * return dw1000_dev_status_t
+ * @param inst       Pointer to dw1000_dev_instance_t.
+ * @param enable     1 to configure the device to enter deep sleep after TX, 0 to disables the configuration.
+ * @return dw1000_dev_status_t
  */
 dw1000_dev_status_t
 dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, uint8_t enable)
@@ -371,21 +440,15 @@ dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, uint8_t enable)
     return inst->status;
 }
 
-/*! 
- * @fn dw1000_dev_enter_sleep_after_rx(int enable)
+/**
+ *  Sets the auto RX to sleep bit. This means that after a frame
+ *  received the device will enter deep sleep mode. The dev_configure_sleep() function
+ *  needs to be called before this to configure the on-wake settings.
  *
- *  @brief sets the auto RX to sleep bit. This means that after a frame
- *  received the device will enter deep sleep mode. The dw1000_dev_configure_sleep() function
- *  needs to be called before this to configure the on-wake settings
- *
- * NOTE: the IRQ line has to be low/inactive (i.e. no pending events)
- *
- * input parameters
- * @param enable - 1 to configure the device to enter deep sleep after TX, 0 - disables the configuration
- *
- * output parameters
- *
- * return dw1000_dev_status_t
+ * NOTE: the IRQ line has to be low/inactive (i.e. no pending events).
+ * @param inst     Pointer to dw1000_dev_instance_t.
+ * @param enable   1 to configure the device to enter deep sleep after TX, 0 to disables the configuration
+ * @return dw1000_dev_status_t
  */
 dw1000_dev_status_t
 dw1000_dev_enter_sleep_after_rx(dw1000_dev_instance_t * inst, uint8_t enable)
@@ -402,11 +465,24 @@ dw1000_dev_enter_sleep_after_rx(dw1000_dev_instance_t * inst, uint8_t enable)
     return inst->status;
 }
 
-
+/**
+ * API to set sleep callback.
+ *
+ * @param inst             Pointer to dw1000_dev_instance_t.
+ * @param sleep_timer_cb   Callback to set sleep time.
+ *
+ */
 inline void 
 dw1000_dev_set_sleep_callback(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t sleep_timer_cb){
     inst->sleep_timer_cb = sleep_timer_cb;
 }
+/**
+ * API to register extension  callbacks for different services.
+ *
+ * @param inst       Pointer to dw1000_dev_instance_t.
+ * @param callbacks  callback instance.
+ * @return void
+ */
 void
 dw1000_add_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_callbacks_t callbacks){
     assert(inst);
@@ -424,6 +500,12 @@ dw1000_add_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_cal
         SLIST_INSERT_HEAD(&inst->extension_cbs, new_cbs, cbs_next);
 }
 
+/**
+ * API to assign memory for new callbacks.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @return new callbacks
+ */
 static dw1000_extension_callbacks_t*
 dw1000_new_extension_callbacks(dw1000_dev_instance_t* inst){
     assert(inst);
@@ -432,6 +514,13 @@ dw1000_new_extension_callbacks(dw1000_dev_instance_t* inst){
     return new_cbs;
 }
 
+/**
+ * API to remove specified callbacks.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param id    ID of the service.
+ * @return void
+ */
 void
 dw1000_remove_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_id_t id){
     dw1000_extension_callbacks_t* temp;

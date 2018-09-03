@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -17,6 +17,15 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ */
+
+/**
+ * @file dw1000_regulatory.c
+ * @author paul kettle
+ * @date 2018
+ * @brief Regulatory file
+ *
+ * @details This is the regulatory base class which includes header files.
  */
 
 #include <stdio.h>

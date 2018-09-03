@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,6 +19,16 @@
  * under the License.
  */
 
+/**
+ * @file dw1000_hal.h
+ * @author paul kettle
+ * @date 2018
+ * @brief Hardware Abstraction Layer
+ *
+ * @details This is the hal base class which utilises functions to perform the necessary actions at hal. 
+ *
+ */
+
 #ifndef _DW1000_HAL_H_
 #define _DW1000_HAL_H_
 
@@ -32,7 +42,7 @@ extern "C" {
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_phy.h>
 
-struct _dw1000_dev_instance_t * hal_dw1000_inst(uint8_t idx);
+struct _dw1000_dev_instance_t * hal_dw1000_inst(uint8_t idx);     //!< Structure of hal instances.
 void hal_dw1000_reset(struct _dw1000_dev_instance_t * inst);
 void hal_dw1000_read(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
 void hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);

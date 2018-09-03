@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -17,6 +17,15 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ */
+
+/**
+ * @file dw1000_ccp.c
+ * @author paul kettle
+ * @date 2018
+ * @brief clock calibration packets
+ *
+ * @details This is the ccp base class which utilises the functions to enable/disable the configurations related to ccp. 
  */
 
 #include <stdio.h>
@@ -82,17 +91,12 @@ static void ccp_postprocess(struct os_event * ev);
 
 static void ccp_timer_irq(void * arg);
 static void ccp_timer_ev_cb(struct os_event *ev);
-/*! 
- * @fn ccp_timer_init(dw1000_dev_instance_t * inst)
- *
- * @brief  
+
+/**
+ * API to initiate timer for ccp.
  * 
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- *    
- * output parameters
- *
- * returns none
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @return void 
  */
 static void 
 ccp_timer_init(struct _dw1000_dev_instance_t * inst) {
@@ -105,17 +109,11 @@ ccp_timer_init(struct _dw1000_dev_instance_t * inst) {
     os_cputime_timer_relative(&ccp->timer, MYNEWT_VAL(OS_LATENCY));
 }
 
-/*! 
- * @fn ccp_timer_event(void * arg)
+/**
+ * ccp_timer_event is in the interrupr context and schedules and tasks on the event queue
  *
- * @brief ccp_timer_event is in the interrupr context and schedules and tasks on the event queue
- *
- * input parameters
- * @param inst - void * arg 
- *
- * output parameters
- *
- * returns none 
+ * @param arg   Pointer to  dw1000_dev_instance_t.
+ * @return void 
  */
 static void 
 ccp_timer_irq(void * arg){
@@ -128,20 +126,15 @@ ccp_timer_irq(void * arg){
 }
 
 
-/*! 
- * @fn ccp_timer_ev_cb(struct os_event *ev)
- *
- * @brief The OS scheduler is not accurate enough for the timing requirement of an RTLS system.  
+
+/** 
+ * The OS scheduler is not accurate enough for the timing requirement of an RTLS system.  
  * Instead, the OS is used to schedule events in advance of the actual event.  
  * The DW1000 delay start mechanism then takes care of the actual event. This removes the non-deterministic 
  * latencies of the OS implementation.  
  * 
- * input parameters
- * @param inst - struct os_event *
- *    
- * output parameters
- *
- * returns none
+ * @param ev  Pointer to os_events.
+ * @return void
  */
 static void 
 ccp_timer_ev_cb(struct os_event *ev) {
@@ -166,17 +159,11 @@ ccp_task(void *arg)
     }
 }
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn cpp_tasks_init()
- *
- * @brief The default eventq is used. 
+/**
+ * The default eventq is used. 
  * 
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- *    
- * output parameters
- *
- * returns none
+ * @param inst Pointer to dw1000_dev_instance_t * 
+ * @return void
  */
 static void 
 ccp_tasks_init(struct _dw1000_ccp_instance_t * inst)
@@ -196,23 +183,19 @@ ccp_tasks_init(struct _dw1000_ccp_instance_t * inst)
 }
 
 
-/*! 
- * @fn dw1000_ccp_init(dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t clock_master)
- *
- * @brief Precise timing is achieved by adding a fixed period to the transmission time of the previous frame. 
+/**
+ * Precise timing is achieved by adding a fixed period to the transmission time of the previous frame. 
  * This approach solves the non-deterministic latencies caused by the OS. The OS, however, is used to schedule 
  * the next transmission event, but the DW1000 controls the actual next transmission time using the dw1000_set_delay_start.
  * This function allocates all the required resources. In the case of a large scale deployment multiple instances 
  * can be uses to track multiple clock domains. 
  * 
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- * @param nframes - Nominally set to 2 frames for the simple use case. But depending on the interpolation 
+ * @param inst     Pointer to dw1000_dev_instance_t
+ * @param nframes  Nominally set to 2 frames for the simple use case. But depending on the interpolation 
  * algorithm this should be set accordingly. For example, four frames are required or bicubic interpolation. 
- * @param clock_master - UUID address of the system clock_master all other masters are rejected.  
- * output parameters
+ * @param clock_master  UUID address of the system clock_master all other masters are rejected.  
  *
- * returns dw1000_ccp_instance_t * 
+ * @return dw1000_ccp_instance_t * 
  */
 dw1000_ccp_instance_t * 
 dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t clock_master){
@@ -290,15 +273,11 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
     return inst->ccp;
 }
 
-/*! 
- * @fn dw1000_ccp_free(dw1000_ccp_instance_t * inst)
- *
- * @brief Deconstructor
+/** 
+ * Deconstructor
  * 
- * input parameters
- * @param inst - dw1000_cpp_instance_t * 
- *
- * returns none
+ * @param inst   Pointer to dw1000_dev_instance_t.
+ * @return void
  */
 void 
 dw1000_ccp_free(dw1000_ccp_instance_t * inst){
@@ -318,22 +297,26 @@ dw1000_ccp_free(dw1000_ccp_instance_t * inst){
         inst->status.initialized = 0;
 }
 
+/**
+ * API to register extension callbacks in ccp.
+ *
+ * @param inst     Pointer to dw1000_dev_instance_t
+ * @param ccp_cbs  Callbacks of ccp.
+ * @return void
+ */
 void dw1000_ccp_set_ext_callbacks(dw1000_dev_instance_t * inst, dw1000_extension_callbacks_t ccp_cbs){
     ccp_cbs.id = DW1000_CCP;
     dw1000_add_extension_callbacks(inst , ccp_cbs);
 }
 
 
-/*! 
- * @fn dw1000_ccp_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * ccp_postprocess)
- *
- * @brief Overrides the default post-processing behaviors, replacing the JSON stream with an alternative 
+/** 
+ * API that overrides the default post-processing behaviors, replacing the JSON stream with an alternative 
  * or an advanced timescale processing algorithm.
  * 
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- *
- * returns none
+ * @param inst              Pointer to dw1000_dev_instance_t. 
+ * @param ccp_postprocess   Pointer to os_events.
+ * @return void
  */
 void 
 dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, os_event_fn * ccp_postprocess){
@@ -342,17 +325,11 @@ dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, os_event_fn * ccp_postp
 }
 
 #if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED) !=1
-/*! 
- * @fn ccp_postprocess(dw1000_dev_instance_t * inst)
+/** 
+ * API that serves as a place holder for timescale processing and by default is creates json string for the event.
  *
- * @brief This serves as a place holder for timescale processing and by default is creates json string for the event
- *
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- *
- * output parameters
- *
- * returns none 
+ * @param ev   pointer to os_events.
+ * @return void 
  */
 static void 
 ccp_postprocess(struct os_event * ev){
@@ -376,25 +353,17 @@ ccp_postprocess(struct os_event * ev){
 #endif
 
 
-/*! 
- * @fn ccp_rx_complete_cb(dw1000_dev_instance_t * inst)
- *
- * @brief Precise timing is achieved using the reception_timestamp and tracking intervals along with  
- * the correction factor. For timescale processing, a postprocessing 
- * callback is placed in the eventq
- * 
+/** 
+ * Precise timing is achieved using the reception_timestamp and tracking intervals along with  
+ * the correction factor. For timescale processing, a postprocessing  callback is placed in the eventq.
  * This callback with FS_XTALT_AUTOTUNE_ENABLED set, uses the RX_TTCKO_ID register to compensate for crystal offset and drift. This is an
  * adaptive loop with a time constant of minutes. By aligning the crystals within the network RF TX power is optimum. 
  * Note: Precise RTLS timing still relies on timescale algorithm. 
  * 
  * The fs_xtalt adjustments align crystals to 1us (1PPM) while timescale processing resolves timestamps to sub 1ns.
  *
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- *
- * output parameters
- *
- * returns none 
+ * @param inst   Pointer to dw1000_dev_instance_t.  
+ * @return void 
  */
 static bool 
 ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
@@ -453,23 +422,15 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
 
 }
 
-
-
-/*! 
- * @fn ccp_tx_complete_cb(dw1000_dev_instance_t * inst)
- *
- * @brief Precise timing is achieved by adding a fixed period to the transmission time of the previous frame. This static 
+/** 
+ * Precise timing is achieved by adding a fixed period to the transmission time of the previous frame. This static 
  * function is called on successful transmission of a CCP packet, and this advances the frame index point. Circular addressing is used 
  * for the frame addressing. The next os_event is scheduled to occur in (MYNEWT_VAL(CCP_PERIOD) - MYNEWT_VAL(CCP_OS_LATENCY)) usec 
  * from now. This provided a context switch guard zone. The assumption is that the underlying OS will have sufficient time start 
  * the call dw1000_set_delay_start within dw1000_ccp_blink. 
  *
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- *
- * output parameters
- *
- * returns none 
+ * @param inst    Pointer to dw1000_dev_instance_t  
+ * @return bool
  */
 static bool 
 ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
@@ -496,17 +457,11 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
     return true;
 }
 
-/*! 
- * @fn ccp_rx_error_cb(dw1000_dev_instance_t * inst)
+/** 
+ * API for rx_error_cb of ccp.
  *
- * A place holder for rx_error_cb for ccp.
- *
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- *
- * output parameters
- *
- * returns none 
+ * @param inst   pointer to dw1000_dev_instance_t.  
+ * @return void
  */
 static bool
 ccp_rx_error_cb(struct _dw1000_dev_instance_t * inst){
@@ -517,17 +472,11 @@ ccp_rx_error_cb(struct _dw1000_dev_instance_t * inst){
 	return true;
 }
 
-/*! 
- * @fn ccp_tx_error_cb(dw1000_dev_instance_t * inst)
+/** 
+ * API for tx_error_cb of ccp.
  *
- * A place holder for tx_error_cb for ccp.
- *
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- *
- * output parameters
- *
- * returns none 
+ * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @return bool 
  */
 static bool
 ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst){
@@ -538,17 +487,11 @@ ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst){
     return true;
 }
 
-/*! 
- * @fn ccp_rx_timeout_cb(dw1000_dev_instance_t * inst)
+/** 
+ * API for rx_timeout_cb of ccp.
  *
- * A place holder for rx_error_cb for ccp.
- *
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- *
- * output parameters
- *
- * returns none 
+ * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @return void 
  */
 static bool
 ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst){
@@ -559,22 +502,16 @@ ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst){
     return true;
 }
 
-/*! 
- * @fn dw1000_ccp_blink(dw1000_dev_instance_t * inst, dw1000_ccp_modes_t mode)
- *
- * @brief Start clock calibration packets (CCP) blinks  with a pulse repetition period of MYNEWT_VAL(CCP_PERIOD). 
+/**
+ * API that start clock calibration packets (CCP) blinks  with a pulse repetition period of MYNEWT_VAL(CCP_PERIOD). 
  * Precise timing is achieved by adding a fixed period to the transmission time of the previous frame. 
  * This removes the need to explicitly read the systime register and the assiciated non-deterministic latencies. 
  * This function is static function for internl use. It will force a Half Period Delay Warning is called at 
  * out of sequence.   
  *
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- * @param mode - dw1000_ccp_modes_t for CCP_BLOCKING, CCP_NONBLOCKING modes.
- *
- * output parameters
- *
- * returns dw1000_ccp_status_t 
+ * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @param mode   dw1000_ccp_modes_t for CCP_BLOCKING, CCP_NON_BLOCKING modes.
+ * @return dw1000_ccp_status_t 
  */
 static dw1000_ccp_status_t 
 dw1000_ccp_blink(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
@@ -610,18 +547,12 @@ dw1000_ccp_blink(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 }
 
 
-/*! 
- * @fn dw1000_ccp_start(dw1000_dev_instance_t * inst)
- *
- * @brief Start clock calibration packets (CCP) blinks. 
+/** 
+ * API to start clock calibration packets (CCP) blinks. 
  * With a pulse repetition period of MYNEWT_VAL(CCP_PERIOD).   
  *
- * input parameters
- * @param dw1000_dev_instance_t * 
- *
- * output parameters
- *
- * no return value
+ * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @return void
  */
 void 
 dw1000_ccp_start(struct _dw1000_dev_instance_t * inst){
@@ -634,17 +565,11 @@ dw1000_ccp_start(struct _dw1000_dev_instance_t * inst){
     ccp_timer_init(inst);
 }
 
-/*! 
- * @fn dw1000_ccp_stop(dw1000_dev_instance_t * inst)
+/**
+ * API to stop clock calibration packets (CCP) blinks.   
  *
- * @brief Stop clock calibration packets (CCP) blinks.   
- *
- * input parameters
- * @param dw1000_dev_instance_t * 
- *
- * output parameters
- *
- * no return value
+ * @param inst   Pointer to  dw1000_dev_instance_t. 
+ * @return void
  */
 void 
 dw1000_ccp_stop(dw1000_dev_instance_t * inst){

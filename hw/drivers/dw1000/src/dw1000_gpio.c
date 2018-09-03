@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,6 +19,15 @@
  * under the License.
  */
 
+/**
+ * @file dw1000_gpio.c
+ * @author paul kettle
+ * @date 2018
+ * @brief General Purpose Input Output
+ *
+ * @details This is the gpio base class which utilises functions to enable/disable all the configurations related to GPIO.
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -28,22 +37,18 @@
 #include <dw1000/dw1000_gpio.h>
 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_phy_config_leds()
- *
- * @brief This is used to set up Tx/Rx GPIOs which could be used to control LEDs
+/**
+ * API to set up Tx/Rx GPIOs which could be used to control LEDs.
  * Note: not completely IC dependent, also needs board with LEDS fitted on right I/O lines
- *       this function enables GPIOs 2 and 3 which are connected to LED3 and LED4 on EVB1000
+ *       this function enables GPIOs 2 and 3 which are connected to LED3 and LED4 on EVB1000.
  *
- * input parameters
- * @param mode - this is a bit field interpreted as follows:
+ * @param inst  pointer to _dw1000_dev_instance_t.
+ * @param mode  This is a bit field interpreted as follows:
  *          - bit 0: 1 to enable LEDs, 0 to disable them
  *          - bit 1: 1 to make LEDs blink once on init. Only valid if bit 0 is set (enable LEDs)
  *          - bit 2 to 7: reserved
  *
- * output parameters none
- *
- * no return value
+ * @return void
  */
 void dw1000_gpio_config_leds(struct _dw1000_dev_instance_t * inst, dw1000_led_modes_t mode)
 {
@@ -80,20 +85,15 @@ void dw1000_gpio_config_leds(struct _dw1000_dev_instance_t * inst, dw1000_led_mo
     }
 }
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_gpio_direction()
+/**
+ * API to set GPIO direction as an input (1) or output (0).
  *
- * @brief This is used to set GPIO direction as an input (1) or output (0)
+ * @param gpioNum       This is the GPIO to configure - see GxM0... GxM8 in the deca_regs.h file.
+ * @param direction     This sets the GPIO direction - see GxP0... GxP8 in the deca_regs.h file.
  *
- * input parameters
- * @param gpioNum    -   this is the GPIO to configure - see GxM0... GxM8 in the deca_regs.h file
- * @param direction  -   this sets the GPIO direction - see GxP0... GxP8 in the deca_regs.h file
- *
- * output parameters
- *
- * no return value
+ * @return void
  */
-void dw1000_gpio_direction(struct _dw1000_dev_instance_t * inst, uint32_t gpioNum, uint32_t direction)
+void dw1000_gpio_set_direction(struct _dw1000_dev_instance_t * inst, uint32_t gpioNum, uint32_t direction)
 {
     uint8_t buf[GPIO_DIR_LEN];
     uint32_t command = direction | gpioNum;
@@ -105,20 +105,15 @@ void dw1000_gpio_direction(struct _dw1000_dev_instance_t * inst, uint32_t gpioNu
     dw1000_write(inst, GPIO_CTRL_ID, GPIO_DIR_OFFSET, buf, GPIO_DIR_LEN);
 }
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_gpio_set()
+/**
+ * API to set GPIO value as (1) or (0) only applies if the GPIO is configured as output.
  *
- * @brief This is used to set GPIO value as (1) or (0) only applies if the GPIO is configured as output
+ * @param gpioNum    This is the GPIO to configure - see GxM0... GxM8 in the deca_regs.h file.
+ * @param value      This sets the GPIO value - see GDP0... GDP8 in the deca_regs.h file.
  *
- * input parameters
- * @param gpioNum    -   this is the GPIO to configure - see GxM0... GxM8 in the deca_regs.h file
- * @param value  -   this sets the GPIO value - see GDP0... GDP8 in the deca_regs.h file
- *
- * output parameters
- *
- * no return value
+ * @return void
  */
-void dw1000_gpio_set(struct _dw1000_dev_instance_t * inst, uint32_t gpioNum, uint32_t value)
+void dw1000_gpio_set_value(struct _dw1000_dev_instance_t * inst, uint32_t gpioNum, uint32_t value)
 {
     uint8_t buf[GPIO_DOUT_LEN];
     uint32_t command = value | gpioNum;

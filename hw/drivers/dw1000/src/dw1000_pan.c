@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -17,6 +17,15 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ */
+
+/**
+ * @file dw1000_pan.c
+ * @autjor paul kettle
+ * @date 2018
+ * @brief Personal Area Network
+ *
+ * @details This is the pan base class which utilises the functions to allocate/deallocate the resources on pan_master,sets callbacks, enables  * blink_requests. 
  */
 
 #include <stdio.h>
@@ -38,6 +47,7 @@
 #if MYNEWT_VAL(DW1000_PAN)
 #include <dw1000/dw1000_pan.h>
 
+//! Buffers for pan frames
 static pan_frame_t frames[] = {
     [0] = {
         .fctrl = FCNTL_IEEE_BLINK_TAG_64,    // frame control (FCNTL_IEEE_BLINK_64 to indicate a data frame using 16-bit addressing).
@@ -56,6 +66,12 @@ static bool pan_tx_error_cb(dw1000_dev_instance_t * inst);
 static dw1000_pan_status_t dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 static void pan_postprocess(struct os_event * ev);
 
+/**
+ * API periodically sends pan blink request.
+ *
+ * @param ev  Pointer to os_events.
+ * @return void
+ */
 static void 
 pan_timer_ev_cb(struct os_event *ev) {
     assert(ev != NULL);
@@ -68,6 +84,13 @@ pan_timer_ev_cb(struct os_event *ev) {
         os_callout_reset(&pan->pan_callout_timer, OS_TICKS_PER_SEC * (pan->period - MYNEWT_VAL(OS_LATENCY)) * 1e-6);   
 }
 
+/**
+ * API to initialise the timer based callout (pan_callout_timer).
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @return void
+ */
+
 static void 
 pan_timer_init(dw1000_dev_instance_t * inst) {
     dw1000_pan_instance_t * pan = inst->pan; 
@@ -76,18 +99,13 @@ pan_timer_init(dw1000_dev_instance_t * inst) {
     pan->status.timer_enabled = true;
 }
 
-/*! 
- * @fn dw1000_pan_init(dw1000_pan_instance_t * inst)
+/** 
+ * API to initialise pan parameters.
  *
- * @brief Allocate resources on pan_master and TAG/ANCHOR for pan discovery behaviour. TAG/ANCHOR and anchor size resources
- * can be freeded on TAG/ANCHOR on once assigment have are valid. .   
+ * @param inst     Pointer to dw1000_dev_instance_t.
+ * @param config   Pointer to dw1000_pan_config_t. 
  *
- * input parameters
- * @param inst - struct os_event * ev
- *
- * output parameters
- *
- * returns none
+ * @return dw1000_pan_instance_t
  */
 dw1000_pan_instance_t * 
 dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config){
@@ -134,17 +152,12 @@ dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config){
     return inst->pan;
 }
 
-/*! 
- * @fn dw1000_pan_free(dw1000_dev_instance_t * inst)
+/** 
+ * API to free pan resources. 
  *
- * @brief Free resources and restore default behaviour. 
+ * @param inst  Pointer to dw1000_dev_instance_t.
  *
- * input parameters
- * @param inst - dw1000_pan_instance_t * inst
- *
- * output parameters
- *
- * returns none
+ * @return void
  */
 void 
 dw1000_pan_free(dw1000_dev_instance_t * inst){
@@ -157,37 +170,26 @@ dw1000_pan_free(dw1000_dev_instance_t * inst){
 }
 
 
-/*! 
- * @fn dw1000_pan_set_callbacks(dw1000_dev_instance_t * inst, os_event_fn * pan_postprocess)
+/** 
+ * API to set pan extension callbacks .
  *
- * @brief Replaces default behavor. Not common.
+ * @param inst      Pointer to dw1000_dev_instance_t.
+ * @param pan_cbs   Pointer to dw1000_extension_callbacks_t.
  *
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- * @param inst - dw1000_dev_cb_t  pan_rx_complete_cb
- * @param inst - dw1000_dev_cb_t  pan_tx_complete_cb
- *
- * output parameters
- *
- * returns none
+ * @return void
  */
 void dw1000_pan_set_ext_callbacks(dw1000_dev_instance_t * inst, dw1000_extension_callbacks_t pan_cbs){
     pan_cbs.id = DW1000_PAN;
     dw1000_add_extension_callbacks(inst , pan_cbs);
 }
 
-/*! 
- * @fn dw1000_pan_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * pan_postprocess)
+/** 
+ * API to set pan_postprocess.
  *
- * @brief Replace default behavor. Required on pan_master.
+ * @param inst              Pointer to dw1000_dev_instance_t.
+ * @param pan_postprocess   Pointer to os_event_fn.
  *
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- * @param inst - struct os_event * pan_postprocess
- *
- * output parameters
- *
- * returns none
+ * @return void
  */
 void 
 dw1000_pan_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * pan_postprocess){
@@ -196,19 +198,13 @@ dw1000_pan_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * pan_postp
     pan->control.postprocess = true;
 }
 
-/*! 
- * @fn pan_postprocess(struct os_event * ev)
+/** 
+ * This a template which should be replaced by the pan_master by a event that tracks UUIDs 
+ * and allocated PANIDs and SLOTIDs.  
  *
- * @brief This a template which should be replaced by the pan_master by a event that tracks UUIDs 
- * and allocated PANIDs and SLOTIDs. See dw1000_pan_set_postprocess to replace current behavor. On the TAG/ANCHOR size this 
- * template generate a json log of the event.
+ * @param ev  Pointer to os_events.
  *
- * input parameters
- * @param inst - struct os_event * ev
- *
- * output parameters
- *
- * returns none
+ * @return void
  */
 static void 
 pan_postprocess(struct os_event * ev){
@@ -242,20 +238,15 @@ pan_postprocess(struct os_event * ev){
         );
 }
 
-/*! 
- * @fn pan_rx_complete_cb(dw1000_dev_instance_t * inst)
- *
- * @brief This is an internal static function that executes on both the pan_master Node and the TAG/ANCHOR 
+/** 
+ * This is an internal static function that executes on both the pan_master Node and the TAG/ANCHOR 
  * that initiated the blink. On the pan_master the postprecess function should allocate a PANID and a SLOTID, 
  * while on the TAG/ANCHOR the returned allocations are assigned and the PAN discover event is stopped. The pan 
  * discovery resources can be released. 
  *
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
+ * @param inst    Pointer to dw1000_dev_instance_t.
  *
- * output parameters
- *
- * returns none
+ * @return bool
  */
 static bool
 pan_rx_complete_cb(dw1000_dev_instance_t * inst){
@@ -296,17 +287,12 @@ pan_rx_complete_cb(dw1000_dev_instance_t * inst){
     return true;
 }
 
-/*! 
- * @fn pan_tx_complete_cb(dw1000_dev_instance_t * inst)
+/** 
+ * API for transmit complete callback.
  *
- * @brief This is an internal static function that executes on the TAG/ANCHOR.
+ * @param inst  Pointer to dw1000_dev_instance_t.
  *
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- *
- * output parameters
- *
- * returns none
+ * @return bool
  */
 static bool 
 pan_tx_complete_cb(dw1000_dev_instance_t * inst){
@@ -322,18 +308,12 @@ pan_tx_complete_cb(dw1000_dev_instance_t * inst){
     return true;
 }
 
-/*!
- * @fn pan_rx_error_cb(dw1000_dev_instance_t * inst)
+/**
+ * API for receive complete callback.
  *
- * @brief This is an internal static function that executes on the TAG/ANCHOR.
+ * @param inst   Pointer to dw1000_dev_instance_t.
  *
- * input parameters
- * @param inst - dw1000_dev_instance_t *
- *
- * output parameters
- *
- *
- * returns none
+ * @return bool
  */
 static bool
 pan_rx_error_cb(dw1000_dev_instance_t * inst){
@@ -345,18 +325,12 @@ pan_rx_error_cb(dw1000_dev_instance_t * inst){
     return true;
 }
 
-/*!
- * @fn pan_tx_error_cb(dw1000_dev_instance_t * inst)
+/**
+ * API for transmit error callback.
  *
- * @brief This is an internal static function that executes on the TAG/ANCHOR.
- *
- * input parameters
- * @param inst - dw1000_dev_instance_t *
- *
- * output parameters
- *
- *
- * returns none
+ * @param inst   Pointer to dw1000_dev_instance_t.
+ * 
+ * @return bool
  */
 
 static bool
@@ -367,17 +341,12 @@ pan_tx_error_cb(dw1000_dev_instance_t * inst){
     }
     return true;
 }
-/*! 
- * @fn pan_rx_timeout_cb(dw1000_dev_instance_t * inst)
+/** 
+ * API for receive timeout callback.
  *
- * @brief This is an internal static function that executes on the TAG/ANCHOR.
+ * @param inst    Pointer to dw1000_dev_instance_t.
  *
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- *
- * output parameters
- *
- * returns none
+ * @return bool
  */
 static bool 
 pan_rx_timeout_cb(dw1000_dev_instance_t * inst){
@@ -390,19 +359,14 @@ pan_rx_timeout_cb(dw1000_dev_instance_t * inst){
     return true;
 }
 
-/*! 
- * @fn dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
- *
- * @brief A Personal Area Network blink request is a discovery phase in which a TAG/ANCHOR seeks to discover 
+/** 
+ * A Personal Area Network blink request is a discovery phase in which a TAG/ANCHOR seeks to discover 
  * an available PAN Master. The outcome of this process is a PANID and SLOTID assignment.   
  *
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- * @param mode - dw1000_devmodes_t for DWT_BLOCKING, DWT_NONBLOCKING.
+ * @param inst     Pointer to dw1000_dev_instance_t. 
+ * @param mode     BLOCKING and NONBLOCKING modes.
  *
- * output parameters
- *
- * returns dw1000_pan_status_t 
+ * @return dw1000_pan_status_t 
  */
 static dw1000_pan_status_t 
 dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
@@ -445,20 +409,15 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 }
 
 
-/*! 
- * @fn dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
- *
- * @brief A Personal Area Network blink is a discovery phase in which a TAG/ANCHOR seeks to discover 
+/** 
+ * A Personal Area Network blink is a discovery phase in which a TAG/ANCHOR seeks to discover 
  * an available PAN Master. This function scheduled this discovery timer event. The pan_master does not 
  * need to call this function.     
  *
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- * @param mode - dw1000_devmodes_t for DWT_BLOCKING, DWT_NONBLOCKING.
+ * @param inst    Pointer to dw1000_dev_instance_t.
+ * @param mode    BLOCKING and NONBLOCKING modes.
  *
- * output parameters
- *
- * returns none
+ * @return void
  */
 void 
 dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
@@ -489,14 +448,9 @@ dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 /*! 
  * @fn dw1000_pan_stop(dw1000_dev_instance_t * inst)
  *
- * @brief Called once the discovery processs is complete see pan_rx_complete_cb or to abort the discovery event.   
+ * @param inst    Pointer to dw1000_dev_instance_t. 
  *
- * input parameters
- * @param inst - dw1000_dev_instance_t * 
- *
- * output parameters
- *
- * returns none
+ * @return void
  */
 void 
 dw1000_pan_stop(dw1000_dev_instance_t * inst){

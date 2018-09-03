@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,6 +19,14 @@
  * under the License.
  */
 
+/**
+ * @file dw1000_tdma.h
+ * @author paul kettle
+ * @date 2018
+ * @brief TDMA  
+ *
+ * @details  This is the base class of tdma which initialises tdma instance, assigns slots for each node and does ranging continuously based on * addresses.
+ */
 #ifndef _DW1000_TDMA_H_
 #define _DW1000_TDMA_H_
 
@@ -36,35 +44,38 @@ extern "C" {
 #if MYNEWT_VAL(TDMA_ENABLED)
 #define TDMA_TASKS_ENABLE
 
+//! Structure of TDMA
 typedef struct _tdma_status_t{
-    uint16_t selfmalloc:1;
-    uint16_t initialized:1;
-    uint16_t awaiting_superframe:1;
+    uint16_t selfmalloc:1;            //!< Internal flag for memory garbage collection
+    uint16_t initialized:1;           //!< Instance allocated 
+    uint16_t awaiting_superframe:1;   //!< Superframe of tdma
 }tdma_status_t;
 
+//! Structure of tdma_slot
 typedef struct _tdma_slot_t{
-    struct _tdma_instance_t * parent;
-    struct hal_timer timer;
-    struct os_callout event_cb;
-    uint16_t idx;
-    void * arg;
+    struct _tdma_instance_t * parent;  //!< Pointer to _tdma_instance_ti
+    struct hal_timer timer;            //!< Timer
+    struct os_callout event_cb;        //!< Sturcture of event_cb
+    uint16_t idx;                      //!< Slot number
+    void * arg;                      //!< Optional argument
 }tdma_slot_t; 
 
+//! Structure of tdma instance
 typedef struct _tdma_instance_t{
-    struct _dw1000_dev_instance_t * parent;
-    tdma_status_t status;
-    struct os_mutex mutex;
-    uint16_t idx;
-    uint16_t nslots;
-    uint32_t period;
+    struct _dw1000_dev_instance_t * parent;  //!< Pointer to _dw1000_dev_instance_t
+    tdma_status_t status;                    //!< Status of tdma 
+    struct os_mutex mutex;                   //!< Structure of os_mutex  
+    uint16_t idx;                            //!< Slot number
+    uint16_t nslots;                         //!< NUmber of slots 
+    uint32_t period;                         //!< Period of each tdma
 #ifdef TDMA_TASKS_ENABLE
-    struct os_eventq eventq;
-    struct os_task task_str;
-    uint8_t task_prio;
-    os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]
+    struct os_eventq eventq;                 //!< Structure of os events
+    struct os_task task_str;                 //!< Structure of os tasks
+    uint8_t task_prio;                       //!< Priority of tasks
+    os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]   //!< Stack size of each task
         __attribute__((aligned(OS_STACK_ALIGNMENT)));
 #endif
-    struct _tdma_slot_t * slot[];
+    struct _tdma_slot_t * slot[];           //!< Dynamically allocated slot
 }tdma_instance_t; 
 
 struct _tdma_instance_t * tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots);
