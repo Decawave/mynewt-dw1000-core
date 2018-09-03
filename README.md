@@ -82,6 +82,6 @@ A single DW1000 UWB transceiver can be used to form a 6LowPAN mesh network while
 
 ## Building
 
-See the companion repo https://github.com/devawave/mynewt-dw1000-apps for building instructions. Recall that the above driver will be cloned as a dependent repo and will be built from within that parent project. 
+See the companion repo https://github.com/decawave/mynewt-dw1000-apps for building instructions. Recall that the above driver will be cloned as a dependent repo and will be built from within that parent project. 
 
 
