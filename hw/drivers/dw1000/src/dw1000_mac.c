@@ -1,4 +1,4 @@
-/**
+ /*
  * Copyright 2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -17,6 +17,16 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ */
+
+/**
+ * @file dw1000_mac.c
+ * @author Paul Kettle
+ * @date 2018
+ * @brief Mac initialization  
+ *
+ * @details This is the mac base class which utilizes the functions to do the configurations related to mac layer based on dependencies.
+ *
  */
 
 #include <stdio.h>
@@ -46,18 +56,17 @@ static void dw1000_irq(void *arg);
 #define DIAGMSG(s,u)
 #endif
 
-#define NUM_BR 3
-#define NUM_PRF 2
-#define NUM_PACS 4
-#define NUM_BW 2            //2 bandwidths are supported
-#define NUM_SFD 2 
+#define NUM_BR 3            //!< Bit Rate
+#define NUM_PRF 2           //!< Pulse repitition frequency
+#define NUM_PACS 4          //!< Preamble Acquisition Chunk
+#define NUM_BW 2            //!< Bandwidths
+#define NUM_SFD 2           //!< Start of frame delimiter
 
-//-----------------------------------------
-// map the channel number to the index in the configuration arrays below
-// 0th element is chan 1, 1st is chan 2, 2nd is chan 3, 3rd is chan 4, 4th is chan 5, 5th is chan 7
+//! map the channel number to the index in the configuration arrays below.
+//! 0th element is chan 1, 1st is chan 2, 2nd is chan 3, 3rd is chan 4, 4th is chan 5, 5th is chan 7.
 const uint8_t chan_idx[] = {0, 0, 1, 2, 3, 4, 0, 5};
 
-//-----------------------------------------
+//! Transmit config parameters
 const uint32_t tx_config[] =
 {
     RF_TXCTRL_CH1,
@@ -68,7 +77,7 @@ const uint32_t tx_config[] =
     RF_TXCTRL_CH7,
 };
 
-//Frequency Synthesiser - PLL configuration
+//! Frequency Synthesiser - PLL configuration
 const uint32_t fs_pll_cfg[] =
 {
     FS_PLLCFG_CH1,
@@ -79,7 +88,7 @@ const uint32_t fs_pll_cfg[] =
     FS_PLLCFG_CH7
 };
 
-//Frequency Synthesiser - PLL tuning
+//! Frequency Synthesiser - PLL tuning
 const uint8_t fs_pll_tune[] =
 {
     FS_PLLTUNE_CH1,
@@ -90,7 +99,7 @@ const uint8_t fs_pll_tune[] =
     FS_PLLTUNE_CH7
 };
 
-//bandwidth configuration
+//! Bandwidth configuration
 const uint8_t rx_config[] =
 {
     RF_RXCTRLH_NBW,
@@ -106,10 +115,10 @@ typedef struct {
 const agc_cfg_struct agc_config =
 {
     AGC_TUNE2_VAL,
-    { AGC_TUNE1_16M , AGC_TUNE1_64M }  //adc target
+    { AGC_TUNE1_16M , AGC_TUNE1_64M }  //!< adc target
 };
 
-//DW non-standard SFD length for 110k, 850k and 6.81M
+//! DW non-standard SFD length for 110k, 850k and 6.81M
 const uint8_t dwnsSFDlen[] =
 {
     DW_NS_SFD_LEN_110K,
@@ -117,7 +126,7 @@ const uint8_t dwnsSFDlen[] =
     DW_NS_SFD_LEN_6M8
 };
 
-// SFD Threshold
+//! SFD Threshold
 const uint16_t sftsh[NUM_BR][NUM_SFD] =
 {
     {
@@ -194,6 +203,13 @@ const double txpwr_compensation[] = {
     0.0
 };
 
+/**
+ * API to initialize the mac layer.  
+ * @param inst     Pointer to _dw1000_dev_instance_t.
+ * @param config   Pointer to dw1000_dev_config_t.
+ * @return dw1000_dev_status_t 
+ *
+ */
 struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst, dw1000_dev_config_t * config)
 {
 
@@ -325,25 +341,19 @@ struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst
     return inst->status;
 } 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_write_tx()
- *
- * @brief This API function writes the supplied TX data into the DW1000's
- * TX buffer.  The input parameters are the data length in bytes and a pointer
+/**
+ * API to write the supplied TX data into the DW1000's
+ * TX buffer.The input parameters are the data length in bytes and a pointer
  * to those data bytes.
  *
- * input parameters
- * @param txFrameLength  - This is the total frame length, including the two byte CRC.
- *                         Note: this is the length of TX message (including the 2 byte CRC) - max is 1023
- *                         standard PHR mode allows up to 127 bytes
- *                         if > 127 is programmed, DWT_PHRMODE_EXT needs to be set in the phrMode configuration
- *                         see dwt_configure function
- * @param txFrameBytes   - Pointer to the user�s buffer containing the data to send.
- * @param txBufferOffset - This specifies an offset in the DW1000�s TX Buffer at which to start writing data.
+ * @param inst              Pointer to _dw1000_dev_instance_t.
+ * @param txFrameLength     This is the total frame length, including the two byte CRC.
+ * Note: This is the length of TX message (including the 2 byte CRC) - max is 1023 standard PHR mode allows up to 127 bytes
+ * if > 127 is programmed, DWT_PHRMODE_EXT needs to be set in the phrMode configuration.
  *
- * output parameters
- *
- * returns DWT_SUCCESS for success, or DWT_ERROR for error
+ * @param txFrameBytes      Pointer to the user buffer containing the data to send.
+ * @param txBufferOffset    This specifies an offset in the DW1000s TX Buffer where writing of data starts.
+ * @return dw1000_dev_status_t
  */
 
 struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst,  uint8_t * txFrameBytes, uint16_t txBufferOffset, uint16_t txFrameLength)
@@ -370,21 +380,17 @@ struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst
     return inst->status;
 }
 
-/* @fn dw1000_write_tx_fctrl()
+/**
+ * API to configure the TX frame control register before the transmission of a frame.
  *
- * @brief This API function configures the TX frame control register before the transmission of a frame
+ * @param inst              pointer to _dw1000_dev_instance_t.
+ * @param txFrameLength     This is the length of TX message (excluding the 2 byte CRC) - max is 1023
+ * NOTE: standard PHR mode allows up to 127 bytes.
+ * if > 127 is programmed, DWT_PHRMODE_EXT needs to be set in the phrMode configuration.          
  *
- * input parameters:
- * @param txFrameLength - this is the length of TX message (excluding the 2 byte CRC) - max is 1023
- *                              NOTE: standard PHR mode allows up to 127 bytes
- *                              if > 127 is programmed, DWT_PHRMODE_EXT needs to be set in the phrMode configuration
- *                              see dwt_configure function
- * @param txBufferOffset - the offset in the tx buffer to start writing the data
- * @param ranging - 1 if this is a ranging frame, else 0
- *
- * output parameters
- *
- * no return value
+ * @param txBufferOffset    The offset in the tx buffer to start writing the data.
+ * @param ranging           1 if this is a ranging frame, else 0.
+ * @return void
  */
 inline void dw1000_write_tx_fctrl(struct _dw1000_dev_instance_t * inst, uint16_t txFrameLength, uint16_t txBufferOffset, bool ranging)
 {
@@ -403,11 +409,11 @@ inline void dw1000_write_tx_fctrl(struct _dw1000_dev_instance_t * inst, uint16_t
     assert(err == OS_OK);  
 } 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_start_tx()
+/**
+ * API to start transmission.
  *
- * @brief This call initiates the transmission, input parameter indicates which TX mode is used see below
- *
+ * @param inst  pointer to _dw1000_dev_instance_t.
+ * @return dw1000_dev_status_t
  */
 struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst)
 {
@@ -467,16 +473,13 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
 } 
 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_set_delayed_start()
- *
+/**
+ * API to specify a time in future to either turn on the receiver to be ready to receive a frame, 
+ * or to turn on the transmitter and send a frame. The low-order 9-bits of this register are ignored. The delay is in UWB microseconds.  
  * 
- * input parameters
- * @param delay -  The Delayed Send or Receive Time, is used to specify a time in the future to either turn on the 
- * receiver to be ready to receive a frame, or to turn on the transmitter and send a frame. The low-order 9-bits of 
- * this register are ignored. The delay is in UWB microseconds. 
- * 
- * output parameters
+ * @param inst     Pointer to _dw1000_dev_instance_t.
+ * @param delay    Delayed Send or receive Time. 
+ * @return dw1000_dev_status_t
  */
 inline struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t dx_time)
 {
@@ -494,12 +497,11 @@ inline struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_ins
 }
 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_start_rx()
+/**
+ * API to keep the transceiver in reception mode to keep on receiving the data.
  *
- * @brief 
- *
- * input parameters
+ * @param inst  pointer to _dw1000_dev_instance_t.
+ * @return dw1000_dev_status_t
  * 
  */
 
@@ -554,15 +556,13 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
 } 
 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_restart_rx()
+/**
+ * API to restore the transceiver to the state prior to the recent interrupt.
+ * restart_rx  differs from start_rx in so far as errors are not cleared. 
  *
- * @brief This function attempts to restore the transceiver to the state prior 
- * to the recent interrupt. Restart_rx  differs from start_rx insofar as errors 
- * are not cleared. 
- *
- * input parameters
- * 
+ * @param inst     Pointer to _dw1000_dev_instance_t.
+ * @param control  System control register.
+ * @return dw1000_dev_status_t
  */
 struct _dw1000_dev_status_t dw1000_restart_rx(struct _dw1000_dev_instance_t * inst, dw1000_dev_control_t control)
 {
@@ -597,27 +597,23 @@ struct _dw1000_dev_status_t dw1000_restart_rx(struct _dw1000_dev_instance_t * in
     return inst->status;
 } 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_set_wait4resp()
- *
- * @brief enable wait4for feature
+/**
+ * API to enable wait for response feature.
  * 
- * output parameters
- *
+ * @param inst     Pointer to _dw1000_dev_instance_t.
+ * @param enable   Enables/disables the wait for response feature.
+ * @return dw1000_dev_status_t
  */
 inline struct _dw1000_dev_status_t dw1000_set_wait4resp(struct _dw1000_dev_instance_t * inst, bool enable)
 {
     inst->control.wait4resp_enabled = enable;
     return inst->status;
 }
-
-
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_on_error_continue()
- *
- * @brief enable wait4for feature
+/**
+ * API to enable wait for feature.
  * 
- * output parameters
+ * @param inst    Pointer to _dw1000_dev_instance_t.
+ * @param enable  Enables wait for feature.
  *
  */
 inline struct _dw1000_dev_status_t dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable)
@@ -626,18 +622,16 @@ inline struct _dw1000_dev_status_t dw1000_set_on_error_continue(struct _dw1000_d
     return inst->status;
 }
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_set_rx_timeout()
- *
- * @brief The Receive Frame Wait Timeout period is a 16-bit field. The units for this parameter are roughly 1μs, 
- * (the exact unit is 512counts of the fundamental 499.2 MHz UWB clock, or 1.026 μs). When employing the frame wait timeout, 
+/**
+ * The Receive Frame Wait Timeout period is a 16-bit field. The units for this parameter are roughly 1μs, 
+ * (the exact unit is 512 counts of the fundamental 499.2 MHz UWB clock, or 1.026 μs). When employing the frame wait timeout, 
  * RXFWTO should be set to a value greater than the expected RX frame duration and include an allowance for any uncertainly 
  * attaching to the expected transmission start time of the awaited frame. 
  *
- * input parameters
- * @param timeout - how long the receiver remains on from the RX enable command The time parameter used here is in 1.0256 
- *                  us (512/499.2MHz) units If set to 0 the timeout is disabled.
- *
+ * @param inst      pointer to _dw1000_dev_instance_t.
+ * @param timeout   Indicates how long the receiver remains on from the RX enable command.The time parameter used here is in 1.0256 
+ * us (512/499.2MHz) units If set to 0 the timeout is disabled.
+ * @return dw1000_dev_status_t
  */
 
 struct _dw1000_dev_status_t dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
@@ -671,17 +665,11 @@ struct _dw1000_dev_status_t dw1000_set_rx_timeout(struct _dw1000_dev_instance_t 
     return inst->status;
 } 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_sync_rxbufptrs()
+/**
+ * API to synchronize rx buffer pointers to make sure that the host/IC buffer pointers are aligned before starting RX.
  *
- * @brief this function synchronizes rx buffer pointers
- * need to make sure that the host/IC buffer pointers are aligned before starting RX
- *
- * input parameters:
- *
- * output parameters
- *
- * no return value
+ * @param inst  pointer to _dw1000_dev_instance_t.
+ * @return dw1000_dev_status_t
  */
 struct _dw1000_dev_status_t dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t * inst)
 {
@@ -698,20 +686,17 @@ struct _dw1000_dev_status_t dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t 
     return inst->status;
 }
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_read_accdata()
- *
- * @brief This is used to read the data from the Accumulator buffer, from an offset location give by offset parameter
+/**
+ * API to read the data from the Accumulator buffer, from an offset location give by offset parameter.
  *
  * NOTE: Because of an internal memory access delay when reading the accumulator the first octet output is a dummy octet
  *       that should be discarded. This is true no matter what sub-index the read begins at.
  *
- * input parameters
- * @param buffer - the buffer into which the data will be read
- * @param length - the length of data to read (in bytes)
- * @param accOffset - the offset in the acc buffer from which to read the data
- *
- * output parameters
+ * @param inst       Pointer to _dw1000_dev_instance_t.
+ * @param buffer     The buffer into which the data will be read.
+ * @param length     The length of data to read (in bytes).
+ * @param accOffset  The offset in the acc buffer from which to read the data.
+ * @return dw1000_dev_status_t
  *
  */
 struct _dw1000_dev_status_t dw1000_read_accdata(struct _dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t accOffset, uint16_t len)
@@ -730,14 +715,12 @@ struct _dw1000_dev_status_t dw1000_read_accdata(struct _dw1000_dev_instance_t * 
 }
 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_mac_framefilter()
+/**
+ * API to enable the frame filtering - (the default option is to
+ * accept any data and ACK frames with correct destination address.
  *
- * @brief This is used to enable the frame filtering - (the default option is to
- * accept any data and ACK frames with correct destination address
- *
- * input parameters
- * @param - bitmask - enables/disables the frame filtering options according to
+ * @param inst     Pointer to structure _dw1000_dev_instance_t.
+ * @param bitmask  Enables/disables the frame filtering options according to
  *      DWT_FF_NOTYPE_EN        0x000   no frame types allowed
  *      DWT_FF_COORD_EN         0x002   behave as coordinator (can receive frames with no destination address (PAN ID has to match))
  *      DWT_FF_BEACON_EN        0x004   beacon frames allowed
@@ -745,8 +728,7 @@ struct _dw1000_dev_status_t dw1000_read_accdata(struct _dw1000_dev_instance_t * 
  *      DWT_FF_ACK_EN           0x010   ack frames allowed
  *      DWT_FF_MAC_EN           0x020   mac control frames allowed
  *      DWT_FF_RSVD_EN          0x040   reserved frame types allowed
- *
- * output parameters
+ * @return dw1000_dev_status_t
  *
  */
 
@@ -773,17 +755,14 @@ struct _dw1000_dev_status_t dw1000_mac_framefilter(struct _dw1000_dev_instance_t
 
 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn  dw1000_set_autoack()
- *
- * @brief This call enables the auto-ACK feature. If the delay (parameter) is 0, the ACK will be sent as-soon-as-possable
+/**
+ * API to enable the auto-ACK feature. If the delay (parameter) is 0, the ACK will be sent as-soon-as-possable
  * otherwise it will be sent with a programmed delay (in symbols), max is 255.
- * NOTE: needs to have frame filtering enabled as well
+ * NOTE: needs to have frame filtering enabled as well.
  *
- * input parameters
- * @param responseDelayTime - if non-zero the ACK is sent after this delay, max is 255.
- *
- * output parameters
+ * @param inst    Pointer to _dw1000_dev_instance_t.
+ * @param enable  If non-zero the ACK is sent after this delay, max is 255.
+ * @return dw1000_dev_status_t
  *
  */
 struct _dw1000_dev_status_t dw1000_set_autoack(struct _dw1000_dev_instance_t * inst, bool enable)
@@ -814,17 +793,14 @@ struct _dw1000_dev_status_t dw1000_set_autoack(struct _dw1000_dev_instance_t * i
 }
 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn  dw1000_set_autoack_delay()
- *
- * @brief This call enables the auto-ACK feature. If the delay (parameter) is 0, the ACK will be sent as-soon-as-possable
+/**
+ * API to enable the auto-ACK feature. If the delay (parameter) is 0, the ACK will be sent as-soon-as-possable
  * otherwise it will be sent with a programmed delay (in symbols), max is 255.
- * NOTE: needs to have frame filtering enabled as well
+ * NOTE: needs to have frame filtering enabled as well.
  *
- * input parameters
- * @param responseDelayTime - if non-zero the ACK is sent after this delay, max is 255.
- *
- * output parameters
+ * @param inst   Pointer to _dw1000_dev_instance_t.
+ * @param delay  If non-zero the ACK is sent after this delay, max is 255.
+ * @return dw1000_dev_status_t
  *
  */
 struct _dw1000_dev_status_t dw1000_set_autoack_delay(struct _dw1000_dev_instance_t * inst, uint8_t delay)
@@ -847,19 +823,17 @@ struct _dw1000_dev_status_t dw1000_set_autoack_delay(struct _dw1000_dev_instance
 }
 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_set_wait4resp_delay()  
- *
- * @brief Wait-for-Response turn-around Time. This 20-bit field is used to configure the turn-around time between TX complete 
+/**
+ * Wait-for-Response turn-around Time. This 20-bit field is used to configure the turn-around time between TX complete 
  * and RX enable when the wait for response function is being used. This function is enabled by the WAIT4RESP control in 
  * Register file: 0x0D – System Control Register. The time specified by this W4R_TIM parameter is in units of approximately 1 μs, 
  * or 128 system clock cycles. This configuration may be used to save power by delaying the turn-on of the receiver, 
  * to align with the response time of the remote system, rather than turning on the receiver immediately after transmission completes.
  * 
- * input parameters
- * @param delay - (20 bits) - the delay is in UWB microseconds
+ * @param inst   Pointer to _dw1000_dev_instance_t.
+ * @param delay  The delay is in UWB microseconds.
  *
- * output parameters
+ * @return dw1000_dev_status_t
  *
  */
 struct _dw1000_dev_status_t dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay)
@@ -885,15 +859,13 @@ struct _dw1000_dev_status_t dw1000_set_wait4resp_delay(struct _dw1000_dev_instan
 }
 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_set_dblrxbuff()
+/**
+ * API to enable the double receive buffer mode.
  *
- * @brief This call enables the double receive buffer mode
+ * @param inst    Pointer to _dw1000_dev_instance_t.
+ * @param enable  1 to enable, 0 to disable the double buffer mode.
  *
- * input parameters
- * @param enable - 1 to enable, 0 to disable the double buffer mode
- *
- * output parameters
+ * @return dw1000_dev_status_t
  *
  */
 struct _dw1000_dev_status_t dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool enable)
@@ -922,17 +894,12 @@ struct _dw1000_dev_status_t dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t *
 }
 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_read_rxdiag()
+/**
+ * API to read the RX signal quality diagnostic data.
  *
- * @brief this function reads the RX signal quality diagnostic data
- *
- * input parameters
- * @param diagnostics - diagnostic structure pointer, this will contain the diagnostic data read from the DW1000
- *
- * output parameters
- *
- * no return value
+ * @param inst          Pointer to _dw1000_dev_instance_t.
+ * @param diagnostics   Diagnostic structure pointer, this will contain the diagnostic data read from the DW1000.
+ * @return void
  */
 void dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag)
 {  
@@ -947,16 +914,15 @@ void dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev
 }
 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_tasks_init()
- *
- * @brief The DW1000 processing of interrupts in a task context instead of the interrupt context such that other interrupts 
+/**
+ * The DW1000 processing of interrupts in a task context instead of the interrupt context such that other interrupts 
  * and high priority tasks are not blocked waiting for the interrupt handler to complete processing. 
  * This dw1000 softstack needs to coexists with other stacks and sensors interfaces. Use directive DW1000_DEV_TASK_PRIO to defined 
- * the priority of the dw1000_softstack at compiletime
+ * the priority of the dw1000_softstack at compile time.
  *
- * output parameters
+ * @param inst  Pointer to _dw1000_dev_instance_t.
  *
+ * @return void
  */
 void dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
 {
@@ -987,7 +953,12 @@ void dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
     dw1000_phy_interrupt_mask(inst, SYS_MASK_MCPLOCK | SYS_MASK_MRXFCG |SYS_MASK_MTXFRS | SYS_MASK_ALL_RX_TO | SYS_MASK_ALL_RX_ERR, true);
     
 }
-
+/**
+ * API for the interrupt request. 
+ *
+ * @param arg  Pointer to the queue of interrupts.
+ * @return void
+ */
 static void dw1000_irq(void *arg)
 {
     dw1000_dev_instance_t * inst = arg;
@@ -1004,7 +975,12 @@ static void dw1000_irq(void *arg)
     os_eventq_put(&inst->eventq, &inst->interrupt_ev);
 }
 
-
+/**
+ * API to execute each of the interrupt in queue.
+ *
+ * @param arg  Pointer to the queue of interrupts.
+ * @return void
+ */
 static void dw1000_interrupt_task(void *arg)
 {
     dw1000_dev_instance_t * inst = arg;
@@ -1013,21 +989,18 @@ static void dw1000_interrupt_task(void *arg)
     }
 }
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_set_callbacks()
- *
- * @brief This function is used to register the different callbacks called when one of the corresponding event occurs.
+/**
+ * API to register the different callbacks called when one of the corresponding event occurs.
  *
  * NOTE: Callbacks can be undefined (set to NULL). In this case, dwt_isr() will process the event as usual but the 'null'
  * callback will not be called.
  *
- * input parameters
- * @param tx_complete_cb - the pointer to the TX confirmation event callback function
- * @param tx_complete_cb - the pointer to the RX good frame event callback function
- * @param rx_timeout_cb - the pointer to the RX timeout events callback function
- * @param rx_error_cb - the pointer to the RX error events callback function
- *
- * output parameters
+ * @param inst             Pointer to _dw1000_dev_instance_t.
+ * @param tx_complete_cb   Pointer to TX confirmation event callback function.
+ * @param tx_complete_cb   Pointer to RX good frame event callback function.
+ * @param rx_timeout_cb    Pointer to RX timeout events callback function.
+ * @param rx_error_cb      Pointer to RX error events callback function.
+ * @return void
  *
  */
 void dw1000_set_callbacks(struct _dw1000_dev_instance_t * inst,  dw1000_dev_cb_t tx_complete_cb,  dw1000_dev_cb_t rx_complete_cb,  dw1000_dev_cb_t rx_timeout_cb,  dw1000_dev_cb_t rx_error_cb)
@@ -1039,25 +1012,19 @@ void dw1000_set_callbacks(struct _dw1000_dev_instance_t * inst,  dw1000_dev_cb_t
 }
 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_interrupt_ev_cb()
- *
- * @brief This is the DW1000's general Interrupt Service Routine. It will process/report the following events:
+/**
+ * This is the DW1000's general Interrupt Service Routine. It will process/report the following events:
  *          - RXFCG (through rx_complete_cb callback)
  *          - TXFRS (through tx_complete_cb callback)
  *          - RXRFTO/RXPTO (through rx_timeout_cb callback)
  *          - RXPHE/RXFCE/RXRFSL/RXSFDTO/AFFREJ/LDEERR (through rx_error_cb cbRxErr)
- *        For all events, corresponding interrupts are cleared and necessary resets are performed. In addition, in the RXFCG case,
- *        received frame information and frame control are read before calling the callback. If double buffering is activated, it
- *        will also toggle between reception buffers once the reception callback processing has ended.
+ * For all events, corresponding interrupts are cleared and necessary resets are performed. In addition, in the RXFCG case,
+ * received frame information and frame control are read before calling the callback. If double buffering is activated, it
+ * will also toggle between reception buffers once the reception callback processing has ended.
  *
- *        /!\ This version of the ISR supports double buffering but does not support automatic RX re-enabling!
- *
- * input parameters
- *
- * output parameters
- *
- * no return value
+ * @param ev  Pointer to the queue of events.
+ * @return void
+ * 
  */
 
 static void dw1000_interrupt_ev_cb(struct os_event *ev)
@@ -1181,14 +1148,12 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
 }
 
 
-/*! 
- * @fn dw1000_get_rssi(inst, *rssi)
+/** 
+ * API to calculate rssi from last RX in dBm, which needs config.rxdiag_enable to be set.
  *
- * @brief calculates rssi from last RX in dBm
+ * @param inst  Pointer to _dw1000_dev_instance_t.
  *
- * Needs config.rxdiag_enable to be set
- *
- * Returns rssi on success
+ * @return rssi on success
  */
 float 
 dw1000_get_rssi(struct _dw1000_dev_instance_t * inst)
@@ -1209,19 +1174,13 @@ dw1000_get_rssi(struct _dw1000_dev_instance_t * inst)
 
 #if MYNEWT_VAL(ADAPTIVE_TIMESCALE_ENABLED)
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_read_systime(dw1000_dev_instance_t * inst)
+/**
+ * With CLOCK_CLAIBRATION enabled all time local clock are adjusted to master clock frequency.The compensated local clock value are offset 
+ * from the master clock, but the frequency is adjusted such that any derived values will be the same. CLOCK_CLAIBRATION is usefull for
+ * TDOA and Single-Sided TWR applciaitons.
  *
- * @brief With CLOCK_CLAIBRATION enabled all time local clock are adjusted to master clock frequency. 
- * The compensated local clock value are offset from the master clock, but the frequency is adjusted 
- * such that any derived values will be the same. CLOCK_CLAIBRATION is usefull for TDOA and 
- * Single-Sided TWR applciaitons.
- *
- * input parameters dw1000_dev_instance_t 
- *
- * output parameters
- *
- * no return value
+ * @param inst  Pointer to _dw1000_dev_instance_t. 
+ * @return time
  */
 
 inline uint64_t dw1000_read_systime(struct _dw1000_dev_instance_t * inst){
@@ -1236,18 +1195,12 @@ inline uint64_t dw1000_read_systime(struct _dw1000_dev_instance_t * inst){
     return time & 0x0FFFFFFFFFFUL;
 }
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn _dw1000_read_systime(dw1000_dev_instance_t * inst)
+/**
+ * API that provide the raw uncompensated systime.
  *
- * @brief see dw1000_read_systime
- * 
- *  _dw1000_read_systime provide the raw uncompensated systime.
+ * @param inst  Pointer to _dw1000_dev_instance_t.
  *
- * input parameters dw1000_dev_instance_t 
- *
- * output parameters
- *
- * no return value
+ * @return time
  */
 
 inline uint64_t _dw1000_read_systime(struct _dw1000_dev_instance_t * inst){
@@ -1255,16 +1208,12 @@ inline uint64_t _dw1000_read_systime(struct _dw1000_dev_instance_t * inst){
     return time;
 }
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_read_systime_lo(dw1000_dev_instance_t * inst)
+/**
+ * API to read system time at lower offset address.
  *
- * @brief see dw1000_read_systime
- *
- * input parameters dw1000_dev_instance_t 
- *
- * output parameters
- *
- * no return value
+ * @param inst  Pointer to _dw1000_dev_instance_t.
+ * 
+ * @return time 
  */
 
 inline uint32_t dw1000_read_systime_lo(struct _dw1000_dev_instance_t * inst){
@@ -1279,16 +1228,12 @@ inline uint32_t dw1000_read_systime_lo(struct _dw1000_dev_instance_t * inst){
     return time;
 }
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_read_rxtime()
+/**
+ * API to read receive time.
  *
- * @brief see dw1000_read_systime
+ * @param inst  Pointer to _dw1000_dev_instance_t.
  *
- * input parameters
- *
- * output parameters
- *
- * no return value
+ * @return time
  */
 
 inline uint64_t dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst){
@@ -1301,10 +1246,8 @@ inline uint64_t dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst){
     return time & 0x0FFFFFFFFFFUL;
 }
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn _dw1000_read_rxtime()
- *
- * @brief With CLOCK_CLAIBRATION enabled all time local clock are adjusted to master clock frequency. 
+/**
+ * With CLOCK_CLAIBRATION enabled all time local clock are adjusted to master clock frequency. 
  * The compensated local clock value is offset from the master clock, but the frequency is adjusted 
  * such that any derived values will be the same. CLOCK_CLAIBRATION is usefull for TDOA and 
  * Single-Sided TWR applciaitons. 
@@ -1312,21 +1255,18 @@ inline uint64_t dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst){
  * _dw1000_read_rxtime is the exception to the rule provide the raw uncompensated 
  * timestamp to the clkcal algorithm.
  *
- * input parameters
+ * @param inst  Pointer to _dw1000_dev_instance_t.
  *
- * output parameters
- *
- * no return value
+ * @return Read status of register
+ * 
  */
 
 inline uint64_t _dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst){
     return (uint64_t)  dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFUL;
 }
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn _dw1000_read_rxtime_raw()
- *
- * @brief With CLOCK_CLAIBRATION enabled all time local clock are adjusted to master clock frequency. 
+/**
+ * With CLOCK_CLAIBRATION enabled all time local clock are adjusted to master clock frequency. 
  * The compensated local clock value is offset from the master clock, but the frequency is adjusted 
  * such that any derived values will be the same. CLOCK_CLAIBRATION is usefull for TDOA and 
  * Single-Sided TWR applciaitons. 
@@ -1334,11 +1274,9 @@ inline uint64_t _dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst){
  * _dw1000_read_rxtime is the exception to the rule provide the raw uncompensated 
  * timestamp to the clkcal algorithm.
  *
- * input parameters
+ * @param inst  Pointer to _dw1000_dev_instance_t.
  *
- * output parameters
- *
- * no return value
+ * @return Read status of register
  */
 
 inline uint64_t _dw1000_read_rxtime_raw(struct _dw1000_dev_instance_t * inst){
@@ -1346,16 +1284,12 @@ inline uint64_t _dw1000_read_rxtime_raw(struct _dw1000_dev_instance_t * inst){
 }
 
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_read_rxtime_lo()
+/**
+ * API to read receive time at lower offset address.
  *
- * @brief see dw1000_read_systime
+ * @param inst  Pointer to _dw1000_dev_instance_t.
  *
- * input parameters
- *
- * output parameters
- *
- * no return value
+ * @return time
  */
 
 inline uint32_t dw1000_read_rxtime_lo(struct _dw1000_dev_instance_t * inst){
@@ -1368,16 +1302,13 @@ inline uint32_t dw1000_read_rxtime_lo(struct _dw1000_dev_instance_t * inst){
     return time;
 }
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_read_txtime()
+/**
+ * API to read transmission time.
  *
- * @brief see dw1000_read_systime
+ * @param inst  Pointer to _dw1000_dev_instance_t. 
  *
- * input parameters
- *
- * output parameters
- *
- * no return value
+ * @return time
+ * 
  */
 
 inline uint64_t dw1000_read_txtime(struct _dw1000_dev_instance_t * inst){
@@ -1390,16 +1321,12 @@ inline uint64_t dw1000_read_txtime(struct _dw1000_dev_instance_t * inst){
     return time & 0x0FFFFFFFFFFUL;
 }
 
-/*! ------------------------------------------------------------------------------------------------------------------
- * @fn dw1000_read_txtime_lo()
+/**
+ * API to read transmit time at lower offset address.
  *
- * @brief see dw1000_read_systime
+ * @param inst  Pointer to _dw1000_dev_instance_t.
  *
- * input parameters
- *
- * output parameters
- *
- * no return value
+ * @return time
  */
 
 inline uint32_t dw1000_read_txtime_lo(struct _dw1000_dev_instance_t * inst){

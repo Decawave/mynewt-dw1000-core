@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,6 +19,15 @@
  * under the License.
  */
 
+/**
+ * @file dw1000_pkg.c
+ * @author paul kettle
+ * @date 2018
+ * @brief package file
+ *
+ * @details This is the pkg class which utilises the function to initialize the dw1000 instances depending on the availability. 
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -30,8 +39,12 @@
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_phy.h>
 
-
-// This function is call from within sysinit() and sysinit_app()
+/**
+ * API to initialize the dw1000 instances.
+ *
+ * @param void
+ * @return void
+ */
 void dw1000_pkg_init(void){
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)

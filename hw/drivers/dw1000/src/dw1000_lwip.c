@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2018, Decawave Limited, All Rights Reserved
  *
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -17,6 +17,16 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ */
+
+/**
+ * @file dw1000_lwip.c
+ * @author paul kettle
+ * @date 2018
+ * 
+ * @brief lwip service
+ * @details This is the lwip base class which utilizes the functions to do the configurations related to lwip layer based on dependencies.
+ *
  */
 
 #include <stdio.h>
@@ -39,6 +49,7 @@
 #include <dw1000/dw1000_phy.h>
 #include "sysinit/sysinit.h"
 
+
 #include <lwip/pbuf.h>
 #include <lwip/netif.h>
 #include <netif/lowpan6.h>
@@ -51,10 +62,15 @@ static void rx_complete_cb(dw1000_dev_instance_t * inst);
 static void tx_complete_cb(dw1000_dev_instance_t * inst);
 static void rx_timeout_cb(dw1000_dev_instance_t * inst);
 static void rx_error_cb(dw1000_dev_instance_t * inst);
-
 dw1000_lwip_context_t cntxt;
-
-dw1000_dev_status_t 
+/**
+ * API to assign the config parameters.
+ *
+ * @param inst     Pointer to dw1000_dev_instance_t.
+ * @param config   Pointer to structure dw1000_lwip_config_t containing configuration values. 
+ * @return dw1000_dev_status_t
+ */
+dw1000_dev_status_t
 dw1000_lwip_config(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config){
 
 	assert(inst);
@@ -64,8 +80,16 @@ dw1000_lwip_config(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config){
 	return inst->status;
 }
 
-
-dw1000_lwip_instance_t * 
+/**
+ * API to initialize the lwip service.
+ *
+ * @param inst     Pointer to dw1000_dev_instance_t.
+ * @param config   Pointer to the structure dw1000_lwip_config_t to configure the delay parameters.
+ * @param nframes  Number of frames to allocate memory for.
+ * @param buf_len  Buffer length of each frame. 
+ * @return dw1000_rng_instance_t
+ */
+dw1000_lwip_instance_t *
 dw1000_lwip_init(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config, uint16_t nframes, uint16_t buf_len){
 
 	assert(inst);
@@ -98,6 +122,12 @@ dw1000_lwip_init(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config, ui
 	return inst->lwip;
 }
 
+/**
+ * API to initialize a PCB for raw lwip.
+ *
+ * @param   inst Pointer to dw1000_lwip_instance_t.   
+ * @return void
+ */
 void
 dw1000_pcb_init(dw1000_dev_instance_t * inst){
 
@@ -114,7 +144,12 @@ dw1000_pcb_init(dw1000_dev_instance_t * inst){
 	raw_recv(inst->lwip->pcb, lwip_rx_cb, inst);
 }
 
-
+/**
+ * API to mark lwip service as free.
+ *
+ * @param inst   Pointer to dw1000_lwip_instance_t.
+ * @return void
+ */
 void 
 dw1000_lwip_free(dw1000_lwip_instance_t * inst){
 
@@ -125,7 +160,16 @@ dw1000_lwip_free(dw1000_lwip_instance_t * inst){
 		inst->status.initialized = 0;
 }
 
-
+/**
+ * API to register lwip callbacks based on corresponding event.
+ *
+ * @param inst                 Pointer to dw1000_dev_instance_t.
+ * @param rng_tx_complete_cb   Pointer to the TX confirmation event callback function.
+ * @param rx_complete_cb       Pointer to the Receive complete callback function.
+ * @param rx_timeout_cb        Pointer to the RX timeout events callback function.
+ * @param rx_error_cb          Pointer to the RX error events callback function. 
+ * @return void
+ */
 void dw1000_lwip_set_callbacks( dw1000_dev_instance_t * inst, dw1000_dev_cb_t tx_complete_cb,
  	dw1000_dev_cb_t lwip_rx_complete_cb, dw1000_dev_cb_t rx_complete_cb,
  	dw1000_dev_cb_t rx_timeout_cb,dw1000_dev_cb_t rx_error_cb){
@@ -137,6 +181,15 @@ void dw1000_lwip_set_callbacks( dw1000_dev_instance_t * inst, dw1000_dev_cb_t tx
 	inst->rx_error_cb = rx_error_cb;
 }
 
+/**
+ * Received payload is fetched to this function after lwIP stack.
+ *
+ * @param  arg  User defined argument
+ * @param  pcb  Pointer to PCB
+ * @param  p    Payload pointer
+ * @param  addr Device IP address
+ * @return      1: Signifies that the payload is received successfully
+ */
 uint8_t
 lwip_rx_cb(void *arg, struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *addr){
 
@@ -155,13 +208,26 @@ lwip_rx_cb(void *arg, struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *addr
     return 1;
 }
 
-
+/**
+ * API to confirm lwip receive complete callback.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @return void
+ */
 void lwip_rx_complete_cb(dw1000_dev_instance_t * inst){
         if(inst->lwip->ext_rx_complete_cb != NULL){
         	inst->lwip->ext_rx_complete_cb(inst);
         }
 }
 
+/**
+ * API to send lwIP buffer to radio.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param p     lwIP Buffer to be sent to radio.
+ * @param mode  Represents mode of blocking LWIP_BLOCKING : Wait for Tx to complete LWIP_NONBLOCKING : Don't wait for Tx to complete. 
+ * @return dw1000_dev_status_t
+ */
 dw1000_dev_status_t 
 dw1000_lwip_write(dw1000_dev_instance_t * inst, struct pbuf *p, dw1000_lwip_modes_t mode){
 
@@ -192,6 +258,7 @@ dw1000_lwip_write(dw1000_dev_instance_t * inst, struct pbuf *p, dw1000_lwip_mode
 	dw1000_write_tx_fctrl(inst, inst->lwip->buf_len, 0, false);
 	inst->lwip->lwip_netif.flags = NETIF_FLAG_UP | NETIF_FLAG_LINK_UP ;
 	inst->lwip->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
+
 	if( mode == LWIP_BLOCKING )
 		err = os_sem_pend(&inst->lwip->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions units os_clicks
 	else
@@ -201,8 +268,14 @@ dw1000_lwip_write(dw1000_dev_instance_t * inst, struct pbuf *p, dw1000_lwip_mode
 	return inst->status;
 }
 
-
-void 
+/**
+ * API to put DW1000 radio in Receive mode.
+ *
+ * @param inst     Pointer to dw1000_dev_instance_t.
+ * @param timeout  Timeout value for radio in receive mode. 
+ * @return void
+ */
+void
 dw1000_lwip_start_rx(dw1000_dev_instance_t * inst, uint16_t timeout){
 
     os_error_t err = os_sem_pend(&inst->lwip->data_sem, OS_TIMEOUT_NEVER);
@@ -212,8 +285,10 @@ dw1000_lwip_start_rx(dw1000_dev_instance_t * inst, uint16_t timeout){
 }
 
 /**
- * [rx_complete_cb Receive complete callback function]
- * @param inst [Device/Parent instance]
+ * API to confirm receive is complete. 
+ * 
+ * @param inst   Pointer to dw1000_dev_instance_t.
+ * @retrun void 
  */
 static void 
 rx_complete_cb(dw1000_dev_instance_t * inst){
@@ -245,49 +320,61 @@ rx_complete_cb(dw1000_dev_instance_t * inst){
 }
 
 /**
- * [tx_complete_cb Transmit complete callback function]
- * @param inst [Device/Parent instance]
+ * API to confirm transmit is complete. 
+ *
+ * @param inst    Pointer to dw1000_dev_instance_t.
+ * @return void
  */
 static void 
 tx_complete_cb(dw1000_dev_instance_t * inst){
 
-	if(os_sem_get_count(&inst->lwip->sem) == 0){
-		os_error_t err = os_sem_release(&inst->lwip->sem);
-		assert(err == OS_OK);
-	}
-	if(inst->lwip->ext_tx_complete_cb != NULL)
-		inst->lwip->ext_tx_complete_cb(inst);
+	os_error_t err = os_sem_release(&inst->lwip->sem);
+	assert(err == OS_OK);
 }
 
 /**
- * [rx_timeout_cb Receive mode timeout callback function]
- * @param inst [Device/Parent instance]
+ * API for timeout in receive callback.
+ *
+ * @param inst   pointer to dw1000_dev_instance_t.
+ * @param void
  */
 static void 
 rx_timeout_cb(dw1000_dev_instance_t * inst){
 
 	os_error_t err = os_sem_release(&inst->lwip->data_sem);
 	assert(err == OS_OK);
+
 	inst->lwip->status.rx_timeout_error = 1;
 	if(inst->lwip->ext_rx_timeout_cb != NULL)
 		inst->lwip->ext_rx_timeout_cb(inst);
 }
 
 /**
- * [rx_error_cb Receive error callback function]
- * @param inst [Device/Parent instance]
+ * API for error in receiving the data.
+ *
+ * @param inst   pointer to dw1000_dev_instance_t.
+ * @return void
  */
 void 
 rx_error_cb(dw1000_dev_instance_t * inst){
 
 	os_error_t err = os_sem_release(&inst->lwip->data_sem);
 	assert(err == OS_OK);
+
 	inst->lwip->status.rx_error = 1;
 	if(inst->lwip->ext_rx_error_cb != NULL)
 		inst->lwip->ext_rx_error_cb(inst);
 }
 
 
+/**
+ * API for radio Low level initialization function. 
+ *
+ * @param inst         Pointer to dw1000_dev_instance_t.
+ * @param txrf_config  Radio Tx and Rx configuration structure.
+ * @param mac_config   Radio MAC configuration structure.
+ * @return void
+ */
 void 
 dw1000_low_level_init( dw1000_dev_instance_t * inst, dw1000_dev_txrf_config_t * txrf_config, dw1000_dev_config_t * mac_config){
 
@@ -295,8 +382,16 @@ dw1000_low_level_init( dw1000_dev_instance_t * inst, dw1000_dev_txrf_config_t * 
 	dw1000_mac_init(inst, mac_config) ;
 }
 
-
-void 
+/**
+ * API to configure lwIP network interface.
+ *
+ * @param inst         Pointer to dw1000_dev_instance_t.
+ * @param dw1000_netif Network interface structure to be configured.
+ * @param my_ip_addr   IP address of radio.
+ * @param rx_status    Default mode status. 
+ * @return void
+ */
+void
 dw1000_netif_config(dw1000_dev_instance_t *inst, struct netif *dw1000_netif, ip_addr_t *my_ip_addr, bool rx_status){
 
 	netif_add(dw1000_netif, NULL, dw1000_netif_init, ip6_input);
@@ -316,8 +411,13 @@ dw1000_netif_config(dw1000_dev_instance_t *inst, struct netif *dw1000_netif, ip_
 		dw1000_lwip_start_rx(inst, 0xffff);
 }
 
-
-err_t 
+/**
+ * API to initialise dw1000_netif_init Network interface. 
+ *
+ * @param dw1000_netif  Network interface structure to be initialized. 
+ * @return Error status : Default ERR_OK 
+ */
+err_t
 dw1000_netif_init(struct netif *dw1000_netif){
 
 	LWIP_ASSERT("netif != NULL", (dw1000_netif != NULL));
@@ -332,6 +432,15 @@ dw1000_netif_init(struct netif *dw1000_netif){
 	return ERR_OK;
 }
 
+/**
+ * API to pass the payload to lwIP stack.
+ *
+ * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param payload_size  Size of the payload to be sent.
+ * @param payload       Pointer to the payload.
+ * @param ipaddr        Pointer to the IP address of target device.
+ * @return void
+ */
 void 
 dw1000_lwip_send(dw1000_dev_instance_t * inst, uint16_t payload_size, char * payload, ip_addr_t * ipaddr){
 
@@ -345,6 +454,13 @@ dw1000_lwip_send(dw1000_dev_instance_t * inst, uint16_t payload_size, char * pay
     pbuf_free(pb);
 }
 
+/**
+ * Low level output API to bridge 6lowpan and radio.
+ *
+ * @param dw1000_netif  Network interface.
+ * @param p             Buffer to be sent to the radio. 
+ * @return Error status
+ */
 err_t 
 dw1000_ll_output(struct netif *dw1000_netif, struct pbuf *p){
 
@@ -363,8 +479,14 @@ dw1000_ll_output(struct netif *dw1000_netif, struct pbuf *p){
 	return error;
 }
 
-
-err_t 
+/**
+ * Low level input API to bridge 6lowpan and radio.
+ *
+ * @param pt            Pointer to received buffer from radio.
+ * @param dw1000_netif  Network interface. 
+ * @return Error status 
+ */
+err_t
 dw1000_ll_input(struct pbuf *pt, struct netif *dw1000_netif){
 
 	err_t error = ERR_OK;
@@ -376,7 +498,12 @@ dw1000_ll_input(struct pbuf *pt, struct netif *dw1000_netif){
 	return error;
 }
 
-
+/**
+ * API to print error status and type.
+ *
+ * @param error  Error Type. 
+ * @return void
+ */
 void 
 print_error(err_t error){
 

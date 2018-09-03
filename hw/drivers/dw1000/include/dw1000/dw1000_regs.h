@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -17,6 +17,15 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ */
+
+/**
+ * @file dw1000_regs.h
+ * @author paul kettle
+ * @date 2018
+ * @brief Register file
+ *
+ * @details This is the reg base class which includes all the dw1000 register's data.
  */
 
 #ifndef _DW1000_REGS_H_

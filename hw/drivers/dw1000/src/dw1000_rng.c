@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -17,6 +17,16 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ */
+
+/**
+ * @file dw1000_rng.c
+ * @athor paul kettle
+ * @date 2018
+ * @brief Range 
+ *
+ * @details This is the rng base class which utilises the functions to enable/disable the configurations related to rng.
+ *
  */
 
 #include <stdio.h>
@@ -72,6 +82,15 @@ static void rng_rx_timeout_cb(dw1000_dev_instance_t * inst);
 static void rng_rx_error_cb(dw1000_dev_instance_t * inst);
 static void rng_tx_final_cb(dw1000_dev_instance_t * inst);
 
+/**
+ * API to initialise the ranging by setting all the required configurations and callbacks.
+ *
+ * @param inst      Pointer to dw1000_dev_instance_t. 
+ * @param config    Pointer to the structure dw1000_rng_config_t.
+ * @param nframes   Number of buffers defined to store the ranging data. 
+ *
+ * @return dw1000_rng_instance_t
+ */
 dw1000_rng_instance_t * 
 dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes){
 
@@ -104,6 +123,14 @@ dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint
     return inst->rng;
 }
 
+
+/**
+ * API to free the allocated resources.
+ *
+ * @param inst  Pointer to dw1000_rng_instance_t.
+ *
+ * @return void 
+ */
 void 
 dw1000_rng_free(dw1000_rng_instance_t * inst){
    
@@ -114,6 +141,17 @@ dw1000_rng_free(dw1000_rng_instance_t * inst){
         inst->status.initialized = 0;
 }
 
+/**
+ * API to set the ranging callbacks.
+ *
+ * @param inst                  Pointer to dw1000_dev_instance_t.
+ * @param rng_tx_complete_cb    Pointer to TX confirmation event callback function.
+ * @param rx_complete_cb        Pointer to RX good frame event callback function.
+ * @param rx_timeout_cb         Pointer to RX timeout events callback function.
+ * @param rx_error_cb           Pointer to RX error events callback function. 
+ *
+ * @return void
+ */
 void 
 dw1000_rng_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_tx_complete_cb, dw1000_dev_cb_t rng_rx_complete_cb,  dw1000_dev_cb_t rng_rx_timeout_cb,  dw1000_dev_cb_t rng_rx_error_cb){
     inst->rng_tx_complete_cb = rng_tx_complete_cb;
@@ -122,6 +160,15 @@ dw1000_rng_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_tx_c
     inst->rng_rx_error_cb = rng_rx_error_cb;
 }
 
+/**
+ * API to set the pointer to the twr buffers.
+ *
+ * @param inst      Pointer to dw1000_dev_instance_t.
+ * @param twr[]     Pointer to twr buffers.
+ * @param nframes   Number of buffers defined to store the ranging data.
+ *
+ * @return void
+ */
 inline void 
 dw1000_rng_set_frames(dw1000_dev_instance_t * inst, twr_frame_t twr[], uint16_t nframes){
         assert(nframes <= inst->rng->nframes);
@@ -129,6 +176,14 @@ dw1000_rng_set_frames(dw1000_dev_instance_t * inst, twr_frame_t twr[], uint16_t 
             inst->rng->frames[i] = &twr[i];
 }
 
+/**
+ * API to assign the config parameters to range instance.
+ *
+ * @param inst    Pointer to dw1000_dev_instance_t. 
+ * @param config  Pointer to dw1000_rng_config_t.
+ *
+ * @return dw1000_dev_status_t 
+ */
 dw1000_dev_status_t 
 dw1000_rng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config){
     assert(inst);
@@ -138,7 +193,16 @@ dw1000_rng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config){
     return inst->status;
 }
 
-
+/**
+ * API to initialise range request.
+ *
+ * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param dst_address   Address of the receiver to whom range request to be sent.
+ * @param code          Represents mode of ranging DWT_SS_TWR enables single sided two way ranging DWT_DS_TWR enables double sided 
+ * two way ranging DWT_DS_TWR_EXT enables double sided two way ranging with extended frame. 
+ *
+ * @return dw1000_dev_status_t 
+ */
 dw1000_dev_status_t 
 dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t code){
 
@@ -180,6 +244,17 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
    return inst->status;
 }
 
+/**
+ * API to configure dw1000 to start transmission after certain delay.
+ *
+ * @param inst          Pointer to dw1000_dev_instance_t. 
+ * @param dst_address   Address of the receiver to whom range request to be sent. 
+ * @param delay         Time until which request has to be resumed. 
+ * @param code          Represents mode of ranging DWT_SS_TWR enables single sided two way ranging DWT_DS_TWR enables double sided 
+ * two way ranging DWT_DS_TWR_EXT enables double sided two way ranging with extended frame.
+ *
+ * @return dw1000_dev_status_t
+ */
 dw1000_dev_status_t 
 dw1000_rng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t code){
     
@@ -193,22 +268,16 @@ dw1000_rng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_addres
    return inst->status;
 }
 
-/*! 
- * @fn dw1000_rng_path_loss(float Pt, float G, float fc, float R)
+/**
+ * This is a template which should be replaced by the pan_master by a event that tracks UUIDs 
+ * and allocated PANIDs and SLOTIDs. 
  *
- * @brief This a template which should be replaced by the pan_master by a event that tracks UUIDs 
- * and allocated PANIDs and SLOTIDs. See dw1000_pan_set_postprocess to replace current behavor. On the TAG/ANCHOR size this 
- * template generate a json log of the event.
+ * @param Pt      Transmit power in dBm.
+ * @param G       Antenna Gain in dB.
+ * @param Fc      Centre frequency in Hz.
+ * @param R       Range in meters.
  *
- * input parameters
- * @param Pt - transmit power dBm
- * @param G Antenna Gain dB
- * @param Fc centre frequency Hz
- * @param R range in meters
- *
- * output parameters
- *
- * returns Pr received signal level dBm
+ * @return Pr received signal level dBm
  */
 float 
 dw1000_rng_path_loss(float Pt, float G, float fc, float R){
@@ -216,6 +285,14 @@ dw1000_rng_path_loss(float Pt, float G, float fc, float R){
     return Pr;
 }
 
+/**
+ * API for bias correction polynomial.
+ *
+ * @param inst   Pointer to dw1000_dev_instance_t.
+ * @param pr     Variable that calculates range path loss.
+ *
+ * @return Bias value
+ */
 float 
 dw1000_rng_bias_correction(dw1000_dev_instance_t * inst, float Pr){
     float bias;
@@ -233,6 +310,15 @@ dw1000_rng_bias_correction(dw1000_dev_instance_t * inst, float Pr){
 }
 
 #if MYNEWT_VAL(DW1000_RANGE)
+
+/**
+ * API to calculate time of flight based on type of ranging.
+ *
+ * @param fframe   Pointer to the first twr frame. 
+ * @param nframe   Poinetr to the second twr frame.
+ *
+ * @return Time of flight in float
+ */
 float
 dw1000_rng_twr_to_tof(twr_frame_t *fframe, twr_frame_t *nframe){
     float ToF = 0;
@@ -265,6 +351,14 @@ dw1000_rng_twr_to_tof(twr_frame_t *fframe, twr_frame_t *nframe){
     return ToF;
 }
 #else
+
+/**
+ * API to calculate time of flight based on type of ranging.
+ *
+ * @param rng  Pointer to dw1000_rng_instance_t.
+ *
+ * @return Time of flight in float
+ */
 float 
 dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng){
     float ToF = 0;
@@ -295,6 +389,15 @@ dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng){
 }
 #endif
 
+/**
+ * API to calculate time of flight for symmetric type of ranging.
+ *
+ * @param twr[]  Pointer to twr buffers. 
+ * @param code   Represents mode of ranging DWT_SS_TWR enables single sided two way ranging DWT_DS_TWR enables double sided 
+ * two way ranging DWT_DS_TWR_EXT enables double sided two way ranging with extended frame.
+ *
+ * @return Time of flight
+ */
 uint32_t 
 dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code){
     uint32_t ToF = 0;
@@ -317,6 +420,13 @@ dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code){
     return ToF;
 }
 
+/**
+ * API for final transmission to calculate range.
+ *
+ * @param inst   Pointer to dw1000_dev_instance_t.
+ *
+ * @return void
+ */
 static void 
 rng_tx_final_cb(dw1000_dev_instance_t * inst){
 
@@ -350,6 +460,13 @@ rng_tx_final_cb(dw1000_dev_instance_t * inst){
 #endif
 }
 
+/**
+ * API for transmission complete callback.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ *
+ * @return void
+ */
 static void 
 rng_tx_complete_cb(dw1000_dev_instance_t * inst)
 {
@@ -381,6 +498,13 @@ rng_tx_complete_cb(dw1000_dev_instance_t * inst)
     }
 }
 
+/**
+ * API for receive timeout callback.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ *
+ * @return void
+ */
 static void 
 rng_rx_timeout_cb(dw1000_dev_instance_t * inst){
     if(!(SLIST_EMPTY(&inst->extension_cbs))){
@@ -398,6 +522,13 @@ rng_rx_timeout_cb(dw1000_dev_instance_t * inst){
     }
 }
 
+/**
+ * API for receive error callback.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ *
+ * @return void
+ */
 static void 
 rng_rx_error_cb(dw1000_dev_instance_t * inst){
     if(!(SLIST_EMPTY(&inst->extension_cbs))){
@@ -415,6 +546,13 @@ rng_rx_error_cb(dw1000_dev_instance_t * inst){
     }
 }
 
+/**
+ * API for receive complete callback.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ *
+ * @return void
+ */
 static void 
 rng_rx_complete_cb(dw1000_dev_instance_t * inst)
 {

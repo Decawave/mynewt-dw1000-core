@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,6 +19,16 @@
  * under the License.
  */
 
+/**
+ * @file dw1000_otp.c
+ * @author paul kettle
+ * @date 2018
+ * @brief one time programmable memory
+ *
+ * @details This is the otp base class which utilises functions to read from the address specified in the OTP_ADDR register.
+ *
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -32,7 +42,16 @@
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_otp.h>
 
-
+/**
+ * API takes the given address and enables otp_read from the succeeding address.
+ *
+ * @param inst     Pointer to dw1000_dev_instance_t.
+ * @param address  From where it starts reading.
+ * @param buffer   Result is stored into buffer.
+ * @param length   Represents length of the buffer. 
+ * @return void
+ *
+ */
 void dw1000_phy_otp_read(struct _dw1000_dev_instance_t * inst, uint32_t address, uint32_t * buffer, uint16_t length)
 {
     dw1000_phy_sysclk_XTAL(inst); // NOTE: Set system clock to XTAL - this is necessary to make sure the values read by _dwt_otpread are reliable
@@ -42,6 +61,14 @@ void dw1000_phy_otp_read(struct _dw1000_dev_instance_t * inst, uint32_t address,
 
     dw1000_phy_sysclk_SEQ(inst);
 }
+
+/**
+ * API to perform  read operation from the address specified.
+ *   
+ * @param inst     Pointer to dw1000_dev_instance_t.
+ * @param address  From where it starts reading 
+ * @return data value read from an OTP location.
+ */
 
 uint32_t _dw1000_otp_read(struct _dw1000_dev_instance_t * inst, uint16_t address)
 {
