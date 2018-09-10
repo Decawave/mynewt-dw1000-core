@@ -28,13 +28,13 @@ syscfg.defs:
         value:  1
     UART_0_PIN_TX:
         description: 'TX pin for UART0'
-        value:  6
+        value:  5
     UART_0_PIN_RX:
         description: 'RX pin for UART0'
-        value:  8
+        value:  6
     UART_0_PIN_RTS:
         description: 'RTS pin for UART0'
-        value:  5
+        value:  -1
     UART_0_PIN_CTS:
         description: 'CTS pin for UART0'
         value: 7

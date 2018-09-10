@@ -249,10 +249,10 @@ tdma_superframe_event_cb(struct os_event * ev){
     uint32_t cputime = os_cputime_get32() - os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY));
     
     tdma->status.awaiting_superframe = 0;
-    hal_timer_start_at(&tdma->slot[0]->timer, cputime + os_cputime_usecs_to_ticks(dw1000_dwt_usecs_to_usecs(tdma->period)));
+    hal_timer_start_at(&tdma->slot[0]->timer, cputime + os_cputime_usecs_to_ticks((uint32_t)dw1000_dwt_usecs_to_usecs(tdma->period)));
     for (uint16_t i = 1; i < tdma->nslots; i++) {
         if (tdma->slot[i]){
-            hal_timer_start_at(&tdma->slot[i]->timer, cputime + os_cputime_usecs_to_ticks(dw1000_dwt_usecs_to_usecs(i * tdma->period/tdma->nslots)));            
+            hal_timer_start_at(&tdma->slot[i]->timer, cputime + os_cputime_usecs_to_ticks((uint32_t)dw1000_dwt_usecs_to_usecs(i * tdma->period/tdma->nslots)));
         }
     }
 }
