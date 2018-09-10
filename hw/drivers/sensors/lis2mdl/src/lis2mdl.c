@@ -571,7 +571,7 @@ lis2mdl_sensor_read(struct sensor *sensor, sensor_type_t type,
         y = (((int16_t)payload[3] << 8) | payload[2]);
         z = (((int16_t)payload[5] << 8) | payload[4]);
 
-        /* Data is already in mG (same as uT) */ 
+        /* Data is already in mG (same as 10*uT) */
         databuf.smd.smd_x = x;
         databuf.smd.smd_x_is_valid = 1;
         databuf.smd.smd_y = y;
