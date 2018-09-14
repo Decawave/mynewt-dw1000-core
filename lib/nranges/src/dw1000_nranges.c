@@ -133,6 +133,7 @@ nranges_rx_timeout_cb(dw1000_dev_instance_t * inst){
     dw1000_rng_config_t * config = inst->rng->config;
     twr_frame_t * frame = inst->rng->frames[(rng->idx)%rng->nframes];
 
+
     if(nranges->device_type == DWT_NRNG_INITIATOR)// only if the device is an initiator
     {
         nranges->timeout_count++;
@@ -185,15 +186,16 @@ static bool
 nranges_tx_complete_cb(dw1000_dev_instance_t * inst){
     /* Place holder */
    if(inst->fctrl != FCNTL_IEEE_N_RANGES_16){
-        return false;    
-   }
-   dw1000_nranges_instance_t * nranges = nranges_instance;
-   if(nranges->device_type == DWT_NRNG_RESPONDER){
-       if (inst->rng_complete_cb) {
-           inst->rng_complete_cb(inst);
-       }
-   }
-   return true;
+        return false;
+    }
+    dw1000_nranges_instance_t * nranges = nranges_instance;
+    if(nranges->device_type == DWT_NRNG_RESPONDER){
+        if (inst->rng_complete_cb) {
+            inst->rng_complete_cb(inst);
+        }
+    }
+
+    return true;
 }
 
 static bool
@@ -242,7 +244,8 @@ nranges_rx_complete_cb(dw1000_dev_instance_t * inst){
                             break;
 
                         uint64_t request_timestamp = dw1000_read_rxtime(inst);
-                        uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay << 16) * (uint64_t)inst->slot_id);
+                        uint64_t response_tx_delay = request_timestamp + ((((uint64_t)(config->tx_holdoff_delay-0x280)) + ((uint64_t)inst->slot_id -1)*0x200) << 16); // 0x200 is constant that by testing minimum time calculated to add delay. Below this value responces missed for nranges
+
                         uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
                         frame->reception_timestamp =  request_timestamp;
@@ -256,7 +259,6 @@ nranges_rx_complete_cb(dw1000_dev_instance_t * inst){
                         dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true);
                         dw1000_set_wait4resp(inst, true);
                         dw1000_set_delay_start(inst, response_tx_delay);
-                        dw1000_set_rx_timeout(inst, config->rx_timeout_period);
                         if (dw1000_start_tx(inst).start_tx_error)
                             os_sem_release(&nranges->sem);
                         break;
@@ -292,7 +294,7 @@ nranges_rx_complete_cb(dw1000_dev_instance_t * inst){
                         frame->code = DWT_DS_TWR_NRNG_T2;
 
                         uint64_t request_timestamp = dw1000_read_rxtime(inst);
-                        uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 16);
+                        uint64_t response_tx_delay = request_timestamp + (((uint64_t)(config->tx_holdoff_delay - 0x018B)) << 16);
                         uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
                         frame->reception_timestamp = request_timestamp;
@@ -300,18 +302,12 @@ nranges_rx_complete_cb(dw1000_dev_instance_t * inst){
 
                         nranges->resp_count++;
                         rng->idx++;
-                        if(nranges->resp_count + nranges->timeout_count < nnodes)
-                        {
-                            dw1000_set_rx_timeout(inst, config->rx_timeout_period);
-                            dw1000_start_rx(inst);
-                        }
-                        else if(nranges->resp_count + nranges->timeout_count == nnodes)
+                        if(nranges->resp_count + nranges->timeout_count == nnodes)
                         {
                             dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_final_t));
                             dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true);
                             dw1000_set_wait4resp(inst, true);
                             dw1000_set_delay_start(inst, response_tx_delay);
-                            dw1000_set_rx_timeout(inst, config->rx_timeout_period);
                             nranges->resp_count = 0;
                             nranges->timeout_count = 0;
                             nranges->t1_final_flag = 0;
@@ -338,7 +334,7 @@ nranges_rx_complete_cb(dw1000_dev_instance_t * inst){
                         previous_frame->response_timestamp = frame->response_timestamp;
 
                         uint64_t request_timestamp = dw1000_read_rxtime(inst);
-                        uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay << 16) * (uint64_t)inst->slot_id);
+                        uint64_t response_tx_delay = request_timestamp + ((((uint64_t)(config->tx_holdoff_delay-0x120)) + ((uint64_t)inst->slot_id - 1)*0x300) << 16);
 
                         frame->request_timestamp = dw1000_read_txtime_lo(inst); // This corresponds to when the original request was actually sent
                         frame->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received
@@ -373,8 +369,8 @@ nranges_rx_complete_cb(dw1000_dev_instance_t * inst){
                         if(nranges->resp_count + nranges->timeout_count < nnodes)
                         {
                             rng->idx++;
-                            dw1000_set_rx_timeout(inst, config->rx_timeout_period);
-                            dw1000_start_rx(inst);
+                            if((nranges->resp_count + nranges->timeout_count) == (nnodes-1))
+                                    dw1000_set_dblrxbuff(inst, false);
                         }
                         else if(nranges->resp_count + nranges->timeout_count == nnodes)
                         {
@@ -402,7 +398,7 @@ nranges_rx_complete_cb(dw1000_dev_instance_t * inst){
                             break;
 
                         uint64_t request_timestamp = dw1000_read_rxtime(inst);
-                        uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay << 16) * (uint64_t)inst->slot_id);
+                        uint64_t response_tx_delay = request_timestamp + ((((uint64_t)(config->tx_holdoff_delay-0x280)) + ((uint64_t)inst->slot_id -1)*0x200) << 16); // 0x200 is constant that by testing minimum time calculated to add delay. Below this value responces missed for nranges
                         uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
                         frame->reception_timestamp =  request_timestamp;
@@ -416,7 +412,6 @@ nranges_rx_complete_cb(dw1000_dev_instance_t * inst){
                         dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true);
                         dw1000_set_wait4resp(inst, true);
                         dw1000_set_delay_start(inst, response_tx_delay);
-                        dw1000_set_rx_timeout(inst, config->rx_timeout_period);
                         if (dw1000_start_tx(inst).start_tx_error)
                             os_sem_release(&nranges->sem);
                         break;
@@ -453,7 +448,7 @@ nranges_rx_complete_cb(dw1000_dev_instance_t * inst){
                         frame->code = DWT_DS_TWR_NRNG_EXT_T2;
 
                         uint64_t request_timestamp = dw1000_read_rxtime(inst);
-                        uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 16);
+                        uint64_t response_tx_delay = request_timestamp + (((uint64_t)(config->tx_holdoff_delay - 0x018B)) << 16);
                         uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
                         frame->reception_timestamp = request_timestamp;
@@ -461,18 +456,12 @@ nranges_rx_complete_cb(dw1000_dev_instance_t * inst){
 
                         nranges->resp_count++;
                         rng->idx++;
-                        if(nranges->resp_count + nranges->timeout_count < nnodes)
-                        {
-                            dw1000_set_rx_timeout(inst, config->rx_timeout_period);
-                            dw1000_start_rx(inst);
-                        }
-                        else if(nranges->resp_count + nranges->timeout_count == nnodes)
+                        if(nranges->resp_count + nranges->timeout_count == nnodes)
                         {
                             dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_final_t));
                             dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true);
                             dw1000_set_wait4resp(inst, true);
                             dw1000_set_delay_start(inst, response_tx_delay);
-                            dw1000_set_rx_timeout(inst, config->rx_timeout_period);
                             nranges->resp_count = 0;
                             nranges->timeout_count = 0;
                             nranges->t1_final_flag = 0;
@@ -480,7 +469,7 @@ nranges_rx_complete_cb(dw1000_dev_instance_t * inst){
                             if (dw1000_start_tx(inst).start_tx_error)
                                 os_sem_release(&nranges->sem);
                         }
-                        break;
+                     break;
 
                     }
 
@@ -501,8 +490,8 @@ nranges_rx_complete_cb(dw1000_dev_instance_t * inst){
                         previous_frame->response_timestamp = frame->response_timestamp;
 
                         uint64_t request_timestamp = dw1000_read_rxtime(inst);
-                        uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay << 16) * (uint64_t)inst->slot_id);
-
+                        uint64_t response_tx_delay = request_timestamp + ((((uint64_t)(config->tx_holdoff_delay-0x120)) + ((uint64_t)inst->slot_id - 1)*0x300) << 16);
+                        dw1000_set_delay_start(inst, response_tx_delay);
                         frame->request_timestamp = dw1000_read_txtime_lo(inst); // This corresponds to when the original request was actually sent
                         frame->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received
                         frame->dst_address = frame->src_address;
@@ -512,7 +501,6 @@ nranges_rx_complete_cb(dw1000_dev_instance_t * inst){
                            inst->rng_tx_final_cb(inst);
                         dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_t));
                         dw1000_write_tx_fctrl(inst, sizeof(twr_frame_t), 0, true);
-                        dw1000_set_delay_start(inst, response_tx_delay);
                         if (dw1000_start_tx(inst).start_tx_error)
                             os_sem_release(&nranges->sem);
                         break;
@@ -539,8 +527,8 @@ nranges_rx_complete_cb(dw1000_dev_instance_t * inst){
                         if(nranges->resp_count + nranges->timeout_count < nnodes)
                         {
                             rng->idx++;
-                            dw1000_set_rx_timeout(inst, config->rx_timeout_period);
-                            dw1000_start_rx(inst);
+			    if((nranges->resp_count + nranges->timeout_count) == (nnodes-1))
+				    dw1000_set_dblrxbuff(inst, false);
                         }
                         else if(nranges->resp_count + nranges->timeout_count == nnodes)
                         {
@@ -569,7 +557,7 @@ void send_final_msg(dw1000_dev_instance_t * inst , twr_frame_t * frame)
 //    printf("final_cb\n");
     assert(nranges_instance);
     dw1000_nranges_instance_t * nranges = nranges_instance;
-    dw1000_rng_config_t * config = inst->rng->config;
+    //dw1000_rng_config_t * config = inst->rng->config;
     frame->dst_address = 0xffff;
     frame->src_address = inst->my_short_address;
     frame->seq_num = (frame-1)->seq_num;
@@ -577,7 +565,7 @@ void send_final_msg(dw1000_dev_instance_t * inst , twr_frame_t * frame)
     dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_final_t));
     dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true);
     dw1000_set_wait4resp(inst, true);
-    dw1000_set_rx_timeout(inst, config->rx_timeout_period);
+    //dw1000_set_rx_timeout(inst, config->rx_timeout_period);
     nranges->resp_count = 0;
     nranges->timeout_count = 0;
     nranges->t1_final_flag = 0;
