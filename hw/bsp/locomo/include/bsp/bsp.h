@@ -42,15 +42,22 @@ extern uint8_t _ram_start;
 #define LED_1           (13)    //Red
 //#define LED_1           (17)
 #define LED_2           (14)    //Blue
-//#define LED_3           (22)    //Red
-//#define LED_4           (14)    //Red
+#define LED_3           (LED_2) //Blue
+#define LED_4           (LED_2) //Blue
 #define LED_BLINK_PIN   (LED_2)
 
 /* Buttons */
-#define BUTTON_1 (21)	//nrf reset
+#define BUTTON_1 (21)	//NRF_RST
 #define BUTTON_2 (02)	//BT_WAKE_UP
 //#define BUTTON_3 (15)
 //#define BUTTON_4 (16)
+
+//PA enable pin
+#define PA_EN_N_PIN			(12)
+
+//DW1000 TX and RX
+#define DW1000_TX_EN_PIN	(10)
+#define DW1000_RX_EN_PIN	(15)
 
 #ifdef __cplusplus
 }
