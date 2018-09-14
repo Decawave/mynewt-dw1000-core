@@ -39,16 +39,16 @@ extern uint8_t _ram_start;
 #define RAM_SIZE        0x10000
 
 /* LED pins */
-#define LED_1           (30)    //Green
+#define LED_1           (13)    //Red
 //#define LED_1           (17)
-#define LED_2           (31)    //Blue
-#define LED_3           (22)    //Red
-#define LED_4           (14)    //Red
+#define LED_2           (14)    //Blue
+//#define LED_3           (22)    //Red
+//#define LED_4           (14)    //Red
 #define LED_BLINK_PIN   (LED_2)
 
 /* Buttons */
-#define BUTTON_1 (21)
-#define BUTTON_2 (02)
+#define BUTTON_1 (21)	//nrf reset
+#define BUTTON_2 (02)	//BT_WAKE_UP
 //#define BUTTON_3 (15)
 //#define BUTTON_4 (16)
 
