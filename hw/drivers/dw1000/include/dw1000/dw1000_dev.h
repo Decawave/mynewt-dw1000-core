@@ -290,6 +290,7 @@ typedef struct _dw1000_dev_instance_t{
     dw1000_dev_control_t control_tx_context;       //!< DW1000 device control transmit context  
     dw1000_dev_status_t status;                    //!< DW1000 device status 
     dw1000_dev_role_t dev_type;                    //!< Type of the device (tag/node)
+    phy_attributes_t attrib;
 }dw1000_dev_instance_t;
 
 //! SPI parameters
