@@ -40,6 +40,9 @@
 #include <dw1000/dw1000_hal.h>
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
+static uint8_t tx_buffer[1280] __attribute__ ((aligned (8)));
+static uint8_t rx_buffer[1280] __attribute__ ((aligned (8)));
+
 static dw1000_dev_instance_t hal_dw1000_instances[]= {
     #if  MYNEWT_VAL(DW1000_DEVICE_0)
     [0] = {
@@ -248,7 +251,7 @@ hal_dw1000_reset(struct _dw1000_dev_instance_t * inst)
  * @return void
  */
 void 
-hal_dw1000_read(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
+hal_dw1000_read_blk(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {
     os_error_t err;
     if (inst->spi_mutex) {
@@ -271,6 +274,80 @@ hal_dw1000_read(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8
     }
 }
 
+static
+void dw1000_spi_txrx_evcb(struct os_event *ev)
+{
+    struct _dw1000_dev_instance_t * inst = ev->ev_arg;
+    assert(inst != 0);
+    hal_gpio_write(inst->ss_pin, 1);
+    
+    os_sem_release(&inst->spi_rxtx_sem);  
+}
+
+void
+hal_dw1000_spi_txrx_cb(void *arg, int len)
+{
+    struct _dw1000_dev_instance_t * inst = arg;
+    static struct os_event ev = {0};
+    ev.ev_cb = dw1000_spi_txrx_evcb;
+    ev.ev_arg = (void *)inst;
+
+    assert(inst!=0);
+    if (os_eventq_inited(&inst->eventq) && 0) {
+        os_eventq_put(&inst->eventq, &ev);
+    } else {
+        dw1000_spi_txrx_evcb(&ev);
+    }
+}
+
+
+/**
+ * API to enable the API which is a non-blocking call to send a value on the SPI, 
+ * returns the value received from the SPI slave.
+ *
+ * @param inst      Pointer to dw1000_dev_instance_t.
+ * @param cmd       Represents an array of masked attributes like reg,subindex,operation,extended,subaddress.
+ * @param cmd_size  Represents value based on the cmd attributes.
+ * @param buffer    Results are stored into the buffer.
+ * @param length    Represents buffer length.
+ * @return void
+ */
+void 
+hal_dw1000_read(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
+{
+    int rc;
+    os_error_t err;
+    if (inst->spi_mutex && os_started()) {
+        err = os_mutex_pend(inst->spi_mutex, OS_WAIT_FOREVER);
+        assert(err == OS_OK);
+    }
+    
+    err = os_sem_pend(&inst->spi_rxtx_sem, OS_TIMEOUT_NEVER);
+    assert(err == OS_OK);
+    
+    memset(tx_buffer,0, sizeof(tx_buffer));
+    memcpy(tx_buffer, cmd, cmd_size);
+
+    hal_gpio_write(inst->ss_pin, 0);
+
+    rc = hal_spi_txrx_noblock(inst->spi_num, (void*)tx_buffer,
+                              (void*)rx_buffer, cmd_size+length);
+    assert(rc==OS_OK);
+
+    err = os_sem_pend(&inst->spi_rxtx_sem, OS_TIMEOUT_NEVER);
+    assert(err == OS_OK);
+    hal_gpio_write(inst->ss_pin, 1);
+
+    memcpy(buffer, rx_buffer + cmd_size, length);
+    os_sem_release(&inst->spi_rxtx_sem);  
+
+    if (inst->spi_mutex && os_started()) {
+        err = os_mutex_release(inst->spi_mutex);
+        assert(err == OS_OK);
+    }
+}
+
+
 /**
  * Enables the API which is a blocking call to send a value on the SPI, returns the value received from the SPI slave.
  *
@@ -282,10 +359,10 @@ hal_dw1000_read(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8
  * @return void
  */
 void 
-hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
+hal_dw1000_write_blk(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {
     os_error_t err;
-    if (inst->spi_mutex) {
+    if (inst->spi_mutex && os_started()) {
         err = os_mutex_pend(inst->spi_mutex, OS_WAIT_FOREVER);
         assert(err == OS_OK);
     }
@@ -299,11 +376,54 @@ hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint
      
     hal_gpio_write(inst->ss_pin, 1);
 
-    if (inst->spi_mutex) {
+    if (inst->spi_mutex && os_started()) {
         err = os_mutex_release(inst->spi_mutex);
         assert(err == OS_OK);
     }
 }
+
+/**
+ * Enables the API which is a blocking call to send a value on the SPI, returns the value received from the SPI slave.
+ *
+ * @param inst      Pointer to dw1000_dev_instance_t.
+ * @param cmd       Represents an array of masked attributes like reg,subindex,operation,extended,subaddress.
+ * @param cmd_size  Represents value based on the cmd attributes.
+ * @param buffer    Results are stored into the buffer.
+ * @param length    Represents buffer length. 
+ * @return void
+ */
+void 
+hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
+{
+    int rc = OS_OK;
+    os_error_t err;
+    assert(inst);
+    if (inst->spi_mutex && os_started()) {
+        err = os_mutex_pend(inst->spi_mutex, OS_WAIT_FOREVER);
+        assert(err == OS_OK);
+    }
+    memcpy(tx_buffer, cmd, cmd_size);
+    if (length) {
+        memcpy(tx_buffer+cmd_size, buffer, length);
+    }
+    assert(inst);
+
+    err = os_sem_pend(&inst->spi_rxtx_sem, OS_TIMEOUT_NEVER);
+    assert(err == OS_OK);
+    
+    hal_gpio_write(inst->ss_pin, 0);
+    assert(inst);
+
+    rc = hal_spi_txrx_noblock(inst->spi_num, (void*)tx_buffer,
+                              (void*)rx_buffer, cmd_size+length);    
+    assert(rc==OS_OK);
+
+    if (inst->spi_mutex && os_started()) {
+        err = os_mutex_release(inst->spi_mutex);
+        assert(err == OS_OK);
+    }
+}
+
 
 /**
  * API to disable the SPI after entering into critical section and wait for certain time before it enables the SPI 
@@ -318,7 +438,7 @@ hal_dw1000_wakeup(struct _dw1000_dev_instance_t * inst)
     os_error_t err;
     os_sr_t sr;
     OS_ENTER_CRITICAL(sr);
-    if (inst->spi_mutex) {
+    if (inst->spi_mutex && os_started()) {
         err = os_mutex_pend(inst->spi_mutex, OS_WAIT_FOREVER);
         assert(err == OS_OK);
     }
@@ -332,7 +452,7 @@ hal_dw1000_wakeup(struct _dw1000_dev_instance_t * inst)
     hal_gpio_write(inst->ss_pin, 1);
     hal_spi_enable(inst->spi_num);
 
-    if (inst->spi_mutex) {
+    if (inst->spi_mutex && os_started()) {
         err = os_mutex_release(inst->spi_mutex);
         assert(err == OS_OK);
     }

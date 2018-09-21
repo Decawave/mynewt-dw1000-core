@@ -204,8 +204,9 @@ typedef struct _dw1000_extension_callback_t{
 typedef struct _dw1000_dev_instance_t{
     struct os_dev uwb_dev;                     //!< Has to be here for cast in create_dev to work 
     struct os_mutex *spi_mutex;                //!< Pointer to global spi mutex if available  
+    struct os_sem spi_rxtx_sem;                //!< semphore for nonblocking spi rxtx
     struct os_sem sem;                         //!< semphore for low level mac/phy functions
-     struct os_mutex mutex;                    //!< os_mutex
+    struct os_mutex mutex;                     //!< os_mutex
 
     void (* tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rx_complete_cb) (struct _dw1000_dev_instance_t *);

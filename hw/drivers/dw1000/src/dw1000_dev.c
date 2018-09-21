@@ -216,6 +216,9 @@ dw1000_dev_init(struct os_dev *odev, void *arg)
 
     err = os_sem_init(&inst->sem, 0x1); 
     assert(err == OS_OK);
+
+    err = os_sem_init(&inst->spi_rxtx_sem, 0x1);
+    assert(err == OS_OK);
     
     return OS_OK;
 }
@@ -239,6 +242,7 @@ retry:
     assert(rc == 0);
     rc = hal_spi_config(inst->spi_num, &inst->spi_settings);
     assert(rc == 0);
+    hal_spi_set_txrx_cb(inst->spi_num, hal_dw1000_spi_txrx_cb, (void*)inst);    
     rc = hal_spi_enable(inst->spi_num);
     assert(rc == 0);
 
