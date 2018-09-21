@@ -329,7 +329,7 @@ void dw1000_add_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extensio
 void dw1000_remove_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_id_t id);
 
 #define dw1000_dwt_usecs_to_usecs(_t) (float)( _t * (0x10000/(128*499.2))) 
-#define dw1000_usecs_to_dwt_usecs(_t) (float)( _t * dw1000_dwt_usecs_to_usecs(1.0)) 
+#define dw1000_usecs_to_dwt_usecs(_t) (float)( _t / dw1000_dwt_usecs_to_usecs(1.0)) 
 
 #ifdef __cplusplus
 }
