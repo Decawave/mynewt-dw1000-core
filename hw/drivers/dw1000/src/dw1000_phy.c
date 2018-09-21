@@ -33,6 +33,7 @@
 #include <string.h>
 #include <assert.h>
 #include <os/os.h>
+#include <math.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
 #include <dw1000/dw1000_phy.h>
@@ -424,6 +425,6 @@ inline uint16_t dw1000_phy_SHR_duration(struct _phy_attributes_t * attrib){
 inline uint16_t dw1000_phy_frame_duration(struct _phy_attributes_t * attrib, uint16_t nlen){
 
     uint16_t duration = dw1000_phy_SHR_duration(attrib)  
-            + ceilf(attrib->Tbsym * attrib->nphy + attrib->Tdsym * (nlen + 2) * 8);  // + 2 accounts for CRC
+            + ceilf(attrib->Tbsym * attrib->nphr + attrib->Tdsym * (nlen + 2) * 8);  // + 2 accounts for CRC
     return duration; 
 }

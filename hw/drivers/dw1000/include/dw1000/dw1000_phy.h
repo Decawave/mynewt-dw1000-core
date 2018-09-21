@@ -67,16 +67,6 @@ typedef enum {
 
 #define dw1000_power_value(COARSE,FINE) ((COARSE<<5) + FINE)    //!< To configure power values
 
-//! physical attributes per IEEE802.15.4-2011 standard, Table 101
-typedef struct _phy_attributes_t{
-    float Tpsym;
-    float Tbsym;
-    float Tdsym;
-    uint8_t:nsfd;  
-    uint8_t:nphr;    
-    uint16_t:nsync;  
-}phy_attributes_t;
-
 struct _dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_txrf_config_t * txrf_config);
 void dw1000_phy_sysclk_XTAL(struct _dw1000_dev_instance_t * inst);
 void dw1000_phy_sysclk_PLL(struct _dw1000_dev_instance_t * inst);
@@ -102,7 +92,7 @@ float dw1000_phy_read_read_wakeupvbat_SI(struct _dw1000_dev_instance_t * inst);
 void dw1000_phy_external_sync(struct _dw1000_dev_instance_t * inst, uint8_t delay, bool enable);
 
 uint16_t dw1000_phy_SHR_duration(struct _phy_attributes_t * attrib);
-uint16_t dw1000_phy_frame_duration(struct _phy_attributes_t attrib, uint16_t nlen);
+uint16_t dw1000_phy_frame_duration(struct _phy_attributes_t * attrib, uint16_t nlen);
 
 #ifdef __cplusplus
 }

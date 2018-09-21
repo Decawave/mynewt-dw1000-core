@@ -224,11 +224,11 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_request_frame_t), 0, true);     
     dw1000_set_wait4resp(inst, true);  
      
-    uint16_t timeout = dw1000_phy_frame_duration(inst->attrib, sizeof(ieee_rng_response_frame_t)) 
-                    + config->rx_timeout_period;        // 2 * ToF, 1us ~= 300m
+    uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_rng_response_frame_t)) 
+                    + config->rx_timeout_period         // 2 * ToF, 1us ~= 300m
                     + config->tx_holdoff_delay;         // Remote side turn arroud time. 
     dw1000_set_rx_timeout(inst, timeout); 
-    
+   
     if (rng->control.delay_start_enabled) 
         dw1000_set_delay_start(inst, rng->delay);
     if (dw1000_start_tx(inst).start_tx_error){
@@ -636,7 +636,10 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                         dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true); 
                         dw1000_set_wait4resp(inst, true);    
                         dw1000_set_delay_start(inst, response_tx_delay);
-                        dw1000_set_rx_timeout(inst, config->rx_timeout_period); 
+                        uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_rng_response_frame_t)) 
+                            + config->rx_timeout_period        
+                            + config->tx_holdoff_delay;         // Remote side turn arroud time. 
+                        dw1000_set_rx_timeout(inst, timeout); 
 
                         if (dw1000_start_tx(inst).start_tx_error)
                             os_sem_release(&rng->sem);  
@@ -737,8 +740,12 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_rng_response_frame_t));
                             dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true); 
                             dw1000_set_wait4resp(inst, true);    
-                            dw1000_set_delay_start(inst, response_tx_delay);   
-                            dw1000_set_rx_timeout(inst, config->rx_timeout_period); 
+                            dw1000_set_delay_start(inst, response_tx_delay); 
+
+                            uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_rng_response_frame_t)) 
+                                + config->rx_timeout_period        
+                                + config->tx_holdoff_delay;         // Remote side turn arroud time. 
+                            dw1000_set_rx_timeout(inst, timeout); 
 
                             if (dw1000_start_tx(inst).start_tx_error)
                                 os_sem_release(&rng->sem);
@@ -785,8 +792,12 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true);
                             dw1000_set_wait4resp(inst, true);
                             dw1000_set_delay_start(inst, response_tx_delay);
-                            dw1000_set_rx_timeout(inst, config->rx_timeout_period);
-                        
+
+                            uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(twr_frame_final_t)) 
+                                + config->rx_timeout_period        
+                                + config->tx_holdoff_delay;         // Remote side turn arroud time. 
+                            dw1000_set_rx_timeout(inst, timeout); 
+                                         
                             if (dw1000_start_tx(inst).start_tx_error){
                                 if(!(SLIST_EMPTY(&inst->extension_cbs))){
                                     dw1000_extension_callbacks_t *temp = NULL;
