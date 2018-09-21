@@ -650,7 +650,7 @@ struct _dw1000_dev_status_t dw1000_set_rx_timeout(struct _dw1000_dev_instance_t 
     control.rx_timeout_enabled = timeout > 0;
     
     if(control.rx_timeout_enabled){  
-        dw1000_write_reg(inst, RX_FWTO_ID, RX_FWTO_OFFSET, dw1000_usecs_to_dwt_usecs(timeout), sizeof(uint16_t));
+        dw1000_write_reg(inst, RX_FWTO_ID, RX_FWTO_OFFSET, (uint16_t)ceilf(dw1000_usecs_to_dwt_usecs(timeout)), sizeof(uint16_t));
         sys_cfg_reg |= SYS_CFG_RXWTOE;
         dw1000_write_reg(inst, SYS_CFG_ID, 0, sys_cfg_reg, sizeof(uint32_t));
     }else{

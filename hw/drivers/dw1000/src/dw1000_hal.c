@@ -60,7 +60,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .Tbsym = 1.02564,      //!< Baserate symbols duration (usec) 850khz
                 .Tdsym = 0.12821/0.87, //!< Datarate symbols duration (usec) 6.81Mhz adjusted for RS coding
                 .nsfd = 8,             //!< Number of symbols in start of frame delimiter
-                .nsync = 256,          //!< Number of symbols in preamble sequence
+                .nsync = 128,          //!< Number of symbols in preamble sequence
                 .nphr = 16             //!< Number of symbols in phy header
             },
             .config = {
@@ -72,11 +72,11 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                     .preambleCodeIndex = 8,         //!< RX preamble code
                     .sfdType = 0,                   //!< Boolean should we use non-standard SFD for better performance
                     .phrMode = DWT_PHRMODE_STD,     //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
-                    .sfdTimeout = (256 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
+                    .sfdTimeout = (128 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
                 },
                 .tx ={
                     .preambleCodeIndex = 8,         //!< TX preamble code
-                    .preambleLength = DWT_PLEN_256  //!< DWT_PLEN_64..DWT_PLEN_4096
+                    .preambleLength = DWT_PLEN_128  //!< DWT_PLEN_64..DWT_PLEN_4096
                 },
                 .txrf={
                     .PGdly = TC_PGDELAY_CH5,
@@ -176,7 +176,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .Tbsym = 1.02564,      //!< Baserate symbols duration (usec) 850khz
                 .Tdsym = 0.12821/0.87, //!< Datarate symbols duration (usec) 6.81Mhz adjusted for RS coding
                 .nsfd = 8,             //!< Number of symbols in start of frame delimiter
-                .nsync = 256,          //!< Number of symbols in preamble sequence
+                .nsync = 128,          //!< Number of symbols in preamble sequence
                 .nphr = 16             //!< Number of symbols in phy header
             },
              .config = {
@@ -188,11 +188,11 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                     .preambleCodeIndex = 9,         //!< RX preamble code
                     .sfdType = 0,                   //!< Boolean should we use non-standard SFD for better performance
                     .phrMode = DWT_PHRMODE_STD,     //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
-                    .sfdTimeout = (256 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
+                    .sfdTimeout = (128 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
                 },
                 .tx ={
                     .preambleCodeIndex = 9,         //!< TX preamble code
-                    .preambleLength = DWT_PLEN_256  //!< DWT_PLEN_64..DWT_PLEN_4096
+                    .preambleLength = DWT_PLEN_128  //!< DWT_PLEN_64..DWT_PLEN_4096
                 },
                 .txrf={
                     .PGdly = TC_PGDELAY_CH5,
