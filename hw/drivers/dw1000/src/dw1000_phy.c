@@ -142,6 +142,7 @@ dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, dw1000
         memcpy(&inst->config.txrf, txrf_config, sizeof(dw1000_dev_txrf_config_t));
 
     dw1000_softreset(inst);
+    dw1000_phy_sysclk_XTAL(inst);
     dw1000_gpio_config_leds(inst, DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
 
     // Configure the CPLL lock detect
