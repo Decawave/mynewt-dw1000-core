@@ -275,7 +275,7 @@ hal_dw1000_reset(struct _dw1000_dev_instance_t * inst)
  * @return void
  */
 void 
-hal_dw1000_read_blk(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
+hal_dw1000_read(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {
     os_error_t err;
     if (inst->spi_mutex) {
@@ -337,7 +337,7 @@ hal_dw1000_spi_txrx_cb(void *arg, int len)
  * @return void
  */
 void 
-hal_dw1000_read(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
+hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {
     int rc;
     os_error_t err;
@@ -383,7 +383,7 @@ hal_dw1000_read(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8
  * @return void
  */
 void 
-hal_dw1000_write_blk(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
+hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {
     os_error_t err;
     if (inst->spi_mutex && os_started()) {
@@ -417,7 +417,7 @@ hal_dw1000_write_blk(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, 
  * @return void
  */
 void 
-hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
+hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {
     int rc = OS_OK;
     os_error_t err;

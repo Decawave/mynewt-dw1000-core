@@ -74,7 +74,7 @@ dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uin
     };
 
     uint8_t len = cmd.subaddress?(cmd.extended?3:2):1;
-    hal_dw1000_read(inst, header, len, buffer, length);  // result is stored in the buffer
+    hal_dw1000_read_noblock(inst, header, len, buffer, length);  // result is stored in the buffer
 
     return inst->status;
 }
@@ -111,7 +111,7 @@ dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, ui
     };
 
     uint8_t len = cmd.subaddress?(cmd.extended?3:2):1; 
-    hal_dw1000_write(inst, header, len, buffer, length); 
+    hal_dw1000_write_noblock(inst, header, len, buffer, length); 
 
     return inst->status;
 }

@@ -45,9 +45,9 @@ extern "C" {
 struct _dw1000_dev_instance_t * hal_dw1000_inst(uint8_t idx);     //!< Structure of hal instances.
 void hal_dw1000_reset(struct _dw1000_dev_instance_t * inst);
 void hal_dw1000_read(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
-void hal_dw1000_read_blk(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
+void hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
 void hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
-void hal_dw1000_write_blk(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
+void hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
 
 void hal_dw1000_wakeup(struct _dw1000_dev_instance_t * inst);
 int hal_dw1000_get_rst(struct _dw1000_dev_instance_t * inst);
