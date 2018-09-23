@@ -78,7 +78,7 @@ syscfg.defs:
         value: 2000
     DW1000_DEVICE_BAUDRATE_HIGH:
         description: 'BAUDRATE_HIGH 8000kHz'
-        value: 4000
+        value: 8000
     DW1000_DEVICE_0_TX_ANT_DLY:
         description: 'TX_ANT_DLY'
         value: 0x4050

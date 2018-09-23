@@ -261,6 +261,9 @@ retry:
     }
     inst->timestamp = (uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN);
 
+    dw1000_phy_init(inst, NULL);
+
+    /* It's now safe to increase the SPI baudrate > 4M */
     inst->spi_settings.baudrate = MYNEWT_VAL(DW1000_DEVICE_BAUDRATE_HIGH);
     rc = hal_spi_disable(inst->spi_num);
     assert(rc == 0);

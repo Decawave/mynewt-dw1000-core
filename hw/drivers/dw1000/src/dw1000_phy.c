@@ -33,6 +33,7 @@
 #include <string.h>
 #include <assert.h>
 #include <os/os.h>
+#include <math.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
 #include <dw1000/dw1000_phy.h>
@@ -141,6 +142,7 @@ dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, dw1000
         memcpy(&inst->config.txrf, txrf_config, sizeof(dw1000_dev_txrf_config_t));
 
     dw1000_softreset(inst);
+    dw1000_phy_sysclk_XTAL(inst);
     dw1000_gpio_config_leds(inst, DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
 
     // Configure the CPLL lock detect
@@ -397,4 +399,33 @@ void dw1000_phy_external_sync(struct _dw1000_dev_instance_t * inst, uint8_t dela
         reg &= ~(EC_CTRL_WAIT_MASK | EC_CTRL_OSTRM); //clear timer value, clear OSTRM
     }    
     dw1000_write_reg(inst, EXT_SYNC_ID, EC_CTRL_OFFSET, reg, sizeof(uint16_t));
+}
+
+
+
+/**
+ * API to calculate the SHR (Preamble + SFD) duration. This is used to calculate the correct rx_timeout.
+ * @param attrib    Pointer to _phy_attributes_t * struct. The phy attritubes are part of the IEEE802.15.4-2011 standard. 
+ * Note the morphology of the frame depends on the mode of operation, see the dw1000_hal.c for the default behaviour
+ * @param nlen      The length of the frame to be transmitted/received excluding crc
+ * @return uint16_t duration in usec
+ */
+inline uint16_t dw1000_phy_SHR_duration(struct _phy_attributes_t * attrib){
+
+    uint16_t duration = ceilf(attrib->Tpsym * (attrib->nsync + attrib->nsfd));
+    return duration; 
+}
+
+/**
+ * API to calculate the frame duration (airtime). 
+ * @param attrib    Pointer to _phy_attributes_t * struct. The phy attritubes are part of the IEEE802.15.4-2011 standard. 
+ * Note the morphology of the frame depends on the mode of operation, see the dw1000_hal.c for the default behaviour
+ * @param nlen      The length of the frame to be transmitted/received excluding crc
+ * @return uint16_t duration in usec
+ */
+inline uint16_t dw1000_phy_frame_duration(struct _phy_attributes_t * attrib, uint16_t nlen){
+
+    uint16_t duration = dw1000_phy_SHR_duration(attrib)  
+            + ceilf(attrib->Tbsym * attrib->nphr + attrib->Tdsym * (nlen + 2) * 8);  // + 2 accounts for CRC
+    return duration; 
 }

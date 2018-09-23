@@ -184,6 +184,16 @@ typedef struct _dw1000_dev_rxdiag_t{
     uint16_t    pacc_cnt;           //!<  Count of preamble symbols accumulated
 } dw1000_dev_rxdiag_t;
 
+//! physical attributes per IEEE802.15.4-2011 standard, Table 101
+typedef struct _phy_attributes_t{
+    float Tpsym;
+    float Tbsym;
+    float Tdsym;
+    uint8_t nsfd;  
+    uint8_t nphr;    
+    uint16_t nsync;  
+} phy_attributes_t;
+
 struct _dw1000_dev_instance_t;
 
 //! DW1000 generic  extension callback structure
@@ -291,6 +301,7 @@ typedef struct _dw1000_dev_instance_t{
     dw1000_dev_control_t control_tx_context;       //!< DW1000 device control transmit context  
     dw1000_dev_status_t status;                    //!< DW1000 device status 
     dw1000_dev_role_t dev_type;                    //!< Type of the device (tag/node)
+    struct _phy_attributes_t attrib;
 }dw1000_dev_instance_t;
 
 //! SPI parameters
@@ -319,7 +330,7 @@ void dw1000_add_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extensio
 void dw1000_remove_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_id_t id);
 
 #define dw1000_dwt_usecs_to_usecs(_t) (float)( _t * (0x10000/(128*499.2))) 
-#define dw1000_usecs_to_dwt_usecs(_t) (float)( _t * dw1000_dwt_usecs_to_usecs(1.0)) 
+#define dw1000_usecs_to_dwt_usecs(_t) (float)( _t / dw1000_dwt_usecs_to_usecs(1.0)) 
 
 #ifdef __cplusplus
 }

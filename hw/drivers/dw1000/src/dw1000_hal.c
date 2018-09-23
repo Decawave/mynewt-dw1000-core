@@ -58,20 +58,28 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_0_RX_ANT_DLY),
             .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_0_TX_ANT_DLY),
             .status = {0},
+            .attrib = {                //!< phy attritubes per the IEEE802.15.4-2011 standard, Table 99 and Table 101 
+                .Tpsym = 1.01760,      //!< Preamble symbols duration (usec) for MPRF of 62.89Mhz
+                .Tbsym = 1.02564,      //!< Baserate symbols duration (usec) 850khz
+                .Tdsym = 0.12821/0.87, //!< Datarate symbols duration (usec) 6.81Mhz adjusted for RS coding
+                .nsfd = 8,             //!< Number of symbols in start of frame delimiter
+                .nsync = 128,          //!< Number of symbols in preamble sequence
+                .nphr = 16             //!< Number of symbols in phy header
+            },
             .config = {
                 .channel = 5,                       //!< channel number {1, 2, 3, 4, 5, 7 }
                 .prf = DWT_PRF_64M,                 //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
                 .dataRate = DWT_BR_6M8,             //!< Data Rate {DWT_BR_110K, DWT_BR_850K or DWT_BR_6M8}
                 .rx = {
                     .pacLength = DWT_PAC8,          //!< Acquisition Chunk Size DWT_PAC8..DWT_PAC64 (Relates to RX preamble length)
-                    .preambleCodeIndex = 8,       //!< RX preamble code
+                    .preambleCodeIndex = 8,         //!< RX preamble code
                     .sfdType = 0,                   //!< Boolean should we use non-standard SFD for better performance
                     .phrMode = DWT_PHRMODE_STD,     //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
-                    .sfdTimeout = (256 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
+                    .sfdTimeout = (128 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
                 },
                 .tx ={
-                    .preambleCodeIndex = 8,       //!< TX preamble code
-                    .preambleLength = DWT_PLEN_256  //!< DWT_PLEN_64..DWT_PLEN_4096
+                    .preambleCodeIndex = 8,         //!< TX preamble code
+                    .preambleLength = DWT_PLEN_128  //!< DWT_PLEN_64..DWT_PLEN_4096
                 },
                 .txrf={
                     .PGdly = TC_PGDELAY_CH5,
@@ -112,20 +120,28 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_1_RX_ANT_DLY),
             .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_1_TX_ANT_DLY),
             .status = {0},
+            .attrib = {                //!< phy attritubes per the IEEE802.15.4-2011 standard, Table 99 and Table 101 
+                .Tpsym = 1.01760,      //!< Preamble symbols duration (usec) for MPRF of 62.89Mhz
+                .Tbsym = 1.02564,      //!< Baserate symbols duration (usec) 850khz
+                .Tdsym = 0.12821/0.87, //!< Datarate symbols duration (usec) 6.81Mhz adjusted for RS coding
+                .nsfd = 8,             //!< Number of symbols in start of frame delimiter
+                .nsync = 128,          //!< Number of symbols in preamble sequence
+                .nphr = 16             //!< Number of symbols in phy header
+            },
             .config = {
                 .channel = 5,                       //!< channel number {1, 2, 3, 4, 5, 7 }
                 .prf = DWT_PRF_64M,                 //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
-                .dataRate = DWT_BR_6M8,             // Data rate. 
+                .dataRate = DWT_BR_6M8,             //!< Data rate. 
                 .rx = {
                     .pacLength = DWT_PAC8,          //!< Acquisition Chunk Size (Relates to RX preamble length)
                     .preambleCodeIndex = 9,         //!< RX preamble code
                     .sfdType = 0,                   //!< Boolean should we use non-standard SFD for better performance
                     .phrMode = DWT_PHRMODE_STD,     //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
-                    .sfdTimeout = (256 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
+                    .sfdTimeout = (128 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
                 },
                 .tx ={
                     .preambleCodeIndex = 9,         //!< TX preamble code
-                    .preambleLength = DWT_PLEN_256  //!< DWT_PLEN_64..DWT_PLEN_4096
+                    .preambleLength = DWT_PLEN_128  //!< DWT_PLEN_64..DWT_PLEN_4096
                 },
                 .txrf={
                     .PGdly = TC_PGDELAY_CH5,
@@ -158,6 +174,14 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
             .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_2_RX_ANT_DLY),
             .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_2_TX_ANT_DLY),
             .status = {0},
+            .attrib = {                //!< phy attritubes per the IEEE802.15.4-2011 standard, Table 99 and Table 101 
+                .Tpsym = 1.01760,      //!< Preamble symbols duration (usec) for MPRF of 62.89Mhz
+                .Tbsym = 1.02564,      //!< Baserate symbols duration (usec) 850khz
+                .Tdsym = 0.12821/0.87, //!< Datarate symbols duration (usec) 6.81Mhz adjusted for RS coding
+                .nsfd = 8,             //!< Number of symbols in start of frame delimiter
+                .nsync = 128,          //!< Number of symbols in preamble sequence
+                .nphr = 16             //!< Number of symbols in phy header
+            },
              .config = {
                 .channel = 5,                       //!< channel number {1, 2, 3, 4, 5, 7 }
                 .prf = DWT_PRF_64M,                 //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
@@ -167,11 +191,11 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                     .preambleCodeIndex = 9,         //!< RX preamble code
                     .sfdType = 0,                   //!< Boolean should we use non-standard SFD for better performance
                     .phrMode = DWT_PHRMODE_STD,     //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
-                    .sfdTimeout = (256 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
+                    .sfdTimeout = (128 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
                 },
                 .tx ={
                     .preambleCodeIndex = 9,         //!< TX preamble code
-                    .preambleLength = DWT_PLEN_256  //!< DWT_PLEN_64..DWT_PLEN_4096
+                    .preambleLength = DWT_PLEN_128  //!< DWT_PLEN_64..DWT_PLEN_4096
                 },
                 .txrf={
                     .PGdly = TC_PGDELAY_CH5,
