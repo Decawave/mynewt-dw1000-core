@@ -41,7 +41,6 @@
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
 static uint8_t tx_buffer[1280] __attribute__ ((aligned (8)));
-static uint8_t rx_buffer[1280] __attribute__ ((aligned (8)));
 
 static dw1000_dev_instance_t hal_dw1000_instances[]= {
     #if  MYNEWT_VAL(DW1000_DEVICE_0)
@@ -103,7 +102,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
                 .rxauto_enable = 1         //!< On error re-enable
             },
-            .spi_mutex = 0,
+            .spi_sem = 0,
             .task_prio = 5
     },
     #if  MYNEWT_VAL(DW1000_DEVICE_1)
@@ -157,7 +156,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
 #endif
                 .rxauto_enable = 1,
             },
-            .spi_mutex = 0,
+            .spi_sem = 0,
             .interrupt_task_prio = 6
     },
     #if  MYNEWT_VAL(DW1000_DEVICE_2)
@@ -211,7 +210,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
 #endif
                 .rxauto_enable = 1
             },
-            .spi_mutex = 0
+            .spi_sem = 0
             .interrupt_task_prio = 7
     }
     #endif
@@ -278,11 +277,9 @@ void
 hal_dw1000_read(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {
     os_error_t err;
-    if (inst->spi_mutex) {
-        err = os_mutex_pend(inst->spi_mutex, OS_WAIT_FOREVER);
-        assert(err == OS_OK);
-    }
-  
+    assert(inst->spi_sem);
+    err = os_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
+    assert(err == OS_OK);
     hal_gpio_write(inst->ss_pin, 0);
 
     for(uint8_t i = 0; i < cmd_size; i++)
@@ -292,20 +289,22 @@ hal_dw1000_read(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8
  
     hal_gpio_write(inst->ss_pin, 1);
 
-    if (inst->spi_mutex) {
-        err = os_mutex_release(inst->spi_mutex);
-        assert(err == OS_OK);
-    }
+    err = os_sem_release(inst->spi_sem);
+    assert(err == OS_OK);
 }
 
 static
 void dw1000_spi_txrx_evcb(struct os_event *ev)
 {
+    os_error_t err;
     struct _dw1000_dev_instance_t * inst = ev->ev_arg;
     assert(inst != 0);
     hal_gpio_write(inst->ss_pin, 1);
     
-    os_sem_release(&inst->spi_rxtx_sem);  
+    /* Need txrx here to switch SPI back to non-blocking, legacy state */
+    hal_spi_txrx(inst->spi_num, (void*)&err, 0, 1);
+    err = os_sem_release(inst->spi_sem);
+    assert(err == OS_OK);
 }
 
 void
@@ -341,34 +340,26 @@ hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cm
 {
     int rc;
     os_error_t err;
-    if (inst->spi_mutex && os_started()) {
-        err = os_mutex_pend(inst->spi_mutex, OS_WAIT_FOREVER);
-        assert(err == OS_OK);
-    }
-    
-    err = os_sem_pend(&inst->spi_rxtx_sem, OS_TIMEOUT_NEVER);
+    assert(inst->spi_sem);
+    err = os_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
     
-    memset(tx_buffer,0, sizeof(tx_buffer));
-    memcpy(tx_buffer, cmd, cmd_size);
-
     hal_gpio_write(inst->ss_pin, 0);
 
-    rc = hal_spi_txrx_noblock(inst->spi_num, (void*)tx_buffer,
-                              (void*)rx_buffer, cmd_size+length);
+    for(uint8_t i = 0; i < cmd_size; i++) {
+        hal_spi_tx_val(inst->spi_num, cmd[i]);
+    }
+    memset(tx_buffer,0,sizeof(tx_buffer));
+    rc = hal_spi_txrx_noblock(inst->spi_num, tx_buffer,
+                              (void*)buffer, length);
     assert(rc==OS_OK);
 
-    err = os_sem_pend(&inst->spi_rxtx_sem, OS_TIMEOUT_NEVER);
+    /* Reaquire semaphore after rx complete */
+    err = os_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
-    hal_gpio_write(inst->ss_pin, 1);
 
-    memcpy(buffer, rx_buffer + cmd_size, length);
-    os_sem_release(&inst->spi_rxtx_sem);  
-
-    if (inst->spi_mutex && os_started()) {
-        err = os_mutex_release(inst->spi_mutex);
-        assert(err == OS_OK);
-    }
+    err = os_sem_release(inst->spi_sem);
+    assert(err == OS_OK);
 }
 
 
@@ -386,24 +377,20 @@ void
 hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {
     os_error_t err;
-    if (inst->spi_mutex && os_started()) {
-        err = os_mutex_pend(inst->spi_mutex, OS_WAIT_FOREVER);
-        assert(err == OS_OK);
-    }
+    assert(inst->spi_sem);
+    err = os_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
+    assert(err == OS_OK);
 
     hal_gpio_write(inst->ss_pin, 0);
 
-    for(uint8_t i = 0; i < cmd_size; i++)
-        hal_spi_tx_val(inst->spi_num, cmd[i]);
+    hal_spi_txrx(inst->spi_num, (void*)cmd, 0, cmd_size);
     for(uint16_t i = 0; i < length; i++)
         hal_spi_tx_val(inst->spi_num, buffer[i]);
      
     hal_gpio_write(inst->ss_pin, 1);
 
-    if (inst->spi_mutex && os_started()) {
-        err = os_mutex_release(inst->spi_mutex);
-        assert(err == OS_OK);
-    }
+    err = os_sem_release(inst->spi_sem);
+    assert(err == OS_OK);
 }
 
 /**
@@ -421,31 +408,27 @@ hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * c
 {
     int rc = OS_OK;
     os_error_t err;
-    assert(inst);
-    if (inst->spi_mutex && os_started()) {
-        err = os_mutex_pend(inst->spi_mutex, OS_WAIT_FOREVER);
-        assert(err == OS_OK);
-    }
-    memcpy(tx_buffer, cmd, cmd_size);
-    if (length) {
-        memcpy(tx_buffer+cmd_size, buffer, length);
-    }
-    assert(inst);
-
-    err = os_sem_pend(&inst->spi_rxtx_sem, OS_TIMEOUT_NEVER);
+    assert(length);
+    assert(inst->spi_sem);
+    err = os_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
-    
+
+#if 1
     hal_gpio_write(inst->ss_pin, 0);
-    assert(inst);
-
-    rc = hal_spi_txrx_noblock(inst->spi_num, (void*)tx_buffer,
-                              (void*)rx_buffer, cmd_size+length);    
+    rc = hal_spi_txrx(inst->spi_num, (void*)cmd, 0, cmd_size);
     assert(rc==OS_OK);
+    rc = hal_spi_txrx_noblock(inst->spi_num, (void*)buffer,
+                              0, length);
+    assert(rc==OS_OK);
+#else
+    memcpy(tx_buffer,cmd,cmd_size);
+    memcpy(tx_buffer+cmd_size,buffer,length);
 
-    if (inst->spi_mutex && os_started()) {
-        err = os_mutex_release(inst->spi_mutex);
-        assert(err == OS_OK);
-    }
+    hal_gpio_write(inst->ss_pin, 0);
+    rc = hal_spi_txrx_noblock(inst->spi_num, (void*)buffer,
+                              0, length);
+    assert(rc==OS_OK);
+#endif
 }
 
 
@@ -461,11 +444,11 @@ hal_dw1000_wakeup(struct _dw1000_dev_instance_t * inst)
 {
     os_error_t err;
     os_sr_t sr;
+    assert(inst->spi_sem);
+    err = os_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
+    assert(err == OS_OK);
+
     OS_ENTER_CRITICAL(sr);
-    if (inst->spi_mutex && os_started()) {
-        err = os_mutex_pend(inst->spi_mutex, OS_WAIT_FOREVER);
-        assert(err == OS_OK);
-    }
     
     hal_spi_disable(inst->spi_num);
     hal_gpio_write(inst->ss_pin, 0);
@@ -476,16 +459,14 @@ hal_dw1000_wakeup(struct _dw1000_dev_instance_t * inst)
     hal_gpio_write(inst->ss_pin, 1);
     hal_spi_enable(inst->spi_num);
 
-    if (inst->spi_mutex && os_started()) {
-        err = os_mutex_release(inst->spi_mutex);
-        assert(err == OS_OK);
-    }
-
     // Waiting for XTAL to start and stabilise - 5ms safe
     // (check PLL bit in IRQ?)
     os_cputime_delay_usecs(5000);
 
     OS_EXIT_CRITICAL(sr);
+
+    err = os_sem_release(inst->spi_sem);
+    assert(err == OS_OK);
 }
 
 /**
