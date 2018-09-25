@@ -337,6 +337,12 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
 
     inst->control.wait4resp_enabled = 0;
 
+    /* Reset semaphore if needed */
+    if (inst->sem.sem_tokens == 0) {
+        os_error_t err = os_sem_release(&inst->sem);
+        assert(err == OS_OK);
+        inst->status.sem_force_released = 1;
+    }
 }
 
 /**
