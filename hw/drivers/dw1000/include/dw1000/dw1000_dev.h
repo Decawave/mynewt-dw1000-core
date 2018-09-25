@@ -102,6 +102,8 @@ typedef struct _dw1000_dev_status_t{
     uint32_t tx_ranging_frame:1;      //!< Range Request bit set for outbound frame
     uint32_t sleep_enabled:1;         //!< Indicates sleep_enabled bit is set
     uint32_t sleeping:1;              //!< Indicates sleeping state
+
+    uint32_t sem_force_released:1;    //!< Semaphore was released in forcetrxoff
 }dw1000_dev_status_t;
 
 //! Device control status bits.
