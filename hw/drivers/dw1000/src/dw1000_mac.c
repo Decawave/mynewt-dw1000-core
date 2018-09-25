@@ -1149,28 +1149,74 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
 }
 
 
-/** 
+/**
+ * API to calculate First Path Power Level (fppl) from an rxdiag structure
+ *
+ * @param inst  Pointer to _dw1000_dev_instance_t.
+ * @param diag  Pointer to _dw1000_dev_rxdiag_t.
+ *
+ * @return rssi on success
+ */
+float
+dw1000_calc_fppl(struct _dw1000_dev_instance_t * inst,
+                 struct _dw1000_dev_rxdiag_t * diag)
+{
+    float A = (inst->config.prf == DWT_PRF_16M) ? 115.72 : 122.74;
+
+    float N = diag->pacc_cnt;
+    float v = (float)diag->fp_amp*diag->fp_amp +
+        (float)diag->fp_amp2*diag->fp_amp2 +
+        (float)diag->fp_amp3*diag->fp_amp3;
+    v /= N*N;
+    return 10.0*log10f(v) - A;
+}
+
+/**
+ * API to calculate First Path Power Level from last RX in dBm,
+ * which needs config.rxdiag_enable to be set.
+ *
+ * @param inst  Pointer to _dw1000_dev_instance_t.
+ *
+ * @return rssi on success
+ */
+float
+dw1000_get_fppl(struct _dw1000_dev_instance_t * inst)
+{
+    if (!inst->config.rxdiag_enable)
+        return -INFINITY;
+    return dw1000_calc_fppl(inst, &inst->rxdiag);
+}
+
+/**
+ * API to calculate rssi from an rxdiag structure
+ *
+ * @param inst  Pointer to _dw1000_dev_instance_t.
+ * @param diag  Pointer to _dw1000_dev_rxdiag_t.
+ *
+ * @return rssi on success
+ */
+float
+dw1000_calc_rssi(struct _dw1000_dev_instance_t * inst,
+                 struct _dw1000_dev_rxdiag_t * diag)
+{
+    float rssi = 10.0f * log10f(diag->cir_pwr * 0x20000/(diag->pacc_cnt * diag->pacc_cnt))
+        - ((inst->config.prf == DWT_PRF_16M) ? 115.72 : 122.74);
+    return rssi;
+}
+
+/**
  * API to calculate rssi from last RX in dBm, which needs config.rxdiag_enable to be set.
  *
  * @param inst  Pointer to _dw1000_dev_instance_t.
  *
  * @return rssi on success
  */
-float 
+float
 dw1000_get_rssi(struct _dw1000_dev_instance_t * inst)
 {
     if (!inst->config.rxdiag_enable) 
         return -INFINITY;
-    
-    float rssi = 10.0f * log10f(inst->rxdiag.cir_pwr * 0x20000/(inst->rxdiag.pacc_cnt * inst->rxdiag.pacc_cnt)) 
-                - ((inst->config.prf == DWT_PRF_16M) ? 115.72 : 122.74);
-    //printf("{\"utime\":%lu,\"cir_pwr\": %u,\"pacc_cnt\": %u, \"rssi\":\"%lu\"}\n",
-    //            os_cputime_ticks_to_usecs(os_cputime_get32()),
-    //            inst->rxdiag.cir_pwr,
-    //            inst->rxdiag.pacc_cnt,
-    //            *(uint32_t *)(&rssi)
-    //);
-    return rssi;
+    return dw1000_calc_rssi(inst, &inst->rxdiag);
 }
 
 #if MYNEWT_VAL(ADAPTIVE_TIMESCALE_ENABLED)
