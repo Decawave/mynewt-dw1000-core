@@ -74,7 +74,11 @@ dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uin
     };
 
     uint8_t len = cmd.subaddress?(cmd.extended?3:2):1;
-    hal_dw1000_read(inst, header, len, buffer, length);  // result is stored in the buffer
+    if (length < 8) {
+        hal_dw1000_read(inst, header, len, buffer, length);
+    } else {
+        hal_dw1000_read_noblock(inst, header, len, buffer, length);
+    }
 
     return inst->status;
 }
@@ -111,7 +115,7 @@ dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, ui
     };
 
     uint8_t len = cmd.subaddress?(cmd.extended?3:2):1; 
-    hal_dw1000_write(inst, header, len, buffer, length); 
+    hal_dw1000_write_noblock(inst, header, len, buffer, length); 
 
     return inst->status;
 }
@@ -132,10 +136,28 @@ dw1000_read_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress,
     union _buffer{
         uint8_t array[sizeof(uint64_t)];
         uint64_t value;
-    } __attribute__((__packed__)) buffer;
-    
+    } __attribute__((__packed__, aligned (8))) buffer;
+
+    assert(reg <= 0x3F); // Record number is limited to 6-bits.
+    assert((subaddress <= 0x7FFF) && ((subaddress + nbytes) <= 0x7FFF)); // Index and sub-addressable area are limited to 15-bits.
     assert(nbytes <= sizeof(uint64_t));
-    dw1000_read(inst, reg, subaddress, buffer.array, nbytes); // Read nbytes register into buffer
+
+    dw1000_cmd_t cmd = {
+        .reg = reg,
+        .subindex = subaddress != 0,
+        .operation = 0, //Read
+        .extended = subaddress > 128,
+        .subaddress = subaddress
+    };
+
+    uint8_t header[] = {
+        [0] = cmd.operation << 7 | cmd.subindex << 6 | cmd.reg,
+        [1] = cmd.extended << 7 | (uint8_t) (subaddress),
+        [2] = (uint8_t) (subaddress >> 7)
+    };
+
+    uint8_t len = cmd.subaddress?(cmd.extended?3:2):1;
+    hal_dw1000_read(inst, header, len, buffer.array, nbytes);  // result is stored in the buffer
 
     return buffer.value;
 } 
@@ -160,7 +182,25 @@ dw1000_write_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress
 
     buffer.value = val;
     assert(nbytes <= sizeof(uint64_t));
-    dw1000_write(inst, reg, subaddress, buffer.array, nbytes); 
+    assert(reg <= 0x3F); // Record number is limited to 6-bits.
+    assert((subaddress <= 0x7FFF) && ((subaddress + nbytes) <= 0x7FFF)); // Index and sub-addressable area are limited to 15-bits.
+
+    dw1000_cmd_t cmd = {
+        .reg = reg,
+        .subindex = subaddress != 0,
+        .operation = 1, //Write
+        .extended = subaddress > 128,
+        .subaddress = subaddress
+    };
+
+    uint8_t header[] = {
+        [0] = cmd.operation << 7 | cmd.subindex << 6 | cmd.reg,
+        [1] = cmd.extended << 7 | (uint8_t) (subaddress),
+        [2] = (uint8_t) (subaddress >> 7)
+    };
+
+    uint8_t len = cmd.subaddress?(cmd.extended?3:2):1;
+    hal_dw1000_write(inst, header, len, buffer.array, nbytes);
 } 
 
 /**
@@ -208,7 +248,7 @@ dw1000_dev_init(struct os_dev *odev, void *arg)
         inst->status.selfmalloc = 1;
     }
 
-    inst->spi_mutex = cfg->spi_mutex;
+    inst->spi_sem = cfg->spi_sem;
     inst->spi_num  = cfg->spi_num;
 
     os_error_t err = os_mutex_init(&inst->mutex);
@@ -216,7 +256,7 @@ dw1000_dev_init(struct os_dev *odev, void *arg)
 
     err = os_sem_init(&inst->sem, 0x1); 
     assert(err == OS_OK);
-    
+
     return OS_OK;
 }
 
@@ -239,6 +279,7 @@ retry:
     assert(rc == 0);
     rc = hal_spi_config(inst->spi_num, &inst->spi_settings);
     assert(rc == 0);
+    hal_spi_set_txrx_cb(inst->spi_num, hal_dw1000_spi_txrx_cb, (void*)inst);    
     rc = hal_spi_enable(inst->spi_num);
     assert(rc == 0);
 
