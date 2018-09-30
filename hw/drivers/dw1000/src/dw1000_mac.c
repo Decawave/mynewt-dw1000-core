@@ -367,8 +367,11 @@ struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst
 
     if ((txBufferOffset + txFrameLength) <= 1024){
         dw1000_write(inst, TX_BUFFER_ID, txBufferOffset,  txFrameBytes, txFrameLength);
-        for (uint8_t i = 0; i< sizeof(inst->fctrl); i++)
-            inst->fctrl_array[i] =  txFrameBytes[i];
+        /* This is only valid if the offset is 0, and not always then either  */
+        if (txBufferOffset == 0) {
+            for (uint8_t i = 0; i< sizeof(inst->fctrl); i++)
+                inst->fctrl_array[i] =  txFrameBytes[i];
+        }
         inst->status.tx_frame_error = 0;
     }
     else
@@ -517,6 +520,7 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
     dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); // return to idle state  
 
     inst->status.rx_error = inst->status.rx_timeout_error = 0;
+    inst->status.rx_buffer_overrun_error = 0;
     uint32_t sys_ctrl_reg = SYS_CTRL_RXENAB;
     if (control.start_rx_syncbuf_enabled)
         dw1000_sync_rxbufptrs(inst);
@@ -1105,8 +1109,23 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
         if(inst->config.rxdiag_enable)  
             dw1000_read_rxdiag(inst, &inst->rxdiag);
         // Toggle the Host side Receive Buffer Pointer
-        if (inst->config.dblbuffon_enabled)
-            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 1, sizeof(uint8_t));
+        if (inst->config.dblbuffon_enabled) {
+            if (dw1000_checkoverrun(inst) == 0) {
+                dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET,
+                                 1, sizeof(uint8_t));
+            } else {
+                /* Overrun flag has been set before callback completed */
+                inst->status.rx_buffer_overrun_error = 1;
+                dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_RXOVRR, sizeof(uint32_t));
+
+                dw1000_phy_forcetrxoff(inst);
+                dw1000_phy_rx_reset(inst);
+                if (inst->control.on_error_continue_enabled) {
+                    dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET,
+                                     SYS_CTRL_RXENAB, sizeof(uint16_t));
+                }
+            }
+        }
     }
 
     // Handle frame reception/preamble detect timeout events

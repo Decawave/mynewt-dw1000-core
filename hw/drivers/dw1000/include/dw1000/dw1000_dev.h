@@ -104,6 +104,8 @@ typedef struct _dw1000_dev_status_t{
     uint32_t sleeping:1;              //!< Indicates sleeping state
 
     uint32_t sem_force_released:1;    //!< Semaphore was released in forcetrxoff
+
+    uint32_t rx_buffer_overrun_error:1;//!< Dblbuffer overrun detected
 }dw1000_dev_status_t;
 
 //! Device control status bits.
