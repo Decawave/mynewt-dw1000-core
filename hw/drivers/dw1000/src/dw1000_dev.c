@@ -115,7 +115,12 @@ dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, ui
     };
 
     uint8_t len = cmd.subaddress?(cmd.extended?3:2):1; 
-    hal_dw1000_write_noblock(inst, header, len, buffer, length); 
+    /* Only use non-blocking write if the length of the write justifies it */
+    if (len+length < 4) {
+        hal_dw1000_write(inst, header, len, buffer, length);
+    } else {
+        hal_dw1000_write_noblock(inst, header, len, buffer, length);
+    }
 
     return inst->status;
 }
