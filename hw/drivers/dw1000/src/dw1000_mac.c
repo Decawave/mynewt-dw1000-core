@@ -362,7 +362,7 @@ struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst
     assert((config->rx.phrMode && (txFrameLength <= 1023)) || (txFrameLength <= 127));
     assert((txBufferOffset + txFrameLength) <= 1024);
 #endif
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Released by a SYS_STATUS_TXFRS event
+    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
     if ((txBufferOffset + txFrameLength) <= 1024){
@@ -400,7 +400,7 @@ inline void dw1000_write_tx_fctrl(struct _dw1000_dev_instance_t * inst, uint16_t
 #ifdef DW1000_API_ERROR_CHECK
     assert((inst->longFrames && ((txFrameLength + 2) <= 1023)) || ((txFrameLength +2) <= 127));
 #endif
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Released by a SYS_STATUS_TXFRS event
+    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
     // Write the frame length to the TX frame control register
@@ -486,7 +486,7 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
  */
 inline struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t dx_time)
 {
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Released by a SYS_STATUS_TXFRS event
+    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
     
     inst->control.delay_start_enabled = (dx_time >> 8) > 0;
@@ -776,21 +776,17 @@ struct _dw1000_dev_status_t dw1000_set_autoack(struct _dw1000_dev_instance_t * i
 
     os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
     assert(err == OS_OK);
-   // err = os_mutex_pend(&inst->mutex, OS_WAIT_FOREVER); // Read modify write critical section enter
-   // assert(err == OS_OK);
 
     uint32_t sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)); // Read sysconfig register
     inst->config.autoack_enabled = enable > 0;    
     if(inst->config.autoack_enabled){
         sys_cfg_reg |= SYS_CFG_AUTOACK;
         dw1000_write_reg(inst, SYS_CFG_ID,0, sys_cfg_reg, sizeof(uint32_t));
-    }else{
+    } else {
         sys_cfg_reg &= ~SYS_CFG_AUTOACK;
         dw1000_write_reg(inst, SYS_CFG_ID,0, sys_cfg_reg, sizeof(uint32_t));
     }
 
-   // err = os_mutex_release(&inst->mutex);       // // Read modify write critical section exit
-  //  assert(err == OS_OK);
     err = os_mutex_release(&inst->mutex);  
     assert(err == OS_OK);
 
@@ -856,10 +852,10 @@ struct _dw1000_dev_status_t dw1000_set_wait4resp_delay(struct _dw1000_dev_instan
         ack_resp_reg |= (delay & ACK_RESP_T_W4R_TIM_MASK) ; // In UWB microseconds (e.g. turn the receiver on 20uus after TX)
         dw1000_write_reg(inst, ACK_RESP_T_ID, 0, ack_resp_reg, sizeof(uint32_t));
     }
-     err = os_mutex_release(&inst->mutex);  
-     assert(err == OS_OK);
-     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_set_wait4resp_delay_\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-
+    err = os_mutex_release(&inst->mutex);  
+    assert(err == OS_OK);
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_set_wait4resp_delay_\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    
     return inst->status;
 }
 
@@ -889,7 +885,7 @@ struct _dw1000_dev_status_t dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t *
         sys_cfg_reg |= SYS_CFG_DIS_DRXB;
     dw1000_write_reg(inst, SYS_CFG_ID, 0, sys_cfg_reg, sizeof(uint32_t));
     
-    err = os_mutex_release(&inst->mutex);       // // Read modify write critical section exit
+    err = os_mutex_release(&inst->mutex);       // Read modify write critical section exit
     assert(err == OS_OK);
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_set_dblrxbuff_\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
