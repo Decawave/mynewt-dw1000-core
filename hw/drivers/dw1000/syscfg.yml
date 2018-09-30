@@ -6,6 +6,11 @@ syscfg.defs:
     DW1000_DEV_TASK_STACK_SZ:
         description: 'Size of interrupt task stack'
         value: 256
+    DW1000_HAL_SPI_BUFFER_SIZE:
+        description: >
+          Size of spi read/write buffer, sets the 
+          maximum allowed nonblocking read operation
+        value: 136
     DW1000_SS_TWR_ENABLED:
         description: 'Single sided TWR Enabled'
         value: 1
@@ -119,5 +124,3 @@ syscfg.defs:
         restrictions: CCP_PERIOD
         restrictions: TIMESCALE_PROCESSING_ENABLED
 
- 
-        

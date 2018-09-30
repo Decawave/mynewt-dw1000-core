@@ -40,7 +40,7 @@
 #include <dw1000/dw1000_hal.h>
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-static uint8_t tx_buffer[1280] __attribute__ ((aligned (8)));
+static uint8_t tx_buffer[MYNEWT_VAL(DW1000_HAL_SPI_BUFFER_SIZE)] __attribute__ ((aligned (8)));
 
 static dw1000_dev_instance_t hal_dw1000_instances[]= {
     #if  MYNEWT_VAL(DW1000_DEVICE_0)
@@ -302,7 +302,8 @@ void dw1000_spi_txrx_evcb(struct os_event *ev)
     hal_gpio_write(inst->ss_pin, 1);
     
     /* Need txrx here to switch SPI back to non-blocking, legacy state */
-    hal_spi_txrx(inst->spi_num, (void*)&err, 0, 1);
+    uint8_t dummy;
+    hal_spi_txrx(inst->spi_num, (void*)&dummy, 0, 1);
     err = os_sem_release(inst->spi_sem);
     assert(err == OS_OK);
 }
@@ -341,6 +342,8 @@ hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cm
     int rc;
     os_error_t err;
     assert(inst->spi_sem);
+    assert(length < MYNEWT_VAL(DW1000_HAL_SPI_BUFFER_SIZE));
+
     err = os_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
     
@@ -349,7 +352,7 @@ hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cm
     for(uint8_t i = 0; i < cmd_size; i++) {
         hal_spi_tx_val(inst->spi_num, cmd[i]);
     }
-    memset(tx_buffer,0,sizeof(tx_buffer));
+    memset(tx_buffer,0,length);
     rc = hal_spi_txrx_noblock(inst->spi_num, tx_buffer,
                               (void*)buffer, length);
     assert(rc==OS_OK);
