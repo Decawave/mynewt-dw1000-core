@@ -1243,6 +1243,10 @@ float
 dw1000_calc_fppl(struct _dw1000_dev_instance_t * inst,
                  struct _dw1000_dev_rxdiag_t * diag)
 {
+    if (diag->pacc_cnt == 0 ||
+        (!diag->fp_amp && !diag->fp_amp2 && !diag->fp_amp3)) {
+        return -INFINITY;
+    }
     float A = (inst->config.prf == DWT_PRF_16M) ? 115.72 : 122.74;
 
     float N = diag->pacc_cnt;
@@ -1281,6 +1285,9 @@ float
 dw1000_calc_rssi(struct _dw1000_dev_instance_t * inst,
                  struct _dw1000_dev_rxdiag_t * diag)
 {
+    if (diag->cir_pwr == 0 || diag->pacc_cnt == 0) {
+        return -INFINITY;
+    }
     float rssi = 10.0f * log10f(diag->cir_pwr * 0x20000/(diag->pacc_cnt * diag->pacc_cnt))
         - ((inst->config.prf == DWT_PRF_16M) ? 115.72 : 122.74);
     return rssi;
