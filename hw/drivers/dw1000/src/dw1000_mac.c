@@ -256,7 +256,7 @@ struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst
     
     if (inst->config.rxauto_enable) 
         inst->sys_cfg_reg |=SYS_CFG_RXAUTR; 
-
+    
     dw1000_write_reg(inst, SYS_CFG_ID, 0, inst->sys_cfg_reg, sizeof(uint32_t));
     dw1000_write_reg(inst, LDE_IF_ID, LDE_REPC_OFFSET, reg16, sizeof(uint16_t)); // Set the lde_replicaCoeff 
 
@@ -894,6 +894,72 @@ struct _dw1000_dev_status_t dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t *
     return inst->status;
 }
 
+/**
+ * API for reading carrier integrator value
+ *
+ * @brief This is used to read the RX carrier integrator value 
+ * (relating to the frequency offset of the TX node)
+ *
+ * NOTE: This is a 21-bit signed quantity, the function sign extends the most 
+ *       significant bit, which is bit #20 (numbering from bit zero) to return 
+ *       a 32-bit signed integer value.
+ *
+ * @param inst          Pointer to _dw1000_dev_instance_t.
+ *
+ * @return int32_t the signed carrier integrator value.
+ *                 A positive value means the local RX clock is running faster than the remote TX device.
+ */
+int32_t
+dw1000_read_carrier_integrator(struct _dw1000_dev_instance_t * inst)
+{
+#define B20_SIGN_EXTEND_TEST (0x00100000UL)
+#define B20_SIGN_EXTEND_MASK (0xFFF00000UL)
+    uint32_t  regval=0;
+    /* Read 3 bytes (21-bit quantity) */
+    regval = dw1000_read_reg(inst, DRX_CONF_ID, DRX_CARRIER_INT_OFFSET, DRX_CARRIER_INT_LEN);
+
+    /* Check for a negative number */
+    if (regval & B20_SIGN_EXTEND_TEST) {
+        /* sign extend bit #20 to whole word */
+        regval |= B20_SIGN_EXTEND_MASK;
+    } else {
+        /* make sure upper bits are clear if not sign extending */
+        regval &= DRX_CARRIER_INT_MASK;
+    }
+
+    /* cast unsigned value to signed quantity */
+    return (int32_t) regval;
+}
+
+/**
+ * API for calculating the clock offset ratio from the carrior integrator value
+ *
+ * @param inst           Pointer to _dw1000_dev_instance_t.
+ * @param integrator_val carrier integrator value
+ *
+ * @return float   the relative clock offset ratio
+ */
+float
+dw1000_calc_clock_offset_ratio(struct _dw1000_dev_instance_t * inst, int32_t integrator_val)
+{
+    float fom = DWT_FREQ_OFFSET_MULTIPLIER;
+    float hz_to_ppm;
+    if (inst->config.dataRate == DWT_BR_110K) {
+        fom = DWT_FREQ_OFFSET_MULTIPLIER_110KB;
+    }
+    
+    switch ( inst->config.channel ) {
+    case 1: hz_to_ppm = DWT_HZ_TO_PPM_MULTIPLIER_CHAN_1;break;
+    case 2: hz_to_ppm = DWT_HZ_TO_PPM_MULTIPLIER_CHAN_2;break;
+    case 3: hz_to_ppm = DWT_HZ_TO_PPM_MULTIPLIER_CHAN_3;break;
+    case 4: hz_to_ppm = DWT_HZ_TO_PPM_MULTIPLIER_CHAN_4;break;
+    case 5: hz_to_ppm = DWT_HZ_TO_PPM_MULTIPLIER_CHAN_5;break;
+    case 7: hz_to_ppm = DWT_HZ_TO_PPM_MULTIPLIER_CHAN_7;break;
+    default: assert(0);
+    }
+    
+    return integrator_val * (fom * hz_to_ppm / 1.0e6);
+}
 
 /**
  * API to read the RX signal quality diagnostic data.
@@ -1101,6 +1167,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
         // Call the corresponding non-ranging frame callback if present
         else if(inst->rx_complete_cb != NULL)
             inst->rx_complete_cb(inst);        
+
         // Collect RX Frame Quality diagnositics
         if(inst->config.rxdiag_enable)  
             dw1000_read_rxdiag(inst, &inst->rxdiag);
@@ -1170,7 +1237,7 @@ static void dw1000_interrupt_ev_cb(struct os_event *ev)
  * @param inst  Pointer to _dw1000_dev_instance_t.
  * @param diag  Pointer to _dw1000_dev_rxdiag_t.
  *
- * @return rssi on success
+ * @return fppl on success
  */
 float
 dw1000_calc_fppl(struct _dw1000_dev_instance_t * inst,

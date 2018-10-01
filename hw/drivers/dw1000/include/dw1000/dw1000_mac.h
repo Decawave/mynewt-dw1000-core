@@ -77,6 +77,20 @@ extern "C" {
 #define DWT_PHRMODE_STD             0x0     //!< standard PHR mode
 #define DWT_PHRMODE_EXT             0x3     //!< DW proprietary extended frames PHR mode
 
+//! Multiplication factors to convert carrier integrator value to a frequency offset in Hz
+#define DWT_FREQ_OFFSET_MULTIPLIER          (998.4e6/2.0/1024.0/131072.0)
+#define DWT_FREQ_OFFSET_MULTIPLIER_110KB    (998.4e6/2.0/8192.0/131072.0)
+
+//! Multiplication factors to convert frequency offset in Hertz to PPM crystal offset
+// NB: also changes sign so a positive value means the local RX clock is
+// running slower than the remote TX device.
+#define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_1     (-1.0e6/3494.4e6)
+#define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_2     (-1.0e6/3993.6e6)
+#define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_3     (-1.0e6/4492.8e6)
+#define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_4     (-1.0e6/4492.8e6)
+#define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_5     (-1.0e6/6489.6e6)
+#define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_7     (-1.0e6/6489.6e6)
+
 //! Start transmit mode parameters.
 typedef enum _dw1000_start_tx_modes_t {
     DWT_START_TX_IMMEDIATE = 1 << 0,     //!< Set up immediate tx to transmit immediately
@@ -196,6 +210,9 @@ float dw1000_calc_rssi(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_
 float dw1000_get_rssi(struct _dw1000_dev_instance_t * inst);
 float dw1000_calc_fppl(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag);
 float dw1000_get_fppl(struct _dw1000_dev_instance_t * inst);
+
+int32_t dw1000_read_carrier_integrator(struct _dw1000_dev_instance_t * inst);
+float dw1000_calc_clock_offset_ratio(struct _dw1000_dev_instance_t * inst, int32_t integrator_val);
 
 void dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag);
 #define dw1000_set_preamble_timeout(counts) dw1000_write_reg(inst, DRX_CONF_ID, DRX_PRETOC_OFFSET, counts, sizeof(uint16_t))

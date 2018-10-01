@@ -924,6 +924,11 @@ extern "C" {
 #define DRX_TUNE4H_PRE64        0x0010
 #define DRX_TUNE4H_PRE128PLUS   0x0028
 
+/* offset from DRX_CONF_ID in bytes to 21-bit signed RX carrier integrator value */
+#define DRX_CARRIER_INT_OFFSET  0x28
+#define DRX_CARRIER_INT_LEN     (3)
+#define DRX_CARRIER_INT_MASK    0x001FFFFF
+
 
 /****************************************************************************//**
  * @brief Bit definitions for register  RF_CONF
