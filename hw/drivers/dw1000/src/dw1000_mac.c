@@ -1188,7 +1188,7 @@ inline uint64_t dw1000_read_systime(struct _dw1000_dev_instance_t * inst){
     clkcal_instance_t * clk = inst->ccp->clkcal;
     assert(clk);
    
-    uint64_t time = ((uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN)) & 0x0FFFFFFFFFFUL;
+    uint64_t time = ((uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN)) & 0x0FFFFFFFFFFULL;
     
     if (clk->status.valid)
         time *= inst->ccp->clkcal->skew;
@@ -1205,7 +1205,7 @@ inline uint64_t dw1000_read_systime(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint64_t _dw1000_read_systime(struct _dw1000_dev_instance_t * inst){
-    uint64_t time = ((uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN)) & 0x0FFFFFFFFFFUL;
+    uint64_t time = ((uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN)) & 0x0FFFFFFFFFFULL;
     return time;
 }
 
@@ -1241,7 +1241,7 @@ inline uint64_t dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst){
     clkcal_instance_t * clk = inst->ccp->clkcal;
     assert(clk);
 
-    uint64_t time = (uint64_t)  dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFUL;
+    uint64_t time = (uint64_t)  dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFULL;
     if (clk->status.valid)
         time *= inst->ccp->clkcal->skew;
     return time & 0x0FFFFFFFFFFUL;
@@ -1263,7 +1263,7 @@ inline uint64_t dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint64_t _dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst){
-    return (uint64_t)  dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFUL;
+    return (uint64_t)  dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFULL;
 }
 
 /**
@@ -1281,7 +1281,7 @@ inline uint64_t _dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint64_t _dw1000_read_rxtime_raw(struct _dw1000_dev_instance_t * inst){
-    return (uint64_t)  dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_RAWST_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFUL;
+    return (uint64_t)  dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_RAWST_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFULL;
 }
 
 
@@ -1316,7 +1316,7 @@ inline uint64_t dw1000_read_txtime(struct _dw1000_dev_instance_t * inst){
     clkcal_instance_t * clk = inst->ccp->clkcal;
     assert(clk);
 
-    uint64_t time = (uint64_t) dw1000_read_reg(inst, TX_TIME_ID, TX_TIME_TX_STAMP_OFFSET, TX_TIME_TX_STAMP_LEN) & 0x0FFFFFFFFFFUL;
+    uint64_t time = (uint64_t) dw1000_read_reg(inst, TX_TIME_ID, TX_TIME_TX_STAMP_OFFSET, TX_TIME_TX_STAMP_LEN) & 0x0FFFFFFFFFFULL;
     if (clk->status.valid)
         time *= inst->ccp->clkcal->skew;
     return time & 0x0FFFFFFFFFFUL;
