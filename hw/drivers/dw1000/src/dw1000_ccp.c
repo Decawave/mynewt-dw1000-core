@@ -44,6 +44,21 @@
 #include <clkcal/clkcal.h>
 #endif
 
+#include <dw1000/dw1000_tdma.h>
+
+//#define DIAGMSG(s,u) printf(s,u)
+#ifndef DIAGMSG
+#define DIAGMSG(s,u)
+#endif
+/*
+void print_frame(const char * name, ccp_frame_t *frame ){
+    printf("%s{\n\tfctrl:0x%02X,\n", name, frame->fctrl);
+    printf("\tseq_num:0x%02X,\n", frame->seq_num);
+    printf("\tlong_address:0x%08llX,\n", frame->long_address);
+    printf("\treception_timestamp:0x%08llX,\n", frame->reception_timestamp);
+    printf("\ttransmission_timestamp:0x%08llX,\n", frame->transmission_timestamp);
+}
+*/
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED) 
 
 /*	%Lowpass design
@@ -83,11 +98,14 @@ static bool ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst);
 static bool ccp_rx_error_cb(dw1000_dev_instance_t * inst);
 static bool ccp_rx_timeout_cb(dw1000_dev_instance_t * inst);
 static bool ccp_tx_error_cb(dw1000_dev_instance_t * inst);
-static struct _dw1000_ccp_status_t dw1000_ccp_blink(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
+#if  MYNEWT_VAL(DW1000_CCP_MASTER_ENABLED)
+static struct _dw1000_ccp_status_t dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
+#else
+static struct _dw1000_ccp_status_t dw1000_ccp_receive(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
+#endif
 #if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED) !=1
 static void ccp_postprocess(struct os_event * ev);
 #endif
-
 
 static void ccp_timer_irq(void * arg);
 static void ccp_timer_ev_cb(struct os_event *ev);
@@ -106,7 +124,7 @@ ccp_timer_init(struct _dw1000_dev_instance_t * inst) {
 
     os_cputime_timer_init(&ccp->timer, ccp_timer_irq, (void *) inst);
     os_callout_init(&ccp->event_cb, &ccp->eventq, ccp_timer_ev_cb, (void *) inst);
-    os_cputime_timer_relative(&ccp->timer, MYNEWT_VAL(OS_LATENCY));
+    os_cputime_timer_relative(&ccp->timer, 0);
 }
 
 /**
@@ -121,7 +139,6 @@ ccp_timer_irq(void * arg){
  
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *) arg;
     dw1000_ccp_instance_t * ccp = inst->ccp; 
-   
     os_eventq_put(&ccp->eventq, &ccp->event_cb.c_ev);
 }
 
@@ -141,12 +158,38 @@ ccp_timer_ev_cb(struct os_event *ev) {
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
 
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp_timer_ev_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
     dw1000_ccp_instance_t * ccp = inst->ccp; 
+    
 
+#if  MYNEWT_VAL(DW1000_CCP_MASTER_ENABLED)
+    dw1000_ccp_send(inst, DWT_BLOCKING);
     uint32_t cputime = os_cputime_get32() - os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY));
-    if(dw1000_ccp_blink(inst, DWT_BLOCKING).start_tx_error) 
-      hal_timer_start_at(&ccp->timer, cputime + os_cputime_usecs_to_ticks(dw1000_dwt_usecs_to_usecs(ccp->period)));
+    hal_timer_start_at(&ccp->timer, cputime + os_cputime_usecs_to_ticks((uint32_t)dw1000_dwt_usecs_to_usecs(ccp->period)));
+#else
+    if(dw1000_ccp_receive(inst, DWT_BLOCKING).start_rx_error){
+        // Sync lost, switch to alway on mode
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp_timer_ev_cb:start_rx_error\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+        os_error_t err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER);
+        assert(err == OS_OK);
+        dw1000_set_rx_timeout(inst, ccp->period); 
+        dw1000_start_rx(inst);
+
+        err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
+        os_sem_release(&ccp->sem);
+         // Schedule next event to align with correctly
+        uint32_t cputime = os_cputime_get32() - 2 * os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY));
+        hal_timer_start_at(&ccp->timer, cputime + os_cputime_usecs_to_ticks((uint32_t)dw1000_dwt_usecs_to_usecs(ccp->period)));
+    }else{
+         // Schedule next event
+        uint32_t cputime = os_cputime_get32() - os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY));
+        hal_timer_start_at(&ccp->timer, cputime + os_cputime_usecs_to_ticks((uint32_t)dw1000_dwt_usecs_to_usecs(ccp->period)));
+    }
+   
+#endif
+   
+   
 }
 
 
@@ -202,6 +245,7 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
     assert(inst);
     assert(nframes > 1);
     dw1000_extension_callbacks_t ccp_cbs;
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
     if (inst->ccp == NULL ) {
         dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *) malloc(sizeof(dw1000_ccp_instance_t) + nframes * sizeof(ccp_frame_t *)); 
@@ -218,7 +262,7 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
         for (uint16_t i = 0; i < ccp->nframes; i++){
             ccp->frames[i] = (ccp_frame_t *) malloc(sizeof(ccp_frame_t)); 
             memcpy(ccp->frames[i], &ccp_default, sizeof(ccp_frame_t));
-            ccp->frames[i]->seq_num = i-1;
+            ccp->frames[i]->seq_num = i;
         }
 
         ccp->parent = inst;
@@ -241,9 +285,9 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
     assert(err == OS_OK);
 
 #if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
-    inst->ccp->clkcal = clkcal_init(NULL, inst->ccp);      // Using clkcal process
+    inst->ccp->clkcal = clkcal_init(NULL, inst->ccp);           // Using clkcal process
 #else
-    dw1000_ccp_set_postprocess(inst->ccp, &ccp_postprocess);            // Using default process
+    dw1000_ccp_set_postprocess(inst->ccp, &ccp_postprocess);    // Using default process
 #endif
 
     ccp_cbs.tx_complete_cb = ccp_tx_complete_cb;
@@ -254,21 +298,10 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
     
     dw1000_ccp_set_ext_callbacks(inst, ccp_cbs);
 
-    dw1000_ccp_instance_t * ccp = inst->ccp; 
-    ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
-
-#if MYNEWT_VAL(CLOCK_CALIBRATION)
-    frame->transmission_timestamp = _dw1000_read_systime(inst);
-#else
-    frame->transmission_timestamp = dw1000_read_systime(inst);
-#endif
-
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED) 
     inst->ccp->xtalt_sos = sosfilt_init(NULL, sizeof(g_fs_xtalt_b)/sizeof(float)/BIQUAD_N);
 #endif
-
     ccp_tasks_init(inst->ccp);
-
     inst->ccp->status.initialized = 1;
     return inst->ccp;
 }
@@ -282,6 +315,7 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
 void 
 dw1000_ccp_free(dw1000_ccp_instance_t * inst){
     assert(inst);  
+    os_sem_release(&inst->sem);
 #if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
     clkcal_free(inst->clkcal);
 #endif         
@@ -319,8 +353,8 @@ void dw1000_ccp_set_ext_callbacks(dw1000_dev_instance_t * inst, dw1000_extension
  * @return void
  */
 void 
-dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, os_event_fn * ccp_postprocess){
-    os_callout_init(&inst->callout_postprocess, os_eventq_dflt_get(), ccp_postprocess, (void *) inst);
+dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, os_event_fn * postprocess){
+    os_callout_init(&inst->callout_postprocess, os_eventq_dflt_get(), postprocess, (void *) inst);
     inst->config.postprocess = true;
 }
 
@@ -336,13 +370,27 @@ ccp_postprocess(struct os_event * ev){
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)ev->ev_arg;
-    ccp_frame_t * previous_frame = ccp->frames[(ccp->idx-1)%ccp->nframes]; 
-    ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
 
-    printf("{\"utime\":%lu,\"ccp\":[%llu,%llu],\"correction\":%lu,\"seq_num\":%d}\n", 
-        os_cputime_ticks_to_usecs(os_cputime_get32()),
-        frame->reception_timestamp,
-        (uint64_t)((uint64_t)(frame->reception_timestamp) - (uint64_t)(previous_frame->reception_timestamp)) & 0xFFFFFFFFF,
+    ccp_frame_t * previous_frame = ccp->frames[(ccp->idx-2)%ccp->nframes]; 
+    ccp_frame_t * frame = ccp->frames[(ccp->idx-1)%ccp->nframes]; 
+ //   print_frame("ccp_frame0",previous_frame);
+ //   print_frame("ccp_frame1",frame);
+
+#if  MYNEWT_VAL(DW1000_CCP_MASTER_ENABLED) 
+    uint64_t delta = (frame->transmission_timestamp - previous_frame->transmission_timestamp);
+#else 
+    uint64_t delta = (frame->reception_timestamp - previous_frame->reception_timestamp);
+#endif
+    delta = delta & ((uint64_t)1<<63)?delta & 0xFFFFFFFFFF :delta;
+
+    printf("{\"utime\": %lu,\"ccp\":[%llX,%llX],\"correction\":%lu,\"seq_num\":%d}\n", 
+        os_cputime_ticks_to_usecs(os_cputime_get32()),   
+#if  MYNEWT_VAL(DW1000_CCP_MASTER_ENABLED) 
+        frame->transmission_timestamp,
+#else
+        frame->reception_timestamp,       
+#endif
+        delta,
         *(uint32_t *)&frame->correction_factor,
         frame->seq_num
     );
@@ -367,6 +415,7 @@ ccp_postprocess(struct os_event * ev){
  */
 static bool 
 ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
+
     if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
         // CCP Packet Received
         uint64_t clock_master;
@@ -378,9 +427,11 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
     }else{
         return false;
     }
+     
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp_rx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+
     dw1000_ccp_instance_t * ccp = inst->ccp; 
-    ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
-    
+    ccp_frame_t * frame = ccp->frames[(ccp->idx++)%ccp->nframes];
     dw1000_read_rx(inst, frame->array, 0, sizeof(ieee_blink_frame_t));
 
 #if MYNEWT_VAL(ADAPTIVE_TIMESCALE_ENABLED) 
@@ -389,17 +440,21 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
     frame->reception_timestamp = dw1000_read_rxtime(inst);
 #endif
 
+#if MYNEWT_VAL(TDMA_ENABLED) 
+    if (inst->tdma != NULL && inst->tdma->status.initialized)
+        os_eventq_put(&inst->tdma->eventq, &inst->tdma->event_cb.c_ev);
+#endif
+
     int32_t tracking_interval = (int32_t) dw1000_read_reg(inst, RX_TTCKI_ID, 0, sizeof(int32_t));
     int32_t tracking_offset = (int32_t)(((uint32_t) dw1000_read_reg(inst, RX_TTCKO_ID, 0, sizeof(uint32_t)) & RX_TTCKO_RXTOFS_MASK) << 13) >> 13;
     frame->correction_factor = 1.0f +((float)tracking_offset) / tracking_interval;
 
     ccp->status.valid |= ccp->idx > ccp->nframes;
-    if (ccp->config.postprocess && ccp->status.valid) 
+
+    if (ccp->config.postprocess) 
         os_eventq_put(os_eventq_dflt_get(), &ccp->callout_postprocess.c_ev);
-   else{
-        inst->control = inst->control_rx_context;
-        dw1000_restart_rx(inst,inst->control_rx_context);
-    }
+    
+
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED) 
     if (ccp->config.fs_xtalt_autotune && ccp->status.valid){  
         float fs_xtalt_offset = sosfilt(ccp->xtalt_sos,  1e6 * ((float)tracking_offset) / tracking_interval, g_fs_xtalt_b, g_fs_xtalt_a);  
@@ -418,8 +473,9 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
         }
     }
 #endif
-    return true;
 
+    os_sem_release(&ccp->sem);
+    return true;
 }
 
 /** 
@@ -434,26 +490,29 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
  */
 static bool 
 ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
-    if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64){
+
+    if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64)
         return false;
-    }
+    
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp_tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     //Advance frame idx 
     dw1000_ccp_instance_t * ccp = inst->ccp; 
-    ccp_frame_t * previous_frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
-    ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
+    ccp_frame_t * frame = ccp->frames[(ccp->idx++)%ccp->nframes];
+    
+    frame->transmission_timestamp = dw1000_read_txtime(inst); 
 
-    printf("{\"utime\":%lu,\"ccp_tx\":[\"%llX\",\"%llX\"],\"seq_num\":%d}\n", 
-        os_cputime_ticks_to_usecs(os_cputime_get32()),
-        frame->transmission_timestamp,
-        (uint64_t)((uint64_t)(frame->transmission_timestamp) - (uint64_t)(previous_frame->transmission_timestamp)) & 0xFFFFFFFFF,
-        frame->seq_num
-    );
     if (ccp->status.timer_enabled){
         uint32_t cputime = os_cputime_get32() - os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY));
         hal_timer_start_at(&ccp->timer, cputime + os_cputime_usecs_to_ticks(dw1000_dwt_usecs_to_usecs(ccp->period - MYNEWT_VAL(OS_LATENCY))));
     }
 
-    os_sem_release(&inst->ccp->sem);  
+    ccp->status.valid |= ccp->idx > ccp->nframes;
+
+    // Postprocess for tx_complete is used to generate tdma events on the clock master node. 
+    if (ccp->config.postprocess) 
+        os_eventq_put(os_eventq_dflt_get(), &ccp->callout_postprocess.c_ev);
+    
+    os_sem_release(&ccp->sem);  
     return true;
 }
 
@@ -469,6 +528,7 @@ ccp_rx_error_cb(struct _dw1000_dev_instance_t * inst){
     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64){
 			return false;
 	}
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp_rx_error_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 	return true;
 }
 
@@ -484,6 +544,7 @@ ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst){
     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64){
         return false;
     }
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp_tx_error_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     return true;
 }
 
@@ -499,10 +560,14 @@ ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst){
     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64){
         return false;
     }
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp_rx_timeout_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     return true;
 }
 
+
+#if  MYNEWT_VAL(DW1000_CCP_MASTER_ENABLED)
 /**
+ * @fn dw1000_ccp_send(dw1000_dev_instance_t * inst, dw1000_ccp_modes_t mode)
  * API that start clock calibration packets (CCP) blinks  with a pulse repetition period of MYNEWT_VAL(CCP_PERIOD). 
  * Precise timing is achieved by adding a fixed period to the transmission time of the previous frame. 
  * This removes the need to explicitly read the systime register and the assiciated non-deterministic latencies. 
@@ -514,16 +579,17 @@ ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst){
  * @return dw1000_ccp_status_t 
  */
 static dw1000_ccp_status_t 
-dw1000_ccp_blink(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
+dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 
-    os_error_t err = os_sem_pend(&inst->ccp->sem,  OS_TIMEOUT_NEVER);
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_send\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    dw1000_ccp_instance_t * ccp = inst->ccp; 
+    os_error_t err = os_sem_pend(&ccp->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
-    dw1000_ccp_instance_t * ccp = inst->ccp; 
     ccp_frame_t * previous_frame = ccp->frames[(ccp->idx-1)%ccp->nframes];
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes];
 
-    frame->transmission_timestamp = previous_frame->transmission_timestamp + 2 * ((uint64_t)inst->ccp->period << 15);
+    frame->transmission_timestamp = previous_frame->transmission_timestamp + ((uint64_t)inst->ccp->period << 16);
     frame->seq_num += inst->ccp->nframes;
     frame->long_address = inst->my_short_address;
 
@@ -536,16 +602,60 @@ dw1000_ccp_blink(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     if (ccp->status.start_tx_error){
         // Half Period Delay Warning occured try for the next epoch
         // Use seq_num to detect this on receiver size
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_send:start_tx_error\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         previous_frame->transmission_timestamp += ((uint64_t)inst->ccp->period << 15);
-        os_sem_release(&inst->ccp->sem);
-    }  
-    else if(mode == DWT_BLOCKING){
-        err = os_sem_pend(&inst->ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
-        os_sem_release(&inst->ccp->sem);
+        os_sem_release(&ccp->sem);
+    }else if(mode == DWT_BLOCKING){
+        err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
+        os_sem_release(&ccp->sem);
     }
    return ccp->status;
 }
 
+#else
+
+/*! 
+ * @fn dw1000_ccp_receive(dw1000_dev_instance_t * inst, dw1000_ccp_modes_t mode)
+ *
+ * @brief Explisit entry function for reveicing a ccp frame.  
+ *
+ * input parameters
+ * @param inst - dw1000_dev_instance_t * 
+ * @param mode - dw1000_ccp_modes_t for CCP_BLOCKING, CCP_NONBLOCKING modes.
+ *
+ * output parameters
+ *
+ * returns dw1000_ccp_status_t 
+ */
+static dw1000_ccp_status_t 
+dw1000_ccp_receive(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
+
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_receive\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    dw1000_ccp_instance_t * ccp = inst->ccp; 
+
+    os_error_t err = os_sem_pend(&ccp->sem,  OS_TIMEOUT_NEVER);
+    assert(err == OS_OK);
+
+    ccp_frame_t * frame = ccp->frames[(ccp->idx-1)%ccp->nframes];
+    uint64_t dx_time = frame->reception_timestamp + ((uint64_t)inst->ccp->period << 16) - ((uint64_t)MYNEWT_VAL(DW1000_IDLE_TO_RX_LATENCY) << 16);
+
+    dw1000_set_rx_timeout(inst, ccp->period); 
+    dw1000_set_delay_start(inst, dx_time);    
+
+    ccp->status.start_rx_error = dw1000_start_rx(inst).start_rx_error;
+    if (ccp->status.start_rx_error){
+        // Half Period Delay Warning occured try for the next epoch
+        // Use seq_num to detect this on receiver size
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_receive:start_rx_error\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+        os_sem_release(&ccp->sem);
+    }else if(mode == DWT_BLOCKING){
+        err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
+        os_sem_release(&ccp->sem);
+    }
+   return ccp->status;
+}
+
+#endif
 
 /** 
  * API to start clock calibration packets (CCP) blinks. 
@@ -557,11 +667,16 @@ dw1000_ccp_blink(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 void 
 dw1000_ccp_start(struct _dw1000_dev_instance_t * inst){
     // Initialise frame timestamp to current time
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_start\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     ccp->idx = 0x0;  
     ccp->status.valid = false;
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
-    frame->transmission_timestamp = dw1000_read_systime(inst) + (MYNEWT_VAL(OS_LATENCY) << 15);
+#if  MYNEWT_VAL(DW1000_CCP_MASTER_ENABLED)
+    frame->transmission_timestamp = dw1000_read_systime(inst);
+#else
+    frame->reception_timestamp = dw1000_read_systime(inst);
+#endif
     ccp_timer_init(inst);
 }
 

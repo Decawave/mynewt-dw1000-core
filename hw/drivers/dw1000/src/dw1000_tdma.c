@@ -60,7 +60,6 @@
 
 static void tdma_superframe_event_cb(struct os_event * ev);
 static void slot_timer_cb(void * arg);
-static void slot0_event_cb(struct os_event * ev);
 
 #ifdef TDMA_TASKS_ENABLE
 static void tdma_tasks_init(struct _tdma_instance_t * inst);
@@ -98,16 +97,17 @@ tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots
     }else{
         tdma = inst->tdma;
     }
-    tdma->status.awaiting_superframe = 1; 
-#if MYNEWT_VAL(DW1000_CCP_ENABLED)    
-    clkcal_set_postprocess(inst->ccp->clkcal, (void * )tdma_superframe_event_cb);
-#endif
-    
-    tdma_assign_slot(tdma, slot0_event_cb, 0, NULL);
-    os_cputime_timer_init(&tdma->slot[0]->timer, slot_timer_cb, (void *) tdma->slot[0]);
-    os_cputime_timer_relative(&tdma->slot[0]->timer, (tdma->period - MYNEWT_VAL(OS_LATENCY)));
 
-    inst->status.initialized = true;
+    os_callout_init(&tdma->event_cb, &tdma->eventq, tdma_superframe_event_cb, (void *) tdma);
+    tdma->status.awaiting_superframe = 1; 
+
+//#if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED) 
+//    clkcal_set_postprocess(inst->ccp->clkcal, (void * )tdma_superframe_event_cb);
+//#elif MYNEWT_VAL(DW1000_CCP_ENABLED) 
+//    dw1000_ccp_set_postprocess(inst->ccp, (void * )tdma_superframe_event_cb);
+//#endif
+    
+    tdma->status.initialized = true;
 
 #ifdef TDMA_TASKS_ENABLE
     tdma_tasks_init(tdma);
@@ -242,15 +242,17 @@ tdma_superframe_event_cb(struct os_event * ev){
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma_superframe_event_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
-    clkcal_instance_t * clkcal = (clkcal_instance_t *)ev->ev_arg;
-    dw1000_ccp_instance_t * ccp = (void *)clkcal->ccp; 
-    dw1000_dev_instance_t * inst = ccp->parent;
-    tdma_instance_t * tdma = inst->tdma;
+    tdma_instance_t * tdma = (void *)ev->ev_arg;
     uint32_t cputime = os_cputime_get32() - os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY));
     
     tdma->status.awaiting_superframe = 0;
-    hal_timer_start_at(&tdma->slot[0]->timer, cputime + os_cputime_usecs_to_ticks((uint32_t)dw1000_dwt_usecs_to_usecs(tdma->period)));
-    for (uint16_t i = 1; i < tdma->nslots; i++) {
+
+    for (uint16_t i = 0; i < tdma->nslots; i++) {
+        if (tdma->slot[i]){
+            os_cputime_timer_stop(&tdma->slot[i]->timer);
+        }
+    }
+    for (uint16_t i = 0; i < tdma->nslots; i++) {
         if (tdma->slot[i]){
             hal_timer_start_at(&tdma->slot[i]->timer, cputime + os_cputime_usecs_to_ticks((uint32_t)dw1000_dwt_usecs_to_usecs(i * tdma->period/tdma->nslots)));
         }
@@ -258,42 +260,6 @@ tdma_superframe_event_cb(struct os_event * ev){
 }
 
 
-/** 
- * API for the zeroth slot.
- * This callback is called just before the actual CCP is scheduled and
- * will wake up the device if in sleep state turn on the receiver to receive the actual CCP. 
- *
- * @param ev  Pointer to os_event.
- *
- * @return void
- */
-static void 
-slot0_event_cb(struct os_event * ev){
-
-    assert(ev);
-    tdma_slot_t * slot = (tdma_slot_t *) ev->ev_arg;
-    tdma_instance_t * tdma = slot->parent;
-    dw1000_dev_instance_t * inst = tdma->parent;
-
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"slot0_event_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
- 
-    if (inst->status.sleeping)
-        dw1000_dev_wakeup(inst);
-  
-    for (uint16_t i = 1; i < tdma->nslots; i++) {
-        if (tdma->slot[i]){
-            os_cputime_timer_stop(&tdma->slot[i]->timer);
-        }
-    }
- 
-    tdma->status.awaiting_superframe = 1; 
-    dw1000_set_delay_start(inst, 0);
-    dw1000_set_rx_timeout(inst, 0);
-    if(dw1000_start_rx(inst).start_rx_error){
-        uint32_t utime = os_cputime_ticks_to_usecs(os_cputime_get32());
-        printf("{\"utime\": %lu,\"msg\": \"slot0_timer_cb:start_rx_error\"}\n",utime);
-    }
-}
 
 /**
  * API for each slot. This function then puts
@@ -311,7 +277,7 @@ slot_timer_cb(void * arg){
     tdma_slot_t * slot = (tdma_slot_t *) arg;
     tdma_instance_t * tdma = slot->parent;
 
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"slot_timer_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma::slot_timer_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
   
 #ifdef TDMA_TASKS_ENABLE
     os_eventq_put(&tdma->eventq, &slot->event_cb.c_ev);
