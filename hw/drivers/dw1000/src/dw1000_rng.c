@@ -51,6 +51,9 @@
 #if MYNEWT_VAL(DW1000_RANGE)
 #include <dw1000/dw1000_range.h>
 #endif
+#if MYNEWT_VAL(DW1000_CCP_ENABLED)
+#include <dw1000/dw1000_ccp.h>
+#endif
 
 #include <dsp/polyval.h>
 
@@ -584,7 +587,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
         }
         return;
     }else{
-        //No extension callbacks also in place. So just return to receive mode again
+        //No extension callbacks in place. So just return to receive mode again
         inst->control = inst->control_rx_context;
         dw1000_set_on_error_continue(inst, true);
         if (dw1000_restart_rx(inst, control).start_rx_error)  
@@ -747,8 +750,13 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                                 + config->tx_holdoff_delay;         // Remote side turn arroud time. 
                             dw1000_set_rx_timeout(inst, timeout); 
 
-                            if (dw1000_start_tx(inst).start_tx_error)
+                            if (dw1000_start_tx(inst).start_tx_error){
                                 os_sem_release(&rng->sem);
+#if  MYNEWT_VAL(DW1000_CCP_ENABLED)
+                                os_sem_release(&inst->ccp->sem);  
+#endif  
+
+                            }
                             break;
                         }
                     case DWT_DS_TWR_T1:
@@ -808,6 +816,10 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                                     }
                                 }
                                 os_sem_release(&rng->sem);  
+#if  MYNEWT_VAL(DW1000_CCP_ENABLED)
+                                os_sem_release(&inst->ccp->sem);  
+#endif  
+
 							}
                             break; 
                         }
@@ -838,6 +850,12 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             // Transmit timestamp final report
                             dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_final_t));
                             dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true); 
+#if  MYNEWT_VAL(DW1000_CCP_ENABLED)
+                            // Re-enable rx, if there is a pending ccp request
+                            dw1000_set_wait4resp(inst,  os_sem_get_count(&inst->ccp->sem) == 0);  
+                            if (os_sem_get_count(&inst->ccp->sem) == 0) 
+                                printf("os_sem_get_count(&inst->ccp->sem) = %d\n",os_sem_get_count(&inst->ccp->sem));
+#endif  
 
                             if (dw1000_start_tx(inst).start_tx_error){
                                 if(!(SLIST_EMPTY(&inst->extension_cbs))){
@@ -850,6 +868,9 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                                     }
                                 }
                                 os_sem_release(&rng->sem);  
+#if  MYNEWT_VAL(DW1000_CCP_ENABLED)
+                                os_sem_release(&inst->ccp->sem);  
+#endif  
 							}
                             
                             if (inst->rng_complete_cb) {
@@ -1041,6 +1062,11 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_t));
                             dw1000_write_tx_fctrl(inst, sizeof(twr_frame_t), 0, true); 
 
+#if  MYNEWT_VAL(DW1000_CCP_ENABLED) 
+                            // Re-enable rx, if there is a pending ccp request
+                            dw1000_set_wait4resp(inst,  os_sem_get_count(&inst->ccp->sem) == 0);  
+#endif                          
+
                             if (dw1000_start_tx(inst).start_tx_error)
                                 os_sem_release(&rng->sem);
 
@@ -1101,7 +1127,8 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                 }
             }
             break;
-    }  
+    }
+
 }
 
 
