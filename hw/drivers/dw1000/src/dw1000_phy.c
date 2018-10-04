@@ -37,6 +37,8 @@
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
 #include <dw1000/dw1000_phy.h>
+#include <dw1000/dw1000_rng.h>
+#include <dw1000/dw1000_ccp.h>
 
 static inline void _dw1000_phy_load_microcode(struct _dw1000_dev_instance_t * inst);
 
@@ -331,6 +333,10 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
     dw1000_sync_rxbufptrs(inst);
     dw1000_write_reg(inst, SYS_MASK_ID, 0, mask, sizeof(uint32_t)); // Restore mask to what it was
     
+    err = os_sem_release(&(inst->rng->sem));  
+#if  MYNEWT_VAL(DW1000_CCP_ENABLED)
+    err = os_sem_release(&(inst->ccp->sem));
+#endif
     // Enable/restore interrupts again...
     err = os_mutex_release(&inst->mutex);
     assert(err == OS_OK);

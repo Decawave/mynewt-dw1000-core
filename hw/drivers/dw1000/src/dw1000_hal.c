@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <assert.h>
+#include <string.h>
 #include <os/os_cputime.h>
 #include <os/os_dev.h>
 #include <syscfg/syscfg.h>
