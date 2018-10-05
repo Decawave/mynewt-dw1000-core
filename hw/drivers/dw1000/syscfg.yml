@@ -21,33 +21,11 @@ syscfg.defs:
     DW1000_LWIP:
         description: 'Enable LWIP functionality'
         value: 0
-    DW1000_CCP_ENABLED:
-        description: 'Enable wireless clock calibration'
-        value: 0
-    TDMA_ENABLED:
-        description: 'Enable TDMA Services'
-        value: 0
-        restrictions: CLOCK_CALIBRATION_ENABLED
-        restrictions: DW1000_IDLE_TO_RX_LATENCY
-        restrictions: TDMA_NSLOTS
-        restrictions: TDMA_SUPERFRAME_PERIOD
-    TDMA_NSLOTS:
-        description: 'Enable TDMA Services'
-        value: 160
-    TDMA_SUPERFRAME_PERIOD:
-        description: 'Supoerframe period for TDMA scheme, units dwt usec'
-        value: ((uint32_t){0x100000})
     DW1000_IDLE_TO_RX_LATENCY:
-        description: 'RX turn on delay, dwt usec units'
-        value: 0x100
-    DW1000_PAN:
-        description: 'Private Area Network functionality'
-        value: 0
+        description: 'RX turn on delay (dwt usec)'
+        value: 100
     DW1000_MAC_FILTERING:
         description: 'Enable the mac filtering'
-        value: 0
-    DW1000_PROVISION:
-        description: 'Enable independent provision module'
         value: 0
     DW1000_RANGE:
         description: 'TWR Ranging functionality'
@@ -87,37 +65,18 @@ syscfg.defs:
         description: >
             Azimuth Measurement Variance 
         value: ((float){2.91e-2})
-    CCP_PERIOD:
-        description: >
-            Clock Calibration Packets Period 
-        value: ((uint32_t){0x100000})
-    PAN_PERIOD:
-        description: >
-            PAN Discovery Packets Period 
-        value: ((uint32_t){0x200000})
     RANGE_PERIOD:
         description: >
             Ranging period
         value: ((uint32_t){0x3000})
     PROVISION_PERIOD:
         description: >
-            Provision packet period(in ms)
+            Provision packet period (ms)
         value: ((uint32_t){100})
     OS_LATENCY:
         description: >
-            OS Latency Guardband 
-        value: ((uint32_t){1800})
-    FS_XTALT_AUTOTUNE_ENABLED: 
-        description: >
-            Autotune XTALT to Clock Master
-        value: 0
-        restrictions: DW1000_CCP_ENABLED
-    ADAPTIVE_TIMESCALE_ENABLED:
-        description: 'Enable Adaptive timescale adjustments'
-        value: 0
-        restrictions: DW1000_CCP_ENABLED
-        restrictions: CCP_PERIOD
-        restrictions: TIMESCALE_PROCESSING_ENABLED
+            OS Latency Guardband (usec)
+        value: ((uint32_t){1000})
 
  
         

@@ -47,8 +47,7 @@
 #include <dw1000/dw1000_ftypes.h>
 #include <dw1000/dw1000_rng.h>
 
-#if MYNEWT_VAL(DW1000_PROVISION)
-#include <dw1000/dw1000_provision.h>
+#include <pan/dw1000_provision.h>
 static bool provision_rx_complete_cb(dw1000_dev_instance_t * inst);
 static bool provision_rx_timeout_cb(dw1000_dev_instance_t * inst);
 static bool provision_rx_error_cb(dw1000_dev_instance_t * inst);
@@ -496,4 +495,4 @@ provision_delete_node(dw1000_dev_instance_t *inst, uint16_t addr){
     }
     return PROVISION_ERROR;
 }
-#endif
+

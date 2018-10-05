@@ -51,7 +51,7 @@ typedef union{
         uint8_t fctrl;              //!< Frame type (0xC5 for a blink) using 64-bit addressing
         uint8_t seq_num;            //!< Sequence number, incremented for each new frame
         uint64_t long_address;      //!< Device ID
-    }__attribute__((__packed__));
+    }__attribute__((__packed__,aligned(1)));
     uint8_t array[sizeof(struct _ieee_blink_frame_t)]; //!< Array of size blink frame
 }ieee_blink_frame_t;
 

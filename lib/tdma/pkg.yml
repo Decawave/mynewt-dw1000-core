@@ -17,24 +17,13 @@
 # under the License.
 #
 
-pkg.name: hw/drivers/dw1000
-pkg.description: Driver for DW1000 Transeiver 
+pkg.name: lib/tdma
+pkg.description: Time-division multiple access
 pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
-pkg.homepage: "http:/www.decawave.com/"
+pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
     - dw1000
-    - uwb
-pkg.deps:
-    - "@apache-mynewt-core/hw/hal"
-    - "@mynewt-dw1000-core/lib/dsp"
-    
-pkg.deps.DW1000_LWIP:
-    - "@mynewt-dw1000-core/net/ip/lwip_base"
-
-pkg.req_apis: 
-
-pkg.init:
-    dw1000_pkg_init: 400
+    - TDMA
 
 pkg.cflags:
     - "-std=gnu99"

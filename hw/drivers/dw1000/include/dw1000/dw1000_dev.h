@@ -45,6 +45,7 @@ extern "C" {
 #include <hal/hal_spi.h>
 #include <dw1000/dw1000_regs.h>
 
+
 #define DWT_DEVICE_ID   (0xDECA0130) //!< Decawave Device ID 
 #define DWT_SUCCESS (0)              //!< DWT Success
 #define DWT_ERROR   (-1)             //!< DWT Error
@@ -74,7 +75,8 @@ typedef enum _dw1000_extension_id_t{
     DW1000_PAN,                              //!< Personal area network
     DW1000_PROVISION,                        //!< Provisioning
     DW1000_RANGE,                            //!< Ranging
-    DW1000_N_RANGES                          //!< N_ranges
+    DW1000_N_RANGES,                         //!< N_ranges
+    DW1000_TDMA                              //!< TDMA services
 }dw1000_extension_id_t;
 
 //! Structure of DW1000 attributes.
@@ -207,6 +209,7 @@ typedef struct _dw1000_extension_callback_t{
     bool (* rx_timeout_cb)  (struct _dw1000_dev_instance_t *);    //!< Receive timeout callback
     bool (* rx_error_cb)    (struct _dw1000_dev_instance_t *);    //!< Receive error callback
     bool (* tx_error_cb)    (struct _dw1000_dev_instance_t *);    //!< Transmit error callback  
+    bool (* reset_cb)    (struct _dw1000_dev_instance_t *);       //!< Reset interface callback  
     SLIST_ENTRY(_dw1000_extension_callback_t) cbs_next;           //!< Next callback in the list
 }dw1000_extension_callbacks_t;
 

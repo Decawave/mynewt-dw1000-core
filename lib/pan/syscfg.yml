@@ -1,0 +1,16 @@
+
+syscfg.defs:
+    DW1000_PROVISION:
+        description: 'Enable independent provision module'
+        value: 1
+    DW1000_PAN:
+        description: 'Private Area Network functionality'
+        value: 1
+        restrictions: PAN_PERIOD
+    PAN_PERIOD:
+        description: >
+            PAN Discovery Packets Period 
+        value: ((uint32_t){0x200000})
+
+        
+        

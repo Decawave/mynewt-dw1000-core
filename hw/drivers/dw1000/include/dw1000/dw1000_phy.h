@@ -81,9 +81,7 @@ void dw1000_phy_interrupt_mask(struct _dw1000_dev_instance_t * inst, uint32_t bi
 
 #define dw1000_phy_set_rx_antennadelay(inst, rxDelay) dw1000_write_reg(inst, LDE_IF_ID, LDE_RXANTD_OFFSET, rxDelay, sizeof(uint16_t)) //!< Set the RX antenna delay for auto TX timestamp adjustment
 #define dw1000_phy_set_tx_antennadelay(inst, txDelay) dw1000_write_reg(inst, TX_ANTD_ID, TX_ANTD_OFFSET, txDelay, sizeof(uint16_t)) //!< Set the TX antenna delay for auto TX timestamp adjustment
-
 #define dw1000_phy_read_wakeuptemp(inst) ((uint8_t) dw1000_read_reg(inst, TX_CAL_ID, TC_SARL_SAR_LTEMP_OFFSET, sizeof(uint8_t))) //!< Read the temperature level of the DW1000 that was sampled on waking from Sleep/Deepsleep
-
 #define dw1000_phy_read_wakeupvbat(inst) ((uint8_t) dw1000_read_reg(inst, TX_CAL_ID, TC_SARL_SAR_LVBAT_OFFSET, sizeof(uint8_t))) //!< Read the battery voltage of the DW1000 that was sampled on waking from Sleep/Deepsleep
 
 

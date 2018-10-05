@@ -37,6 +37,8 @@
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
 #include <dw1000/dw1000_phy.h>
+#include <dw1000/dw1000_rng.h>
+
 
 static inline void _dw1000_phy_load_microcode(struct _dw1000_dev_instance_t * inst);
 
@@ -323,14 +325,23 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
 
     os_error_t err = os_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
     assert(err == OS_OK);
-
+    
     dw1000_write_reg(inst, SYS_MASK_ID, 0, 0, sizeof(uint32_t)) ; // Clear interrupt mask - so we don't get any unwanted events
     dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t)SYS_CTRL_TRXOFF, sizeof(uint16_t)) ; // Disable the radio
     // Forcing Transceiver off - so we do not want to see any new events that may have happened
     dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_ALL_TX | SYS_STATUS_ALL_RX_ERR | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_GOOD), sizeof(uint32_t));
     dw1000_sync_rxbufptrs(inst);
     dw1000_write_reg(inst, SYS_MASK_ID, 0, mask, sizeof(uint32_t)); // Restore mask to what it was
-    
+
+    err = os_sem_release(&(inst->rng->sem));  
+    bool status = false;
+    if(!(SLIST_EMPTY(&inst->extension_cbs))){
+        dw1000_extension_callbacks_t *temp = NULL;
+        SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
+            if(temp != NULL && temp->reset_cb != NULL)
+                    status |= temp->reset_cb(inst);
+        }
+    }
     // Enable/restore interrupts again...
     err = os_mutex_release(&inst->mutex);
     assert(err == OS_OK);

@@ -61,7 +61,7 @@ typedef union {
         uint64_t reception_timestamp;       //!< Reception timestamp
         float correction_factor;            //!< Receiver clock correction factor
     }__attribute__((__packed__, aligned(1)));
-    uint8_t array[sizeof(struct _ieee_blink_frame_t)];
+    uint8_t array[sizeof(struct _ccp_frame_t)];
 }ccp_frame_t;
 
 //! Status parameters of ccp.
@@ -70,6 +70,7 @@ typedef struct _dw1000_ccp_status_t{
     uint16_t initialized:1;           //!< Instance allocated 
     uint16_t valid:1;                 //!< Set for valid parameters 
     uint16_t start_tx_error:1;        //!< Set for start transmit error 
+    uint16_t start_rx_error:1;        //!< Set for start request error 
     uint16_t timer_enabled:1;         //!< Indicates timer is enabled 
 }dw1000_ccp_status_t;
 
@@ -78,6 +79,12 @@ typedef struct _dw1000_ccp_config_t{
     uint16_t postprocess:1;           //!< CCP postprocess
     uint16_t fs_xtalt_autotune:1;     //!< Autotune XTALT to Clock Master
 }dw1000_ccp_config_t;
+
+//! Extension ids for services.
+typedef enum _dw1000_ccp_role_t{
+    CCP_ROLE_MASTER,                        //!< Clock calibration packet master mode
+    CCP_ROLE_SLAVE                          //!< Clock calibration packet slave mode
+}dw1000_ccp_role_t;
 
 //! ccp instance parameters.
 typedef struct _dw1000_ccp_instance_t{
@@ -92,6 +99,8 @@ typedef struct _dw1000_ccp_instance_t{
     struct os_callout callout_postprocess;          //!< Structure of callout_postprocess
     dw1000_ccp_status_t status;                     //!< DW1000 ccp status parameters
     dw1000_ccp_config_t config;                     //!< DW1000 ccp config parameters
+    uint64_t epoch;
+    uint32_t os_epoch;
     uint32_t period;                                //!< Pulse repetition period
     uint16_t nframes;                               //!< Number of buffers defined to store the data 
     uint16_t idx;                                   //!< Indicates number of DW1000 instances 
@@ -109,7 +118,7 @@ dw1000_ccp_instance_t * dw1000_ccp_init(dw1000_dev_instance_t * inst,  uint16_t 
 void dw1000_ccp_free(dw1000_ccp_instance_t * inst);
 void dw1000_ccp_set_ext_callbacks(dw1000_dev_instance_t * inst, dw1000_extension_callbacks_t ccp_cbs);
 void dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, os_event_fn * ccp_postprocess); 
-void dw1000_ccp_start(dw1000_dev_instance_t * inst);
+void dw1000_ccp_start(dw1000_dev_instance_t * inst, dw1000_ccp_role_t role);
 void dw1000_ccp_stop(dw1000_dev_instance_t * inst);
 
 #ifdef __cplusplus

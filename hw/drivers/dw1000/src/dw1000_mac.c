@@ -42,9 +42,8 @@
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_mac.h>
-
-#if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
-#include <dw1000/dw1000_ccp.h>
+#if MYNEWT_VAL(ADAPTIVE_TIMESCALE_ENABLED)
+#include <clkcal/clkcal.h>
 #endif
 
 static void dw1000_interrupt_task(void *arg);
@@ -524,7 +523,7 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
         sys_ctrl_reg |= SYS_CTRL_RXDLYE;
 
     dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sys_ctrl_reg, sizeof(uint16_t));
-    if (control.delay_start_enabled){ // check for errors    
+    if (control.delay_start_enabled){   // check for errors    
         uint8_t sys_status_reg = dw1000_read_reg(inst, SYS_STATUS_ID, 3, sizeof(uint8_t));  // Read 1 byte at offset 3 to get the 4th byte out of 5
         inst->status.start_rx_error = (sys_status_reg & (SYS_STATUS_HPDWARN >> 24)) != 0;   
         if (inst->status.start_rx_error){   // if delay has passed do immediate RX on unless DWT_IDLE_ON_DLY_ERR is true
@@ -569,6 +568,8 @@ struct _dw1000_dev_status_t dw1000_restart_rx(struct _dw1000_dev_instance_t * in
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_restart_rx\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
     assert(err == OS_OK);
+
+//    __builtin_trap();
    
     uint32_t sys_ctrl_reg = SYS_CTRL_RXENAB;
     if (control.start_rx_syncbuf_enabled)
@@ -604,7 +605,8 @@ struct _dw1000_dev_status_t dw1000_restart_rx(struct _dw1000_dev_instance_t * in
  * @param enable   Enables/disables the wait for response feature.
  * @return dw1000_dev_status_t
  */
-inline struct _dw1000_dev_status_t dw1000_set_wait4resp(struct _dw1000_dev_instance_t * inst, bool enable)
+inline struct _dw1000_dev_status_t 
+dw1000_set_wait4resp(struct _dw1000_dev_instance_t * inst, bool enable)
 {
     inst->control.wait4resp_enabled = enable;
     return inst->status;
@@ -616,7 +618,8 @@ inline struct _dw1000_dev_status_t dw1000_set_wait4resp(struct _dw1000_dev_insta
  * @param enable  Enables wait for feature.
  *
  */
-inline struct _dw1000_dev_status_t dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable)
+inline struct _dw1000_dev_status_t 
+dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable)
 {
     inst->control.on_error_continue_enabled = enable;
     return inst->status;
@@ -634,7 +637,8 @@ inline struct _dw1000_dev_status_t dw1000_set_on_error_continue(struct _dw1000_d
  * @return dw1000_dev_status_t
  */
 
-struct _dw1000_dev_status_t dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
+struct _dw1000_dev_status_t 
+dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
 {
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_set_rx_timeout\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
@@ -672,7 +676,8 @@ struct _dw1000_dev_status_t dw1000_set_rx_timeout(struct _dw1000_dev_instance_t 
  * @param inst  pointer to _dw1000_dev_instance_t.
  * @return dw1000_dev_status_t
  */
-struct _dw1000_dev_status_t dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t * inst)
+struct _dw1000_dev_status_t 
+dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t * inst)
 {
     uint8_t  buff;
 
@@ -700,7 +705,8 @@ struct _dw1000_dev_status_t dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t 
  * @return dw1000_dev_status_t
  *
  */
-struct _dw1000_dev_status_t dw1000_read_accdata(struct _dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t accOffset, uint16_t len)
+struct _dw1000_dev_status_t 
+dw1000_read_accdata(struct _dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t accOffset, uint16_t len)
 {
     os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
     assert(err == OS_OK);
@@ -733,7 +739,8 @@ struct _dw1000_dev_status_t dw1000_read_accdata(struct _dw1000_dev_instance_t * 
  *
  */
 
-struct _dw1000_dev_status_t dw1000_mac_framefilter(struct _dw1000_dev_instance_t * inst, uint16_t enable)
+struct _dw1000_dev_status_t 
+dw1000_mac_framefilter(struct _dw1000_dev_instance_t * inst, uint16_t enable)
 {
     os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
     assert(err == OS_OK);
@@ -766,7 +773,8 @@ struct _dw1000_dev_status_t dw1000_mac_framefilter(struct _dw1000_dev_instance_t
  * @return dw1000_dev_status_t
  *
  */
-struct _dw1000_dev_status_t dw1000_set_autoack(struct _dw1000_dev_instance_t * inst, bool enable)
+struct _dw1000_dev_status_t 
+dw1000_set_autoack(struct _dw1000_dev_instance_t * inst, bool enable)
 {
     assert(inst->config.framefilter_enabled);
 
@@ -804,7 +812,8 @@ struct _dw1000_dev_status_t dw1000_set_autoack(struct _dw1000_dev_instance_t * i
  * @return dw1000_dev_status_t
  *
  */
-struct _dw1000_dev_status_t dw1000_set_autoack_delay(struct _dw1000_dev_instance_t * inst, uint8_t delay)
+struct _dw1000_dev_status_t 
+dw1000_set_autoack_delay(struct _dw1000_dev_instance_t * inst, uint8_t delay)
 {
     assert(inst->config.framefilter_enabled);
 
@@ -837,7 +846,8 @@ struct _dw1000_dev_status_t dw1000_set_autoack_delay(struct _dw1000_dev_instance
  * @return dw1000_dev_status_t
  *
  */
-struct _dw1000_dev_status_t dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay)
+struct _dw1000_dev_status_t 
+dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay)
 {
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_set_wait4resp_delay\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     
@@ -869,7 +879,8 @@ struct _dw1000_dev_status_t dw1000_set_wait4resp_delay(struct _dw1000_dev_instan
  * @return dw1000_dev_status_t
  *
  */
-struct _dw1000_dev_status_t dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool enable)
+struct _dw1000_dev_status_t 
+dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool enable)
 {
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_set_dblrxbuff\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
@@ -902,7 +913,8 @@ struct _dw1000_dev_status_t dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t *
  * @param diagnostics   Diagnostic structure pointer, this will contain the diagnostic data read from the DW1000.
  * @return void
  */
-void dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag)
+void 
+dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag)
 {  
     // Read the HW FP index
     diag->fp_idx = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
@@ -925,7 +937,8 @@ void dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev
  *
  * @return void
  */
-void dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
+void 
+dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
 {
     /* Check if the tasks are already initiated */
     if (!os_eventq_inited(&inst->eventq))
@@ -960,7 +973,8 @@ void dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
  * @param arg  Pointer to the queue of interrupts.
  * @return void
  */
-static void dw1000_irq(void *arg)
+static void 
+dw1000_irq(void *arg)
 {
     dw1000_dev_instance_t * inst = arg;
 
@@ -982,7 +996,8 @@ static void dw1000_irq(void *arg)
  * @param arg  Pointer to the queue of interrupts.
  * @return void
  */
-static void dw1000_interrupt_task(void *arg)
+static void 
+dw1000_interrupt_task(void *arg)
 {
     dw1000_dev_instance_t * inst = arg;
     while (1) {
@@ -1004,7 +1019,8 @@ static void dw1000_interrupt_task(void *arg)
  * @return void
  *
  */
-void dw1000_set_callbacks(struct _dw1000_dev_instance_t * inst,  dw1000_dev_cb_t tx_complete_cb,  dw1000_dev_cb_t rx_complete_cb,  dw1000_dev_cb_t rx_timeout_cb,  dw1000_dev_cb_t rx_error_cb)
+void 
+dw1000_set_callbacks(struct _dw1000_dev_instance_t * inst,  dw1000_dev_cb_t tx_complete_cb,  dw1000_dev_cb_t rx_complete_cb,  dw1000_dev_cb_t rx_timeout_cb,  dw1000_dev_cb_t rx_error_cb)
 {
     inst->tx_complete_cb = tx_complete_cb;
     inst->rx_complete_cb = rx_complete_cb;
@@ -1028,7 +1044,8 @@ void dw1000_set_callbacks(struct _dw1000_dev_instance_t * inst,  dw1000_dev_cb_t
  * 
  */
 
-static void dw1000_interrupt_ev_cb(struct os_event *ev)
+static void 
+dw1000_interrupt_ev_cb(struct os_event *ev)
 {
     dw1000_dev_instance_t * inst = ev->ev_arg;
     inst->sys_status = dw1000_read_reg(inst, SYS_STATUS_ID, 0, sizeof(uint32_t)); // Read status register low 32bits

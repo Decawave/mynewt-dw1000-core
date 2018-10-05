@@ -37,11 +37,12 @@
 extern "C" {
 #endif
 
+#include <dw1000/dw1000_ftypes.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_phy.h>
 #include <os/queue.h>
 
-#if MYNEWT_VAL(TDMA_ENABLED)
+
 #define TDMA_TASKS_ENABLE
 
 //! Structure of TDMA
@@ -66,8 +67,10 @@ typedef struct _tdma_instance_t{
     tdma_status_t status;                    //!< Status of tdma 
     struct os_mutex mutex;                   //!< Structure of os_mutex  
     uint16_t idx;                            //!< Slot number
-    uint16_t nslots;                         //!< NUmber of slots 
+    uint16_t nslots;                         //!< Number of slots 
     uint32_t period;                         //!< Period of each tdma
+    uint32_t os_epoch;                          //!< Epoch timestamp
+    struct os_callout event_cb;              //!< Sturcture of event_cb
 #ifdef TDMA_TASKS_ENABLE
     struct os_eventq eventq;                 //!< Structure of os events
     struct os_task task_str;                 //!< Structure of os tasks
@@ -83,10 +86,8 @@ void tdma_free(struct _tdma_instance_t * inst);
 void tdma_assign_slot(struct _tdma_instance_t * inst, void (* callout )(struct os_event *), uint16_t idx, void * arg);
 void tdma_release_slot(struct _tdma_instance_t * inst, uint16_t idx);
 
-
 #ifdef __cplusplus
 }
 #endif
 
-#endif //MYNEWT_VAL(DW1000_TDMA_ENABLED)
 #endif //_DW1000_TDMA_H_

@@ -44,8 +44,7 @@
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_ftypes.h>
 
-#if MYNEWT_VAL(DW1000_PAN)
-#include <dw1000/dw1000_pan.h>
+#include <pan/dw1000_pan.h>
 
 //! Buffers for pan frames
 static pan_frame_t frames[] = {
@@ -463,4 +462,3 @@ dw1000_pan_stop(dw1000_dev_instance_t * inst){
     );
 }
 
-#endif /* MYNEWT_VAL(DW1000_PAN) */
