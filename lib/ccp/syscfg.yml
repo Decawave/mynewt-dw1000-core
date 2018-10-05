@@ -1,0 +1,22 @@
+
+syscfg.defs:
+    DW1000_CCP_ENABLED:
+        description: >
+            'Enable clock calibration'
+        value: 1
+        restrictions: CCP_PERIOD
+    CCP_PERIOD:
+        description: >
+            Clock Calibration Packets Period (dwt usec)
+        value: ((uint32_t){0x100000})
+    FS_XTALT_AUTOTUNE_ENABLED: 
+        description: >
+            Autotune XTALT to Clock Master
+        value: 0
+        restrictions: DW1000_CCP_ENABLED
+    ADAPTIVE_TIMESCALE_ENABLED:
+        description: 'Enable Adaptive timescale adjustments'
+        value: 0
+        restrictions: DW1000_CCP_ENABLED
+        restrictions: CCP_PERIOD
+        restrictions: CLOCK_CALIBRATION_ENABLED

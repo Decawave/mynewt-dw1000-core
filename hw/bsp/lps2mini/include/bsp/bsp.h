@@ -53,6 +53,12 @@ extern uint8_t _ram_start;
 
 /* Enable Pins */
 #define DW1000_ENABLE_N_PIN (25)
+
+#define EXTON_PIN           24
+#define BATT_V_PIN          NRF_SAADC_INPUT_AIN1
+#define MEAS_BATT_EN_PIN    EXTON_PIN
+
+int16_t hal_bsp_read_battery_voltage();
     
 #ifdef __cplusplus
 }

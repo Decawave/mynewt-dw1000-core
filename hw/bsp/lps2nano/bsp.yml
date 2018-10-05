@@ -26,7 +26,7 @@ bsp.linkerscript.BOOT_LOADER.OVERWRITE:
     - 'hw/bsp/lps2nano/boot-nrf52xxaa.ld'
     - '@apache-mynewt-core/hw/mcu/nordic/nrf52xxx/nrf52.ld'
 
-bsp.part2linkerscript: "hw/bsp/lps2nano/split-nrf52-thingy.ld"
+bsp.part2linkerscript: "hw/bsp/lps2nano/split-nrf52.ld"
 bsp.downloadscript: "hw/bsp/lps2nano/lps2nano_download.sh"
 bsp.debugscript: "hw/bsp/lps2nano/lps2nano_debug.sh"
 bsp.downloadscript.WINDOWS.OVERWRITE: "hw/bsp/lps2nano/lps2nano_download.cmd"

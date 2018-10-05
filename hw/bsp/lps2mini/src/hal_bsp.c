@@ -21,11 +21,8 @@
 #include <stddef.h>
 #include <assert.h>
 #include <string.h>
-#include <sysinit/sysinit.h>
+#include "os/mynewt.h"
 #include <nrf52.h>
-#include "os/os_cputime.h"
-#include "syscfg/syscfg.h"
-#include "sysflash/sysflash.h"
 #include "flash_map/flash_map.h"
 #include "hal/hal_bsp.h"
 #include "hal/hal_system.h"
@@ -48,6 +45,10 @@
 
 #include "os/os_dev.h"
 #include "bsp.h"
+#if MYNEWT_VAL(ADC_0)
+#include <adc_nrf52/adc_nrf52.h>
+#include <nrfx_saadc.h>
+#endif
 
 #if MYNEWT_VAL(MPU6500_ONB)
 #include <mpu6500/mpu6500.h>
@@ -64,8 +65,18 @@ static const struct nrf52_uart_cfg os_bsp_uart0_cfg = {
 };
 #endif
 
+#if MYNEWT_VAL(ADC_0)
+static struct adc_dev os_bsp_adc0;
+static struct nrf52_adc_dev_cfg os_bsp_adc0_config = {
+    .nadc_refmv     = MYNEWT_VAL(ADC_0_REFMV_0),
+};
+static nrfx_saadc_config_t os_bsp_adc0_nrf_config =
+    NRFX_SAADC_DEFAULT_CONFIG;
+#endif
+
+
 #if MYNEWT_VAL(SPI_0_MASTER)
-struct os_mutex g_spi0_mutex;
+struct os_sem g_spi0_sem;
 /*
  * NOTE: Our HAL expects that the SS pin, if used, is treated as a gpio line
  * and is handled outside the SPI routines.
@@ -82,7 +93,7 @@ static const struct nrf52_hal_spi_cfg os_bsp_spi0m_cfg = {
  */
 static dw1000_dev_instance_t *dw1000_0 = 0;
 static const struct dw1000_dev_cfg dw1000_0_cfg = {
-    .spi_mutex = &g_spi0_mutex,
+    .spi_sem = &g_spi0_sem,
     .spi_num = 0,
 };
 #endif
@@ -248,6 +259,17 @@ void hal_bsp_init(void)
     assert(rc == 0);
 #endif
 
+#if MYNEWT_VAL(ADC_0)
+    rc = os_dev_create((struct os_dev *) &os_bsp_adc0,
+                       "adc0",
+                       OS_DEV_INIT_KERNEL,
+                       OS_DEV_INIT_PRIO_DEFAULT,
+                       nrf52_adc_dev_init,
+                       &os_bsp_adc0_config);
+    assert(rc == 0);
+    hal_gpio_init_out(EXTON_PIN, 0);
+#endif
+    
 #if (MYNEWT_VAL(OS_CPUTIME_TIMER_NUM) >= 0)
     rc = os_cputime_init(MYNEWT_VAL(OS_CPUTIME_FREQ));
     assert(rc == 0);
@@ -261,7 +283,7 @@ void hal_bsp_init(void)
 #if MYNEWT_VAL(SPI_0_MASTER)
     rc = hal_spi_init(0, (void *)&os_bsp_spi0m_cfg, HAL_SPI_TYPE_MASTER);
     assert(rc == 0);
-    rc = os_mutex_init(&g_spi0_mutex);
+    rc = os_sem_init(&g_spi0_sem, 0x1);
     assert(rc == 0);
 #endif
 
@@ -284,4 +306,31 @@ void hal_bsp_init(void)
 #endif
 
     sensor_dev_create();
+}
+
+/**/
+int16_t
+hal_bsp_read_battery_voltage()
+{
+#if MYNEWT_VAL(ADC_0)
+    int rc = 0;
+    int result;
+    nrf_saadc_channel_config_t channel_config =
+        NRFX_SAADC_DEFAULT_CHANNEL_CONFIG_SE(BATT_V_PIN);
+
+    struct adc_dev *dev = (struct adc_dev *)os_dev_open(
+    "adc0", OS_TIMEOUT_NEVER, &os_bsp_adc0_nrf_config);
+
+    hal_gpio_write(EXTON_PIN, 1);
+
+    rc = adc_chan_config(dev, BATT_V_PIN, (void*)&channel_config);
+    assert(rc==0);
+    adc_read_channel(dev, BATT_V_PIN, &result);
+    hal_gpio_write(EXTON_PIN, 0);
+
+    os_dev_close((struct os_dev*)dev);
+    return (result*3600*24)/10240;
+#else
+    return -1;
+#endif
 }

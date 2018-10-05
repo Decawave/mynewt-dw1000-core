@@ -104,6 +104,10 @@ typedef struct _dw1000_dev_status_t{
     uint32_t tx_ranging_frame:1;      //!< Range Request bit set for outbound frame
     uint32_t sleep_enabled:1;         //!< Indicates sleep_enabled bit is set
     uint32_t sleeping:1;              //!< Indicates sleeping state
+
+    uint32_t sem_force_released:1;    //!< Semaphore was released in forcetrxoff
+
+    uint32_t rx_buffer_overrun_error:1;//!< Dblbuffer overrun detected
 }dw1000_dev_status_t;
 
 //! Device control status bits.
@@ -216,9 +220,9 @@ typedef struct _dw1000_extension_callback_t{
 //! Device instance parameters.
 typedef struct _dw1000_dev_instance_t{
     struct os_dev uwb_dev;                     //!< Has to be here for cast in create_dev to work 
-    struct os_mutex *spi_mutex;                //!< Pointer to global spi mutex if available  
+    struct os_sem *spi_sem;                    //!< Pointer to global spi bus semaphore
     struct os_sem sem;                         //!< semphore for low level mac/phy functions
-    struct os_mutex mutex;                    //!< os_mutex
+    struct os_mutex mutex;                     //!< os_mutex
 
     void (* tx_complete_cb) (struct _dw1000_dev_instance_t *);
     void (* rx_complete_cb) (struct _dw1000_dev_instance_t *);
@@ -308,7 +312,7 @@ typedef struct _dw1000_dev_instance_t{
 
 //! SPI parameters
 struct dw1000_dev_cfg {
-    struct os_mutex *spi_mutex;                    //!< Pointer to os_mutex structure  
+    struct os_sem *spi_sem;                        //!< Pointer to os_sem structure to lock spi bus
     int spi_num;                                   //!< SPI number
 };
 

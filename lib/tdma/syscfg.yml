@@ -1,0 +1,17 @@
+
+syscfg.defs:
+   
+    TDMA_ENABLED:
+        description: 'Enable TDMA Services'
+        value: 1
+        restrictions: DW1000_IDLE_TO_RX_LATENCY
+        restrictions: OS_LATENCY
+    TDMA_NSLOTS:
+        description: 'Enable TDMA Services'
+        value: 128
+    TDMA_PERIOD:
+        description: 'Supoerframe period for TDMA scheme, (dwt usec)'
+        value: ((uint32_t){0x100000})
+
+        
+        

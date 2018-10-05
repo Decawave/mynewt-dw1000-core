@@ -39,7 +39,6 @@
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_rng.h>
 
-
 static inline void _dw1000_phy_load_microcode(struct _dw1000_dev_instance_t * inst);
 
 /**
@@ -348,6 +347,12 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
 
     inst->control.wait4resp_enabled = 0;
 
+    /* Reset semaphore if needed */
+    if (inst->sem.sem_tokens == 0) {
+        os_error_t err = os_sem_release(&inst->sem);
+        assert(err == OS_OK);
+        inst->status.sem_force_released = 1;
+    }
 }
 
 /**

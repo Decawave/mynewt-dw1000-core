@@ -26,10 +26,10 @@ bsp.linkerscript.BOOT_LOADER.OVERWRITE:
     - 'hw/bsp/dwm1001/boot-nrf52xxaa.ld'
     - '@apache-mynewt-core/hw/mcu/nordic/nrf52xxx/nrf52.ld'
 
-bsp.part2linkerscript: "hw/bsp/dwm1001/split-nrf52-thingy.ld"
+bsp.part2linkerscript: "hw/bsp/dwm1001/split-nrf52.ld"
 bsp.downloadscript: "hw/bsp/dwm1001/dwm1001_download.sh"
 bsp.debugscript: "hw/bsp/dwm1001/dwm1001_debug.sh"
-bsp.downloadscript.WINDOWS.OVERWRITE: "hw/bsp/dwm1001/dmw1001_download.cmd"
+bsp.downloadscript.WINDOWS.OVERWRITE: "hw/bsp/dwm1001/dwm1001_download.cmd"
 bsp.debugscript.WINDOWS.OVERWRITE: "hw/bsp/dwm1001/dwm1001_debug.cmd"
 
 bsp.flash_map:

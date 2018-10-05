@@ -255,7 +255,7 @@ struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst
     
     if (inst->config.rxauto_enable) 
         inst->sys_cfg_reg |=SYS_CFG_RXAUTR; 
-
+    
     dw1000_write_reg(inst, SYS_CFG_ID, 0, inst->sys_cfg_reg, sizeof(uint32_t));
     dw1000_write_reg(inst, LDE_IF_ID, LDE_REPC_OFFSET, reg16, sizeof(uint16_t)); // Set the lde_replicaCoeff 
 
@@ -361,13 +361,16 @@ struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst
     assert((config->rx.phrMode && (txFrameLength <= 1023)) || (txFrameLength <= 127));
     assert((txBufferOffset + txFrameLength) <= 1024);
 #endif
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Released by a SYS_STATUS_TXFRS event
+    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
     if ((txBufferOffset + txFrameLength) <= 1024){
         dw1000_write(inst, TX_BUFFER_ID, txBufferOffset,  txFrameBytes, txFrameLength);
-        for (uint8_t i = 0; i< sizeof(inst->fctrl); i++)
-            inst->fctrl_array[i] =  txFrameBytes[i];
+        /* This is only valid if the offset is 0, and not always then either  */
+        if (txBufferOffset == 0) {
+            for (uint8_t i = 0; i< sizeof(inst->fctrl); i++)
+                inst->fctrl_array[i] =  txFrameBytes[i];
+        }
         inst->status.tx_frame_error = 0;
     }
     else
@@ -396,7 +399,7 @@ inline void dw1000_write_tx_fctrl(struct _dw1000_dev_instance_t * inst, uint16_t
 #ifdef DW1000_API_ERROR_CHECK
     assert((inst->longFrames && ((txFrameLength + 2) <= 1023)) || ((txFrameLength +2) <= 127));
 #endif
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Released by a SYS_STATUS_TXFRS event
+    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
     // Write the frame length to the TX frame control register
@@ -482,7 +485,7 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
  */
 inline struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t dx_time)
 {
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Released by a SYS_STATUS_TXFRS event
+    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
     
     inst->control.delay_start_enabled = (dx_time >> 8) > 0;
@@ -516,6 +519,7 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
     dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); // return to idle state  
 
     inst->status.rx_error = inst->status.rx_timeout_error = 0;
+    inst->status.rx_buffer_overrun_error = 0;
     uint32_t sys_ctrl_reg = SYS_CTRL_RXENAB;
     if (control.start_rx_syncbuf_enabled)
         dw1000_sync_rxbufptrs(inst);
@@ -780,21 +784,17 @@ dw1000_set_autoack(struct _dw1000_dev_instance_t * inst, bool enable)
 
     os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
     assert(err == OS_OK);
-   // err = os_mutex_pend(&inst->mutex, OS_WAIT_FOREVER); // Read modify write critical section enter
-   // assert(err == OS_OK);
 
     uint32_t sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)); // Read sysconfig register
     inst->config.autoack_enabled = enable > 0;    
     if(inst->config.autoack_enabled){
         sys_cfg_reg |= SYS_CFG_AUTOACK;
         dw1000_write_reg(inst, SYS_CFG_ID,0, sys_cfg_reg, sizeof(uint32_t));
-    }else{
+    } else {
         sys_cfg_reg &= ~SYS_CFG_AUTOACK;
         dw1000_write_reg(inst, SYS_CFG_ID,0, sys_cfg_reg, sizeof(uint32_t));
     }
 
-   // err = os_mutex_release(&inst->mutex);       // // Read modify write critical section exit
-  //  assert(err == OS_OK);
     err = os_mutex_release(&inst->mutex);  
     assert(err == OS_OK);
 
@@ -862,10 +862,10 @@ dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay)
         ack_resp_reg |= (delay & ACK_RESP_T_W4R_TIM_MASK) ; // In UWB microseconds (e.g. turn the receiver on 20uus after TX)
         dw1000_write_reg(inst, ACK_RESP_T_ID, 0, ack_resp_reg, sizeof(uint32_t));
     }
-     err = os_mutex_release(&inst->mutex);  
-     assert(err == OS_OK);
-     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_set_wait4resp_delay_\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-
+    err = os_mutex_release(&inst->mutex);  
+    assert(err == OS_OK);
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_set_wait4resp_delay_\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    
     return inst->status;
 }
 
@@ -896,7 +896,7 @@ dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool enable)
         sys_cfg_reg |= SYS_CFG_DIS_DRXB;
     dw1000_write_reg(inst, SYS_CFG_ID, 0, sys_cfg_reg, sizeof(uint32_t));
     
-    err = os_mutex_release(&inst->mutex);       // // Read modify write critical section exit
+    err = os_mutex_release(&inst->mutex);       // Read modify write critical section exit
     assert(err == OS_OK);
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_set_dblrxbuff_\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
@@ -905,6 +905,72 @@ dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool enable)
     return inst->status;
 }
 
+/**
+ * API for reading carrier integrator value
+ *
+ * @brief This is used to read the RX carrier integrator value 
+ * (relating to the frequency offset of the TX node)
+ *
+ * NOTE: This is a 21-bit signed quantity, the function sign extends the most 
+ *       significant bit, which is bit #20 (numbering from bit zero) to return 
+ *       a 32-bit signed integer value.
+ *
+ * @param inst          Pointer to _dw1000_dev_instance_t.
+ *
+ * @return int32_t the signed carrier integrator value.
+ *                 A positive value means the local RX clock is running faster than the remote TX device.
+ */
+int32_t
+dw1000_read_carrier_integrator(struct _dw1000_dev_instance_t * inst)
+{
+#define B20_SIGN_EXTEND_TEST (0x00100000UL)
+#define B20_SIGN_EXTEND_MASK (0xFFF00000UL)
+    uint32_t  regval=0;
+    /* Read 3 bytes (21-bit quantity) */
+    regval = dw1000_read_reg(inst, DRX_CONF_ID, DRX_CARRIER_INT_OFFSET, DRX_CARRIER_INT_LEN);
+
+    /* Check for a negative number */
+    if (regval & B20_SIGN_EXTEND_TEST) {
+        /* sign extend bit #20 to whole word */
+        regval |= B20_SIGN_EXTEND_MASK;
+    } else {
+        /* make sure upper bits are clear if not sign extending */
+        regval &= DRX_CARRIER_INT_MASK;
+    }
+
+    /* cast unsigned value to signed quantity */
+    return (int32_t) regval;
+}
+
+/**
+ * API for calculating the clock offset ratio from the carrior integrator value
+ *
+ * @param inst           Pointer to _dw1000_dev_instance_t.
+ * @param integrator_val carrier integrator value
+ *
+ * @return float   the relative clock offset ratio
+ */
+float
+dw1000_calc_clock_offset_ratio(struct _dw1000_dev_instance_t * inst, int32_t integrator_val)
+{
+    float fom = DWT_FREQ_OFFSET_MULTIPLIER;
+    float hz_to_ppm;
+    if (inst->config.dataRate == DWT_BR_110K) {
+        fom = DWT_FREQ_OFFSET_MULTIPLIER_110KB;
+    }
+    
+    switch ( inst->config.channel ) {
+    case 1: hz_to_ppm = DWT_HZ_TO_PPM_MULTIPLIER_CHAN_1;break;
+    case 2: hz_to_ppm = DWT_HZ_TO_PPM_MULTIPLIER_CHAN_2;break;
+    case 3: hz_to_ppm = DWT_HZ_TO_PPM_MULTIPLIER_CHAN_3;break;
+    case 4: hz_to_ppm = DWT_HZ_TO_PPM_MULTIPLIER_CHAN_4;break;
+    case 5: hz_to_ppm = DWT_HZ_TO_PPM_MULTIPLIER_CHAN_5;break;
+    case 7: hz_to_ppm = DWT_HZ_TO_PPM_MULTIPLIER_CHAN_7;break;
+    default: assert(0);
+    }
+    
+    return integrator_val * (fom * hz_to_ppm / 1.0e6);
+}
 
 /**
  * API to read the RX signal quality diagnostic data.
@@ -1118,12 +1184,28 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         // Call the corresponding non-ranging frame callback if present
         else if(inst->rx_complete_cb != NULL)
             inst->rx_complete_cb(inst);        
+
         // Collect RX Frame Quality diagnositics
         if(inst->config.rxdiag_enable)  
             dw1000_read_rxdiag(inst, &inst->rxdiag);
         // Toggle the Host side Receive Buffer Pointer
-        if (inst->config.dblbuffon_enabled)
-            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 1, sizeof(uint8_t));
+        if (inst->config.dblbuffon_enabled) {
+            if (dw1000_checkoverrun(inst) == 0) {
+                dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET,
+                                 1, sizeof(uint8_t));
+            } else {
+                /* Overrun flag has been set before callback completed */
+                inst->status.rx_buffer_overrun_error = 1;
+                dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_RXOVRR, sizeof(uint32_t));
+
+                dw1000_phy_forcetrxoff(inst);
+                dw1000_phy_rx_reset(inst);
+                if (inst->control.on_error_continue_enabled) {
+                    dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET,
+                                     SYS_CTRL_RXENAB, sizeof(uint16_t));
+                }
+            }
+        }
     }
 
     // Handle frame reception/preamble detect timeout events
@@ -1166,28 +1248,81 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
 }
 
 
-/** 
+/**
+ * API to calculate First Path Power Level (fppl) from an rxdiag structure
+ *
+ * @param inst  Pointer to _dw1000_dev_instance_t.
+ * @param diag  Pointer to _dw1000_dev_rxdiag_t.
+ *
+ * @return fppl on success
+ */
+float
+dw1000_calc_fppl(struct _dw1000_dev_instance_t * inst,
+                 struct _dw1000_dev_rxdiag_t * diag)
+{
+    if (diag->pacc_cnt == 0 ||
+        (!diag->fp_amp && !diag->fp_amp2 && !diag->fp_amp3)) {
+        return -INFINITY;
+    }
+    float A = (inst->config.prf == DWT_PRF_16M) ? 115.72 : 122.74;
+
+    float N = diag->pacc_cnt;
+    float v = (float)diag->fp_amp*diag->fp_amp +
+        (float)diag->fp_amp2*diag->fp_amp2 +
+        (float)diag->fp_amp3*diag->fp_amp3;
+    v /= N*N;
+    return 10.0*log10f(v) - A;
+}
+
+/**
+ * API to calculate First Path Power Level from last RX in dBm,
+ * which needs config.rxdiag_enable to be set.
+ *
+ * @param inst  Pointer to _dw1000_dev_instance_t.
+ *
+ * @return rssi on success
+ */
+float
+dw1000_get_fppl(struct _dw1000_dev_instance_t * inst)
+{
+    if (!inst->config.rxdiag_enable)
+        return -INFINITY;
+    return dw1000_calc_fppl(inst, &inst->rxdiag);
+}
+
+/**
+ * API to calculate rssi from an rxdiag structure
+ *
+ * @param inst  Pointer to _dw1000_dev_instance_t.
+ * @param diag  Pointer to _dw1000_dev_rxdiag_t.
+ *
+ * @return rssi on success
+ */
+float
+dw1000_calc_rssi(struct _dw1000_dev_instance_t * inst,
+                 struct _dw1000_dev_rxdiag_t * diag)
+{
+    if (diag->cir_pwr == 0 || diag->pacc_cnt == 0) {
+        return -INFINITY;
+    }
+    float rssi = 10.0f * log10f(diag->cir_pwr * 0x20000/(diag->pacc_cnt * diag->pacc_cnt))
+        - ((inst->config.prf == DWT_PRF_16M) ? 115.72 : 122.74);
+    return rssi;
+}
+
+/**
  * API to calculate rssi from last RX in dBm, which needs config.rxdiag_enable to be set.
  *
  * @param inst  Pointer to _dw1000_dev_instance_t.
  *
  * @return rssi on success
  */
-float 
+float
 dw1000_get_rssi(struct _dw1000_dev_instance_t * inst)
 {
     if (!inst->config.rxdiag_enable) 
         return -INFINITY;
-    
-    float rssi = 10.0f * log10f(inst->rxdiag.cir_pwr * 0x20000/(inst->rxdiag.pacc_cnt * inst->rxdiag.pacc_cnt)) 
-                - ((inst->config.prf == DWT_PRF_16M) ? 115.72 : 122.74);
-    //printf("{\"utime\":%lu,\"cir_pwr\": %u,\"pacc_cnt\": %u, \"rssi\":\"%lu\"}\n",
-    //            os_cputime_ticks_to_usecs(os_cputime_get32()),
-    //            inst->rxdiag.cir_pwr,
-    //            inst->rxdiag.pacc_cnt,
-    //            *(uint32_t *)(&rssi)
-    //);
-    return rssi;
+    return dw1000_calc_rssi(inst, &inst->rxdiag);
 }
 
 #if MYNEWT_VAL(ADAPTIVE_TIMESCALE_ENABLED)

@@ -105,10 +105,6 @@ syscfg.vals:
     MCU_DCDC_ENABLED: 1
     XTAL_32768: 1
     BOOT_SERIAL_DETECT_PIN: 2  # Button 1
-    # Enable the shell task.
-    SHELL_TASK: 1
-    SHELL_PROMPT_MODULE: 1
-    SPI_0_MASTER: 1
     SENSOR_OIC : 0
     
 syscfg.vals.BLE_LP_CLOCK:

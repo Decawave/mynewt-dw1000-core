@@ -77,6 +77,20 @@ extern "C" {
 #define DWT_PHRMODE_STD             0x0     //!< standard PHR mode
 #define DWT_PHRMODE_EXT             0x3     //!< DW proprietary extended frames PHR mode
 
+//! Multiplication factors to convert carrier integrator value to a frequency offset in Hz
+#define DWT_FREQ_OFFSET_MULTIPLIER          (998.4e6/2.0/1024.0/131072.0)
+#define DWT_FREQ_OFFSET_MULTIPLIER_110KB    (998.4e6/2.0/8192.0/131072.0)
+
+//! Multiplication factors to convert frequency offset in Hertz to PPM crystal offset
+// NB: also changes sign so a positive value means the local RX clock is
+// running slower than the remote TX device.
+#define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_1     (-1.0e6/3494.4e6)
+#define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_2     (-1.0e6/3993.6e6)
+#define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_3     (-1.0e6/4492.8e6)
+#define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_4     (-1.0e6/4492.8e6)
+#define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_5     (-1.0e6/6489.6e6)
+#define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_7     (-1.0e6/6489.6e6)
+
 //! Start transmit mode parameters.
 typedef enum _dw1000_start_tx_modes_t {
     DWT_START_TX_IMMEDIATE = 1 << 0,     //!< Set up immediate tx to transmit immediately
@@ -179,6 +193,7 @@ struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst
 struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst);
 struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t delay);
 struct _dw1000_dev_status_t dw1000_set_wait4resp(struct _dw1000_dev_instance_t * inst, bool enable);
+struct _dw1000_dev_status_t dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay);
 struct _dw1000_dev_status_t dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable);
 struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst);
 struct _dw1000_dev_status_t dw1000_restart_rx(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_control_t control);
@@ -191,14 +206,22 @@ struct _dw1000_dev_status_t dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t *
 void dw1000_set_callbacks(struct _dw1000_dev_instance_t * inst, dw1000_dev_cb_t cb_TxDone, dw1000_dev_cb_t cb_RxOk, dw1000_dev_cb_t cb_RxTo, dw1000_dev_cb_t cb_RxErr);
 struct _dw1000_dev_status_t dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout);
 
+float dw1000_calc_rssi(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag);
 float dw1000_get_rssi(struct _dw1000_dev_instance_t * inst);
-    
+float dw1000_calc_fppl(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag);
+float dw1000_get_fppl(struct _dw1000_dev_instance_t * inst);
+
+int32_t dw1000_read_carrier_integrator(struct _dw1000_dev_instance_t * inst);
+float dw1000_calc_clock_offset_ratio(struct _dw1000_dev_instance_t * inst, int32_t integrator_val);
+
+void dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag);
 #define dw1000_set_preamble_timeout(counts) dw1000_write_reg(inst, DRX_CONF_ID, DRX_PRETOC_OFFSET, counts, sizeof(uint16_t))
 #define dw1000_read_rx(inst, buffer, rxBufferOffset, length) dw1000_read(inst, RX_BUFFER_ID,  rxBufferOffset, buffer,  length)
 #define dw1000_set_panid(inst, pan_id) dw1000_write_reg(inst, PANADR_ID, PANADR_PAN_ID_OFFSET, pan_id, sizeof(uint16_t))
 #define dw1000_set_address16(inst, shortAddress) dw1000_write_reg(inst ,PANADR_ID, PANADR_SHORT_ADDR_OFFSET, shortAddress, sizeof(uint16_t))
 #define dw1000_set_eui(inst, eui64) dw1000_write_reg(inst, EUI_64_ID, EUI_64_OFFSET, eui64, EUI_64_LEN)
 #define dw1000_get_eui(inst) (uint64_t) dw1000_read_reg(inst, EUI_64_ID, EUI_64_OFFSET, EUI_64_LEN)
+#define dw1000_checkoverrun(inst) (uint16_t) (dw1000_read_reg(inst, SYS_STATUS_ID, 2, sizeof(uint16_t)) & (SYS_STATUS_RXOVRR >> 16))
 
 #if MYNEWT_VAL(ADAPTIVE_TIMESCALE_ENABLED)
 uint64_t dw1000_read_systime(struct _dw1000_dev_instance_t * inst);
@@ -211,9 +234,15 @@ uint32_t dw1000_read_rxtime_lo(struct _dw1000_dev_instance_t * inst);
 uint64_t dw1000_read_txtime(struct _dw1000_dev_instance_t * inst);
 uint32_t dw1000_read_txtime_lo(struct _dw1000_dev_instance_t * inst);
 #else
+<<<<<<< HEAD
 #define dw1000_read_systime(inst) ((uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN) & 0x0FFFFFFFFFFULL)
 #define dw1000_read_systime_lo(inst) ((uint32_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, sizeof(uint32_t))
 #define dw1000_read_rxtime(inst) ((uint64_t) dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFULL)
+=======
+#define dw1000_read_systime(inst) ((uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN) & 0x0FFFFFFFFFFUL)
+#define dw1000_read_systime_lo(inst) ((uint32_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, sizeof(uint32_t)))
+#define dw1000_read_rxtime(inst) ((uint64_t) dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFUL)
+>>>>>>> dba90f30149a794a5a26e87e97e8f1d9647fe4fa
 #define dw1000_read_rxtime_lo(inst) (uint32_t) dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, sizeof(uint32_t))
 #define dw1000_read_txtime(inst) ((uint64_t) dw1000_read_reg(inst, TX_TIME_ID, TX_TIME_TX_STAMP_OFFSET, TX_TIME_TX_STAMP_LEN) & 0x0FFFFFFFFFFULL)
 #define dw1000_read_txtime_lo(inst) (uint32_t) dw1000_read_reg(inst, TX_TIME_ID, TX_TIME_TX_STAMP_OFFSET, sizeof(uint32_t))
