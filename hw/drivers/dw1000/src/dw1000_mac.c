@@ -972,7 +972,8 @@ static void dw1000_irq(void *arg)
         }
     inst->status.sleeping = (devid != DWT_DEVICE_ID);
     }
-    os_eventq_put(&inst->eventq, &inst->interrupt_ev);
+//    os_eventq_put(&inst->eventq, &inst->interrupt_ev);
+      dw1000_interrupt_ev_cb(&inst->interrupt_ev);
 }
 
 /**
