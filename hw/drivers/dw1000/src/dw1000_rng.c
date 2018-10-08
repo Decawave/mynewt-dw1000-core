@@ -219,7 +219,7 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     dw1000_set_wait4resp(inst, true);  
      
     uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_rng_response_frame_t)) 
-                    + config->rx_timeout_period         // 2 * ToF, 1us ~= 300m
+                    + config->rx_timeout_period         // At least 2 * ToF, 1us ~= 300m
                     + config->tx_holdoff_delay;         // Remote side turn arroud time. 
     dw1000_set_rx_timeout(inst, timeout); 
    
@@ -882,7 +882,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                                 break; 
 
                             uint64_t request_timestamp = dw1000_read_rxtime(inst);  
-                            uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 16); 
+                            uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 16);
                             uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
             
                             frame->reception_timestamp = request_timestamp;
@@ -935,7 +935,7 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             frame->code = DWT_DS_TWR_EXT_T2;
 
                             uint64_t request_timestamp = dw1000_read_rxtime(inst);  
-                            uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 16); 
+                            uint64_t response_tx_delay = request_timestamp + ((uint64_t)config->tx_holdoff_delay << 16);
                             uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
                             
                             frame->reception_timestamp = request_timestamp;

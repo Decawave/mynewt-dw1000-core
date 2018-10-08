@@ -37,6 +37,7 @@
 #include <hal/hal_gpio.h>
 #include "bsp/bsp.h"
 
+#include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_phy.h>
 #include <ccp/dw1000_ccp.h>
 
@@ -510,6 +511,7 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     ccp_frame_t * frame = ccp->frames[(ccp->idx++)%ccp->nframes];
     ccp->os_epoch = os_cputime_get32();
+
     ccp->epoch = frame->transmission_timestamp = dw1000_read_txtime(inst); 
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp_tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
@@ -625,7 +627,6 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     frame->seq_num += inst->ccp->nframes;
     frame->long_address = inst->my_short_address;
 
-//    dw1000_phy_forcetrxoff(inst);
     dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_blink_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(ieee_blink_frame_t), 0, true); 
     dw1000_set_wait4resp(inst, false);    
@@ -636,7 +637,7 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
         // Half Period Delay Warning occured try for the next epoch
         // Use seq_num to detect this on receiver size
         DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_send:start_tx_error\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-        previous_frame->transmission_timestamp += ((uint64_t)inst->ccp->period << 15);
+        previous_frame->transmission_timestamp += ((uint64_t)inst->ccp->period << 16);
         os_sem_release(&ccp->sem);
     }else if(mode == DWT_BLOCKING){
         err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
@@ -667,9 +668,11 @@ dw1000_ccp_receive(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode
     os_error_t err = os_sem_pend(&ccp->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
-//    ccp_frame_t * frame = ccp->frames[(ccp->idx-1)%ccp->nframes];
-    uint64_t dx_time = ccp->epoch + ((uint64_t)inst->ccp->period << 16) - ((uint64_t) MYNEWT_VAL(DW1000_IDLE_TO_RX_LATENCY) << 16);
-    uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_blink_frame_t)) + MYNEWT_VAL(DW1000_IDLE_TO_RX_LATENCY);
+    uint64_t dx_time = ccp->epoch 
+            + ((uint64_t)inst->ccp->period << 16) 
+            - ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&inst->attrib))) << 16);
+
+    uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_blink_frame_t)) + 0x10;
                        
     dw1000_set_rx_timeout(inst, timeout); 
     dw1000_set_delay_start(inst, dx_time);    
