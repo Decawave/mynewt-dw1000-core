@@ -505,7 +505,7 @@ rng_rx_timeout_cb(dw1000_dev_instance_t * inst){
         }
     }
     if(os_sem_get_count(&inst->rng->sem) == 0){
-        printf("{\"utime\": %lu,\"log\": \"rng_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
+        //printf("{\"utime\": %lu,\"log\": \"rng_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
         os_error_t err = os_sem_release(&inst->rng->sem);
         assert(err == OS_OK);
     }
@@ -531,7 +531,7 @@ rng_rx_error_cb(dw1000_dev_instance_t * inst){
     }
 
     if(os_sem_get_count(&inst->rng->sem) == 0){
-        printf("{\"utime\": %lu,\"log\": \"rng_rx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
+        //printf("{\"utime\": %lu,\"log\": \"rng_rx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
         os_error_t err = os_sem_release(&inst->rng->sem);   
         assert(err == OS_OK);
     }

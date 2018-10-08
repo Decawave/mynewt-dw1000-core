@@ -196,19 +196,14 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
 
         err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
         os_sem_release(&ccp->sem);
-         // Schedule next event to align with correctly
-        hal_timer_start_at(&ccp->timer, ccp->os_epoch 
-            - os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY)) 
-            + os_cputime_usecs_to_ticks((uint32_t)dw1000_dwt_usecs_to_usecs(ccp->period))
-        );
-
-    }else{
-         // Schedule next event
-        hal_timer_start_at(&ccp->timer, ccp->os_epoch 
-            - os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY)) 
-            + os_cputime_usecs_to_ticks((uint32_t)dw1000_dwt_usecs_to_usecs(ccp->period))
-        );
     }
+    // Schedule next event
+    hal_timer_start_at(&ccp->timer, ccp->os_epoch 
+        + os_cputime_usecs_to_ticks(
+            - MYNEWT_VAL(OS_LATENCY) 
+            + ((uint32_t)dw1000_dwt_usecs_to_usecs(ccp->period))
+            - dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_blink_frame_t)))
+    ); 
 }
 
 
