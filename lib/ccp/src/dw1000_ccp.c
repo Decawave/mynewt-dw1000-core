@@ -186,12 +186,12 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     
     if(dw1000_ccp_receive(inst, DWT_BLOCKING).start_rx_error){
-        // Sync lost, switch to alway on mode
+        // Sync lost, switch to always on mode
         // DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp_slave_timer_ev_cb:start_rx_error\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         os_error_t err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER);
         assert(err == OS_OK);
    
-        dw1000_set_rx_timeout(inst, ccp->period); 
+        dw1000_set_rx_timeout(inst, ccp->period);
         dw1000_start_rx(inst);
 
         err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
@@ -201,9 +201,11 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
     hal_timer_start_at(&ccp->timer, ccp->os_epoch 
         + os_cputime_usecs_to_ticks(
             - MYNEWT_VAL(OS_LATENCY) 
-            + ((uint32_t)dw1000_dwt_usecs_to_usecs(ccp->period))
-            - dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_blink_frame_t)))
-    ); 
+            + (uint32_t)dw1000_dwt_usecs_to_usecs(
+                   ccp->period
+                   - dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_blink_frame_t)))
+            )
+        );
 }
 
 
@@ -571,7 +573,7 @@ ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst){
 static bool
 ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst){
     /* Place holder */
-   if (os_sem_get_count(&inst->ccp->sem) == 0){
+    if (os_sem_get_count(&inst->ccp->sem) == 0){
         printf("{\"utime\": %lu,\"log\": \"ccp_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
         os_sem_release(&inst->ccp->sem);  
         return true;
@@ -670,7 +672,7 @@ dw1000_ccp_receive(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode
     uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_blink_frame_t)) + 0x10;
                        
     dw1000_set_rx_timeout(inst, timeout); 
-    dw1000_set_delay_start(inst, dx_time);    
+    dw1000_set_delay_start(inst, dx_time);
     ccp->status.start_rx_error = dw1000_start_rx(inst).start_rx_error;
     if (ccp->status.start_rx_error){
         // Half Period Delay Warning occured try for the next epoch
