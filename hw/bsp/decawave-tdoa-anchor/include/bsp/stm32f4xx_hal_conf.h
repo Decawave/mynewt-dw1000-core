@@ -94,12 +94,15 @@
 #define HAL_ADC_MODULE_ENABLED
 #define HAL_DMA_MODULE_ENABLED
 #define HAL_FLASH_MODULE_ENABLED
+#define HAL_PWR_MODULE_ENABLED
 #define HAL_GPIO_MODULE_ENABLED
 #define HAL_I2C_MODULE_ENABLED
 #define HAL_IWDG_MODULE_ENABLED
+#define HAL_RNG_MODULE_ENABLED
 #define HAL_RCC_MODULE_ENABLED
 #define HAL_SPI_MODULE_ENABLED
 #define HAL_CORTEX_MODULE_ENABLED
+#define HAL_ETH_MODULE_ENABLED
 #endif
 
 /* ########################## HSE/HSI Values adaptation ##################### */

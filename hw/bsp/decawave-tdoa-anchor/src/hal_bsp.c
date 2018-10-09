@@ -45,6 +45,10 @@
 #include "dw1000/dw1000_dev.h"
 #include "dw1000/dw1000_hal.h"
 #endif
+#if MYNEWT_VAL(ETH_0)
+#include "stm32_eth/stm32_eth.h"
+#include "stm32_eth/stm32_eth_cfg.h"
+#endif
 
 #if MYNEWT_VAL(UART_0)
 static struct uart_dev hal_uart0;
@@ -82,6 +86,43 @@ struct stm32_hal_spi_cfg os_bsp_spi0m_cfg = {
     .irq_prio = 2,
 };
 #endif
+
+#if MYNEWT_VAL(ETH_0)
+static const struct stm32_eth_cfg eth_cfg = {
+    /*
+     * PORTA
+     *   PA1  - ETH_RMII_REF_CLK
+     *   PA2  - ETH_RMII_MDIO
+     *   PE15 - ETH_RMII_MDINT  (GPIO irq?)
+     *   PA7  - ETH_RMII_CRS_DV
+     */
+    .sec_port_mask[0] = (1 << 1) | (1 << 2) | (1 << 7),
+
+    /*
+     * PORTC
+     *   PC1 - ETH_RMII_MDC
+     *   PC4 - ETH_RMII_RXD0
+     *   PC5 - ETH_RMII_RXD1
+     */
+    .sec_port_mask[2] = (1 << 1) | (1 << 4) | (1 << 5),
+
+    /*
+     * PORTG
+     *   PG11 - ETH_RMII_TXEN
+     *   PG13 - ETH_RMII_TXD0
+     */
+    .sec_port_mask[6] = (1 << 11) | (1 << 13) ,
+    /*
+     *  PORT B
+     *   PB13 - ETH_RMII_TXD1
+     */
+    .sec_port_mask[1] = (1 << 13),
+    .sec_phy_type = LAN_8742_RMII,
+    //.sec_phy_irq = MCU_GPIO_PORTE(15)
+    .sec_phy_irq = -1
+};
+#endif
+
 
 static const struct hal_bsp_mem_dump dump_cfg[] = {
     [0] = {
@@ -126,6 +167,8 @@ static const struct dw1000_dev_cfg dw1000_0_cfg = {
 #endif
 
 
+void SystemClock_Config(void);
+void SystemClockHSI_Config(void);
 void
 hal_bsp_init(void)
 {
@@ -153,7 +196,7 @@ hal_bsp_init(void)
 #if MYNEWT_VAL(SPI_0_MASTER)
     rc = hal_spi_init(0, &os_bsp_spi0m_cfg, HAL_SPI_TYPE_MASTER);
     assert(rc == 0);
-/*    
+/*
     rc = os_mutex_init(&g_spi0_mutex);
     assert(rc == 0);
     */
@@ -170,6 +213,10 @@ hal_bsp_init(void)
     rc = os_dev_create((struct os_dev *) &hal_uart0, "uart0",
       OS_DEV_INIT_PRIMARY, 0, uart_hal_init, (void *)&os_bsp_uart_cfg[0]);
     assert(rc == 0);
+#endif
+
+#if MYNEWT_VAL(ETH_0)
+    stm32_eth_init(&eth_cfg);
 #endif
 
 }
