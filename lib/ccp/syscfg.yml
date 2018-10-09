@@ -14,9 +14,14 @@ syscfg.defs:
             Autotune XTALT to Clock Master
         value: 0
         restrictions: DW1000_CCP_ENABLED
+    XTALT_GUARD:
+        description: >
+            Guardband for xtal drift (dwt units)
+        value: ((uint32_t){0x10})
     ADAPTIVE_TIMESCALE_ENABLED:
         description: 'Enable Adaptive timescale adjustments'
         value: 0
         restrictions: DW1000_CCP_ENABLED
         restrictions: CCP_PERIOD
         restrictions: CLOCK_CALIBRATION_ENABLED
+        restrictions: XTALT_GUARD
