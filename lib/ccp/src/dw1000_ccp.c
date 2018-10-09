@@ -667,7 +667,7 @@ dw1000_ccp_receive(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode
             + ((uint64_t)inst->ccp->period << 16) 
             - ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&inst->attrib))) << 16);
 
-    uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_blink_frame_t)) + 0x10;
+    uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_blink_frame_t)) + MYNEWT_VAL(XTALT_GUARD);
                        
     dw1000_set_rx_timeout(inst, timeout); 
     dw1000_set_delay_start(inst, dx_time);    
