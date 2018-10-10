@@ -253,9 +253,6 @@ typedef struct _dw1000_dev_instance_t{
     uint32_t device_id;            //!< Device id  
     uint16_t my_short_address;     //!< Short address of tag/node
     uint64_t my_long_address;      //!< Long address of tag/node
-#if MYNEWT_VAL(DW1000_CCP_ENABLED)
-    uint64_t clock_master;         //!< Clock
-#endif
     uint64_t timestamp;            //!< Timestamp
     uint64_t rxtimestamp;          //!< Receive timestamp
     uint64_t txtimestamp;          //!< Transmit timestamp

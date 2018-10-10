@@ -95,6 +95,7 @@ typedef struct _dw1000_ccp_instance_t{
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED)
     struct _sos_instance_t * xtalt_sos;        //!< Sturcture of xtalt_sos 
 #endif
+    uint64_t uuid;                                  //!< Clock Master UUID
     struct os_sem sem;                              //!< Structure containing os semaphores
     struct os_callout callout_postprocess;          //!< Structure of callout_postprocess
     dw1000_ccp_status_t status;                     //!< DW1000 ccp status parameters

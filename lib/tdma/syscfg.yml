@@ -4,7 +4,6 @@ syscfg.defs:
     TDMA_ENABLED:
         description: 'Enable TDMA Services'
         value: 1
-        restrictions: DW1000_IDLE_TO_RX_LATENCY
         restrictions: OS_LATENCY
     TDMA_NSLOTS:
         description: 'Enable TDMA Services'

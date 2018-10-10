@@ -256,7 +256,7 @@ ccp_tasks_init(struct _dw1000_ccp_instance_t * inst)
  * @return dw1000_ccp_instance_t * 
  */
 dw1000_ccp_instance_t * 
-dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t clock_master){
+dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t uuid){
     assert(inst);
     assert(nframes > 1);
     
@@ -294,7 +294,7 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
         .fs_xtalt_autotune = true,
 #endif
     };
-    inst->clock_master = clock_master;
+    inst->ccp->uuid = uuid;
 
     os_error_t err = os_sem_init(&inst->ccp->sem, 0x1); 
     assert(err == OS_OK);
@@ -437,9 +437,9 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
 
     if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
         // CCP Packet Received
-        uint64_t clock_master;
-        dw1000_read_rx(inst, (uint8_t *) &clock_master, offsetof(ieee_blink_frame_t,long_address), sizeof(uint64_t));
-        if(inst->clock_master != clock_master)
+        uint64_t uuid;
+        dw1000_read_rx(inst, (uint8_t *) &uuid, offsetof(ieee_blink_frame_t,long_address), sizeof(uint64_t));
+        if(inst->ccp->uuid != uuid)
             return false;
     }else {
         return false;
@@ -610,7 +610,7 @@ ccp_reset_cb(struct _dw1000_dev_instance_t * inst){
 static dw1000_ccp_status_t 
 dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_send\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_send \"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_ccp_instance_t * ccp = inst->ccp; 
 
     os_error_t err = os_sem_pend(&ccp->sem,  OS_TIMEOUT_NEVER);
@@ -621,7 +621,7 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 
     frame->transmission_timestamp = previous_frame->transmission_timestamp + ((uint64_t)inst->ccp->period << 16);
     frame->seq_num += inst->ccp->nframes;
-    frame->long_address = inst->my_short_address;
+    frame->long_address = inst->ccp->uuid;
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_blink_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(ieee_blink_frame_t), 0, true); 

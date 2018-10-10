@@ -78,5 +78,5 @@ syscfg.defs:
     OS_LATENCY:
         description: >
             OS Latency Guardband (usec)
-        value: ((uint32_t){700})
+        value: ((uint32_t){1000})
 
