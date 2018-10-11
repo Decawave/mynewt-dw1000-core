@@ -29,9 +29,6 @@ syscfg.defs:
     DW1000_MAC_FILTERING:
         description: 'Enable the mac filtering'
         value: 0
-    DW1000_RANGE:
-        description: 'TWR Ranging functionality'
-        value: 0
     DW1000_BIAS_CORRECTION_ENABLED:
         description: 'Enable range bias correction polynomial'
         value: 0

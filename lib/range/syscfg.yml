@@ -1,0 +1,4 @@
+syscfg.defs:
+    DW1000_RANGE:
+        description: 'TWR Ranging functionality'
+        value: 0

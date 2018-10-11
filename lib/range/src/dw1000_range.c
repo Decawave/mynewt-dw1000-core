@@ -45,7 +45,7 @@
 #include <dw1000/dw1000_ftypes.h>
 
 #if MYNEWT_VAL(DW1000_RANGE)
-#include <dw1000/dw1000_range.h>
+#include <range/dw1000_range.h>
 
 static void postprocess(struct os_event * ev);
 static bool range_complete_cb(dw1000_dev_instance_t * inst);
