@@ -310,11 +310,11 @@ tdma_superframe_event_cb(struct os_event * ev){
     }
     for (uint16_t i = 0; i < tdma->nslots; i++) {
         if (tdma->slot[i]){
-            hal_timer_start_at(&tdma->slot[i]->timer, 
-                tdma->os_epoch 
-                + os_cputime_usecs_to_ticks((uint32_t) (i * dw1000_dwt_usecs_to_usecs(tdma->period)/tdma->nslots))
-                - (uint32_t)ceilf(dw1000_phy_SHR_duration(&tdma->parent->attrib))
-                - os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY))
+            hal_timer_start_at(&tdma->slot[i]->timer, tdma->os_epoch
+                + os_cputime_usecs_to_ticks(
+                    (uint32_t) (i * dw1000_dwt_usecs_to_usecs(tdma->period)/tdma->nslots) -
+                    (uint32_t)ceilf(dw1000_phy_SHR_duration(&tdma->parent->attrib)) -
+                    MYNEWT_VAL(OS_LATENCY))
             );
         }
     }
