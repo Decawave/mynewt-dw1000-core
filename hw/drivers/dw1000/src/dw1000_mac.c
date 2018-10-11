@@ -1043,16 +1043,6 @@ static void
 dw1000_irq(void *arg)
 {
     dw1000_dev_instance_t * inst = arg;
-
-    // Allow PLL to settle before SPI transactions, Usermanul Figure 9.
-    if (inst->status.sleeping){
-        uint8_t timeout=100;    
-        uint32_t devid = dw1000_read_reg(inst, DEV_ID_ID, 0, sizeof(uint32_t));
-        while (devid != 0xDECA0130 && --timeout){
-            devid = dw1000_read_reg(inst, DEV_ID_ID, 0, sizeof(uint32_t));
-        }
-    inst->status.sleeping = (devid != DWT_DEVICE_ID);
-    }
     os_eventq_put(&inst->eventq, &inst->interrupt_ev);
 }
 
