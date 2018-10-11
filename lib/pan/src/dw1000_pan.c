@@ -62,6 +62,7 @@ static bool pan_tx_complete_cb(dw1000_dev_instance_t * inst);
 static bool pan_rx_timeout_cb(dw1000_dev_instance_t * inst);
 static bool pan_rx_error_cb(dw1000_dev_instance_t * inst);
 static bool pan_tx_error_cb(dw1000_dev_instance_t * inst);
+static bool pan_reset_cb(dw1000_dev_instance_t * inst);
 static dw1000_pan_status_t dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 static void pan_postprocess(struct os_event * ev);
 
@@ -141,6 +142,7 @@ dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config){
     pan_cbs.rx_timeout_cb = pan_rx_timeout_cb;
     pan_cbs.rx_error_cb = pan_rx_error_cb;
     pan_cbs.tx_error_cb = pan_tx_error_cb;
+    pan_cbs.reset_cb = pan_reset_cb;
     
     dw1000_pan_set_ext_callbacks(inst, pan_cbs);
 
@@ -323,6 +325,20 @@ pan_rx_error_cb(dw1000_dev_instance_t * inst){
     os_sem_release(&inst->pan->sem);
     return true;
 }
+
+/**
+ * API for reset callback.
+ *
+ * @param inst   Pointer to dw1000_dev_instance_t.
+ *
+ * @return bool
+ */
+static bool
+pan_reset_cb(dw1000_dev_instance_t * inst){
+    os_sem_release(&inst->pan->sem);
+    return true;
+}
+
 
 /**
  * API for transmit error callback.
