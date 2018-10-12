@@ -70,11 +70,12 @@ static float rng_bias_poly_PRF16[] ={
      	1.754924e-05, 4.106182e-03, 3.061584e-01, 7.189425e+00, 
      	};
 
-static void rng_tx_complete_cb(dw1000_dev_instance_t * inst);
-static void rng_rx_complete_cb(dw1000_dev_instance_t * inst);
-static void rng_rx_timeout_cb(dw1000_dev_instance_t * inst);
-static void rng_rx_error_cb(dw1000_dev_instance_t * inst);
-static void rng_tx_final_cb(dw1000_dev_instance_t * inst);
+static bool rng_tx_complete_cb(dw1000_dev_instance_t * inst);
+static bool rng_rx_complete_cb(dw1000_dev_instance_t * inst);
+static bool rng_rx_timeout_cb(dw1000_dev_instance_t * inst);
+static bool rng_rx_error_cb(dw1000_dev_instance_t * inst);
+static bool rng_tx_final_cb(dw1000_dev_instance_t * inst);
+static bool rng_reset_cb(dw1000_dev_instance_t * inst);
 
 /**
  * API to initialise the ranging by setting all the required configurations and callbacks.
@@ -87,6 +88,8 @@ static void rng_tx_final_cb(dw1000_dev_instance_t * inst);
  */
 dw1000_rng_instance_t * 
 dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes){
+
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_rng_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
     assert(inst);
     if (inst->rng == NULL ) {
@@ -105,9 +108,16 @@ dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint
         dw1000_rng_config(inst, config);
     }
 
-    dw1000_rng_set_callbacks(inst, rng_tx_complete_cb, rng_rx_complete_cb, rng_rx_timeout_cb, rng_rx_error_cb);
-    dw1000_rng_set_tx_final_cb(inst, rng_tx_final_cb);
-    dw1000_rng_set_complete_cb(inst, 0);
+    inst->rng->cbs = (dw1000_mac_interface_t){
+        .id = DW1000_RNG,
+        .tx_complete_cb = rng_tx_complete_cb,
+        .rx_complete_cb = rng_rx_complete_cb,
+        .rx_timeout_cb = rng_rx_timeout_cb,
+        .rx_error_cb = rng_rx_error_cb,
+        .reset_cb = rng_reset_cb,
+        .final_cb = rng_tx_final_cb
+    };
+    dw1000_mac_append_interface(inst, &inst->rng->cbs);
 
     inst->rng->control = (dw1000_rng_control_t){
         .delay_start_enabled = 0,
@@ -133,25 +143,6 @@ dw1000_rng_free(dw1000_rng_instance_t * inst){
         free(inst);
     else
         inst->status.initialized = 0;
-}
-
-/**
- * API to set the ranging callbacks.
- *
- * @param inst                  Pointer to dw1000_dev_instance_t.
- * @param rng_tx_complete_cb    Pointer to TX confirmation event callback function.
- * @param rx_complete_cb        Pointer to RX good frame event callback function.
- * @param rx_timeout_cb         Pointer to RX timeout events callback function.
- * @param rx_error_cb           Pointer to RX error events callback function. 
- *
- * @return void
- */
-void 
-dw1000_rng_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_tx_complete_cb, dw1000_dev_cb_t rng_rx_complete_cb,  dw1000_dev_cb_t rng_rx_timeout_cb,  dw1000_dev_cb_t rng_rx_error_cb){
-    inst->rng_tx_complete_cb = rng_tx_complete_cb;
-    inst->rng_rx_complete_cb = rng_rx_complete_cb;
-    inst->rng_rx_timeout_cb = rng_rx_timeout_cb;
-    inst->rng_rx_error_cb = rng_rx_error_cb;
 }
 
 /**
@@ -418,8 +409,11 @@ dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code){
  *
  * @return void
  */
-static void 
+static bool
 rng_tx_final_cb(dw1000_dev_instance_t * inst){
+
+    if (inst->fctrl != FCNTL_IEEE_RANGE_16)
+        return false;
 
 #ifdef DS_TWR_EXT_ENABLE
     dw1000_rng_instance_t * rng = inst->rng; 
@@ -447,8 +441,10 @@ rng_tx_final_cb(dw1000_dev_instance_t * inst){
     frame->spherical_variance.range = MYNEWT_VAL(RANGE_VARIANCE);
     frame->spherical_variance.azimuth = -1;
     frame->spherical_variance.zenith = -1;
-    frame->utime = os_cputime_ticks_to_usecs(os_cputime_get32());//dw1000_read_systime(inst)/128;
+    frame->utime = os_cputime_ticks_to_usecs(os_cputime_get32());
 #endif
+
+    return true;
 }
 
 /**
@@ -456,33 +452,14 @@ rng_tx_final_cb(dw1000_dev_instance_t * inst){
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
  *
- * @return void
+ * @return true on sucess
  */
-static void 
-rng_tx_complete_cb(dw1000_dev_instance_t * inst)
-{
-    bool status = false;
-    if(!(SLIST_EMPTY(&inst->extension_cbs))){
-        dw1000_extension_callbacks_t *temp = NULL;
-        SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
-            if(temp != NULL && temp->tx_complete_cb != NULL)
-                status |= temp->tx_complete_cb(inst);
-        }
-    }
-/*
-    dw1000_rng_instance_t * rng = inst->rng; 
-    if (status == false && inst->fctrl == FCNTL_IEEE_RANGE_16){
-        twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
-        if (frame->code == DWT_SS_TWR_FINAL || frame->code == DWT_SS_TWR_T1){
-            os_sem_release(&inst->rng->sem);  
-        }else{ 
-            twr_frame_t * frame = rng->frames[(rng->idx+1)%rng->nframes];
-            if (frame->code ==  DWT_DS_TWR_FINAL || frame->code ==  DWT_DS_TWR_EXT_FINAL){
-                os_sem_release(&inst->rng->sem);  
-            }
-        }
-    }
-*/
+static bool
+rng_tx_complete_cb(dw1000_dev_instance_t * inst){
+    if (inst->fctrl != FCNTL_IEEE_RANGE_16)
+        return false;
+    else 
+        return true;
 }
 
 
@@ -491,50 +468,40 @@ rng_tx_complete_cb(dw1000_dev_instance_t * inst)
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
  *
- * @return void
+ * @return true on sucess
  */
-static void 
+static bool 
 rng_rx_timeout_cb(dw1000_dev_instance_t * inst){
 
-    bool status = false;
-    if(!(SLIST_EMPTY(&inst->extension_cbs))){
-        dw1000_extension_callbacks_t *temp = NULL;
-        SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
-            if(temp != NULL && temp->rx_timeout_cb != NULL)
-                status |= temp->rx_timeout_cb(inst);
-        }
-    }
-    if(os_sem_get_count(&inst->rng->sem) == 0){
+   if(os_sem_get_count(&inst->rng->sem) == 0){
         //printf("{\"utime\": %lu,\"log\": \"rng_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
-        os_error_t err = os_sem_release(&inst->rng->sem);
-        assert(err == OS_OK);
+        os_sem_release(&inst->rng->sem);
+        return true;
     }
+    else
+        return false;
 }
+
 
 /**
  * API for receive error callback.
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
  *
- * @return void
+ * @return true on sucess
  */
-static void 
+static bool 
 rng_rx_error_cb(dw1000_dev_instance_t * inst){
 
-    bool status = false;
-    if(!(SLIST_EMPTY(&inst->extension_cbs))){
-        dw1000_extension_callbacks_t *temp = NULL;
-        SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
-            if(temp != NULL && temp->rx_error_cb != NULL)
-                status |= temp->rx_error_cb(inst);
-        }
-    }
-
-    if(os_sem_get_count(&inst->rng->sem) == 0){
-        //printf("{\"utime\": %lu,\"log\": \"rng_rx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
+    if (inst->fctrl != FCNTL_IEEE_RANGE_16)
+        return false;
+    else if(os_sem_get_count(&inst->rng->sem) == 0){
         os_error_t err = os_sem_release(&inst->rng->sem);   
         assert(err == OS_OK);
+        return true;
     }
+    else
+        return false;
 }
 
 /**
@@ -542,46 +509,27 @@ rng_rx_error_cb(dw1000_dev_instance_t * inst){
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
  *
- * @return void
+ * @return true on sucess
  */
-static void 
+static bool 
 rng_rx_complete_cb(dw1000_dev_instance_t * inst)
 {
     uint16_t code, dst_address; 
     dw1000_rng_config_t * config = inst->rng->config;
     dw1000_dev_control_t control = inst->control_rx_context;
-    if (inst->fctrl == FCNTL_IEEE_RANGE_16){
-
-        dw1000_read_rx(inst, (uint8_t *) &code, offsetof(ieee_rng_request_frame_t,code), sizeof(uint16_t));
-        dw1000_read_rx(inst, (uint8_t *) &dst_address, offsetof(ieee_rng_request_frame_t,dst_address), sizeof(uint16_t));
-
-    }else if(!(SLIST_EMPTY(&inst->extension_cbs))){
-        bool status = false;
-        dw1000_extension_callbacks_t * temp = NULL;
-        SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
-            if(temp->rx_complete_cb != NULL)
-                status |= temp->rx_complete_cb(inst);
-        } 
-        if (status == false){
-            //No extension callbacks in place. So just return to receive mode again
-            DIAGMSG("{\"utime\": %lu,\"msg\": \"No extension callbacks\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-            inst->control = inst->control_rx_context;
-            if (dw1000_restart_rx(inst, control).start_rx_error)
-                inst->rng_rx_error_cb(inst);
-            return;
-        }else{
-            DIAGMSG("{\"utime\": %lu,\"msg\": \"extension callback found\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-            return;
-        }    
-    }
+    
+    if (inst->fctrl != FCNTL_IEEE_RANGE_16)
+        return false;
+    
+    dw1000_read_rx(inst, (uint8_t *) &code, offsetof(ieee_rng_request_frame_t,code), sizeof(uint16_t));
+    dw1000_read_rx(inst, (uint8_t *) &dst_address, offsetof(ieee_rng_request_frame_t,dst_address), sizeof(uint16_t));
     
     if (dst_address != inst->my_short_address){  
         // IEEE 802.15.4 standard ranging frames, software MAC filtering
         DIAGMSG("{\"utime\": %lu,\"msg\": \"software MAC filtering\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         inst->control = inst->control_rx_context;
-        if (dw1000_restart_rx(inst, control).start_rx_error)  
-            inst->rng_rx_error_cb(inst);    
-        return;
+        dw1000_restart_rx(inst, control);             
+        return false;
     }  
 
         // IEEE 802.15.4 standard ranging frames
@@ -651,18 +599,15 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                         dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true);
                         if (dw1000_start_tx(inst).start_tx_error)
                             os_sem_release(&rng->sem);  
-
-                        if (inst->rng_complete_cb)
-                            inst->rng_complete_cb(inst);
-
-                        bool status = false;
-                        if(!(SLIST_EMPTY(&inst->extension_cbs))){
-                            dw1000_extension_callbacks_t *temp = NULL;
-                            SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
-                                if(temp != NULL && temp->rx_complete_cb != NULL)
-                                    status |= temp->rx_complete_cb(inst);
-                                }
-                        }
+                        else{
+                            dw1000_mac_interface_t * cbs = NULL;
+                            if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
+                                SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+                                if (cbs!=NULL && cbs->complete_cb) 
+                                    if(cbs->complete_cb(inst)) break;        
+                                }   
+                            }    
+                        }   
                         os_sem_release(&rng->sem);  
                         break;
                     }
@@ -678,17 +623,13 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_read_rx(inst, frame->array, 0, sizeof(twr_frame_final_t));
                         os_sem_release(&rng->sem);
                         
-                        if (inst->rng_complete_cb) 
-                            inst->rng_complete_cb(inst);
-
-                        bool status = false;
-                        if(!(SLIST_EMPTY(&inst->extension_cbs))){
-                            dw1000_extension_callbacks_t *temp = NULL;
-                            SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
-                                if(temp != NULL && temp->rx_complete_cb != NULL)
-                                    status |= temp->rx_complete_cb(inst);
-                                }
-                        }
+                        dw1000_mac_interface_t * cbs = NULL;
+                        if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
+                            SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+                            if (cbs!=NULL && cbs->complete_cb) 
+                                if(cbs->complete_cb(inst)) break;        
+                            }   
+                        }       
                         os_sem_release(&rng->sem);  
                         break;
                     }
@@ -818,21 +759,18 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true); 
 
                             if (dw1000_start_tx(inst).start_tx_error)
-                                os_sem_release(&rng->sem);    
-                            
-                            if (inst->rng_complete_cb) 
-                                inst->rng_complete_cb(inst);
-                            
-                            bool status = false;
-                            if(!(SLIST_EMPTY(&inst->extension_cbs))){
-                                dw1000_extension_callbacks_t *temp = NULL;
-                                SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
-                                    if(temp != NULL && temp->rx_complete_cb != NULL)
-                                        status |= temp->rx_complete_cb(inst);
-                                    }
-                            }
-                            
-                            os_sem_release(&rng->sem);
+                                os_sem_release(&rng->sem); 
+                            else{   
+                                os_sem_release(&rng->sem);
+                                dw1000_mac_interface_t * cbs = NULL;
+                                 if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
+                                     SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+                                    if (cbs!=NULL && cbs->complete_cb) 
+                                        if(cbs->complete_cb(inst)) continue;          
+                                    }   
+                                }    
+                            }   
+ 
                             break;
                         }
                     case  DWT_DS_TWR_FINAL:
@@ -845,20 +783,16 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                             if (inst->frame_len >= sizeof(twr_frame_final_t))
                                 dw1000_read_rx(inst, frame->array, 0, sizeof(twr_frame_final_t));
-                           
-                            if (inst->rng_complete_cb) 
-                                inst->rng_complete_cb(inst);
                             
-                            bool status = false;
-                            if(!(SLIST_EMPTY(&inst->extension_cbs))){
-                                dw1000_extension_callbacks_t *temp = NULL;
-                                SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
-                                    if(temp != NULL && temp->rx_complete_cb != NULL)
-                                        status |= temp->rx_complete_cb(inst);
-                                    }
-                            }
-
                             os_sem_release(&rng->sem);
+                            dw1000_mac_interface_t * cbs = NULL;
+                            if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
+                                SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+                                if (cbs!=NULL && cbs->complete_cb) 
+                                    if(cbs->complete_cb(inst)) continue;         
+                                }   
+                            }       
+
                             break;
                         }
                     default: 
@@ -942,8 +876,13 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             frame->transmission_timestamp = response_timestamp;
 
                             // Final callback, prior to transmission, use this callback to populate the EXTENDED_FRAME fields.
-                            if (inst->rng_tx_final_cb != NULL)
-                                inst->rng_tx_final_cb(inst);
+                            dw1000_mac_interface_t * cbs = NULL;
+                            if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
+                                SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+                                if (cbs!=NULL && cbs->final_cb) 
+                                    if(cbs->final_cb(inst)) break;         
+                                }   
+                            }   
 
                             dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_t));
                             dw1000_write_tx_fctrl(inst, sizeof(twr_frame_t), 0, true); 
@@ -953,7 +892,6 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                                 + config->rx_timeout_period        
                                 + config->tx_holdoff_delay;         // Remote side turn arroud time. 
                             dw1000_set_rx_timeout(inst, timeout); 
-
                         
                             if (dw1000_start_tx(inst).start_tx_error)
                                 os_sem_release(&rng->sem);  
@@ -985,8 +923,13 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             frame->code = DWT_DS_TWR_EXT_FINAL;
 
                             // Final callback, prior to transmission, use this callback to populate the EXTENDED_FRAME fields.
-                            if (inst->rng_tx_final_cb != NULL)
-                                inst->rng_tx_final_cb(inst);
+                            dw1000_mac_interface_t * cbs = NULL;
+                            if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
+                                SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+                                if (cbs!=NULL && cbs->final_cb) 
+                                    if(cbs->final_cb(inst)) break;         
+                                }   
+                            }           
 
                             // Transmit timestamp final report
                             dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_t));
@@ -994,19 +937,15 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                          
                             if (dw1000_start_tx(inst).start_tx_error)
                                 os_sem_release(&rng->sem);
-
-                            bool status = false;
-                            if(!(SLIST_EMPTY(&inst->extension_cbs))){
-                                dw1000_extension_callbacks_t *temp = NULL;
-                                SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
-                                    if(temp != NULL && temp->rx_complete_cb != NULL)
-                                        status |= temp->rx_complete_cb(inst);
-                                    }
-                            }
-                            
-                            os_sem_release(&rng->sem);
-                            if (inst->rng_complete_cb) {
-                                inst->rng_complete_cb(inst);
+                            else{
+                                os_sem_release(&rng->sem);
+                                dw1000_mac_interface_t * cbs = NULL;
+                                if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
+                                    SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+                                    if (cbs!=NULL && cbs->complete_cb) 
+                                        if(cbs->complete_cb(inst)) break;         
+                                    }   
+                                }       
                             }
                             break;
                         }
@@ -1020,20 +959,16 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
                             twr_frame_t * frame = inst->rng->frames[(rng->idx)%rng->nframes];
                             if (inst->frame_len >= sizeof(twr_frame_t))
                                 dw1000_read_rx(inst, frame->array, 0, sizeof(twr_frame_t));
-                            os_sem_release(&rng->sem);
-
-                            bool status = false;
-                            if(!(SLIST_EMPTY(&inst->extension_cbs))){
-                                dw1000_extension_callbacks_t *temp = NULL;
-                                SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
-                                    if(temp != NULL && temp->rx_complete_cb != NULL)
-                                        status |= temp->rx_complete_cb(inst);
-                                    }
-                            }
-
-                            if (inst->rng_complete_cb) 
-                                inst->rng_complete_cb(inst);
                             
+                            os_sem_release(&rng->sem);
+                            dw1000_mac_interface_t * cbs = NULL;
+                            if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
+                                SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+                                if (cbs!=NULL && cbs->complete_cb) 
+                                    if(cbs->complete_cb(inst)) break;         
+                                }   
+                            }       
+
                             break;
                         }
                     default: 
@@ -1042,18 +977,27 @@ rng_rx_complete_cb(dw1000_dev_instance_t * inst)
             break;
 #endif //DS_TWR_EXT_ENABLE
         default: 
-            // Use this callback to extend interface and ranging services
-            if(!(SLIST_EMPTY(&inst->extension_cbs))){
-                dw1000_extension_callbacks_t *temp = NULL;
-                SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
-                    if(temp != NULL)
-                        if(temp->rx_complete_cb != NULL)
-                            if(temp->rx_complete_cb(inst) == true)
-                                break;
-                }
-            }
             break;
     }
+
+    return true;
+}
+
+
+/** 
+ * API for rng_reset_cb of rng interface
+ *
+ * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @return true on sucess
+ */
+static bool
+rng_reset_cb(struct _dw1000_dev_instance_t * inst){
+    if(os_sem_get_count(&inst->rng->sem) == 0){
+        os_sem_release(&inst->rng->sem);  
+        return true;
+    }
+    else 
+       return false;
 
 }
 

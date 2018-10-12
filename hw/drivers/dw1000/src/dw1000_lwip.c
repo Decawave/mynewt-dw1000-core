@@ -57,11 +57,11 @@
 #include <lwip/icmp.h>
 #include <lwip/inet_chksum.h>
 
-static void lwip_rx_complete_cb(dw1000_dev_instance_t * inst);
-static void rx_complete_cb(dw1000_dev_instance_t * inst);
-static void tx_complete_cb(dw1000_dev_instance_t * inst);
-static void rx_timeout_cb(dw1000_dev_instance_t * inst);
-static void rx_error_cb(dw1000_dev_instance_t * inst);
+static bool complete_cb(dw1000_dev_instance_t * inst);
+static bool rx_complete_cb(dw1000_dev_instance_t * inst);
+static bool tx_complete_cb(dw1000_dev_instance_t * inst);
+static bool rx_timeout_cb(dw1000_dev_instance_t * inst);
+static bool rx_error_cb(dw1000_dev_instance_t * inst);
 dw1000_lwip_context_t cntxt;
 /**
  * API to assign the config parameters.
@@ -116,8 +116,17 @@ dw1000_lwip_init(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config, ui
 		inst->lwip->config = config;
 		dw1000_lwip_config(inst, config);
 	}
+ 	inst->lwip->cbs = (dw1000_mac_interface_t){
+        .id = DW1000_LWIP,
+        .tx_complete_cb = tx_complete_cb,
+        .rx_complete_cb = rx_complete_cb,
+        .rx_timeout_cb = rx_timeout_cb,
+        .rx_error_cb = rx_error_cb,
+        .reset_cb = reset_cb,
+		.complete_cb = complete_cb
+    };
+    dw1000_mac_append_interface(inst, &inst->lwip->cbs);
 
-	dw1000_lwip_set_callbacks(inst, tx_complete_cb, lwip_rx_complete_cb, rx_complete_cb, rx_timeout_cb, rx_error_cb);
 	inst->lwip->status.initialized = 1;
 	return inst->lwip;
 }
@@ -160,26 +169,6 @@ dw1000_lwip_free(dw1000_lwip_instance_t * inst){
 		inst->status.initialized = 0;
 }
 
-/**
- * API to register lwip callbacks based on corresponding event.
- *
- * @param inst                 Pointer to dw1000_dev_instance_t.
- * @param rng_tx_complete_cb   Pointer to the TX confirmation event callback function.
- * @param rx_complete_cb       Pointer to the Receive complete callback function.
- * @param rx_timeout_cb        Pointer to the RX timeout events callback function.
- * @param rx_error_cb          Pointer to the RX error events callback function. 
- * @return void
- */
-void dw1000_lwip_set_callbacks( dw1000_dev_instance_t * inst, dw1000_dev_cb_t tx_complete_cb,
- 	dw1000_dev_cb_t lwip_rx_complete_cb, dw1000_dev_cb_t rx_complete_cb,
- 	dw1000_dev_cb_t rx_timeout_cb,dw1000_dev_cb_t rx_error_cb){
-
-	inst->tx_complete_cb = tx_complete_cb;
-	inst->rx_complete_cb = rx_complete_cb;
-	inst->lwip_rx_complete_cb = lwip_rx_complete_cb;
-	inst->rx_timeout_cb = rx_timeout_cb;
-	inst->rx_error_cb = rx_error_cb;
-}
 
 /**
  * Received payload is fetched to this function after lwIP stack.
@@ -214,7 +203,7 @@ lwip_rx_cb(void *arg, struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *addr
  * @param inst  Pointer to dw1000_dev_instance_t.
  * @return void
  */
-void lwip_rx_complete_cb(dw1000_dev_instance_t * inst){
+void complete_cb(dw1000_dev_instance_t * inst){
         if(inst->lwip->ext_rx_complete_cb != NULL){
         	inst->lwip->ext_rx_complete_cb(inst);
         }
@@ -290,8 +279,11 @@ dw1000_lwip_start_rx(dw1000_dev_instance_t * inst, uint16_t timeout){
  * @param inst   Pointer to dw1000_dev_instance_t.
  * @retrun void 
  */
-static void 
+static bool 
 rx_complete_cb(dw1000_dev_instance_t * inst){
+
+	if(!strncmp((inst->fcntl, "LW",2))
+        return false;
 
     os_error_t err = os_sem_release(&inst->lwip->data_sem);
     assert(err == OS_OK);
@@ -317,6 +309,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst){
 	}
     else
         dw1000_lwip_start_rx(inst,0x0000);
+
+	return true;
 }
 
 /**
@@ -325,11 +319,18 @@ rx_complete_cb(dw1000_dev_instance_t * inst){
  * @param inst    Pointer to dw1000_dev_instance_t.
  * @return void
  */
-static void 
+static bool 
 tx_complete_cb(dw1000_dev_instance_t * inst){
 
-	os_error_t err = os_sem_release(&inst->lwip->sem);
-	assert(err == OS_OK);
+	if(!strncmp((inst->fcntl, "LW",2))
+        return false;
+
+	else if (os_sem_get_count(&inst->lwip->data_sem) == 0){
+		os_error_t err = os_sem_release(&inst->lwip->sem);
+		assert(err == OS_OK);
+		return true;
+	}else 
+		return false;
 }
 
 /**
@@ -341,12 +342,13 @@ tx_complete_cb(dw1000_dev_instance_t * inst){
 static void 
 rx_timeout_cb(dw1000_dev_instance_t * inst){
 
-	os_error_t err = os_sem_release(&inst->lwip->data_sem);
-	assert(err == OS_OK);
-
-	inst->lwip->status.rx_timeout_error = 1;
-	if(inst->lwip->ext_rx_timeout_cb != NULL)
-		inst->lwip->ext_rx_timeout_cb(inst);
+ 	if (os_sem_get_count(&inst->lwip->data_sem) == 0){
+		os_error_t err = os_sem_release(&inst->lwip->data_sem);
+		assert(err == OS_OK);
+		inst->lwip->status.rx_timeout_error = 1;
+		return true;
+	}else 
+		return false;
 }
 
 /**
@@ -358,12 +360,13 @@ rx_timeout_cb(dw1000_dev_instance_t * inst){
 void 
 rx_error_cb(dw1000_dev_instance_t * inst){
 
-	os_error_t err = os_sem_release(&inst->lwip->data_sem);
-	assert(err == OS_OK);
-
-	inst->lwip->status.rx_error = 1;
-	if(inst->lwip->ext_rx_error_cb != NULL)
-		inst->lwip->ext_rx_error_cb(inst);
+	if (os_sem_get_count(&inst->lwip->data_sem) == 0){
+		os_error_t err = os_sem_release(&inst->lwip->data_sem);
+		assert(err == OS_OK);
+		inst->lwip->status.rx_error = 1;
+			return true;
+	}else 
+		return false;
 }
 
 

@@ -65,6 +65,7 @@ typedef struct _tdma_slot_t{
 typedef struct _tdma_instance_t{
     struct _dw1000_dev_instance_t * parent;  //!< Pointer to _dw1000_dev_instance_t
     tdma_status_t status;                    //!< Status of tdma 
+    dw1000_mac_interface_t cbs;              //!< MAC Layer Callbacks
     struct os_mutex mutex;                   //!< Structure of os_mutex  
     uint16_t idx;                            //!< Slot number
     uint16_t nslots;                         //!< Number of slots 

@@ -77,17 +77,13 @@ typedef struct _dw1000_lwip_status_t{
 //! Lwip instance parameters.
 typedef struct _dw1000_lwip_instance_t{
     struct _dw1000_dev_instance_t * dev;   //!< Structure for DW1000 instance 
+    dw1000_mac_interface_t cbs;
     struct os_sem sem;                     //!< Structure for OS semaphores
     struct os_sem data_sem;                //!< Structure for data of semaphores
 
 #if MYNEWT_VAL(DW1000_LWIP_P2P)
     struct _dw1000_lwip_p2p_instance_t * lwip_p2p;
 #endif
-    void (* ext_complete_cb) (struct _dw1000_dev_instance_t *); 
-    void (* ext_tx_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* ext_rx_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* ext_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
-    void (* ext_rx_error_cb) (struct _dw1000_dev_instance_t *);
 
     dw1000_lwip_config_t * config;         //!< lwip config parameters 
     dw1000_lwip_status_t status;           //!< lwip status
@@ -146,18 +142,7 @@ dw1000_pcb_init(dw1000_dev_instance_t * inst);
 void
 dw1000_lwip_free(dw1000_lwip_instance_t * inst);
 
-/**
- * [dw1000_lwip_set_callbacks Function to assign lwip callbacks]
- * @param inst           [Device/Parent instance]
- * @param tx_complete_cb [Transmit complete callback function]
- * @param rx_complete_cb [Receive complete callback function]
- * @param rx_timeout_cb  [Receive timeout callback function]
- * @param rx_error_cb    [Receive error callback function]
- */
-void
-dw1000_lwip_set_callbacks(dw1000_dev_instance_t * inst, dw1000_dev_cb_t tx_complete_cb, 
-                            dw1000_dev_cb_t lwip_rx_complete_cb, dw1000_dev_cb_t rx_complete_cb, 
-                            dw1000_dev_cb_t rx_timeout_cb, dw1000_dev_cb_t rx_error_cb);
+
 
 /**
  * [dw1000_lwip_write Function to send lwIP buffer to radio]

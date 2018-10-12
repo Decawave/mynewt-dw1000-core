@@ -305,7 +305,7 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
     inst->ccp->clkcal = clkcal_init(NULL, inst->ccp);           // Using clkcal process
 #endif
 
-    dw1000_extension_callbacks_t ccp_cbs = {
+    inst->ccp->cbs = (dw1000_mac_interface_t){
         .id = DW1000_CCP,
         .tx_complete_cb = ccp_tx_complete_cb,
         .rx_complete_cb = ccp_rx_complete_cb,
@@ -314,8 +314,8 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
         .tx_error_cb = ccp_tx_error_cb,
         .reset_cb = ccp_reset_cb
     };
+    dw1000_mac_append_interface(inst, &inst->ccp->cbs);
 
-    dw1000_ccp_set_ext_callbacks(inst, ccp_cbs);
     ccp_tasks_init(inst->ccp);
     inst->ccp->os_epoch = os_cputime_get32();
 
@@ -350,18 +350,6 @@ dw1000_ccp_free(dw1000_ccp_instance_t * inst){
     }
     else
         inst->status.initialized = 0;
-}
-
-/**
- * API to register extension callbacks in ccp.
- *
- * @param inst     Pointer to dw1000_dev_instance_t
- * @param ccp_cbs  Callbacks of ccp.
- * @return void
- */
-void dw1000_ccp_set_ext_callbacks(dw1000_dev_instance_t * inst, dw1000_extension_callbacks_t ccp_cbs){
-    ccp_cbs.id = DW1000_CCP;
-    dw1000_add_extension_callbacks(inst , ccp_cbs);
 }
 
 
@@ -541,7 +529,7 @@ ccp_rx_error_cb(struct _dw1000_dev_instance_t * inst){
     if(os_sem_get_count(&inst->ccp->sem) == 0){
         printf("{\"utime\": %lu,\"log\": \"ccp_rx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
         os_sem_release(&inst->ccp->sem);  
-	    return false; 
+	    return true;
     }
     return false;
 }
@@ -558,7 +546,7 @@ ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst){
     if(inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
         printf("{\"utime\": %lu,\"log\": \"ccp_tx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
         os_sem_release(&inst->ccp->sem);  
-        return true;
+        return true;    
     }
     return false;
 }
@@ -571,11 +559,11 @@ ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst){
  */
 static bool
 ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst){
-    /* Place holder */
+
     if (os_sem_get_count(&inst->ccp->sem) == 0){
         printf("{\"utime\": %lu,\"log\": \"ccp_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
         os_sem_release(&inst->ccp->sem);  
-        return true;
+        return true;   
     }
     return false;
 }
@@ -591,7 +579,7 @@ static bool
 ccp_reset_cb(struct _dw1000_dev_instance_t * inst){
     /* Place holder */
         os_sem_release(&inst->ccp->sem);  
-    return true;
+    return false;   // CCP is an observer and should not return true
 }
  
 

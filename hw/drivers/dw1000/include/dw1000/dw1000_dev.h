@@ -71,12 +71,15 @@ typedef enum _dw1000_dev_role_t{
 
 //! Extension ids for services.
 typedef enum _dw1000_extension_id_t{
-    DW1000_CCP,                              //!< Clock calibration packet
+    DW1000_CCP=1,                            //!< Clock calibration packet
     DW1000_PAN,                              //!< Personal area network
     DW1000_PROVISION,                        //!< Provisioning
+    DW1000_RNG,                              //!< Ranging
     DW1000_RANGE,                            //!< Ranging
     DW1000_N_RANGES,                         //!< N_ranges
-    DW1000_TDMA                              //!< TDMA services
+    DW1000_TDMA,                             //!< TDMA services
+    DW1000_LWIP,
+    DW1000_APPLAYER_CBS = 1024 
 }dw1000_extension_id_t;
 
 //! Structure of DW1000 attributes.
@@ -202,20 +205,26 @@ typedef struct _phy_attributes_t{
 
 struct _dw1000_dev_instance_t;
 
-//! DW1000 generic  extension callback structure
-typedef struct _dw1000_extension_callback_t dw1000_extension_callbacks_t;
 
-//! Structure of extension call backs structure common for all the modules of linked list type.
-typedef struct _dw1000_extension_callback_t{
-    dw1000_extension_id_t id;                                     //!< ID of the callback
+//! Structure of extension callbacks structure common for mac layer.
+typedef struct _dw1000_mac_interface_t dw1000_mac_interface_t;
+typedef struct _dw1000_mac_interface_t {
+    struct _status{
+        uint16_t selfmalloc:1;            //!< Internal flag for memory garbage collection 
+        uint16_t initialized:1;           //!< Instance allocated 
+    } status;
+    dw1000_extension_id_t id;
     bool (* tx_complete_cb) (struct _dw1000_dev_instance_t *);    //!< Transmit complete callback
     bool (* rx_complete_cb) (struct _dw1000_dev_instance_t *);    //!< Receive complete callback
     bool (* rx_timeout_cb)  (struct _dw1000_dev_instance_t *);    //!< Receive timeout callback
     bool (* rx_error_cb)    (struct _dw1000_dev_instance_t *);    //!< Receive error callback
     bool (* tx_error_cb)    (struct _dw1000_dev_instance_t *);    //!< Transmit error callback  
     bool (* reset_cb)    (struct _dw1000_dev_instance_t *);       //!< Reset interface callback  
-    SLIST_ENTRY(_dw1000_extension_callback_t) cbs_next;           //!< Next callback in the list
-}dw1000_extension_callbacks_t;
+    bool (* final_cb)    (struct _dw1000_dev_instance_t *);       //!< Final frame preperation interface callback  
+    bool (* complete_cb)    (struct _dw1000_dev_instance_t *);    //!< Completion event interface callback  
+    bool (* sleep_cb)    (struct _dw1000_dev_instance_t *);        //!< Completion event interface callback  
+    SLIST_ENTRY(_dw1000_mac_interface_t) next;                    //!< Next callback in the list
+}dw1000_mac_interface_t;
 
 //! Device instance parameters.
 typedef struct _dw1000_dev_instance_t{
@@ -224,19 +233,8 @@ typedef struct _dw1000_dev_instance_t{
     struct os_sem sem;                         //!< semphore for low level mac/phy functions
     struct os_mutex mutex;                     //!< os_mutex
 
-    void (* tx_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* rx_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* rx_timeout_cb) (struct _dw1000_dev_instance_t *);
-    void (* rx_error_cb) (struct _dw1000_dev_instance_t *);
-    void (* rng_tx_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* rng_rx_complete_cb) (struct _dw1000_dev_instance_t *);
-    void (* rng_rx_timeout_cb) (struct _dw1000_dev_instance_t *);
-    void (* rng_rx_error_cb) (struct _dw1000_dev_instance_t *);
-    void (* rng_tx_final_cb) (struct _dw1000_dev_instance_t *);
-    void (* rng_complete_cb) (struct _dw1000_dev_instance_t *);
-  
-    void (* sleep_timer_cb) (struct _dw1000_dev_instance_t *);
-	SLIST_HEAD(,_dw1000_extension_callback_t) extension_cbs;
+    SLIST_HEAD(,_dw1000_mac_interface_t) interface_cbs;
+
 #if MYNEWT_VAL(DW1000_LWIP)
     void (* lwip_rx_complete_cb) (struct _dw1000_dev_instance_t *);
 #endif
@@ -327,11 +325,7 @@ dw1000_dev_status_t dw1000_dev_enter_sleep(dw1000_dev_instance_t * inst);
 dw1000_dev_status_t dw1000_dev_wakeup(dw1000_dev_instance_t * inst);
 dw1000_dev_status_t dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, uint8_t enable);
 dw1000_dev_status_t dw1000_dev_enter_sleep_after_rx(dw1000_dev_instance_t * inst, uint8_t enable);
-void dw1000_dev_set_sleep_callback(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t sleep_timer_cb);
     
-void dw1000_add_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_callbacks_t callbacks);
-void dw1000_remove_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_id_t id);
-
 #define dw1000_dwt_usecs_to_usecs(_t) (float)( (_t) * (0x10000UL/(128*499.2f)))
 #define dw1000_usecs_to_dwt_usecs(_t) (float)( (_t) / dw1000_dwt_usecs_to_usecs(1.0f))
 

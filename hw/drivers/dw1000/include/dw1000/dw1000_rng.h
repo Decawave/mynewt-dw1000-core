@@ -150,6 +150,7 @@ typedef struct{
 //! Structure of range instance
 typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * dev;    //!< Structure of DW1000_dev_instance
+    dw1000_mac_interface_t cbs;
     struct os_sem sem;                      //!< Structure of semaphores
     uint64_t delay;                         //!< Delay in transmission
     dw1000_rng_config_t * config;           //!< Structure of range config
@@ -163,8 +164,6 @@ typedef struct _dw1000_rng_instance_t{
 dw1000_rng_instance_t * dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes);
 void dw1000_rng_free(dw1000_rng_instance_t * inst);
 dw1000_dev_status_t dw1000_rng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config);
-void dw1000_rng_set_callbacks(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_tx_complete_cb, dw1000_dev_cb_t rng_rx_complete_cb, dw1000_dev_cb_t rng_rx_timeout_cb,  dw1000_dev_cb_t rng_rx_error_cb);
-void dw1000_rng_set_callbacks_extension(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t rng_rx_timeout_extension_cb, dw1000_dev_cb_t rng_rx_error_extension_cb,  dw1000_dev_cb_t rng_interface_extension_cb);
 dw1000_dev_status_t dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t protocal);
 dw1000_dev_status_t dw1000_rng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t protocal);
 void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, twr_frame_t twr[], uint16_t nframes);
@@ -178,11 +177,6 @@ float dw1000_rng_path_loss(float Pt, float G, float fc, float R);
 float dw1000_rng_bias_correction(dw1000_dev_instance_t * inst, float Pr);
 uint32_t dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code);
 #define dw1000_rng_tof_to_meters(ToF) (float)(ToF * 299792458 * (1.0/499.2e6/128.0)) //!< Converts time of flight to meters.
-#define dw1000_rng_set_interface_extension_cb(inst, cb) inst->rng_interface_extension_cb = cb //!< Sets the interface extension callback.
-#define dw1000_rng_set_rx_timeout_extension_cb(inst, cb) inst->rng_rx_timeout_extension_cb = cb //!< Sets Receive timeout callback in extended ranging.
-#define dw1000_rng_set_error_extension_cb(inst, cb) inst->rng_rx_error_extension_cb = cb //!< Sets receive error callback in extended ranging.
-#define dw1000_rng_set_tx_final_cb(inst, cb) inst->rng_tx_final_cb = cb //!< Sets transmission final callback.
-#define dw1000_rng_set_complete_cb(inst, cb) inst->rng_complete_cb = cb //!< Sets complete callback.
 
 #ifdef __cplusplus
 }

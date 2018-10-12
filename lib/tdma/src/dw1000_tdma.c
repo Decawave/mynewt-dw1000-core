@@ -96,13 +96,12 @@ tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots
         tdma = inst->tdma;
     }
 
-    dw1000_extension_callbacks_t tdma_cbs = {
+    inst->tdma->cbs = (dw1000_mac_interface_t){
         .id = DW1000_TDMA,
-        .rx_complete_cb = tdma_rx_complete_cb,
-        .tx_complete_cb = tdma_tx_complete_cb
+        .tx_complete_cb = tdma_tx_complete_cb,
+        .rx_complete_cb = tdma_rx_complete_cb
     };
-   
-    dw1000_add_extension_callbacks(inst, tdma_cbs);
+    dw1000_mac_append_interface(inst, &inst->tdma->cbs);
 
 #ifdef TDMA_TASKS_ENABLE
     os_callout_init(&tdma->event_cb, &tdma->eventq, tdma_superframe_event_cb, (void *) tdma);
@@ -199,7 +198,7 @@ tdma_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
             os_eventq_put(&inst->eventq, &inst->tdma->event_cb.c_ev);
 #endif
         }   
-        return true;
+        return false; // TDMA is an observer and should not return true
     }
     return false;
 }
@@ -226,7 +225,7 @@ tdma_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
             os_eventq_put(&inst->eventq, &inst->tdma->event_cb.c_ev);
 #endif
         }   
-        return true;
+        return false;   // TDMA is an observer and should not return true
     }
     return false;
 }
