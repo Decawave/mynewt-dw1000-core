@@ -44,12 +44,12 @@
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_ftypes.h>
-#include <dw1000/dw1000_lwip.h>
 
 #include <dw1000/dw1000_phy.h>
 #include "sysinit/sysinit.h"
 
 
+#include <lwip/dw1000_lwip.h>
 #include <lwip/pbuf.h>
 #include <lwip/netif.h>
 #include <netif/lowpan6.h>
