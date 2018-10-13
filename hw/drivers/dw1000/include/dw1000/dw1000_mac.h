@@ -91,25 +91,6 @@ extern "C" {
 #define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_5     (-1.0e6/6489.6e6)
 #define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_7     (-1.0e6/6489.6e6)
 
-//! Start transmit mode parameters.
-typedef enum _dw1000_start_tx_modes_t {
-    DWT_START_TX_IMMEDIATE = 1 << 0,     //!< Set up immediate tx to transmit immediately
-    DWT_START_TX_DELAYED = 1 << 1,       //!< Set up delayed TX, if "late" error triggers, then the TX will be enabled immediately
-    DWT_RESPONSE_EXPECTED = 1 << 2       //!< Set up if any response is expected for the transmission sent
-}dw1000_start_tx_modes_t;
-
-//! Start receive mode parameters.
-typedef enum _dw1000_start_rx_modes_t {
-    DWT_START_RX_IMMEDIATE = 1 << 0, //!< Set up immediate RX, to start receiving immediatley 
-    DWT_START_RX_DELAYED = 1 << 1,  //!< Set up delayed RX, if "late" error triggers, then the RX will be enabled immediately.
-    DWT_IDLE_ON_DLY_ERR = 1 << 2,   //!< If delayed RX failed due to "late" error then if this 
-                                    //!< flag is set the RX will not be re-enabled immediately, and device will be in IDLE when function exits.
-    DWT_NO_SYNC_PTRS = 1 << 3       //!< Do not try to sync IC side and Host side buffer pointers when enabling RX. This is used to perform 
-                            
-                                    //!< manual rx re-enabling when receiving a frame in double buffer mode.
-}dw1000_start_rx_modes_t;
-
-
 //! Frame filtering configuration options.
 #define DWT_FF_NOTYPE_EN            0x000           //!< No frame types allowed (FF disabled)
 #define DWT_FF_COORD_EN             0x002           //!< Behave as coordinator (can receive frames with no dest address (PAN ID has to match))
@@ -178,13 +159,6 @@ typedef struct _dw1000_mac_deviceentcnts_t{
     uint16_t TXW ;                    //!< Power up warn
 } dw1000_mac_deviceentcnts_t ;
 
-//! Mac layer callbacks.
-typedef struct _dw1000_mac_callbacks_t{
-    void (* tx_complete_cb) (struct _dw1000_dev_instance_t *);  //!< Transmit complete callback
-    void (* rx_complete_cb) (struct _dw1000_dev_instance_t *);  //!< Receive complete callback
-    void (* rx_timeout_cb) (struct _dw1000_dev_instance_t *);   //!< Receive timeout callback
-    void (* rx_error_cb) (struct _dw1000_dev_instance_t *);     //!< Receive error callback
-}dw1000_mac_callbacks_t;
 
 void dw1000_mac_remove_interface(dw1000_dev_instance_t * inst, dw1000_extension_id_t id);
 void dw1000_mac_append_interface(dw1000_dev_instance_t* inst, dw1000_mac_interface_t * cbs);

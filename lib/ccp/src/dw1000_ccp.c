@@ -39,6 +39,7 @@
 
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_phy.h>
+#include <dw1000/dw1000_hal.h>
 #include <ccp/dw1000_ccp.h>
 
 #if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
@@ -85,12 +86,12 @@ static float g_fs_xtalt_poly[] ={
 #endif
 
 
-static bool ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst);
-static bool ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst);
-static bool ccp_rx_error_cb(dw1000_dev_instance_t * inst);
-static bool ccp_rx_timeout_cb(dw1000_dev_instance_t * inst);
-static bool ccp_tx_error_cb(dw1000_dev_instance_t * inst);
-static bool ccp_reset_cb(struct _dw1000_dev_instance_t * inst);
+static bool ccp_rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool ccp_tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool ccp_rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool ccp_rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool ccp_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool ccp_reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 
 static struct _dw1000_ccp_status_t dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 static struct _dw1000_ccp_status_t dw1000_ccp_receive(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
@@ -187,7 +188,7 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
     
     if(dw1000_ccp_receive(inst, DWT_BLOCKING).start_rx_error){
         // Sync lost, switch to always on mode
-        // DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp_slave_timer_ev_cb:start_rx_error\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp_slave_timer_ev_cb:start_rx_error\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         os_error_t err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER);
         assert(err == OS_OK);
    
@@ -260,8 +261,6 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
     assert(inst);
     assert(nframes > 1);
     
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-
     if (inst->ccp == NULL ) {
         dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *) malloc(sizeof(dw1000_ccp_instance_t) + nframes * sizeof(ccp_frame_t *)); 
         assert(ccp);
@@ -352,6 +351,25 @@ dw1000_ccp_free(dw1000_ccp_instance_t * inst){
         inst->status.initialized = 0;
 }
 
+/**
+ * API to initialise the package, only one ccp service required in the system.
+ *
+ * @return void
+ */
+
+void ccp_pkg_init(void){
+
+    printf("{\"utime\": %lu,\"msg\": \"ccp_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+
+#if MYNEWT_VAL(DW1000_DEVICE_0)
+    dw1000_ccp_init(hal_dw1000_inst(0), 2, MYNEWT_VAL(UUID_CCP_MASTER));
+#elif MYNEWT_VAL(DW1000_DEVICE_1)
+    dw1000_ccp_init(hal_dw1000_inst(1), 2, MYNEWT_VAL(UUID_CCP_MASTER));
+#elif MYNEWT_VAL(DW1000_DEVICE_2)
+    dw1000_ccp_init(hal_dw1000_inst(2), 2, MYNEWT_VAL(UUID_CCP_MASTER));
+#endif
+
+}
 
 /** 
  * API that overrides the default post-processing behaviors, replacing the JSON stream with an alternative 
@@ -421,7 +439,7 @@ ccp_postprocess(struct os_event * ev){
  * @return void 
  */
 static bool 
-ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
+ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
         // CCP Packet Received
@@ -487,7 +505,7 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
  * @return bool
  */
 static bool 
-ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
+ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64)
         return false;
@@ -524,7 +542,7 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
  * @return void
  */
 static bool
-ccp_rx_error_cb(struct _dw1000_dev_instance_t * inst){
+ccp_rx_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(os_sem_get_count(&inst->ccp->sem) == 0){
         printf("{\"utime\": %lu,\"log\": \"ccp_rx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
@@ -541,7 +559,7 @@ ccp_rx_error_cb(struct _dw1000_dev_instance_t * inst){
  * @return bool 
  */
 static bool
-ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst){
+ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
         printf("{\"utime\": %lu,\"log\": \"ccp_tx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
@@ -558,7 +576,7 @@ ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst){
  * @return void 
  */
 static bool
-ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst){
+ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if (os_sem_get_count(&inst->ccp->sem) == 0){
         printf("{\"utime\": %lu,\"log\": \"ccp_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
@@ -576,7 +594,7 @@ ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst){
  * @return void 
  */
 static bool
-ccp_reset_cb(struct _dw1000_dev_instance_t * inst){
+ccp_reset_cb(struct _dw1000_dev_instance_t * inst,  dw1000_mac_interface_t * cbs){
     /* Place holder */
         os_sem_release(&inst->ccp->sem);  
     return false;   // CCP is an observer and should not return true

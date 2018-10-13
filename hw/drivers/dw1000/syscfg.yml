@@ -11,18 +11,6 @@ syscfg.defs:
           Size of spi read/write buffer, sets the 
           maximum allowed nonblocking read operation
         value: 136
-    DW1000_SS_TWR_ENABLED:
-        description: 'Single sided TWR Enabled'
-        value: 1
-    DW1000_DS_TWR_ENABLED:
-        description: 'Double sided TWR Enabled'
-        value: 1
-    DW1000_DS_TWR_EXT_ENABLED:
-        description: 'Double sided extended mode Enable'
-        value: 1
-    DW1000_SS_TWR_EXT_ENABLED:
-        description: 'Single sided extended mode Enable'
-        value: 1
     DW1000_LWIP:
         description: 'Enable LWIP functionality'
         value: 0

@@ -1,0 +1,12 @@
+
+syscfg.defs:
+      RNG_ENABLED:
+        description: 'Enable toplevel ranging services'
+        value: 1
+      RNG_TX_HOLDOFF:
+        description: 'tx holdoff delay for TWR (usec)'
+        value: ((uint32_t){0x0300})
+      RNG_RX_TIMEOUT:
+        description: 'TOA timeout delay for TWR (usec)'
+        value: ((uint16_t){0x10})
+  

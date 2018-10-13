@@ -72,14 +72,19 @@ typedef enum _dw1000_dev_role_t{
 //! Extension ids for services.
 typedef enum _dw1000_extension_id_t{
     DW1000_CCP=1,                            //!< Clock calibration packet
-    DW1000_PAN,                              //!< Personal area network
-    DW1000_PROVISION,                        //!< Provisioning
+    DW1000_TDMA,                             //!< TDMA services
     DW1000_RNG,                              //!< Ranging
+    DW1000_RNG_SS,                           //!< Ranging
+    DW1000_RNG_DS,                           //!< Ranging
+    DW1000_RNG_DS_EXT,                       //!< Ranging
     DW1000_RANGE,                            //!< Ranging
     DW1000_N_RANGES,                         //!< N_ranges
-    DW1000_TDMA,                             //!< TDMA services
     DW1000_LWIP,
-    DW1000_APPLAYER_CBS = 1024 
+    DW1000_PAN,                              //!< Personal area network
+    DW1000_PROVISION,                        //!< Provisioning
+    DW1000_APP0 = 1024, 
+    DW1000_APP1, 
+    DW1000_APP2
 }dw1000_extension_id_t;
 
 //! Structure of DW1000 attributes.
@@ -213,16 +218,17 @@ typedef struct _dw1000_mac_interface_t {
         uint16_t selfmalloc:1;            //!< Internal flag for memory garbage collection 
         uint16_t initialized:1;           //!< Instance allocated 
     } status;
-    dw1000_extension_id_t id;
-    bool (* tx_complete_cb) (struct _dw1000_dev_instance_t *);    //!< Transmit complete callback
-    bool (* rx_complete_cb) (struct _dw1000_dev_instance_t *);    //!< Receive complete callback
-    bool (* rx_timeout_cb)  (struct _dw1000_dev_instance_t *);    //!< Receive timeout callback
-    bool (* rx_error_cb)    (struct _dw1000_dev_instance_t *);    //!< Receive error callback
-    bool (* tx_error_cb)    (struct _dw1000_dev_instance_t *);    //!< Transmit error callback  
-    bool (* reset_cb)    (struct _dw1000_dev_instance_t *);       //!< Reset interface callback  
-    bool (* final_cb)    (struct _dw1000_dev_instance_t *);       //!< Final frame preperation interface callback  
-    bool (* complete_cb)    (struct _dw1000_dev_instance_t *);    //!< Completion event interface callback  
-    bool (* sleep_cb)    (struct _dw1000_dev_instance_t *);        //!< Completion event interface callback  
+    uint16_t id;
+    bool (* tx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Transmit complete callback
+    bool (* rx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive complete callback
+    bool (* rx_timeout_cb)  (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive timeout callback
+    bool (* rx_error_cb)    (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive error callback
+    bool (* tx_error_cb)    (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Transmit error callback  
+    bool (* reset_cb)       (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Reset interface callback  
+    bool (* final_cb)       (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Final frame preperation interface callback  
+    bool (* complete_cb)    (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Completion event interface callback  
+    bool (* sleep_cb)       (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Wakeup event interface callback  
+    bool (* start_tx_error_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Start error event interface callback  
     SLIST_ENTRY(_dw1000_mac_interface_t) next;                    //!< Next callback in the list
 }dw1000_mac_interface_t;
 
@@ -281,9 +287,9 @@ typedef struct _dw1000_dev_instance_t{
 #endif
 
 #if MYNEWT_VAL(DW1000_PROVISION)
-    struct _dw1000_provision_instance_t *provision; //!< DW1000 provision instance
+    struct _dw1000_provision_instance_t * provision; //!< DW1000 provision instance
 #endif 
-#if MYNEWT_VAL(DW1000_CCP_ENABLED)
+#if MYNEWT_VAL(CCP_ENABLED)
     struct _dw1000_ccp_instance_t * ccp;           //!< DW1000 ccp instance
 #endif
 #if MYNEWT_VAL(DW1000_PAN)

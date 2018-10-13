@@ -1,6 +1,6 @@
 
 syscfg.defs:
-    DW1000_CCP_ENABLED:
+    CCP_ENABLED:
         description: >
             'Enable clock calibration'
         value: 1
@@ -13,7 +13,7 @@ syscfg.defs:
         description: >
             Autotune XTALT to Clock Master
         value: 0
-        restrictions: DW1000_CCP_ENABLED
+        restrictions: CCP_ENABLED
     XTALT_GUARD:
         description: >
             Guardband for xtal drift (dwt units)
@@ -21,7 +21,7 @@ syscfg.defs:
     ADAPTIVE_TIMESCALE_ENABLED:
         description: 'Enable Adaptive timescale adjustments'
         value: 0
-        restrictions: DW1000_CCP_ENABLED
+        restrictions: CCP_ENABLED
         restrictions: CCP_PERIOD
         restrictions: CLOCK_CALIBRATION_ENABLED
         restrictions: XTALT_GUARD

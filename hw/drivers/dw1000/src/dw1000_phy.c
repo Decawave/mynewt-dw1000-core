@@ -37,7 +37,6 @@
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
 #include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_rng.h>
 
 static inline void _dw1000_phy_load_microcode(struct _dw1000_dev_instance_t * inst);
 
@@ -336,7 +335,7 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
     if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
             SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
             if (cbs!=NULL && cbs->reset_cb) 
-                cbs->reset_cb(inst);         
+                cbs->reset_cb(inst,cbs);         
             }   
     }      
 

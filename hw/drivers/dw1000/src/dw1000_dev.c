@@ -40,6 +40,10 @@
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_phy.h>
 
+#define DIAGMSG(s,u) printf(s,u)
+#ifndef DIAGMSG
+#define DIAGMSG(s,u)
+#endif
 
 /**
  * API to perform dw1000_read from given address.
@@ -240,6 +244,7 @@ dw1000_softreset(dw1000_dev_instance_t * inst)
 int 
 dw1000_dev_init(struct os_dev *odev, void *arg)
 {
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_dev_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     struct dw1000_dev_cfg *cfg = (struct dw1000_dev_cfg*)arg;
     dw1000_dev_instance_t *inst = (dw1000_dev_instance_t *)odev;
     
@@ -312,6 +317,13 @@ retry:
     assert(rc == 0);
     rc = hal_spi_enable(inst->spi_num);
     assert(rc == 0);
+
+    inst->PANID = MYNEWT_VAL(PANID);
+    inst->my_short_address = MYNEWT_VAL(DEVICE_ID);
+    inst->my_long_address = ((uint64_t) inst->device_id << 32) + inst->partID;
+
+    dw1000_set_panid(inst,inst->PANID);
+    dw1000_mac_init(inst, NULL);
 
     return OS_OK;
 }

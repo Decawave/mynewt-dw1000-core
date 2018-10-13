@@ -17,13 +17,13 @@
 # under the License.
 #
 
-pkg.name: lib/tdma
-pkg.description: Time-division multiple access
+pkg.name: lib/twr_ss
+pkg.description: TWR Single Sided library
 pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
     - dw1000
-    - TDMA
+    - CCP
 
 pkg.cflags:
     - "-std=gnu99"
@@ -31,7 +31,10 @@ pkg.cflags:
 
 pkg.lflags:
     - "-lm"
-    
+
+pkg.deps:
+    - "@mynewt-dw1000-core/lib/rng"
+
 pkg.init:
-    tdma_pkg_init: 410
+    twr_ss_pkg_init: 402
     

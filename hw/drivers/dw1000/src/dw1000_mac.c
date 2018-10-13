@@ -1082,7 +1082,8 @@ dw1000_interrupt_task(void *arg)
 void
 dw1000_mac_append_interface(dw1000_dev_instance_t* inst, dw1000_mac_interface_t * cbs){
     assert(inst);
-     printf("dw1000_mac_append_interface %d\n",cbs->id);
+
+//    printf("{\"utime\": %lu,\"msg\": \"dw1000_mac_append_interface %d\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),cbs->id);
 
     if (cbs == NULL){
         cbs = (dw1000_mac_interface_t * )malloc(sizeof(dw1000_mac_interface_t));
@@ -1150,12 +1151,12 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
     
     // Handle sleep timer event
     if(inst->sys_status & SYS_STATUS_CLKPLL_LL){
-        DIAGMSG("{\"utime\": %lu,\"warning\":\"SYS_STATUS_CLKPLL_LL\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+        DIAGMSG("{\"utime\": %lu,\"warning\": \"SYS_STATUS_CLKPLL_LL\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_CLKPLL_LL, sizeof(uint32_t)); // Clear SLP2INIT event bits
     }
     // Handle sleep timer event
     if(inst->sys_status & SYS_MASK_MCPLOCK){
-        DIAGMSG("{\"utime\": %lu,\"msg\":\"SYS_MASK_MCPLOCK\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"SYS_MASK_MCPLOCK\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         // restore antenna delay value, these are not preserved during sleep/deepsleep */
         dw1000_phy_set_rx_antennadelay(inst, inst->rx_antenna_delay);
         dw1000_phy_set_tx_antennadelay(inst, inst->tx_antenna_delay);
@@ -1168,14 +1169,14 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
             SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
             if (cbs!=NULL && cbs->sleep_cb) 
-                if (cbs->sleep_cb(inst)) continue; 
+                if (cbs->sleep_cb(inst,cbs)) continue; 
             }   
         }         
         return;
     }
     // Handle TX confirmation event
     if(inst->sys_status & SYS_STATUS_TXFRS){
-        DIAGMSG("{\"utime\": %lu,\"msg\":\"SYS_STATUS_TXFRS\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"SYS_STATUS_TXFRS\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_TX, sizeof(uint32_t)); // Clear TX event bits
         // In the case where this TXFRS interrupt is due to the automatic transmission of an ACK solicited by a response (with ACK request bit set)
         // that we receive through using wait4resp to a previous TX (and assuming that the IRQ processing of that TX has already been handled), then
@@ -1197,7 +1198,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
             SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
             if (cbs!=NULL && cbs->tx_complete_cb) 
-                if(cbs->tx_complete_cb(inst)) continue;      
+                if(cbs->tx_complete_cb(inst,cbs)) continue;      
             }   
         }          
     }
@@ -1205,11 +1206,11 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
 
     // Handle RX good frame event
     if(inst->sys_status & SYS_STATUS_RXFCG){
-        DIAGMSG("{\"utime\": %lu,\"msg\":\"SYS_STATUS_RXFCG\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"SYS_STATUS_RXFCG\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_GOOD, sizeof(uint32_t));     // Clear all receive status bits
         uint16_t finfo = dw1000_read_reg(inst, RX_FINFO_ID, RX_FINFO_OFFSET, sizeof(uint16_t)); // Read frame info - Only the first two bytes of the register are used here.
         inst->frame_len = (finfo & RX_FINFO_RXFL_MASK_1023) - 2;          // Report frame length - Standard frame length up to 127, extended frame length up to 1023 bytes
-        inst->status.rx_ranging_frame = (finfo & RX_FINFO_RNG) !=0; // Report ranging bit
+        inst->status.rx_ranging_frame = (finfo & RX_FINFO_RNG) !=0;       // Report ranging bit
         inst->fctrl = dw1000_read_reg(inst, RX_BUFFER_ID, MAC_FFORMAT_FCTRL, MAC_FFORMAT_FCTRL_LEN);// Report frame control - First bytes of the received frame.
         
         // Because of a previous frame not being received properly, AAT bit can be set upon the proper reception of a frame not requesting for
@@ -1217,26 +1218,20 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         // implementation works only for IEEE802.15.4-2011 compliant frames).
         // This issue is not documented at the time of writing this code. It should be in next release of DW1000 User Manual (v2.09, from July 2016).
 
-        if((inst->sys_status & SYS_STATUS_AAT) && ((inst->fctrl & MAC_FTYPE_ACK) == 0)){
-            dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_AAT, sizeof(uint32_t));     // Clear AAT status bit in register
-            inst->sys_status &= ~SYS_STATUS_AAT; // Clear AAT status bit in callback data register copy
-        }
-
-       
-//        if(inst->rng_rx_complete_cb != NULL && inst->status.rx_ranging_frame && (inst->sys_status & SYS_STATUS_LDEDONE))
-//            inst->rng_rx_complete_cb(inst);
-        // Call the corresponding non-ranging frame callback if present
-//        else if(inst->rx_complete_cb != NULL)
-//            inst->rx_complete_cb(inst);      
         // Call the corresponding ranging frame services callback if present
         dw1000_mac_interface_t * cbs = NULL;
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
             SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
-            if (cbs!=NULL && cbs->rx_complete_cb) 
-                if(cbs->rx_complete_cb(inst)) continue;
+            if (cbs != NULL && cbs->rx_complete_cb) 
+                if(cbs->rx_complete_cb(inst,cbs)) continue;
             }   
-        }                
+        }        
 
+        if((inst->sys_status & SYS_STATUS_AAT) && ((inst->fctrl & MAC_FTYPE_ACK) == 0)){
+            dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_AAT, sizeof(uint32_t));     // Clear AAT status bit in register
+            inst->sys_status &= ~SYS_STATUS_AAT; // Clear AAT status bit in callback data register copy
+        }
+ 
         // Collect RX Frame Quality diagnositics
         if(inst->config.rxdiag_enable)  
             dw1000_read_rxdiag(inst, &inst->rxdiag);
@@ -1255,12 +1250,14 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
                 }
             }
         }
+
+   
     }
 
     // Handle frame reception/preamble detect timeout events
     inst->status.rx_timeout_error = (inst->sys_status & SYS_STATUS_ALL_RX_TO) !=0;
     if(inst->status.rx_timeout_error){
-        DIAGMSG("{\"utime\": %lu,\"msg\":\"SYS_STATUS_ALL_RX_TO\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"SYS_STATUS_ALL_RX_TO\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_TO, sizeof(uint32_t)); // Clear RX timeout event bits        
         // Because of an issue with receiver restart after error conditions, an RX reset must be applied 
         // after any error or timeout event to ensure the next good frame's timestamp is computed correctly.
@@ -1272,9 +1269,8 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         dw1000_mac_interface_t * cbs = NULL;
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
             SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
-            if (cbs!=NULL && cbs->rx_timeout_cb) {
-                if(cbs->rx_timeout_cb(inst)) continue; 
-            }       
+            if (cbs!=NULL && cbs->rx_timeout_cb) 
+                if(cbs->rx_timeout_cb(inst,cbs)) continue; 
             }   
         }      
     }
@@ -1282,7 +1278,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
     // Handle RX errors events
     inst->status.rx_error = (inst->sys_status & SYS_STATUS_ALL_RX_ERR) !=0 ;
     if(inst->status.rx_error){
-        DIAGMSG("{\"utime\": %lu,\"msg\":\"SYS_STATUS_ALL_RX_ERR\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"SYS_STATUS_ALL_RX_ERR\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_ERR, sizeof(uint32_t)); // Clear RX error event bits
         // Because of an issue with receiver restart after error conditions, an RX reset must be applied after any error or timeout event to ensure
         // the next good frame's timestamp is computed correctly.
@@ -1296,7 +1292,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
             SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
             if (cbs!=NULL && cbs->rx_error_cb) 
-                if(cbs->rx_error_cb(inst)) continue;         
+                if(cbs->rx_error_cb(inst,cbs)) continue;         
             }   
         }      
     }
