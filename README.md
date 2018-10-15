@@ -42,22 +42,24 @@ Ranging services binds to the MAC interface; this interfaces expose callbacks to
 ### Default Config:
 
 | Config  | Description          |  Value  |
-| PRF  | Pulse Repetition Frequency          |  64M  |
+| ------------- |:-------------:| -----:|
+| PRF  | Pulse Repetition Frequency   |  64M  |
 | PLEN      | Preamble length         | 128  |
 | NPHR      | Number of symbols       | 16 symbols |
-| SDF     | start of frame deliminator length       | 6.8Mbps  |
+| SDF     | start of frame deliminator length  | 6.8Mbps  |
 | DataRate     |Data Rate       | 8 symbols  |
 
 ### RNG profile.
 | profile       | Description          | Benchmark  |
 | ------------- |:-------------:| -----:|
 | twr_ss        | Single Sided Two Way Ranging | 1310us|
-| twr_ds      | Double Sided Two Way Ranging      |   2540us |
-| twr_ds_ext | DS-TWR /w extended data payload      |    3130us |
+| twr_ds      | Double Sided Two Way Ranging      |  2540us |
+| twr_ds_ext | DS-TWR /w extended data payload      |   3130us |
 
 ### NRNG profile
 
-| profile       | Description          | Benchmark  |
+| profile       | Description  | Benchmark  |
+| ------------- |:-------------:| -----:|
 | nrng_ds | n twr_ds ranges with 2*n+2 messages  | 6200us for n=4|
 
 
