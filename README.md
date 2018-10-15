@@ -32,7 +32,7 @@ A single dw1000 transceiver can be used to form a 6LowPAN mesh network while con
 
 ## Under-the-hood
 
-The mynewt-dw1000-core driver implements MAC layers and exports a MAC extension interface for additional services, this MAC interface is defined in the struct _dw1000_mac_interface_t found in @mynewt-dw1000-core/hw/driver/dw1000/include/dw1000_dev.h
+The mynewt-dw1000-core driver implements the MAC layers and exports a MAC extension interface for additional services, this MAC interface is defined in the struct _dw1000_mac_interface_t found in (../master/hw/driver/dw1000/include/dw1000_dev.h)
 
 
 ### Ranging Services (RNG).
@@ -43,11 +43,11 @@ Ranging services binds to the MAC interface; this interfaces expose callbacks to
 
 | Config  | Description          |  Value  |
 | ------------- |:-------------:| -----:|
-| PRF  | Pulse Repetition Frequency   |  64M  |
+| PRF  | Pulse Repetition Frequency   |  64MHz  |
 | PLEN      | Preamble length         | 128  |
-| NPHR      | Number of symbols       | 16 symbols |
+| NPHR      | Number of symbols       | 16  |
 | SDF     | start of frame deliminator length  | 6.8Mbps  |
-| DataRate     |Data Rate       | 8 symbols  |
+| DataRate     |Data Rate       | 8 |
 
 ### RNG profile.
 | profile       | Description          | Benchmark  |
@@ -68,11 +68,11 @@ Ranging services binds to the MAC interface; this interfaces expose callbacks to
 * See companion repo mynewt-dw1000-apps
 
 ## Current BSPs and supported hardware
-* DWM1001   from https://www.decawave.com/products/dwm1001-module
-* DWM1002   from https://decawave.com (coming soon)
-* DWM1003   from https://decawave.com (coming soon)
-* lps2mini      from https://loligoelectronics.com
-* lps2nano      from https://loligoelectronics.com
+* DWM1001   from <https://www.decawave.com/products/dwm1001-module>
+* DWM1002   from <https://decawave.com>
+* DWM1003   from <https://decawave.com>
+* lps2mini  from <https://loligoelectronics.com>
+* lps2nano  from <https://loligoelectronics.com>
 
 ## File Description
 ```
@@ -92,8 +92,8 @@ Ranging services binds to the MAC interface; this interfaces expose callbacks to
 │   ├── dwm1001                 // BSP for DWM1001 TWR/TDOA Module
 │   ├── dwm1002                 // BSP for DWM1002 Dual DW1000 PDOA Node
 │   ├── dwm1003                 // BSP for DWM1002 TWR/PDOA/IMU TAG
-│   ├── lps2mini                // BSP for LPS2MINI board from https://loligoelectronics.com
-│   └── lps2nano                // BSP for LPS2NANO board from https://loligoelectronics.com
+│   ├── lps2mini                // BSP for LPS2MINI board from <https://loligoelectronics.com>
+│   └── lps2nano                // BSP for LPS2NANO board from <https://loligoelectronics.com>
 ├── ccp                         // Clock Calibration Packet synchronization 
 ├── dsp                         // Signal Proceesing library
 ├── nrng                        // N ranges in 2*N+2 messages
