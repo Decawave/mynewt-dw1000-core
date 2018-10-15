@@ -227,25 +227,11 @@ reset_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  */
 static bool 
 rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
-{
-    uint16_t code, dst_address; 
-    dw1000_dev_control_t control = inst->control_rx_context;
-    
+{    
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
 
-    dw1000_read_rx(inst, (uint8_t *) &code, offsetof(ieee_rng_request_frame_t,code), sizeof(uint16_t));
-    dw1000_read_rx(inst, (uint8_t *) &dst_address, offsetof(ieee_rng_request_frame_t,dst_address), sizeof(uint16_t));
-   
-    if (dst_address != inst->my_short_address){  
-        // IEEE 802.15.4 standard ranging frames, software MAC filtering
-        DIAGMSG("{\"utime\": %lu,\"msg\": \"software MAC filtering\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-        inst->control = inst->control_rx_context;
-        dw1000_restart_rx(inst, control);             
-        return false;
-    }  
-
-    switch(code){
+    switch(inst->rng->code){
         case DWT_SS_TWR:
             {
                 // This code executes on the device that is responding to a request
@@ -284,7 +270,6 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                         cbs->start_tx_error_cb(inst, cbs);
                 }
                 break;
-                
             }
         case DWT_SS_TWR_T1:
             {

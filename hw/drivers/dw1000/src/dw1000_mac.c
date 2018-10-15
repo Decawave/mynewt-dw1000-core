@@ -1198,11 +1198,10 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
             SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
             if (cbs!=NULL && cbs->tx_complete_cb) 
-                if(cbs->tx_complete_cb(inst,cbs)) continue;      
+                if(cbs->tx_complete_cb(inst,cbs)) break;
             }   
         }          
     }
-
 
     // Handle RX good frame event
     if(inst->sys_status & SYS_STATUS_RXFCG){
@@ -1223,7 +1222,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
             SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
             if (cbs != NULL && cbs->rx_complete_cb) 
-                if(cbs->rx_complete_cb(inst,cbs)) continue;
+                if(cbs->rx_complete_cb(inst,cbs)) break;
             }   
         }        
 

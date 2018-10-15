@@ -63,6 +63,8 @@
 #define DIAGMSG(s,u)
 #endif
 
+static bool rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+
 /*
 % From APS011 Table 2 
 rls = [-61,-63,-65,-67,-69,-71,-73,-75,-77,-79,-81,-83,-85,-87,-89,-91,-93];
@@ -138,6 +140,25 @@ static twr_frame_t g_twr_2[] = {
 };
 #endif
 
+static dw1000_mac_interface_t g_cbs[] = {
+        [0] = {
+            .id = DW1000_RNG,
+            .rx_complete_cb = rx_complete_cb,
+        },
+#if MYNEWT_VAL(DW1000_DEVICE_1)
+        [1] = {
+            .id = DW1000_RNG,
+            .rx_complete_cb = rx_complete_cb
+        },
+#endif
+#if MYNEWT_VAL(DW1000_DEVICE_2)
+        [2] = {
+            .id = DW1000_RNG,
+            .rx_complete_cb = rx_complete_cb
+        }
+#endif
+};
+
 
 /**
  * API to initialise the ranging by setting all the required configurations and callbacks.
@@ -207,18 +228,21 @@ void rng_pkg_init(void){
 #if MYNEWT_VAL(DW1000_DEVICE_0)
     dw1000_rng_init(hal_dw1000_inst(0), &g_config, sizeof(g_twr_0)/sizeof(twr_frame_t));
     dw1000_rng_set_frames(hal_dw1000_inst(0), g_twr_0, sizeof(g_twr_0)/sizeof(twr_frame_t));
+    dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs[0]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
     dw1000_rng_init(hal_dw1000_inst(1), &g_config, sizeof(g_twr_0)/sizeof(twr_frame_t));
     dw1000_rng_set_frames(hal_dw1000_inst(1), g_twr_1, sizeof(g_twr_0)/sizeof(twr_frame_t));
+    dw1000_mac_append_interface(hal_dw1000_inst(1), &g_cbs[1]);
+
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
     dw1000_rng_init(hal_dw1000_inst(2), &g_config, sizeof(g_twr_0)/sizeof(twr_frame_t));
     dw1000_rng_set_frames(hal_dw1000_inst(2), g_twr_2, sizeof(g_twr_0)/sizeof(twr_frame_t));
+    dw1000_mac_append_interface(hal_dw1000_inst(2), &g_cbs[2]);
 #endif
   
 }
-
 
 /**
  * API to set the pointer to the twr buffers.
@@ -518,3 +542,41 @@ dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code){
     return ToF;
 }
 
+
+
+/**
+ * API for receive complete callback.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ *
+ * @return true on sucess
+ */
+static bool 
+rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    uint16_t dst_address; 
+    dw1000_dev_control_t control = inst->control_rx_context;
+    
+    if (inst->fctrl != FCNTL_IEEE_RANGE_16)
+        return false;
+
+    dw1000_read_rx(inst, (uint8_t *) &inst->rng->code, offsetof(ieee_rng_request_frame_t,code), sizeof(uint16_t));
+    dw1000_read_rx(inst, (uint8_t *) &dst_address, offsetof(ieee_rng_request_frame_t,dst_address), sizeof(uint16_t));
+   
+    if (inst->config.framefilter_enabled == false && dst_address != inst->my_short_address){  
+        // IEEE 802.15.4 standard ranging frames, software MAC filtering
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"software MAC filtering\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+        inst->control = inst->control_rx_context;
+        dw1000_restart_rx(inst, control);             
+        return true;
+    }  
+
+    switch(inst->rng->code) {
+        case DWT_SS_TWR ... DWT_DS_TWR_EXT_END:
+            DIAGMSG("{\"utime\": %lu,\"msg\": \"Valid RNG frametype\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+            break;
+        default: 
+            return false;
+    }
+return false;
+}

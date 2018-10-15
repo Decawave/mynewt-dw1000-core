@@ -126,10 +126,11 @@ typedef union {
 //! Structure of range instance
 typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * dev;    //!< Structure of DW1000_dev_instance
-    dw1000_mac_interface_t cbs;
+    dw1000_mac_interface_t cbs;             //!< MAC interface
+    uint16_t code;                          //!< Range profile code
     struct os_sem sem;                      //!< Structure of semaphores
     uint64_t delay;                         //!< Delay in transmission
-    dw1000_rng_config_t config;           //!< Structure of range config
+    dw1000_rng_config_t config;             //!< Structure of range config
     dw1000_rng_control_t control;           //!< Structure of range control
     dw1000_rng_status_t status;             //!< Structure of range status
     uint16_t idx;                           //!< Indicates number of instances for the chosen bsp

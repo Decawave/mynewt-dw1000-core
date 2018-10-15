@@ -40,7 +40,7 @@
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_hal.h>
-#include <ccp/dw1000_ccp.h>
+#include <ccp/ccp.h>
 
 #if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
 #include <clkcal/clkcal.h>
@@ -491,7 +491,7 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
     }
 #endif
     os_sem_release(&inst->ccp->sem);
-    return true;
+    return false;
 }
 
 /** 
@@ -532,7 +532,7 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
         os_eventq_put(os_eventq_dflt_get(), &ccp->callout_postprocess.c_ev);
     
     os_sem_release(&inst->ccp->sem);  
-    return true;
+    return false;
 }
 
 /** 
