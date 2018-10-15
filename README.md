@@ -35,7 +35,7 @@ A single dw1000 transceiver can be used to form a 6LowPAN mesh network while con
 The mynewt-dw1000-core driver implements the MAC layers and exports a MAC extension interface for additional services, this MAC interface is defined in the struct _dw1000_mac_interface_t found in (../master/hw/driver/dw1000/include/dw1000_dev.h)
 
 
-### Ranging Services (RNG).
+### Ranging Services (RNG)
 
 Ranging services binds to the MAC interface; this interfaces expose callbacks to various events within the ranging process. The driver currently support the following ranging profiles;
 
@@ -49,23 +49,35 @@ Ranging services binds to the MAC interface; this interfaces expose callbacks to
 | SDF     | start of frame deliminator length  | 6.8Mbps  |
 | DataRate     |Data Rate       | 8 |
 
-### RNG profile.
+### RNG profile:
 | profile       | Description          | Benchmark  |
 | ------------- |:-------------:| -----:|
 | twr_ss        | Single Sided Two Way Ranging | 1310us|
 | twr_ds      | Double Sided Two Way Ranging      |  2540us |
 | twr_ds_ext | DS-TWR /w extended data payload      |   3130us |
 
-### NRNG profile
+### NRNG profile:
 
 | profile       | Description  | Benchmark  |
 | ------------- |:-------------:| -----:|
 | nrng_ds | n twr_ds ranges with 2*n+2 messages  | 6200us for n=4|
 
 
+### Clock Calibration Packet (CCP) Service
+
+### Time Division Multiple Access (TDMA) Service
+
+### Light Weight IP (lwIP) Service
+
 ## Project Status
 
-* See companion repo mynewt-dw1000-apps
+The mynewt-dw1000-core repo is still a work in progress with the following extension in development:
+
+| New Fetures   | Description          | schedule |
+| ------------- |:-------------:| -----:|
+| TDOA  | Time Difference of Arrival profiles| 18Q4|
+| PDOA  | Phase Difference of Arrival profiles| 18Q4|
+| OpenThread Shim  | MAC extension supporting OpenThread stack| 18Q4|
 
 ## Current BSPs and supported hardware
 * DWM1001   from <https://www.decawave.com/products/dwm1001-module>
