@@ -10,7 +10,7 @@ syscfg.defs:
         description: >
           Size of spi read/write buffer, sets the 
           maximum allowed nonblocking read operation
-        value: 136
+        value: 256
     DW1000_LWIP:
         description: 'Enable LWIP functionality'
         value: 0

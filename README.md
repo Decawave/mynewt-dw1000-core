@@ -44,25 +44,16 @@ A single DW1000 UWB transceiver can be used to form a 6LowPAN mesh network while
 ## File Description
 ```
 ├── dw1000
-│   ├── include
-│   │   └── dw1000              // Include files
 │   ├── pkg.yml                 // Project file
 │   ├── src
 │   │   ├── dw1000_ccp.c        // Clock calibration packets
 │   │   ├── dw1000_dev.c        // Driver instance
 │   │   ├── dw1000_gpio.c       // GPIO interface
 │   │   ├── dw1000_hal.c        // Hardware abstraction
-│   │   ├── dw1000_lwip.c       // lwip stack lower layer
 │   │   ├── dw1000_mac.c        // MAC lower layer
 │   │   ├── dw1000_otp.c        // One Time Programming API
-│   │   ├── dw1000_pan.c        // Elementary PAN API
 │   │   ├── dw1000_phy.c        // Physical layer controller
-│   │   ├── dw1000_pkg.c
-│   │   ├── dw1000_provision.c  // Elementary provisioning API
-│   │   ├── dw1000_range.c      // Ranging services
-│   │   ├── dw1000_regulatory.c
-│   │   ├── dw1000_rng.c        // TWR services
-│   │   └── dw1000_tdma.c       // TDMA services
+│   │   ├── dw1000_pkg.c        // Mynewt pkg API
 │   └── syscfg.yml              // Project config
 ├── bsp                         // Board Support Packages
 │   ├── dwm1001                 // BSP for DWM1001 TWR/TDOA Module
@@ -70,13 +61,14 @@ A single DW1000 UWB transceiver can be used to form a 6LowPAN mesh network while
 │   ├── dwm1003                 // BSP for DWM1002 TWR/PDOA/IMU TAG
 │   ├── lps2mini                // BSP for LPS2MINI board from https://loligoelectronics.com
 │   └── lps2nano                // BSP for LPS2NANO board from https://loligoelectronics.com
-|── dsp                         // Signal Proceesing library
-    ├── include
-    │   └── dsp
-    └── src
-        ├── biquad.c            // BIQUAD filter implementation
-        ├── polyval.c           // polyval polynomial implementation
-        └── sosfilt.c           // Second-Order-Section BIQUAD implementation
+├── ccp                         // Clock Calibration Packet synchronization 
+├── dsp                         // Signal Proceesing library
+├── nrng                        // N ranges in 2*N+2 messages
+├── rng                         // TWR toplevel API
+├── tdma                        // Time Devision Multiplex API
+├── twr_ds                      // Double Sided TWR
+├── twr_ds_ext                  // Double Sided TWR with extended payload
+└── twr_ss                      // Single Sided TWR
 
 ```
 

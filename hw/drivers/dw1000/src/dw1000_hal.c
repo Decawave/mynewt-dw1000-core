@@ -347,8 +347,7 @@ hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cm
         hal_spi_tx_val(inst->spi_num, cmd[i]);
     }
     memset(tx_buffer,0,length);
-    rc = hal_spi_txrx_noblock(inst->spi_num, tx_buffer,
-                              (void*)buffer, length);
+    rc = hal_spi_txrx_noblock(inst->spi_num, tx_buffer, (void*)buffer, length);
     assert(rc==OS_OK);
 
     /* Reaquire semaphore after rx complete */
