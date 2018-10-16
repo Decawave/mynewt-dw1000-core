@@ -46,15 +46,15 @@ Ranging services binds to the MAC interface; this interfaces expose callbacks to
 | PRF  | Pulse Repetition Frequency   |  64MHz  |
 | PLEN      | Preamble length         | 128  |
 | NPHR      | Number of symbols       | 16  |
-| SDF     | start of frame deliminator length  | 6.8Mbps  |
-| DataRate     |Data Rate       | 8 |
+| SDF     | start of frame deliminator length  |  8 |
+| DataRate     |Data Rate       | 6.8Mbps |
 
 ### RNG profile:
 | profile       | Description          | Benchmark  |
 | ------------- |:-------------:| -----:|
-| twr_ss        | Single Sided Two Way Ranging | 1310us|
-| twr_ds      | Double Sided Two Way Ranging      |  2540us |
-| twr_ds_ext | DS-TWR /w extended data payload      |   3130us |
+| twr_ss        | Single Sided Two Way Ranging | 1110us|
+| twr_ds      | Double Sided Two Way Ranging      |  2420us |
+| twr_ds_ext | DS-TWR /w extended data payload      |   2775us |
 
 ### NRNG profile:
 
@@ -108,6 +108,7 @@ The mynewt-dw1000-core repo is still a work in progress with the following exten
 │   └── lps2nano                // BSP for LPS2NANO board from <https://loligoelectronics.com>
 ├── ccp                         // Clock Calibration Packet synchronization 
 ├── dsp                         // Signal Proceesing library
+├── lwip                        // Light weight IP extension
 ├── nrng                        // N ranges in 2*N+2 messages
 ├── rng                         // TWR toplevel API
 ├── tdma                        // Time Devision Multiplex API

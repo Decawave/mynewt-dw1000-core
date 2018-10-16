@@ -52,7 +52,6 @@
 #define DIAGMSG(s,u)
 #endif
 
-static bool tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
 static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
 static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
 static bool rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
@@ -61,7 +60,6 @@ static bool reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
 static dw1000_mac_interface_t g_cbs[] = {
         [0] = {
             .id = DW1000_RNG_SS,
-            .tx_complete_cb = tx_complete_cb,
             .rx_complete_cb = rx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
             .rx_error_cb = rx_error_cb,
@@ -111,7 +109,6 @@ void twr_ss_pkg_init(void){
   
 }
 
-
 /**
  * API to free the allocated resources.
  *
@@ -136,24 +133,6 @@ twr_ss_free(dw1000_dev_instance_t * inst){
 dw1000_rng_config_t * 
 twr_ss_config(dw1000_dev_instance_t * inst){
     return &g_config;
-}
-
-/**
- * API for transmission complete callback.
- *
- * @param inst  Pointer to dw1000_dev_instance_t.
- *
- * @return true on sucess
- */
-static bool
-tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    
-    if (inst->fctrl != FCNTL_IEEE_RANGE_16)
-        return false;
-    else{ 
-        DIAGMSG("{\"utime\": %lu,\"msg\": \"rng_tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-        return true;
-    }
 }
 
 
@@ -238,13 +217,8 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_SS_TWR\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
                 dw1000_rng_instance_t * rng = inst->rng; 
-                twr_frame_t * frame = rng->frames[(++rng->idx)%rng->nframes];
-               
-                if (inst->frame_len == sizeof(ieee_rng_request_frame_t))
-                    dw1000_read_rx(inst, frame->array, 0, sizeof(ieee_rng_request_frame_t));
-                else 
-                    break; 
-                    
+                twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes]; // Frame already read within loader layers.
+                
                 uint64_t request_timestamp = dw1000_read_rxtime(inst);  
                 uint64_t response_tx_delay = request_timestamp + ((uint64_t) g_config.tx_holdoff_delay << 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
@@ -279,7 +253,10 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                 if (inst->frame_len == sizeof(ieee_rng_response_frame_t))
-                    dw1000_read_rx(inst, frame->array, 0, sizeof(ieee_rng_response_frame_t));
+                    dw1000_read_rx(inst, frame->array + sizeof(ieee_rng_request_frame_t),  
+                                            sizeof(ieee_rng_request_frame_t), 
+                                            sizeof(ieee_rng_response_frame_t) - sizeof(ieee_rng_request_frame_t)
+                    );
                 else 
                     break;
 
@@ -318,7 +295,10 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                 if (inst->frame_len == sizeof(twr_frame_final_t))
-                    dw1000_read_rx(inst, frame->array, 0, sizeof(twr_frame_final_t));
+                    dw1000_read_rx(inst, frame->array + sizeof(ieee_rng_request_frame_t), 
+                                        sizeof(ieee_rng_request_frame_t), 
+                                        sizeof(twr_frame_final_t) - sizeof(ieee_rng_request_frame_t)
+                    );
                 os_sem_release(&rng->sem);
 
                 dw1000_mac_interface_t * cbs = NULL;

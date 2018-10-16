@@ -64,6 +64,7 @@
 #endif
 
 static bool rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 
 /*
 % From APS011 Table 2 
@@ -144,17 +145,20 @@ static dw1000_mac_interface_t g_cbs[] = {
         [0] = {
             .id = DW1000_RNG,
             .rx_complete_cb = rx_complete_cb,
+            .tx_complete_cb = tx_complete_cb
         },
 #if MYNEWT_VAL(DW1000_DEVICE_1)
         [1] = {
             .id = DW1000_RNG,
-            .rx_complete_cb = rx_complete_cb
+            .rx_complete_cb = rx_complete_cb,
+            .tx_complete_cb = tx_complete_cb
         },
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
         [2] = {
             .id = DW1000_RNG,
-            .rx_complete_cb = rx_complete_cb
+            .rx_complete_cb = rx_complete_cb,
+            .tx_complete_cb = tx_complete_cb
         }
 #endif
 };
@@ -336,7 +340,7 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     dw1000_rng_config_t * config = dw1000_rng_get_config(inst, code);
     
     dw1000_rng_instance_t * rng = inst->rng;                            
-    twr_frame_t * frame  = inst->rng->frames[(++rng->idx)%rng->nframes];    
+    twr_frame_t * frame  = inst->rng->frames[(rng->idx+1)%rng->nframes];    
 
     frame->seq_num++;
     frame->code = code;
@@ -554,29 +558,58 @@ dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code){
 static bool 
 rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-    uint16_t dst_address; 
-    dw1000_dev_control_t control = inst->control_rx_context;
     
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
 
-    dw1000_read_rx(inst, (uint8_t *) &inst->rng->code, offsetof(ieee_rng_request_frame_t,code), sizeof(uint16_t));
-    dw1000_read_rx(inst, (uint8_t *) &dst_address, offsetof(ieee_rng_request_frame_t,dst_address), sizeof(uint16_t));
-   
-    if (inst->config.framefilter_enabled == false && dst_address != inst->my_short_address){  
-        // IEEE 802.15.4 standard ranging frames, software MAC filtering
-        DIAGMSG("{\"utime\": %lu,\"msg\": \"software MAC filtering\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-        inst->control = inst->control_rx_context;
-        dw1000_restart_rx(inst, control);             
-        return true;
-    }  
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"rx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
-    switch(inst->rng->code) {
+    dw1000_rng_instance_t * rng = inst->rng; 
+    twr_frame_t * frame = rng->frames[(++rng->idx)%rng->nframes]; // advance to next frame 
+    
+    if (inst->frame_len >= sizeof(ieee_rng_request_frame_t))
+        dw1000_read_rx(inst, frame->array, 0, sizeof(ieee_rng_request_frame_t));
+    else 
+        return false;
+        
+    inst->rng->code = frame->code;
+    switch(frame->code) {
         case DWT_SS_TWR ... DWT_DS_TWR_EXT_END:
-            DIAGMSG("{\"utime\": %lu,\"msg\": \"Valid RNG frametype\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+            if (inst->config.framefilter_enabled == false && frame->dst_address != inst->my_short_address){  
+                // IEEE 802.15.4 standard ranging frames, software MAC filtering
+                DIAGMSG("{\"utime\": %lu,\"msg\": \"software MAC filtering\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+                rng->idx--; // Rewind
+                inst->control = inst->control_rx_context;
+                dw1000_restart_rx(inst, inst->control);             
+                return true;
+            }  
             break;
         default: 
             return false;
     }
 return false;
+}
+
+
+/**
+ * API for transmission complete callback.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ *
+ * @return true on sucess
+ */
+static bool
+tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+    
+    if (inst->fctrl != FCNTL_IEEE_RANGE_16)
+        return false;
+  
+    switch(inst->rng->code) {
+        case DWT_SS_TWR ... DWT_DS_TWR_EXT_END:
+            DIAGMSG("{\"utime\": %lu,\"msg\": \"tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+            return true;
+            break;
+        default: 
+            return false;
+    }
 }

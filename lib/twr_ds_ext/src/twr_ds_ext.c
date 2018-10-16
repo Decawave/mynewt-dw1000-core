@@ -52,7 +52,6 @@
 #define DIAGMSG(s,u)
 #endif
 
-static bool tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
@@ -63,7 +62,6 @@ static bool start_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface
 static dw1000_mac_interface_t g_cbs[] = {
         [0] = {
             .id = DW1000_RNG_DS_EXT,
-            .tx_complete_cb = tx_complete_cb,
             .rx_complete_cb = rx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
             .rx_error_cb = rx_error_cb,
@@ -74,14 +72,12 @@ static dw1000_mac_interface_t g_cbs[] = {
 #if MYNEWT_VAL(DW1000_DEVICE_1)
         [1] = {
             .id = DW1000_RNG_DS_EXT,
-            .tx_complete_cb = tx_complete_cb,
             .rx_complete_cb = rx_complete_cb,
         },
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
         [2] = {
             .id = DW1000_RNG_DS_EXT,
-            .tx_complete_cb = tx_complete_cb,
             .rx_complete_cb = rx_complete_cb,
         }
 #endif
@@ -183,24 +179,6 @@ tx_final_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     return true;
 }
 
-/**
- * API for transmission complete callback.
- *
- * @param inst  Pointer to dw1000_dev_instance_t.
- *
- * @return true on sucess
- */
-static bool
-tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    
-    if (inst->fctrl != FCNTL_IEEE_RANGE_16)
-        return false;
-    else{ 
-        DIAGMSG("{\"utime\": %lu,\"msg\": \"rng_tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-        return true;
-    }
-}
-
 
 /**
  * API for receive timeout callback.
@@ -295,7 +273,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR_EXT\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
                 dw1000_rng_instance_t * rng = inst->rng; 
-                twr_frame_t * frame = rng->frames[(++rng->idx)%rng->nframes];
+                twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                 if (inst->frame_len == sizeof(ieee_rng_request_frame_t))
                     dw1000_read_rx(inst, frame->array, 0, sizeof(ieee_rng_request_frame_t));
                 else 
@@ -335,11 +313,14 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR_T1\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
                 dw1000_rng_instance_t * rng = inst->rng; 
-                twr_frame_t * frame = rng->frames[(rng->idx++)%rng->nframes];
-                twr_frame_t * next_frame = rng->frames[(rng->idx)%rng->nframes];
-
+                twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
+                twr_frame_t * next_frame = rng->frames[(rng->idx+1)%rng->nframes];
+   
                 if (inst->frame_len == sizeof(ieee_rng_response_frame_t))
-                    dw1000_read_rx(inst, frame->array, 0, sizeof(ieee_rng_response_frame_t));
+                    dw1000_read_rx(inst, frame->array + sizeof(ieee_rng_request_frame_t),  
+                                            sizeof(ieee_rng_request_frame_t), 
+                                            sizeof(ieee_rng_response_frame_t) - sizeof(ieee_rng_request_frame_t)
+                    );
                 else 
                     break;
 
@@ -392,17 +373,19 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR_T2\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
                 dw1000_rng_instance_t * rng = inst->rng; 
-                twr_frame_t * previous_frame = rng->frames[(rng->idx++)%rng->nframes];
+                twr_frame_t * previous_frame = rng->frames[(rng->idx-1)%rng->nframes];
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
 
-                if (inst->frame_len == sizeof(twr_frame_t))
-                        dw1000_read_rx(inst, frame->array, 0, sizeof(twr_frame_t));
+                if (inst->frame_len >= sizeof(twr_frame_t))
+                    dw1000_read_rx(inst, frame->array + sizeof(ieee_rng_request_frame_t),  
+                                            sizeof(ieee_rng_request_frame_t), 
+                                            sizeof(twr_frame_t) - sizeof(ieee_rng_request_frame_t)
+                    );
                 else 
                     break;
 
                 previous_frame->request_timestamp = frame->request_timestamp;
                 previous_frame->response_timestamp = frame->response_timestamp;
-
                 frame->request_timestamp = dw1000_read_txtime_lo(inst);   // This corresponds to when the original request was actually sent
                 frame->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received            
                 frame->dst_address = frame->src_address;
@@ -441,9 +424,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = inst->rng->frames[(rng->idx)%rng->nframes];
-                if (inst->frame_len == sizeof(twr_frame_t))
-                    dw1000_read_rx(inst, frame->array, 0, sizeof(twr_frame_t));
-                            
+                if (inst->frame_len >= sizeof(twr_frame_t))
+                    dw1000_read_rx(inst, frame->array + sizeof(ieee_rng_request_frame_t),  
+                                            sizeof(ieee_rng_request_frame_t), 
+                                            sizeof(twr_frame_t) - sizeof(ieee_rng_request_frame_t)
+                    );     
                 os_sem_release(&rng->sem);
                 dw1000_mac_interface_t * cbs = NULL;
                 if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
