@@ -1,0 +1,4 @@
+syscfg.defs:
+    UWBCFG_APPLY_AT_INIT:
+        description: 'Apply stored uwbcfg at package init'
+        value: 0
