@@ -982,13 +982,10 @@ dw1000_calc_clock_offset_ratio(struct _dw1000_dev_instance_t * inst, int32_t int
 void 
 dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag)
 {  
-    // Read the HW FP index
-    diag->fp_idx = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
-    diag->fp_amp = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_AMPL1_OFFSET, sizeof(uint16_t));
-    diag->rx_std  = dw1000_read_reg(inst, RX_FQUAL_ID, 0, sizeof(uint16_t));
-    diag->fp_amp2 = dw1000_read_reg(inst, RX_FQUAL_ID, 2, sizeof(uint16_t));
-    diag->fp_amp3 = dw1000_read_reg(inst, RX_FQUAL_ID, 4, sizeof(uint16_t));
-    diag->cir_pwr = dw1000_read_reg(inst, RX_FQUAL_ID, 6, sizeof(uint16_t));
+    /* Read several of the diag parameters together, requires that the struct parameters are in the 
+     * same order as the registers */
+    dw1000_read(inst, RX_TIME_ID, 0, (uint8_t*)&diag->fp_idx, sizeof(uint16_t)*2);
+    dw1000_read(inst, RX_FQUAL_ID, 0, (uint8_t*)&diag->rx_std, sizeof(uint16_t)*4);
     diag->pacc_cnt =  (dw1000_read_reg(inst, RX_FINFO_ID, 0, sizeof(uint32_t)) & RX_FINFO_RXPACC_MASK) >> RX_FINFO_RXPACC_SHIFT;
 }
 
