@@ -1,0 +1,4 @@
+syscfg.defs:
+    DW1000_LWIP:
+        description: 'Enable LWIP functionality'
+        value: 0

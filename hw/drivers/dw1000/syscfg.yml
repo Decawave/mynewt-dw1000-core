@@ -23,9 +23,6 @@ syscfg.defs:
     DW1000_SS_TWR_EXT_ENABLED:
         description: 'Single sided extended mode Enable'
         value: 1
-    DW1000_LWIP:
-        description: 'Enable LWIP functionality'
-        value: 0
     DW1000_MAC_FILTERING:
         description: 'Enable the mac filtering'
         value: 0
