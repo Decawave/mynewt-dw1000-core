@@ -130,7 +130,7 @@
   const uint8_t AHBPrescTable[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 6, 7, 8, 9};
   const uint8_t APBPrescTable[8] = {0U, 0U, 0U, 0U, 1U, 2U, 3U, 4U};
 void SystemClockHSI_Config(void);
-void SystemClock_Config(void);
+void SystemClockHSE_Config(void);
 /**
   * @}
   */
@@ -180,8 +180,16 @@ void SystemInit(void)
   /* Disable all interrupts */
   RCC->CIR = 0x00000000;
 
+#if 0
   /* Configure HSI as system clock */
   SystemClockHSI_Config();
+#else
+  /* Configure HSE as system clock */
+  SystemClockHSE_Config();
+#endif
+
+  /* Update SystemCoreClock variable */
+  SystemCoreClockUpdate();
 
   /* Relocate the vector table */
   NVIC_Relocate();
@@ -271,6 +279,27 @@ void SystemCoreClockUpdate(void)
   SystemCoreClock >>= tmp;
 }
 
+/**
+ * @brief  Configure the SYSCLK to 180Mhz using PLL with HSI as PLL_SOURCE
+ *         source.
+ *         The system Clock is configured as follows :
+ *            System Clock source            = PLL (HSI)
+ *            SYSCLK(Hz)                     = 180000000
+ *            HCLK(Hz)                       = 180000000
+ *            AHB Prescaler                  = 0  // not divided,  HCLK = SYSCLK
+ *            APB1 Prescaler                 = 4
+ *            APB2 Prescaler                 = 2
+ *            HSI Frequency(Hz)              = 16000000
+ *            PLL_M                          = 16
+ *            PLL_N                          = 360
+ *            PLL_P                          = 2
+ *            PLL_Q                          = 7
+ *            VDD(V)                         = 3.3
+ *            Flash Latency(WS)              = 5
+ * @param  None
+ * @retval None
+ */
+
 void SystemClockHSI_Config(void)
 {
     RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
@@ -312,8 +341,8 @@ void SystemClockHSI_Config(void)
     //HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSI, RCC_MCODIV_1);
 }
 
-#if 0
-void SystemClock_Config(void)
+#if 1
+void SystemClockHSE_Config(void)
 {
   RCC_ClkInitTypeDef RCC_ClkInitStruct;
   RCC_OscInitTypeDef RCC_OscInitStruct;
@@ -363,7 +392,95 @@ void SystemClock_Config(void)
   {
     while(1) { ; }
   }
-  HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_PLLCLK, RCC_MCODIV_1);
+  //HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_PLLCLK, RCC_MCODIV_1);
+}
+
+#else
+
+/******************************************************************************/
+
+/************************* PLL Parameters *************************************/
+/* PLL_VCO = (HSE_VALUE or HSI_VALUE / PLL_M) * PLL_N */
+#define PLL_M      8
+#define PLL_N      360
+
+/* SYSCLK = PLL_VCO / PLL_P */
+#define PLL_P      2
+
+/* USB OTG FS, SDIO and RNG Clock =  PLL_VCO / PLLQ */
+#define PLL_Q      7
+
+
+void SystemClockHSE_Config(void)
+{
+/******************************************************************************/
+/*            PLL (clocked by HSE) used as System clock source                */
+/******************************************************************************/
+  volatile uint32_t StartUpCounter = 0, HSEStatus = 0;
+
+  /* Enable HSE */
+  RCC->CR |= ((uint32_t)RCC_CR_HSEON);
+
+  /* Wait till HSE is ready and if Time out is reached exit */
+  do
+  {
+    HSEStatus = RCC->CR & RCC_CR_HSERDY;
+    StartUpCounter++;
+  } while((HSEStatus == 0) && (StartUpCounter != 1500));
+
+  if ((RCC->CR & RCC_CR_HSERDY) != RESET)
+  {
+    HSEStatus = (uint32_t)0x01;
+  }
+  else
+  {
+    HSEStatus = (uint32_t)0x00;
+  }
+
+  if (HSEStatus == (uint32_t)0x01)
+  {
+    /* Select regulator voltage output Scale 1 mode, System frequency up to 168 MHz */
+    RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+    PWR->CR |= PWR_CR_VOS;
+
+    /* HCLK = SYSCLK / 1*/
+    RCC->CFGR |= RCC_CFGR_HPRE_DIV1;
+
+    /* PCLK2 = HCLK / 2*/
+    RCC->CFGR |= RCC_CFGR_PPRE2_DIV2;
+
+    /* PCLK1 = HCLK / 4*/
+    RCC->CFGR |= RCC_CFGR_PPRE1_DIV4;
+
+    /* Configure the main PLL */
+    RCC->PLLCFGR = PLL_M | (PLL_N << 6) | (((PLL_P >> 1) -1) << 16) |
+                   (RCC_PLLCFGR_PLLSRC_HSE) | (PLL_Q << 24);
+
+    /* Enable the main PLL */
+    RCC->CR |= RCC_CR_PLLON;
+
+    /* Wait till the main PLL is ready */
+    while((RCC->CR & RCC_CR_PLLRDY) == 0)
+    {
+    }
+
+    /* Configure Flash prefetch, Instruction cache, Data cache and wait state */
+    FLASH->ACR = FLASH_ACR_ICEN |FLASH_ACR_DCEN |FLASH_ACR_LATENCY_5WS;
+
+    /* Select the main PLL as system clock source */
+    RCC->CFGR &= (uint32_t)((uint32_t)~(RCC_CFGR_SW));
+    RCC->CFGR |= RCC_CFGR_SW_PLL;
+
+    /* Wait till the main PLL is used as system clock source */
+    while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS ) != RCC_CFGR_SWS_PLL)
+    {
+    }
+  }
+  else
+  { /* If HSE fails to start-up, the application will have wrong clock
+         configuration. User can add here some code to deal with this error */
+         SystemClockHSI_Config();
+  }
 }
 #endif
 
