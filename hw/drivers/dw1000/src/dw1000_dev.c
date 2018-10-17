@@ -263,6 +263,8 @@ dw1000_dev_init(struct os_dev *odev, void *arg)
 
     err = os_sem_init(&inst->sem, 0x1); 
     assert(err == OS_OK);
+    err = os_sem_init(&inst->spi_nb_sem, 0x1);
+    assert(err == OS_OK);
 
     SLIST_INIT(&inst->interface_cbs);
 

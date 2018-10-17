@@ -236,6 +236,7 @@ typedef struct _dw1000_mac_interface_t {
 typedef struct _dw1000_dev_instance_t{
     struct os_dev uwb_dev;                     //!< Has to be here for cast in create_dev to work 
     struct os_sem *spi_sem;                    //!< Pointer to global spi bus semaphore
+    struct os_sem spi_nb_sem;                  //!< Semaphore for nonblocking rd/wr operations
     struct os_sem sem;                         //!< semphore for low level mac/phy functions
     struct os_mutex mutex;                     //!< os_mutex
 
