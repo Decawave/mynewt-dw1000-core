@@ -235,14 +235,14 @@ void rng_pkg_init(void){
     dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs[0]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
-    dw1000_rng_init(hal_dw1000_inst(1), &g_config, sizeof(g_twr_0)/sizeof(twr_frame_t));
-    dw1000_rng_set_frames(hal_dw1000_inst(1), g_twr_1, sizeof(g_twr_0)/sizeof(twr_frame_t));
+    dw1000_rng_init(hal_dw1000_inst(1), &g_config, sizeof(g_twr_1)/sizeof(twr_frame_t));
+    dw1000_rng_set_frames(hal_dw1000_inst(1), g_twr_1, sizeof(g_twr_1)/sizeof(twr_frame_t));
     dw1000_mac_append_interface(hal_dw1000_inst(1), &g_cbs[1]);
 
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-    dw1000_rng_init(hal_dw1000_inst(2), &g_config, sizeof(g_twr_0)/sizeof(twr_frame_t));
-    dw1000_rng_set_frames(hal_dw1000_inst(2), g_twr_2, sizeof(g_twr_0)/sizeof(twr_frame_t));
+    dw1000_rng_init(hal_dw1000_inst(2), &g_config, sizeof(g_twr_2)/sizeof(twr_frame_t));
+    dw1000_rng_set_frames(hal_dw1000_inst(2), g_twr_2, sizeof(g_twr_2)/sizeof(twr_frame_t));
     dw1000_mac_append_interface(hal_dw1000_inst(2), &g_cbs[2]);
 #endif
   
