@@ -22,6 +22,5 @@ syscfg.defs:
         description: 'Enable Adaptive timescale adjustments'
         value: 0
         restrictions: CCP_ENABLED
-        restrictions: CCP_PERIOD
-        restrictions: CLOCK_CALIBRATION_ENABLED
+        restrictions: WCS_ENABLED
         restrictions: XTALT_GUARD

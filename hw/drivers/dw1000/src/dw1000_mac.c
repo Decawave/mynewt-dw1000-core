@@ -42,9 +42,6 @@
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_mac.h>
-#if MYNEWT_VAL(ADAPTIVE_TIMESCALE_ENABLED)
-#include <clkcal/clkcal.h>
-#endif
 
 static void dw1000_interrupt_task(void *arg);
 static void dw1000_interrupt_ev_cb(struct os_event *ev);
@@ -487,7 +484,7 @@ inline struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_ins
 {
     os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
-    
+
     inst->control.delay_start_enabled = (dx_time >> 8) > 0;
     if (inst->control.delay_start_enabled)
          dw1000_write_reg(inst, DX_TIME_ID, 1, dx_time >> 8, DX_TIME_LEN-1);
@@ -1375,41 +1372,22 @@ dw1000_get_rssi(struct _dw1000_dev_instance_t * inst)
     return dw1000_calc_rssi(inst, &inst->rxdiag);
 }
 
-#if MYNEWT_VAL(ADAPTIVE_TIMESCALE_ENABLED)
 
 /**
- * With CLOCK_CLAIBRATION enabled all time local clock are adjusted to master clock frequency.The compensated local clock value are offset 
- * from the master clock, but the frequency is adjusted such that any derived values will be the same. CLOCK_CLAIBRATION is usefull for
- * TDOA and Single-Sided TWR applciaitons.
+ * With ADAPTIVE_TIMESCALE_ENABLED all time local clock are adjusted to master clock frequency. 
+ * The compensated local clock value is offset from the master clock, but the frequency is adjusted 
+ * such that any derived time differences values will be the same. WCS_ENABLE && ADAPTIVE_TIMESCALE_ENABLED  
+ * is usefull for TDOA and Single-Sided TWR applciaitons. 
  *
  * @param inst  Pointer to _dw1000_dev_instance_t. 
  * @return time
  */
 
 inline uint64_t dw1000_read_systime(struct _dw1000_dev_instance_t * inst){
-    clkcal_instance_t * clk = inst->ccp->clkcal;
-    assert(clk);
-   
-    uint64_t time = ((uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN)) & 0x0FFFFFFFFFFULL;
-    
-    if (clk->status.valid)
-        time *= inst->ccp->clkcal->skew;
-
-    return time & 0x0FFFFFFFFFFUL;
-}
-
-/**
- * API that provide the raw uncompensated systime.
- *
- * @param inst  Pointer to _dw1000_dev_instance_t.
- *
- * @return time
- */
-
-inline uint64_t _dw1000_read_systime(struct _dw1000_dev_instance_t * inst){
     uint64_t time = ((uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN)) & 0x0FFFFFFFFFFULL;
     return time;
 }
+
 
 /**
  * API to read system time at lower offset address.
@@ -1420,14 +1398,7 @@ inline uint64_t _dw1000_read_systime(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint32_t dw1000_read_systime_lo(struct _dw1000_dev_instance_t * inst){
-    clkcal_instance_t * clk = inst->ccp->clkcal;
-    assert(clk);
-   
-    uint32_t time = (uint32_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, sizeof(uint32_t));
-    
-    if (clk->status.valid)
-        time *= inst->ccp->clkcal->skew;
-
+    uint32_t time = (uint32_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, sizeof(uint32_t));    
     return time;
 }
 
@@ -1440,50 +1411,8 @@ inline uint32_t dw1000_read_systime_lo(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint64_t dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst){
-    clkcal_instance_t * clk = inst->ccp->clkcal;
-    assert(clk);
-
     uint64_t time = (uint64_t)  dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFULL;
-    if (clk->status.valid)
-        time *= inst->ccp->clkcal->skew;
-    return time & 0x0FFFFFFFFFFUL;
-}
-
-/**
- * With CLOCK_CLAIBRATION enabled all time local clock are adjusted to master clock frequency. 
- * The compensated local clock value is offset from the master clock, but the frequency is adjusted 
- * such that any derived values will be the same. CLOCK_CLAIBRATION is usefull for TDOA and 
- * Single-Sided TWR applciaitons. 
- * 
- * _dw1000_read_rxtime is the exception to the rule provide the raw uncompensated 
- * timestamp to the clkcal algorithm.
- *
- * @param inst  Pointer to _dw1000_dev_instance_t.
- *
- * @return Read status of register
- * 
- */
-
-inline uint64_t _dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst){
-    return (uint64_t)  dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFULL;
-}
-
-/**
- * With CLOCK_CLAIBRATION enabled all time local clock are adjusted to master clock frequency. 
- * The compensated local clock value is offset from the master clock, but the frequency is adjusted 
- * such that any derived values will be the same. CLOCK_CLAIBRATION is usefull for TDOA and 
- * Single-Sided TWR applciaitons. 
- * 
- * _dw1000_read_rxtime is the exception to the rule provide the raw uncompensated 
- * timestamp to the clkcal algorithm.
- *
- * @param inst  Pointer to _dw1000_dev_instance_t.
- *
- * @return Read status of register
- */
-
-inline uint64_t _dw1000_read_rxtime_raw(struct _dw1000_dev_instance_t * inst){
-    return (uint64_t)  dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_RAWST_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFULL;
+    return time;
 }
 
 
@@ -1496,12 +1425,7 @@ inline uint64_t _dw1000_read_rxtime_raw(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint32_t dw1000_read_rxtime_lo(struct _dw1000_dev_instance_t * inst){
-    clkcal_instance_t * clk = inst->ccp->clkcal;
-    assert(clk);
-
     uint64_t time = (uint32_t) dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, sizeof(uint32_t));
-    if (clk->status.valid)
-        time *= inst->ccp->clkcal->skew;
     return time;
 }
 
@@ -1515,13 +1439,8 @@ inline uint32_t dw1000_read_rxtime_lo(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint64_t dw1000_read_txtime(struct _dw1000_dev_instance_t * inst){
-    clkcal_instance_t * clk = inst->ccp->clkcal;
-    assert(clk);
-
     uint64_t time = (uint64_t) dw1000_read_reg(inst, TX_TIME_ID, TX_TIME_TX_STAMP_OFFSET, TX_TIME_TX_STAMP_LEN) & 0x0FFFFFFFFFFULL;
-    if (clk->status.valid)
-        time *= inst->ccp->clkcal->skew;
-    return time & 0x0FFFFFFFFFFUL;
+    return time;
 }
 
 /**
@@ -1533,13 +1452,8 @@ inline uint64_t dw1000_read_txtime(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint32_t dw1000_read_txtime_lo(struct _dw1000_dev_instance_t * inst){
-    clkcal_instance_t * clk = inst->ccp->clkcal;
-    assert(clk);
-
     uint32_t time = (uint32_t) dw1000_read_reg(inst, TX_TIME_ID, TX_TIME_TX_STAMP_OFFSET, sizeof(uint32_t));
-    if (clk->status.valid)
-        time *= inst->ccp->clkcal->skew;
     return time;
 }
 
-#endif
+

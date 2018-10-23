@@ -391,6 +391,7 @@ void hal_bsp_init(void)
     assert(rc == 0);
 #endif
 
+
 #if MYNEWT_VAL(DW1000_DEVICE_0)
     dw1000_0 = hal_dw1000_inst(0);
     rc = os_dev_create((struct os_dev *) dw1000_0, "dw1000_0",

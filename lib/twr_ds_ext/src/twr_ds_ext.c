@@ -318,8 +318,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
    
                 if (inst->frame_len == sizeof(ieee_rng_response_frame_t))
                     dw1000_read_rx(inst, frame->array + sizeof(ieee_rng_request_frame_t),  
-                                            sizeof(ieee_rng_request_frame_t), 
-                                            sizeof(ieee_rng_response_frame_t) - sizeof(ieee_rng_request_frame_t)
+                                        sizeof(ieee_rng_request_frame_t), 
+                                        sizeof(ieee_rng_response_frame_t) - sizeof(ieee_rng_request_frame_t)
                     );
                 else 
                     break;
@@ -378,8 +378,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
                 if (inst->frame_len >= sizeof(twr_frame_t))
                     dw1000_read_rx(inst, frame->array + sizeof(ieee_rng_request_frame_t),  
-                                            sizeof(ieee_rng_request_frame_t), 
-                                            sizeof(twr_frame_t) - sizeof(ieee_rng_request_frame_t)
+                                        sizeof(ieee_rng_request_frame_t), 
+                                        sizeof(twr_frame_t) - sizeof(ieee_rng_request_frame_t)
                     );
                 else 
                     break;
@@ -426,8 +426,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 twr_frame_t * frame = inst->rng->frames[(rng->idx)%rng->nframes];
                 if (inst->frame_len >= sizeof(twr_frame_t))
                     dw1000_read_rx(inst, frame->array + sizeof(ieee_rng_request_frame_t),  
-                                            sizeof(ieee_rng_request_frame_t), 
-                                            sizeof(twr_frame_t) - sizeof(ieee_rng_request_frame_t)
+                                        sizeof(ieee_rng_request_frame_t), 
+                                        sizeof(twr_frame_t) - sizeof(ieee_rng_request_frame_t)
                     );     
                 os_sem_release(&rng->sem);
                 dw1000_mac_interface_t * cbs = NULL;

@@ -51,15 +51,26 @@ extern "C" {
 #include <dsp/polyval.h>
 #endif
 
+
+
 //! Timestamps and blink frame format  of ccp frame.
 typedef union {
-//! Frame format of ccp.
-    struct _ccp_frame_t{
-//! Frame format of blink frame.
+    //! Frame format of ccp blink frame.
+    struct _ccp_blink_frame_t{
         struct _ieee_blink_frame_t;          
+        uint32_t transmission_interval;     //!< Transmission interval
         uint64_t transmission_timestamp;    //!< Transmission timestamp
+    }__attribute__((__packed__, aligned(1)));
+    uint8_t array[sizeof(struct _ccp_blink_frame_t)];
+}ccp_blink_frame_t;
+
+//! Timestamps and blink frame format  of ccp frame.
+typedef union {
+//! Frame format of ccp frame.
+    struct _ccp_frame_t{
+        struct _ccp_blink_frame_t;          
         uint64_t reception_timestamp;       //!< Reception timestamp
-        float correction_factor;            //!< Receiver clock correction factor
+        int32_t carrier_integrator;         //!< Receiver carrier_integrator
     }__attribute__((__packed__, aligned(1)));
     uint8_t array[sizeof(struct _ccp_frame_t)];
 }ccp_frame_t;
@@ -92,8 +103,12 @@ typedef struct _dw1000_ccp_instance_t{
 #if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
     struct _clkcal_instance_t * clkcal;         //!< Wireless clock calibration 
 #endif
+#if MYNEWT_VAL(WCS_ENABLED)
+    struct _wcs_instance_t * wcs;               //!< Wireless clock calibration 
+#endif
+
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED)
-    struct _sos_instance_t * xtalt_sos;        //!< Sturcture of xtalt_sos 
+    struct _sos_instance_t * xtalt_sos;         //!< Sturcture of xtalt_sos 
 #endif
     dw1000_mac_interface_t cbs;                     //!< MAC Layer Callbacks
     uint64_t uuid;                                  //!< Clock Master UUID
@@ -101,6 +116,7 @@ typedef struct _dw1000_ccp_instance_t{
     struct os_callout callout_postprocess;          //!< Structure of callout_postprocess
     dw1000_ccp_status_t status;                     //!< DW1000 ccp status parameters
     dw1000_ccp_config_t config;                     //!< DW1000 ccp config parameters
+    uint64_t epoch_master;
     uint64_t epoch;
     uint32_t os_epoch;
     uint32_t period;                                //!< Pulse repetition period
@@ -116,6 +132,7 @@ typedef struct _dw1000_ccp_instance_t{
     ccp_frame_t * frames[];                          //!< Buffers to ccp frames
 }dw1000_ccp_instance_t; 
 
+uint64_t ccp_local_to_master(dw1000_dev_instance_t *inst, uint32_t timestamp_local);
 dw1000_ccp_instance_t * dw1000_ccp_init(dw1000_dev_instance_t * inst,  uint16_t nframes, uint64_t clock_master);
 void dw1000_ccp_free(dw1000_ccp_instance_t * inst);
 void dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, os_event_fn * ccp_postprocess); 

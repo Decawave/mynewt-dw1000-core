@@ -339,16 +339,6 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
             }   
     }      
 
-//    err = os_sem_release(&(inst->rng->sem));  
-//    bool status = false;
- //   if(!(SLIST_EMPTY(&inst->extension_cbs))){
-  //      dw1000_extension_callbacks_t *temp = NULL;
- //       SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next){
- //           if(temp != NULL && temp->reset_cb != NULL)
-//                    status |= temp->reset_cb(inst);
-//        }
-//    }
-
     // Enable/restore interrupts again...
     err = os_mutex_release(&inst->mutex);
     assert(err == OS_OK);

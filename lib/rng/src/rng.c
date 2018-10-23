@@ -56,6 +56,9 @@
 #if MYNEWT_VAL(TWR_SS_ENABLED)
 #include <twr_ss/twr_ss.h>
 #endif
+#if MYNEWT_VAL(WCS_ENABLED)
+#include <wcs/wcs.h>
+#endif
 
 
 //#define DIAGMSG(s,u) printf(s,u)
@@ -184,7 +187,7 @@ dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint
         inst->rng->status.selfmalloc = 1;
         inst->rng->nframes = nframes;
     }
-
+    inst->rng->parent = inst;
     os_error_t err = os_sem_init(&inst->rng->sem, 0x1); 
     assert(err == OS_OK);
 
@@ -487,17 +490,28 @@ dw1000_rng_twr_to_tof(twr_frame_t *fframe, twr_frame_t *nframe){
  */
 float 
 dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng){
+
     float ToF = 0;
     uint64_t T1R, T1r, T2R, T2r;
     int64_t nom,denom;
+
+    dw1000_dev_instance_t * inst = rng->parent;
+  
 
     twr_frame_t * first_frame = rng->frames[(rng->idx-1)%rng->nframes];
     twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
 
     switch(frame->code){
-        case DWT_SS_TWR ... DWT_SS_TWR_END:
+        case DWT_SS_TWR ... DWT_SS_TWR_END:{
+#if MYNEWT_VAL(WCS_ENABLED)
+            wcs_instance_t * wcs = inst->ccp->wcs;
+            float skew = wcs->skew;
+#else
+            float skew = dw1000_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);
+#endif
             ToF = ((first_frame->response_timestamp - first_frame->request_timestamp) 
-                    -  (first_frame->transmission_timestamp - first_frame->reception_timestamp))/2.; 
+                    -  (first_frame->transmission_timestamp - first_frame->reception_timestamp) * (1 - skew))/2.;
+            }
         break;
         case DWT_DS_TWR ... DWT_DS_TWR_END:
         case DWT_DS_TWR_EXT ... DWT_DS_TWR_EXT_END:
@@ -569,9 +583,10 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     
     if (inst->frame_len >= sizeof(ieee_rng_request_frame_t))
         dw1000_read_rx(inst, frame->array, 0, sizeof(ieee_rng_request_frame_t));
-    else 
+    else {
+        rng->idx--;
         return false;
-        
+    }
     inst->rng->code = frame->code;
     switch(frame->code) {
         case DWT_SS_TWR ... DWT_DS_TWR_EXT_END:

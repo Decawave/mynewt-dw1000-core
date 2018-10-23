@@ -72,13 +72,14 @@ typedef enum _dw1000_dev_role_t{
 //! Extension ids for services.
 typedef enum _dw1000_extension_id_t{
     DW1000_CCP=1,                            //!< Clock calibration packet
+    DW1000_WCS,                              //!< Wireless Clock Synchronization services
     DW1000_TDMA,                             //!< TDMA services
-    DW1000_RNG,                              //!< Ranging
-    DW1000_RNG_SS,                           //!< Ranging
-    DW1000_RNG_DS,                           //!< Ranging
-    DW1000_RNG_DS_EXT,                       //!< Ranging
-    DW1000_RANGE,                            //!< Ranging
-    DW1000_N_RANGES,                         //!< N_ranges
+    DW1000_RNG,                              //!< Ranging services
+    DW1000_RNG_SS,                           //!< Ranging services
+    DW1000_RNG_DS,                           //!< Ranging services
+    DW1000_RNG_DS_EXT,                       //!< Ranging services
+    DW1000_RANGE,                            //!< Ranging services
+    DW1000_N_RANGES,                         //!< N_ranges services
     DW1000_LWIP,
     DW1000_PAN,                              //!< Personal area network
     DW1000_PROVISION,                        //!< Provisioning

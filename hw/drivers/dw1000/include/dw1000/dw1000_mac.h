@@ -199,24 +199,13 @@ void dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev
 #define dw1000_get_eui(inst) (uint64_t) dw1000_read_reg(inst, EUI_64_ID, EUI_64_OFFSET, EUI_64_LEN)
 #define dw1000_checkoverrun(inst) (uint16_t) (dw1000_read_reg(inst, SYS_STATUS_ID, 2, sizeof(uint16_t)) & (SYS_STATUS_RXOVRR >> 16))
 
-#if MYNEWT_VAL(ADAPTIVE_TIMESCALE_ENABLED)
+
 uint64_t dw1000_read_systime(struct _dw1000_dev_instance_t * inst);
-uint64_t _dw1000_read_systime(struct _dw1000_dev_instance_t * inst);
 uint32_t dw1000_read_systime_lo(struct _dw1000_dev_instance_t * inst);
 uint64_t dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst);
-uint64_t _dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst);
-uint64_t _dw1000_read_rxtime_raw(struct _dw1000_dev_instance_t * inst);
 uint32_t dw1000_read_rxtime_lo(struct _dw1000_dev_instance_t * inst);
 uint64_t dw1000_read_txtime(struct _dw1000_dev_instance_t * inst);
 uint32_t dw1000_read_txtime_lo(struct _dw1000_dev_instance_t * inst);
-#else
-#define dw1000_read_systime(inst) ((uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN) & 0x0FFFFFFFFFFULL)
-#define dw1000_read_systime_lo(inst) ((uint32_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, sizeof(uint32_t)))
-#define dw1000_read_rxtime(inst) ((uint64_t) dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFULL)
-#define dw1000_read_rxtime_lo(inst) (uint32_t) dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, sizeof(uint32_t))
-#define dw1000_read_txtime(inst) ((uint64_t) dw1000_read_reg(inst, TX_TIME_ID, TX_TIME_TX_STAMP_OFFSET, TX_TIME_TX_STAMP_LEN) & 0x0FFFFFFFFFFULL)
-#define dw1000_read_txtime_lo(inst) (uint32_t) dw1000_read_reg(inst, TX_TIME_ID, TX_TIME_TX_STAMP_OFFSET, sizeof(uint32_t))
-#endif //MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
 
 #define dw1000_get_irqstatus(inst) ((uint8_t) dw1000_read_reg(inst, SYS_STATUS_ID, SYS_STATUS_OFFSET,sizeof(uint8_t)) & (uint8_t) SYS_STATUS_IRQS)
 

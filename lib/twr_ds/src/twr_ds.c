@@ -147,7 +147,7 @@ static bool
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
    if(os_sem_get_count(&inst->rng->sem) == 0){
-        printf("{\"utime\": %lu,\"log\": \"rng_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
+       // printf("{\"utime\": %lu,\"log\": \"rng_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
         os_sem_release(&inst->rng->sem);
         return true;
     }
@@ -164,7 +164,7 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  */
 static bool 
 start_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    printf("{\"utime\": %lu,\"log\": \"start_tx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
+    //printf("{\"utime\": %lu,\"log\": \"start_tx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
     return true;
 }
 
@@ -271,8 +271,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
                 if (inst->frame_len == sizeof(ieee_rng_response_frame_t))
                     dw1000_read_rx(inst, frame->array + sizeof(ieee_rng_request_frame_t),  
-                                            sizeof(ieee_rng_request_frame_t), 
-                                            sizeof(ieee_rng_response_frame_t) - sizeof(ieee_rng_request_frame_t)
+                                        sizeof(ieee_rng_request_frame_t), 
+                                        sizeof(ieee_rng_response_frame_t) - sizeof(ieee_rng_request_frame_t)
                     );
                 else 
                     break;
@@ -327,8 +327,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
                 if (inst->frame_len >= sizeof(twr_frame_final_t))
                     dw1000_read_rx(inst, frame->array + sizeof(ieee_rng_request_frame_t),  
-                                            sizeof(ieee_rng_request_frame_t), 
-                                            sizeof(twr_frame_final_t) - sizeof(ieee_rng_request_frame_t)
+                                        sizeof(ieee_rng_request_frame_t), 
+                                        sizeof(twr_frame_final_t) - sizeof(ieee_rng_request_frame_t)
                     );
                 else 
                     break;
@@ -372,8 +372,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                 if (inst->frame_len >= sizeof(twr_frame_final_t))
                     dw1000_read_rx(inst, frame->array + sizeof(ieee_rng_request_frame_t),  
-                                            sizeof(ieee_rng_request_frame_t), 
-                                            sizeof(twr_frame_final_t) - sizeof(ieee_rng_request_frame_t)
+                                        sizeof(ieee_rng_request_frame_t), 
+                                        sizeof(twr_frame_final_t) - sizeof(ieee_rng_request_frame_t)
                     );                            
                 os_sem_release(&rng->sem);
                 dw1000_mac_interface_t * cbs = NULL;

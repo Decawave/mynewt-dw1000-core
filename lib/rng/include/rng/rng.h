@@ -96,6 +96,7 @@ typedef struct _twr_frame_final_t{
         struct _ieee_rng_response_frame_t;
         uint32_t request_timestamp;     //!< Request transmission timestamp
         uint32_t response_timestamp;    //!< Response reception timestamp
+        int32_t carrier_integrator;     //!< carrier integrator value
 } __attribute__((__packed__, aligned(1))) twr_frame_final_t;
 
 //! TWR data format
@@ -125,7 +126,7 @@ typedef union {
 
 //! Structure of range instance
 typedef struct _dw1000_rng_instance_t{
-    struct _dw1000_dev_instance_t * dev;    //!< Structure of DW1000_dev_instance
+    struct _dw1000_dev_instance_t * parent;    //!< Structure of DW1000_dev_instance
     dw1000_mac_interface_t cbs;             //!< MAC interface
     uint16_t code;                          //!< Range profile code
     struct os_sem sem;                      //!< Structure of semaphores
