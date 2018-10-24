@@ -485,9 +485,8 @@ inline struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_ins
     os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
-    inst->control.delay_start_enabled = (dx_time >> 8) > 0;
-    if (inst->control.delay_start_enabled)
-         dw1000_write_reg(inst, DX_TIME_ID, 1, dx_time >> 8, DX_TIME_LEN-1);
+    inst->control.delay_start_enabled = true;
+    dw1000_write_reg(inst, DX_TIME_ID, 1, dx_time >> 8, DX_TIME_LEN-1);
 
     err = os_mutex_release(&inst->mutex); 
     assert(err == OS_OK); 
@@ -1426,6 +1425,20 @@ inline uint64_t dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst){
 
 inline uint32_t dw1000_read_rxtime_lo(struct _dw1000_dev_instance_t * inst){
     uint64_t time = (uint32_t) dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, sizeof(uint32_t));
+    return time;
+}
+
+/**
+ * API to read transmission time.
+ *
+ * @param inst  Pointer to _dw1000_dev_instance_t. 
+ *
+ * @return time
+ * 
+ */
+
+inline uint64_t dw1000_read_txrawst(struct _dw1000_dev_instance_t * inst){
+    uint64_t time = (uint64_t) dw1000_read_reg(inst, TX_TIME_ID, TX_TIME_TX_RAWST_OFFSET, TX_TIME_TX_STAMP_LEN) & 0x0FFFFFFFFFFULL;
     return time;
 }
 
