@@ -284,7 +284,7 @@ typedef struct _dw1000_dev_instance_t{
     os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]  //!< Stack of the interrupt task 
         __attribute__((aligned(OS_STACK_ALIGNMENT)));
     struct _dw1000_rng_instance_t * rng;     //!< DW1000 rng instance 
-#if MYNEWT_VAL(DW1000_LWIP) 
+#if MYNEWT_VAL(LWIP_ENABLED) 
     struct _dw1000_lwip_instance_t * lwip;   //!< DW1000 lwip instance
 #endif
 
