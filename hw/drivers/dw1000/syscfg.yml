@@ -56,10 +56,6 @@ syscfg.defs:
         description: >
             Ranging period
         value: ((uint32_t){0x3000})
-    PROVISION_PERIOD:
-        description: >
-            Provision packet period (ms)
-        value: ((uint32_t){100})
     OS_LATENCY:
         description: >
             OS Latency Guardband (usec)

@@ -1,6 +1,6 @@
 /*
  * Copyright 2018, Decawave Limited, All Rights Reserved
- * 
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -8,7 +8,7 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
@@ -72,8 +72,8 @@ typedef struct _dw1000_provision_config_t{
    uint32_t tx_holdoff_delay;        //!< Delay between frames, in UWB usec.
    uint16_t rx_timeout_period;       //!< Receive response timeout, in UWB usec
    uint16_t period;                  //!< Provision period
-   uint16_t max_node_count;          //!< Maximum number of nodes   
-   uint16_t postprocess:1;           //!< Postprocess 
+   uint16_t max_node_count;          //!< Maximum number of nodes
+   uint16_t postprocess:1;           //!< Postprocess
 }dw1000_provision_config_t;
 
 //! Provision frame format
@@ -92,21 +92,21 @@ typedef union {
 typedef struct _dw1000_provision_instance_t{
     struct _dw1000_dev_instance_t * parent;            //!< Device instance structure
     struct os_sem sem;                                 //!< os_semphore
-    dw1000_provision_status_t status;                  //!< Provision status  
+    dw1000_provision_status_t status;                  //!< Provision status
+    dw1000_mac_interface_t cbs;                        //!< MAC Layer Callbacks
     dw1000_provision_config_t config;                  //!< Provision configuration parameters
     struct os_callout provision_callout_timer;         //!< Provision_callout_timer
     struct os_callout provision_callout_postprocess;   //!< Provision_callout_postprocess
     uint16_t nframes;                                  //!< Number of buffers defined to store the data
-    uint16_t idx;                                      //!< Indicates number of DW1000 instances  
-    uint16_t num_node_count;                           //!< Maximum numner of node counts 
+    uint16_t idx;                                      //!< Indicates number of DW1000 instances
+    uint16_t num_node_count;                           //!< Maximum numner of node counts
     provision_frame_t frames[2];                       //!< No need to have a variable frame size for provisioning
-    uint16_t dev_addr[];                               //!< Device address 
+    uint16_t dev_addr[];                               //!< Device address
 }dw1000_provision_instance_t;
 
 dw1000_provision_instance_t * dw1000_provision_init(dw1000_dev_instance_t * inst, dw1000_provision_config_t config);
 dw1000_provision_status_t dw1000_provision_request(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 void dw1000_provision_free(dw1000_dev_instance_t * inst);
-void dw1000_provision_set_ext_callbacks(dw1000_dev_instance_t * inst, dw1000_extension_callbacks_t provision_cbs);
 void dw1000_provision_start(dw1000_dev_instance_t * inst);
 void dw1000_provision_stop(dw1000_dev_instance_t * inst);
 void dw1000_provision_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * provision_postprocess);
@@ -115,4 +115,4 @@ dw1000_provision_error_t provision_delete_node(dw1000_dev_instance_t *inst, uint
 #ifdef __cplusplus
 }
 #endif
-#endif /* _DW1001_RNG_H_ */
+#endif /* _DW1000_PROVISIONING_H_*/

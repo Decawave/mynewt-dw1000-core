@@ -288,13 +288,13 @@ typedef struct _dw1000_dev_instance_t{
     struct _dw1000_lwip_instance_t * lwip;   //!< DW1000 lwip instance
 #endif
 
-#if MYNEWT_VAL(DW1000_PROVISION)
+#if MYNEWT_VAL(PROVISION_ENABLED)
     struct _dw1000_provision_instance_t * provision; //!< DW1000 provision instance
 #endif 
 #if MYNEWT_VAL(CCP_ENABLED)
     struct _dw1000_ccp_instance_t * ccp;           //!< DW1000 ccp instance
 #endif
-#if MYNEWT_VAL(DW1000_PAN)
+#if MYNEWT_VAL(PAN_ENABLED)
     struct _dw1000_pan_instance_t * pan;           //!< DW1000 pan instance
 #endif
 #if MYNEWT_VAL(DW1000_RANGE)

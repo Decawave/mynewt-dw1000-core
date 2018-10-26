@@ -1,16 +1,15 @@
-
 syscfg.defs:
-    DW1000_PROVISION:
-        description: 'Enable independent provision module'
-        value: 1
-    DW1000_PAN:
+    PAN_ENABLED:
         description: 'Private Area Network functionality'
         value: 1
         restrictions: PAN_PERIOD
     PAN_PERIOD:
         description: >
-            PAN Discovery Packets Period 
+            PAN Discovery Packets Period
         value: ((uint32_t){0x200000})
-
-        
-        
+    PAN_TX_HOLDOFF:
+        description: 'tx holdoff delay for PAN (usec)'
+        value: ((uint32_t){0x0C00})
+    PAN_RX_TIMEOUT:
+        description: 'TOA timeout delay for PAN (usec)'
+        value: ((uint16_t){0x8000})

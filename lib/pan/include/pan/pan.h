@@ -1,6 +1,6 @@
 /*
  * Copyright 2018, Decawave Limited, All Rights Reserved
- * 
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -8,7 +8,7 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
@@ -42,7 +42,6 @@ extern "C" {
 #include <hal/hal_spi.h>
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_rng.h>
 #include <dw1000/dw1000_ftypes.h>
 
 //! Union of response frame format
@@ -86,7 +85,7 @@ typedef struct _dw1000_pan_config_t{
     uint32_t tx_holdoff_delay;        //!< Delay between frames, in UWB usec.
 }dw1000_pan_config_t;
 
-//! Pan control parameters 
+//! Pan control parameters
 typedef struct _dw1000_pan_control_t{
     uint16_t postprocess:1;           //!< Pan postprocess
 }dw1000_pan_control_t;
@@ -94,6 +93,7 @@ typedef struct _dw1000_pan_control_t{
 //! Pan instance parameters
 typedef struct _dw1000_pan_instance_t{
     struct _dw1000_dev_instance_t * parent;      //!< pointer to _dw1000_dev_instance_t
+    dw1000_mac_interface_t cbs;                  //!< MAC Layer Callbacks
     struct os_sem sem;                           //!< Structure containing os semaphores
     struct os_sem sem_waitforsucess;             //!< Structure containig os semaphores
     dw1000_pan_status_t status;                  //!< DW1000 pan status parameters
@@ -105,12 +105,11 @@ typedef struct _dw1000_pan_instance_t{
     uint16_t nframes;                            //!< Number of buffers defined to store the data
     uint16_t idx;                                //!< Indicates number of DW1000 instances
     pan_frame_t * frames[];                      //!< Buffers to pan frames
-}dw1000_pan_instance_t; 
+}dw1000_pan_instance_t;
 
 dw1000_pan_instance_t * dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config);
 void dw1000_pan_free(dw1000_dev_instance_t * inst);
-void dw1000_pan_set_ext_callbacks(dw1000_dev_instance_t * inst, dw1000_extension_callbacks_t pan_cbs);
-void dw1000_pan_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * postprocess); 
+void dw1000_pan_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * postprocess);
 void dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 void dw1000_pan_stop(dw1000_dev_instance_t * inst);
 
