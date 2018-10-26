@@ -49,8 +49,11 @@
 #if MYNEWT_VAL(RNG_ENABLED)
 #include <rng/rng.h>
 #endif
+
 #if MYNEWT_VAL(PROVISION_ENABLED)
-#include <pan/provision.h>
+
+#include <provision/provision.h>
+
 static dw1000_provision_config_t g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(PROVISION_TX_HOLDOFF),         // Send Time delay in usec.
     .rx_timeout_period = MYNEWT_VAL(PROVISION_RX_TIMEOUT)              // Receive response timeout in usec.
