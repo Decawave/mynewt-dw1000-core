@@ -288,7 +288,7 @@ inline uint64_t wcs_local_to_master(struct _dw1000_dev_instance_t * inst, uint64
  * @return time
  */
 
-inline uint64_t wcs_read_systime_local(struct _dw1000_dev_instance_t * inst){
+inline uint64_t wcs_read_systime(struct _dw1000_dev_instance_t * inst){
     return wcs_dtu_time_adjust(inst, dw1000_read_systime(inst));
 }
 
@@ -300,7 +300,7 @@ inline uint64_t wcs_read_systime_local(struct _dw1000_dev_instance_t * inst){
  * @return time 
  */
 
-inline uint32_t wcs_read_systime_lo_local(struct _dw1000_dev_instance_t * inst){
+inline uint32_t wcs_read_systime_lo(struct _dw1000_dev_instance_t * inst){
     return (uint32_t) (wcs_dtu_time_adjust(inst, dw1000_read_systime_lo(inst)) & 0xFFFFFFFFUL);
 }
 
@@ -313,7 +313,7 @@ inline uint32_t wcs_read_systime_lo_local(struct _dw1000_dev_instance_t * inst){
  */
 
 
-inline uint64_t wcs_read_rxtime_local(struct _dw1000_dev_instance_t * inst){
+inline uint64_t wcs_read_rxtime(struct _dw1000_dev_instance_t * inst){
     return wcs_dtu_time_adjust(inst, dw1000_read_rxtime(inst));
 }
 
@@ -326,7 +326,7 @@ inline uint64_t wcs_read_rxtime_local(struct _dw1000_dev_instance_t * inst){
  * @return time
  */
 
-inline uint32_t wcs_read_rxtime_lo_local(struct _dw1000_dev_instance_t * inst){
+inline uint32_t wcs_read_rxtime_lo(struct _dw1000_dev_instance_t * inst){
     return (uint32_t) (wcs_dtu_time_adjust(inst, dw1000_read_rxtime_lo(inst)) & 0xFFFFFFFFUL);
 }
 
@@ -339,7 +339,7 @@ inline uint32_t wcs_read_rxtime_lo_local(struct _dw1000_dev_instance_t * inst){
  * 
  */
 
-inline uint64_t wcs_read_txtime_local(struct _dw1000_dev_instance_t * inst){
+inline uint64_t wcs_read_txtime(struct _dw1000_dev_instance_t * inst){
     return wcs_dtu_time_adjust(inst, dw1000_read_txtime(inst));
 }
 
@@ -351,7 +351,7 @@ inline uint64_t wcs_read_txtime_local(struct _dw1000_dev_instance_t * inst){
  * @return time
  */
 
-inline uint32_t wcs_read_txtime_lo_local(struct _dw1000_dev_instance_t * inst){
+inline uint32_t wcs_read_txtime_lo(struct _dw1000_dev_instance_t * inst){
     return (uint32_t) (wcs_dtu_time_adjust(inst, dw1000_read_txtime_lo(inst)) & 0xFFFFFFFFUL);
 }
 

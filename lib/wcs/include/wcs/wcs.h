@@ -65,12 +65,12 @@ void wcs_free(wcs_instance_t * inst);
 void wcs_update_cb(struct os_event * ev);
 void wcs_set_postprocess(wcs_instance_t * inst, os_event_fn * postprocess);
 
-uint64_t wcs_read_systime_local(struct _dw1000_dev_instance_t * inst);
-uint32_t wcs_read_systime_lo_local(struct _dw1000_dev_instance_t * inst);
-uint64_t wcs_read_rxtime_local(struct _dw1000_dev_instance_t * inst);
-uint32_t wcs_read_rxtime_lo_local(struct _dw1000_dev_instance_t * inst);
-uint64_t wcs_read_txtime_local(struct _dw1000_dev_instance_t * inst);
-uint32_t wcs_read_txtime_lo_local(struct _dw1000_dev_instance_t * inst);
+uint64_t wcs_read_systime(struct _dw1000_dev_instance_t * inst);
+uint32_t wcs_read_systime_lo(struct _dw1000_dev_instance_t * inst);
+uint64_t wcs_read_rxtime(struct _dw1000_dev_instance_t * inst);
+uint32_t wcs_read_rxtime_lo(struct _dw1000_dev_instance_t * inst);
+uint64_t wcs_read_txtime(struct _dw1000_dev_instance_t * inst);
+uint32_t wcs_read_txtime_lo(struct _dw1000_dev_instance_t * inst);
 uint64_t wcs_read_systime_master(struct _dw1000_dev_instance_t * inst);
 uint32_t wcs_read_systime_lo_master(struct _dw1000_dev_instance_t * inst);
 uint64_t wcs_read_rxtime_master(struct _dw1000_dev_instance_t * inst);
