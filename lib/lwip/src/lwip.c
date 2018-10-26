@@ -37,14 +37,14 @@
 #include <hal/hal_gpio.h>
 #include "bsp/bsp.h"
 
-#if MYNEWT_VAL(DW1000_LWIP)
+#if MYNEWT_VAL(LWIP_ENABLED)
 
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_ftypes.h>
-#include <dw1000/dw1000_lwip.h>
+#include <lwip/lwip.h>
 
 #include <dw1000/dw1000_phy.h>
 #include "sysinit/sysinit.h"
@@ -57,11 +57,11 @@
 #include <lwip/icmp.h>
 #include <lwip/inet_chksum.h>
 
-static bool complete_cb(dw1000_dev_instance_t * inst);
-static bool rx_complete_cb(dw1000_dev_instance_t * inst);
-static bool tx_complete_cb(dw1000_dev_instance_t * inst);
-static bool rx_timeout_cb(dw1000_dev_instance_t * inst);
-static bool rx_error_cb(dw1000_dev_instance_t * inst);
+static bool complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 dw1000_lwip_context_t cntxt;
 /**
  * API to assign the config parameters.
@@ -122,7 +122,6 @@ dw1000_lwip_init(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config, ui
         .rx_complete_cb = rx_complete_cb,
         .rx_timeout_cb = rx_timeout_cb,
         .rx_error_cb = rx_error_cb,
-        .reset_cb = reset_cb,
 		.complete_cb = complete_cb
     };
     dw1000_mac_append_interface(inst, &inst->lwip->cbs);
@@ -190,8 +189,10 @@ lwip_rx_cb(void *arg, struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *addr
     if (pbuf_header( p, -PBUF_IP_HLEN)==0){
     	inst->lwip->payload_ptr = p->payload;
 
+#if 0
 		if(inst->lwip_rx_complete_cb != NULL)
 	    	inst->lwip_rx_complete_cb(inst);
+#endif
     }
     memp_free(MEMP_PBUF_POOL,p);
     return 1;
@@ -203,10 +204,13 @@ lwip_rx_cb(void *arg, struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *addr
  * @param inst  Pointer to dw1000_dev_instance_t.
  * @return void
  */
-void complete_cb(dw1000_dev_instance_t * inst){
+static bool complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+#if 0
         if(inst->lwip->ext_rx_complete_cb != NULL){
         	inst->lwip->ext_rx_complete_cb(inst);
         }
+#endif
+	return false;
 }
 
 /**
@@ -280,9 +284,9 @@ dw1000_lwip_start_rx(dw1000_dev_instance_t * inst, uint16_t timeout){
  * @retrun void 
  */
 static bool 
-rx_complete_cb(dw1000_dev_instance_t * inst){
+rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
-	if(!strncmp((inst->fcntl, "LW",2))
+	if(strncmp((char *)&inst->fctrl, "LW",2))
         return false;
 
     os_error_t err = os_sem_release(&inst->lwip->data_sem);
@@ -308,7 +312,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst){
         inst->lwip->lwip_netif.input((struct pbuf *)data_buf, &inst->lwip->lwip_netif);
 	}
     else
-        dw1000_lwip_start_rx(inst,0x0000);
+		dw1000_lwip_start_rx(inst,0x0000);
 
 	return true;
 }
@@ -320,12 +324,12 @@ rx_complete_cb(dw1000_dev_instance_t * inst){
  * @return void
  */
 static bool 
-tx_complete_cb(dw1000_dev_instance_t * inst){
+tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
-	if(!strncmp((inst->fcntl, "LW",2))
+	if(strncmp((char *)&inst->fctrl, "LW",2))
         return false;
 
-	else if (os_sem_get_count(&inst->lwip->data_sem) == 0){
+	else if (os_sem_get_count(&inst->lwip->sem) == 0){
 		os_error_t err = os_sem_release(&inst->lwip->sem);
 		assert(err == OS_OK);
 		return true;
@@ -339,8 +343,8 @@ tx_complete_cb(dw1000_dev_instance_t * inst){
  * @param inst   pointer to dw1000_dev_instance_t.
  * @param void
  */
-static void 
-rx_timeout_cb(dw1000_dev_instance_t * inst){
+static bool 
+rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
  	if (os_sem_get_count(&inst->lwip->data_sem) == 0){
 		os_error_t err = os_sem_release(&inst->lwip->data_sem);
@@ -357,8 +361,8 @@ rx_timeout_cb(dw1000_dev_instance_t * inst){
  * @param inst   pointer to dw1000_dev_instance_t.
  * @return void
  */
-void 
-rx_error_cb(dw1000_dev_instance_t * inst){
+static bool 
+rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
 	if (os_sem_get_count(&inst->lwip->data_sem) == 0){
 		os_error_t err = os_sem_release(&inst->lwip->data_sem);
