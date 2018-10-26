@@ -167,7 +167,7 @@ void dw1000_tasks_init(struct _dw1000_dev_instance_t * inst);
 struct _dw1000_dev_status_t dw1000_mac_framefilter(struct _dw1000_dev_instance_t * inst, uint16_t enable);
 struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst,  uint8_t *txFrameBytes, uint16_t txBufferOffset, uint16_t txFrameLength);
 struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst);
-struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t delay);
+struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t dx_time);
 struct _dw1000_dev_status_t dw1000_set_wait4resp(struct _dw1000_dev_instance_t * inst, bool enable);
 struct _dw1000_dev_status_t dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay);
 struct _dw1000_dev_status_t dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable);
@@ -199,10 +199,10 @@ void dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev
 #define dw1000_get_eui(inst) (uint64_t) dw1000_read_reg(inst, EUI_64_ID, EUI_64_OFFSET, EUI_64_LEN)
 #define dw1000_checkoverrun(inst) (uint16_t) (dw1000_read_reg(inst, SYS_STATUS_ID, 2, sizeof(uint16_t)) & (SYS_STATUS_RXOVRR >> 16))
 
-
 uint64_t dw1000_read_systime(struct _dw1000_dev_instance_t * inst);
 uint32_t dw1000_read_systime_lo(struct _dw1000_dev_instance_t * inst);
 uint64_t dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst);
+uint64_t dw1000_read_txrawst(struct _dw1000_dev_instance_t * inst);
 uint32_t dw1000_read_rxtime_lo(struct _dw1000_dev_instance_t * inst);
 uint64_t dw1000_read_txtime(struct _dw1000_dev_instance_t * inst);
 uint32_t dw1000_read_txtime_lo(struct _dw1000_dev_instance_t * inst);

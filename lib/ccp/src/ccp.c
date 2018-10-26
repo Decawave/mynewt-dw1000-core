@@ -125,7 +125,6 @@ else if (role == CCP_ROLE_SLAVE)
     os_callout_init(&ccp->event_cb, &ccp->eventq, ccp_slave_timer_ev_cb, (void *) inst);
 else
     assert(0);
-
     os_cputime_timer_relative(&ccp->timer, 0);
 
 }
@@ -417,11 +416,7 @@ ccp_postprocess(struct os_event * ev){
 
     printf("{\"utime\": %lu,\"ccp\":[%llX,%llX],\"clock_offset\": %lu,\"seq_num\" :%d}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),   
-#if  MYNEWT_VAL(DW1000_CCP_MASTER_ENABLED) 
         frame->transmission_timestamp,
-#else
-        frame->reception_timestamp,       
-#endif
         delta,
         *(uint32_t *)&clock_offset,
         frame->seq_num
@@ -483,7 +478,8 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
     
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED) 
     if (ccp->config.fs_xtalt_autotune && ccp->status.valid){  
-        float fs_xtalt_offset = sosfilt(ccp->xtalt_sos,  1e6 * ((float)tracking_offset) / tracking_interval, g_fs_xtalt_b, g_fs_xtalt_a);  
+//        float fs_xtalt_offset = sosfilt(ccp->xtalt_sos,  1e6 * ((float)tracking_offset) / tracking_interval, g_fs_xtalt_b, g_fs_xtalt_a);  
+        float fs_xtalt_offset = sosfilt(ccp->xtalt_sos,  -1e6 * ccp->wcs->skew, g_fs_xtalt_b, g_fs_xtalt_a);
         if(ccp->xtalt_sos->clk % FS_XTALT_SETTLINGTIME == 0){ 
             int8_t reg = dw1000_read_reg(inst, FS_CTRL_ID, FS_XTALT_OFFSET, sizeof(uint8_t)) & FS_XTALT_MASK;
             int8_t trim_code = (int8_t) roundf(polyval(g_fs_xtalt_poly, fs_xtalt_offset, sizeof(g_fs_xtalt_poly)/sizeof(float)) 
@@ -522,7 +518,7 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
     ccp->os_epoch = os_cputime_get32();
-    ccp->epoch = frame->transmission_timestamp = dw1000_read_txtime(inst); 
+    ccp->epoch = frame->transmission_timestamp = dw1000_read_txrawst(inst); 
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp_tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));    
     if (ccp->status.timer_enabled){
@@ -628,8 +624,10 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 
     ccp_frame_t * previous_frame = ccp->frames[(ccp->idx-1)%ccp->nframes];
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes];
-
-    frame->transmission_timestamp = previous_frame->transmission_timestamp + ((uint64_t)inst->ccp->period << 16);
+    frame->transmission_timestamp = (previous_frame->transmission_timestamp 
+                                    + ((uint64_t)inst->ccp->period << 16)
+                                    ) & 0x0FFFFFFFFFFUL;
+  
     frame->seq_num = previous_frame->seq_num + 1;
     frame->long_address = inst->ccp->uuid;
     frame->transmission_interval = inst->ccp->period;
@@ -638,14 +636,13 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     dw1000_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0, true); 
     dw1000_set_wait4resp(inst, false);    
     dw1000_set_delay_start(inst, frame->transmission_timestamp); 
-    //printf("ccp->epoch = %llX, frame->transmission_timestamp= %llX, systime = %llX\n", ccp->epoch , frame->transmission_timestamp, dw1000_read_systime(inst));
-
+ 
     ccp->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
     if (ccp->status.start_tx_error){
         // Half Period Delay Warning occured try for the next epoch
         // Use seq_num to detect this on receiver size
         DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_send:start_tx_error\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
-        previous_frame->transmission_timestamp = frame->transmission_timestamp + ((uint64_t)inst->ccp->period << 16);
+        previous_frame->transmission_timestamp = (frame->transmission_timestamp + ((uint64_t)inst->ccp->period << 16)) & 0x0FFFFFFFFFFUL;
         ccp->idx++;
         os_sem_release(&ccp->sem);
     }else if(mode == DWT_BLOCKING){
