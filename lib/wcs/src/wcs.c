@@ -144,7 +144,7 @@ void wcs_update_cb(struct os_event * ev){
     DIAGMSG("{\"utime\": %lu,\"msg\": \"clkcal_update_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
     if(ccp->status.valid){ 
-        ccp_frame_t * previous_frame = ccp->frames[(ccp->idx-1)%ccp->nframes]; 
+        ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx-1)%ccp->nframes]; 
         ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
         inst->nT = (int16_t)frame->seq_num - (int16_t)previous_frame->seq_num;
         inst->nT = (inst->nT < 0)?0x100+inst->nT:inst->nT;
@@ -199,7 +199,7 @@ wcs_postprocess(struct os_event * ev){
 
     wcs_instance_t * inst = (wcs_instance_t *)ev->ev_arg;
     dw1000_ccp_instance_t * ccp = (void *)inst->ccp; 
-    ccp_frame_t * previous_frame = ccp->frames[(ccp->idx-1)%ccp->nframes]; 
+    ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx-1)%ccp->nframes]; 
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
     wcs_instance_t * wcs = ccp->wcs;
     timescale_states_t * states = (timescale_states_t *) (wcs->timescale->eke->x); 

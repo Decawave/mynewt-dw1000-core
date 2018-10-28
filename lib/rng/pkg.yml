@@ -33,4 +33,4 @@ pkg.lflags:
     - "-lm"
     
 pkg.init:
-    rng_pkg_init: 400
+    rng_pkg_init: 410

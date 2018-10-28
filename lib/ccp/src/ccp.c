@@ -276,8 +276,9 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
         
         for (uint16_t i = 0; i < ccp->nframes; i++){
             ccp->frames[i] = (ccp_frame_t *) malloc(sizeof(ccp_frame_t)); 
+            assert(ccp->frames[i]);
             memcpy(ccp->frames[i], &ccp_default, sizeof(ccp_frame_t));
-            ccp->frames[i]->seq_num = i;
+            ccp->frames[i]->seq_num = 0;
         }
 
         ccp->parent = inst;
@@ -402,7 +403,7 @@ ccp_postprocess(struct os_event * ev){
     assert(ev->ev_arg != NULL);
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)ev->ev_arg;
 
-    ccp_frame_t * previous_frame = ccp->frames[(ccp->idx-1)%ccp->nframes]; 
+    ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx-1)%ccp->nframes]; 
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
 
     float clock_offset = dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator);
@@ -621,10 +622,11 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 
     os_error_t err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
-
-    ccp_frame_t * previous_frame = ccp->frames[(ccp->idx-1)%ccp->nframes];
+    
+    ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx - 1)%ccp->nframes];
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes];
-    frame->transmission_timestamp = (previous_frame->transmission_timestamp 
+    
+    frame->transmission_timestamp = (previous_frame->transmission_timestamp
                                     + ((uint64_t)inst->ccp->period << 16)
                                     ) & 0x0FFFFFFFFFFUL;
   

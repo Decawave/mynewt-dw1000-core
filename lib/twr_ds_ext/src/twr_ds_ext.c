@@ -373,7 +373,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR_T2\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
                 dw1000_rng_instance_t * rng = inst->rng; 
-                twr_frame_t * previous_frame = rng->frames[(rng->idx-1)%rng->nframes];
+                twr_frame_t * previous_frame = rng->frames[(uint16_t)(rng->idx-1)%rng->nframes];
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
 
                 if (inst->frame_len >= sizeof(twr_frame_t))
