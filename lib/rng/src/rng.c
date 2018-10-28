@@ -498,7 +498,7 @@ dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng){
     dw1000_dev_instance_t * inst = rng->parent;
   
 
-    twr_frame_t * first_frame = rng->frames[(rng->idx-1)%rng->nframes];
+    twr_frame_t * first_frame = rng->frames[(uint16_t)(rng->idx-1)%rng->nframes];
     twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
 
     switch(frame->code){

@@ -43,9 +43,6 @@ extern "C" {
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_ftypes.h>
-#if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
-#include <clkcal/clkcal.h>    
-#endif
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED)
 #include <dsp/sosfilt.h>
 #include <dsp/polyval.h>
@@ -100,9 +97,6 @@ typedef enum _dw1000_ccp_role_t{
 //! ccp instance parameters.
 typedef struct _dw1000_ccp_instance_t{
     struct _dw1000_dev_instance_t * parent;     //!< Pointer to _dw1000_dev_instance_t
-#if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
-    struct _clkcal_instance_t * clkcal;         //!< Wireless clock calibration 
-#endif
 #if MYNEWT_VAL(WCS_ENABLED)
     struct _wcs_instance_t * wcs;               //!< Wireless clock calibration 
 #endif
