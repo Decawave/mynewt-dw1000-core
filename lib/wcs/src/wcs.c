@@ -58,6 +58,7 @@
 #define DIAGMSG(s,u)
 #endif
 
+#undef TICTOC
 
 static void wcs_postprocess(struct os_event * ev);
 
@@ -166,7 +167,15 @@ void wcs_update_cb(struct os_event * ev){
             double q[] = {MYNEWT_VAL(TIMESCALE_QVAR) * 1.0, MYNEWT_VAL(TIMESCALE_QVAR) * 0.1, MYNEWT_VAL(TIMESCALE_QVAR) * 0.01};
             double r[] = {MYNEWT_VAL(TIMESCALE_RVAR), MYNEWT_VAL(TIMESCALE_RVAR) * 1e10};
             double z[] = {(double)inst->local_epoch, skew};
+#ifdef TICTOC
+            uint32_t tic = os_cputime_ticks_to_usecs(os_cputime_get32());
+#endif
             inst->status.valid  = timescale_main(timescale, z, q, r, T).valid;
+#ifdef TICTOC
+            uint32_t toc = os_cputime_ticks_to_usecs(os_cputime_get32());
+            printf("{\"utime\": %lu,\"slot_timer_cb_tic_toc\": %ld}\n",toc, (toc - tic));
+#endif
+
         } 
         if (inst->status.valid)
             inst->skew = 1.0l - states->skew * (1e-6l/((uint64_t)1 << 16));
