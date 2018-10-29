@@ -47,6 +47,10 @@
 #include <rng/rng.h>
 #include <dsp/polyval.h>
 
+#if MYNEWT_VAL(WCS_ENABLED)
+#include <wcs/wcs.h>
+#endif
+
 //#define DIAGMSG(s,u) printf(s,u)
 #ifndef DIAGMSG
 #define DIAGMSG(s,u)
@@ -216,15 +220,23 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes]; // Frame already read within loader layers.
-                
+#if MYNEWT_VAL(WCS_ENABLED)                
+                uint64_t request_timestamp = wcs_read_rxtime(inst);             
+#else
                 uint64_t request_timestamp = dw1000_read_rxtime(inst);  
+#endif
                 uint64_t response_tx_delay = request_timestamp + ((uint64_t) g_config.tx_holdoff_delay << 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
-        
+            
                 frame->reception_timestamp = request_timestamp;
                 frame->transmission_timestamp = response_timestamp;
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
+#if MYNEWT_VAL(WCS_ENABLED)
+                frame->carrier_integrator  = 0.0l;
+#else
+                frame->carrier_integrator  = -dw1000_read_carrier_integrator(inst);
+#endif
                 frame->code = DWT_SS_TWR_T1;
 
                 dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_rng_response_frame_t));
@@ -258,11 +270,20 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 else 
                     break;
 
+#if MYNEWT_VAL(WCS_ENABLED) 
+                frame->request_timestamp = wcs_read_txtime_lo(inst);   // This corresponds to when the original request was actually sent
+                frame->response_timestamp = wcs_read_rxtime_lo(inst);  // This corresponds to the response just received   
+#else
                 frame->request_timestamp = dw1000_read_txtime_lo(inst);   // This corresponds to when the original request was actually sent
-                frame->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received            
+                frame->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received   
+#endif         
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
+#if MYNEWT_VAL(WCS_ENABLED)
+                frame->carrier_integrator  = 0.0l;
+#else
                 frame->carrier_integrator  = dw1000_read_carrier_integrator(inst);
+#endif
                 frame->code = DWT_SS_TWR_FINAL;
                     
                 // Transmit timestamp final report
@@ -280,9 +301,9 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                             if (cbs!=NULL && cbs->complete_cb) 
                                 if(cbs->complete_cb(inst, cbs)) continue;        
                             }   
-                        }    
-                    }   
+                        }       
                     os_sem_release(&rng->sem);  
+                    }
                     break;
                 }
         case  DWT_SS_TWR_FINAL:
@@ -299,12 +320,11 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                                         sizeof(twr_frame_final_t) - sizeof(ieee_rng_request_frame_t)
                     );
                 os_sem_release(&rng->sem);
-
                 dw1000_mac_interface_t * cbs = NULL;
                 if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
                     SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
                     if (cbs!=NULL && cbs->complete_cb) 
-                        if(cbs->complete_cb(inst, cbs)) break;        
+                        if(cbs->complete_cb(inst, cbs)) continue;        
                     }   
                 }       
                 break;

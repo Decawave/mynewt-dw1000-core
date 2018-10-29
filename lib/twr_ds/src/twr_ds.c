@@ -240,6 +240,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->transmission_timestamp =  response_timestamp;
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
+#if MYNEWT_VAL(WCS_ENABLED)
+                frame->carrier_integrator  = 0.0l;
+#else
+                frame->carrier_integrator  = -dw1000_read_carrier_integrator(inst);
+#endif
                 frame->code = DWT_DS_TWR_T1;
 
                 dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_rng_response_frame_t));
@@ -283,6 +288,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                       
                 uint16_t src_address = frame->src_address; 
                 uint8_t seq_num = frame->seq_num; 
+#if MYNEWT_VAL(WCS_ENABLED)
+                frame->carrier_integrator  = 0.0l;
+#else
+                frame->carrier_integrator  = dw1000_read_carrier_integrator(inst);
+#endif
 
                 // Note:: Advance to next frame 
                 frame = next_frame;                            
@@ -339,6 +349,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received            
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
+#if MYNEWT_VAL(WCS_ENABLED)
+                frame->carrier_integrator  = 0.0l;
+#else
+                frame->carrier_integrator  = - dw1000_read_carrier_integrator(inst);
+#endif
                 frame->code = DWT_DS_TWR_FINAL;
 
                 // Transmit timestamp final report
@@ -361,7 +376,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     os_sem_release(&rng->sem);  
                     }   
                     break;
-            }
+                }
         case  DWT_DS_TWR_FINAL:
             {
                 // This code executes on the device that initialed the original request, and has now receive the final response timestamp. 
