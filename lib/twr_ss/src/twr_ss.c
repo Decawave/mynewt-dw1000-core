@@ -68,14 +68,12 @@ static dw1000_mac_interface_t g_cbs[] = {
 #if MYNEWT_VAL(DW1000_DEVICE_1)
         [1] = {
             .id = DW1000_RNG_SS,
-            .tx_complete_cb = tx_complete_cb,
             .rx_complete_cb = rx_complete_cb
         },
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
         [2] = {
             .id = DW1000_RNG_SS,
-            .tx_complete_cb = tx_complete_cb,
             .rx_complete_cb = rx_complete_cb
         }
 #endif

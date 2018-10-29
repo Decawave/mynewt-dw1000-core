@@ -105,7 +105,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .rxauto_enable = 1         //!< On error re-enable
             },
             .spi_sem = 0,
-            .task_prio = 5
+            .task_prio = 0x10
     },
     #if  MYNEWT_VAL(DW1000_DEVICE_1)
     [1] = {
@@ -159,7 +159,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .rxauto_enable = 1,
             },
             .spi_sem = 0,
-            .interrupt_task_prio = 6
+            .task_prio = 0x20
     },
     #if  MYNEWT_VAL(DW1000_DEVICE_2)
     [2] = {
@@ -213,7 +213,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .rxauto_enable = 1
             },
             .spi_sem = 0
-            .interrupt_task_prio = 7
+            .task_prio = 0x30
     }
     #endif
     #endif
