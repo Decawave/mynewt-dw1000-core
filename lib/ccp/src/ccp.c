@@ -495,7 +495,6 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
         }
     }
 #endif      
-
     os_sem_release(&inst->ccp->sem);
     return false;
 }
@@ -532,6 +531,7 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
     // Postprocess for tx_complete is used to generate tdma events on the clock master node. 
     if (ccp->config.postprocess && ccp->status.valid) 
         os_eventq_put(os_eventq_dflt_get(), &ccp->callout_postprocess.c_ev);
+
     os_sem_release(&inst->ccp->sem);  
     return false;
 }
@@ -548,7 +548,7 @@ ccp_rx_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * c
     if(os_sem_get_count(&inst->ccp->sem) == 0){
         printf("{\"utime\": %lu,\"log\": \"ccp_rx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
         os_sem_release(&inst->ccp->sem);  
-	    return true;
+	    return false;
     }
     return false;
 }
@@ -582,7 +582,7 @@ ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t *
     if (os_sem_get_count(&inst->ccp->sem) == 0){
         printf("{\"utime\": %lu,\"log\": \"ccp_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
         os_sem_release(&inst->ccp->sem);  
-        return true;   
+        return false;   
     }
     return false;
 }

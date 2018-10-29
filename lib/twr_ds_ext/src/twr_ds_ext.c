@@ -191,7 +191,7 @@ static bool
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
    if(os_sem_get_count(&inst->rng->sem) == 0){
-        printf("{\"utime\": %lu,\"log\": \"rng_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
+        //printf("{\"utime\": %lu,\"log\": \"rng_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
         os_sem_release(&inst->rng->sem);
         return true;
     }
@@ -335,6 +335,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->dst_address = src_address;
                 frame->src_address = inst->my_short_address;
                 frame->seq_num = seq_num + 1;
+#if MYNEWT_VAL(WCS_ENABLED)
+                frame->carrier_integrator  = 0.0l;
+#else
+                frame->carrier_integrator  = dw1000_read_carrier_integrator(inst);
+#endif
                 frame->code = DWT_DS_TWR_EXT_T2;
 
                 uint64_t request_timestamp = dw1000_read_rxtime(inst);  
