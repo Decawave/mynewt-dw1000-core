@@ -262,6 +262,8 @@ pan_postprocess(struct os_event * ev){
 static bool
 pan_rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
      if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
+        dw1000_dev_control_t control = inst->control_rx_context;
+        dw1000_restart_rx(inst, control);
         return false;
     }else if(inst->pan->status.valid == true){
         dw1000_dev_control_t control = inst->control_rx_context;
@@ -385,7 +387,7 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     os_error_t err = os_sem_pend(&inst->pan->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
-    printf("pan_blink\n");
+    //printf("pan_blink\n");
 
     dw1000_pan_instance_t * pan = inst->pan;
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
