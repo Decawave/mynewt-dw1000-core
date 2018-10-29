@@ -88,6 +88,7 @@ static dw1000_rng_config_t g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(TWR_DS_EXT_TX_HOLDOFF),         // Send Time delay in usec.
     .rx_timeout_period = MYNEWT_VAL(TWR_DS_EXT_RX_TIMEOUT)       // Receive response timeout in usec
 };
+
 /**
  * API to initialise the rng_ss package.
  *
