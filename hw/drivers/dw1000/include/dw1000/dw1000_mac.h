@@ -162,6 +162,7 @@ typedef struct _dw1000_mac_deviceentcnts_t{
 
 void dw1000_mac_remove_interface(dw1000_dev_instance_t * inst, dw1000_extension_id_t id);
 void dw1000_mac_append_interface(dw1000_dev_instance_t* inst, dw1000_mac_interface_t * cbs);
+dw1000_mac_interface_t * dw1000_mac_get_interface(dw1000_dev_instance_t * inst, dw1000_extension_id_t id);
 struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_config_t * config);
 void dw1000_tasks_init(struct _dw1000_dev_instance_t * inst);
 struct _dw1000_dev_status_t dw1000_mac_framefilter(struct _dw1000_dev_instance_t * inst, uint16_t enable);

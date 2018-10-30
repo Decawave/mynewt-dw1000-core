@@ -1121,6 +1121,25 @@ dw1000_mac_remove_interface(dw1000_dev_instance_t * inst, dw1000_extension_id_t 
     if(cbs != NULL && cbs->status.selfmalloc)
         free(cbs); 
 }
+
+/**
+ * API to return specified callbacks.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param id    ID of the service.
+ * @return dw1000_mac_interface_t * cbs
+ */
+dw1000_mac_interface_t *
+dw1000_mac_get_interface(dw1000_dev_instance_t * inst, dw1000_extension_id_t id){
+    dw1000_mac_interface_t * cbs = NULL;
+    SLIST_FOREACH(cbs, &inst->interface_cbs, next){
+        if(cbs->id == id){
+            break;
+        }
+    }
+    return cbs;
+}
+ 
  
 
 

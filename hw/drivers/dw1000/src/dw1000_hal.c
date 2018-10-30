@@ -365,6 +365,11 @@ hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cm
             err = os_sem_pend(&inst->spi_nb_sem, OS_TIMEOUT_NEVER);
             assert(err == OS_OK);
         }
+   
+        rc = hal_spi_disable(inst->spi_num);
+        rc |= hal_spi_set_txrx_cb(inst->spi_num, hal_dw1000_spi_txrx_cb, (void*)inst);   
+        rc |= hal_spi_enable(inst->spi_num);
+        assert(rc == OS_OK);
 
         rc = hal_spi_txrx_noblock(inst->spi_num, (void*)tx_buffer,
                                   (void*)buffer+offset, bytes_to_read);
@@ -455,6 +460,11 @@ hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * c
             err = os_sem_pend(&inst->spi_nb_sem, OS_TIMEOUT_NEVER);
             assert(err == OS_OK);
         }
+
+        rc = hal_spi_disable(inst->spi_num);
+        rc |= hal_spi_set_txrx_cb(inst->spi_num, hal_dw1000_spi_txrx_cb, (void*)inst);   
+        rc |= hal_spi_enable(inst->spi_num);
+        assert(rc == OS_OK);
 
         rc = hal_spi_txrx_noblock(inst->spi_num, (void*)buffer+offset,
                                   0, bytes_to_write);

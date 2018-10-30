@@ -53,6 +53,7 @@ extern "C" {
 typedef struct _dw1000_rng_config_t{
    uint32_t rx_holdoff_delay;        //!< Delay between frames, in UWB usec.
    uint32_t tx_holdoff_delay;        //!< Delay between frames, in UWB usec.
+   uint32_t tx_guard_delay;          //!< Delay between frames from subsequent nodes, in UWB sec.
    uint16_t rx_timeout_period;       //!< Receive response timeout, in UWB usec.
    uint16_t bias_correction:1;       //!< Enable range bias correction polynomial
 }dw1000_rng_config_t;

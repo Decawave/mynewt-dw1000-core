@@ -103,10 +103,8 @@ pan_timer_ev_cb(struct os_event *ev) {
     assert(ev->ev_arg != NULL);
 
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
-    dw1000_pan_instance_t * pan = inst->pan;
 
-    if(dw1000_pan_blink(inst, DWT_BLOCKING).start_tx_error)
-        os_callout_reset(&pan->pan_callout_timer, OS_TICKS_PER_SEC * (pan->period - MYNEWT_VAL(OS_LATENCY)) * 1e-6);
+    dw1000_pan_blink(inst, DWT_BLOCKING);
 }
 
 /**
