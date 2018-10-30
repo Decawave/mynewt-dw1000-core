@@ -335,7 +335,7 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
     if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
             SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
             if (cbs!=NULL && cbs->reset_cb) 
-                cbs->reset_cb(inst,cbs);         
+                if(cbs->reset_cb(inst,cbs)) continue;          
             }   
     }      
 

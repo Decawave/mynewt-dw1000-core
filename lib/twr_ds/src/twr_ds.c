@@ -71,12 +71,20 @@ static dw1000_mac_interface_t g_cbs[] = {
         [1] = {
             .id = DW1000_RNG_DS,
             .rx_complete_cb = rx_complete_cb,
+            .rx_timeout_cb = rx_timeout_cb,
+            .rx_error_cb = rx_error_cb,
+            .reset_cb = reset_cb,
+            .start_tx_error_cb = start_tx_error_cb
         },
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
         [2] = {
             .id = DW1000_RNG_DS,
             .rx_complete_cb = rx_complete_cb,
+            .rx_timeout_cb = rx_timeout_cb,
+            .rx_error_cb = rx_error_cb,
+            .reset_cb = reset_cb,
+            .start_tx_error_cb = start_tx_error_cb
         }
 #endif
 };

@@ -91,7 +91,8 @@ typedef struct _dw1000_ccp_config_t{
 //! Extension ids for services.
 typedef enum _dw1000_ccp_role_t{
     CCP_ROLE_MASTER,                        //!< Clock calibration packet master mode
-    CCP_ROLE_SLAVE                          //!< Clock calibration packet slave mode
+    CCP_ROLE_SLAVE,                          //!< Clock calibration packet slave mode
+    CCP_ROLE_RELAY                          //!< Clock calibration packet master replay mode
 }dw1000_ccp_role_t;
 
 //! ccp instance parameters.

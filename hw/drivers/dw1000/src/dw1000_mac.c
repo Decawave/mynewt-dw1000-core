@@ -1111,6 +1111,7 @@ dw1000_mac_append_interface(dw1000_dev_instance_t* inst, dw1000_mac_interface_t 
  */
 void
 dw1000_mac_remove_interface(dw1000_dev_instance_t * inst, dw1000_extension_id_t id){
+    assert(inst);
     dw1000_mac_interface_t * cbs = NULL;
     SLIST_FOREACH(cbs, &inst->interface_cbs, next){
         if(cbs->id == id){
@@ -1131,6 +1132,7 @@ dw1000_mac_remove_interface(dw1000_dev_instance_t * inst, dw1000_extension_id_t 
  */
 dw1000_mac_interface_t *
 dw1000_mac_get_interface(dw1000_dev_instance_t * inst, dw1000_extension_id_t id){
+    assert(inst);
     dw1000_mac_interface_t * cbs = NULL;
     SLIST_FOREACH(cbs, &inst->interface_cbs, next){
         if(cbs->id == id){

@@ -283,7 +283,7 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
 
         ccp->parent = inst;
         inst->ccp = ccp;
-        ccp->task_prio = inst->task_prio + 1;
+        ccp->task_prio = inst->task_prio + 0x10;
 
     }else{
         assert(inst->ccp->nframes == nframes);
@@ -415,7 +415,7 @@ ccp_postprocess(struct os_event * ev){
 #endif
     delta = delta & ((uint64_t)1<<63)?delta & 0xFFFFFFFFFF :delta;
 
-    printf("{\"utime\": %lu,\"ccp\":[%llX,%llX],\"clock_offset\": %lu,\"seq_num\" :%d}\n", 
+    printf("{\"utime\": %lu,\"ccp\":[\"%llX\",\"%llX\"],\"clock_offset\": %lu,\"seq_num\" :%d}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),   
         frame->transmission_timestamp,
         delta,
@@ -546,7 +546,7 @@ static bool
 ccp_rx_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(os_sem_get_count(&inst->ccp->sem) == 0){
-        printf("{\"utime\": %lu,\"log\": \"ccp_rx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
+        //printf("{\"utime\": %lu,\"log\": \"ccp_rx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
         os_sem_release(&inst->ccp->sem);  
 	    return false;
     }
@@ -563,7 +563,7 @@ static bool
 ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
-        printf("{\"utime\": %lu,\"log\": \"ccp_tx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
+        //printf("{\"utime\": %lu,\"log\": \"ccp_tx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
         os_sem_release(&inst->ccp->sem);  
         return true;    
     }
@@ -580,7 +580,7 @@ static bool
 ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if (os_sem_get_count(&inst->ccp->sem) == 0){
-        printf("{\"utime\": %lu,\"log\": \"ccp_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
+        //printf("{\"utime\": %lu,\"log\": \"ccp_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
         os_sem_release(&inst->ccp->sem);  
         return false;   
     }

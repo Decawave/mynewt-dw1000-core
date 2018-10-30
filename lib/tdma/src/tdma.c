@@ -89,7 +89,7 @@ tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots
         tdma->period = period; 
         tdma->parent = inst;
 #ifdef TDMA_TASKS_ENABLE
-        tdma->task_prio = inst->task_prio + 2;
+        tdma->task_prio = inst->task_prio + 0x11;
 #endif
         inst->tdma = tdma;
     }else{

@@ -68,6 +68,7 @@
 
 static bool rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 
 /*
 % From APS011 Table 2 
@@ -126,6 +127,16 @@ static twr_frame_t g_twr_1[] = {
         .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
         .PANID = MYNEWT_VAL(PANID),                 // PAN ID (0xDECA)
         .code = DWT_TWR_INVALID,
+    },
+    [2] = {
+        .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
+        .PANID = MYNEWT_VAL(PANID),                 // PAN ID (0xDECA)
+        .code = DWT_TWR_INVALID
+    },
+    [3] = {
+        .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
+        .PANID = MYNEWT_VAL(PANID),                 // PAN ID (0xDECA)
+        .code = DWT_TWR_INVALID,
     }
 };
 #endif
@@ -148,20 +159,23 @@ static dw1000_mac_interface_t g_cbs[] = {
         [0] = {
             .id = DW1000_RNG,
             .rx_complete_cb = rx_complete_cb,
-            .tx_complete_cb = tx_complete_cb
+            .tx_complete_cb = tx_complete_cb,
+            .reset_cb = reset_cb
         },
 #if MYNEWT_VAL(DW1000_DEVICE_1)
         [1] = {
             .id = DW1000_RNG,
             .rx_complete_cb = rx_complete_cb,
-            .tx_complete_cb = tx_complete_cb
+            .tx_complete_cb = tx_complete_cb,
+            .reset_cb = reset_cb
         },
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
         [2] = {
             .id = DW1000_RNG,
             .rx_complete_cb = rx_complete_cb,
-            .tx_complete_cb = tx_complete_cb
+            .tx_complete_cb = tx_complete_cb,
+            .reset_cb = reset_cb
         }
 #endif
 };
@@ -561,6 +575,24 @@ dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code){
 }
 
 
+/** 
+ * API for reset_cb of rng interface
+ *
+ * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @return true on sucess
+ */
+static bool
+reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+
+    if(os_sem_get_count(&inst->rng->sem) == 0){
+        os_error_t err = os_sem_release(&inst->rng->sem);  
+        assert(err == OS_OK);
+        return true;
+    }
+    else 
+       return false;
+
+}
 
 /**
  * API for receive complete callback.
