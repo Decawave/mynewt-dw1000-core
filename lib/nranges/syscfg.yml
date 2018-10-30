@@ -1,0 +1,21 @@
+syscfg.defs:
+      NRNG_ENABLED:
+        description: 'Enable toplevel ranging services'
+        value: 1
+      NRNG_TX_HOLDOFF:
+        description: 'tx holdoff delay for TWR (usec)'
+        value: ((uint32_t){0x0300})
+      NRNG_RX_TIMEOUT:
+        description: 'TOA timeout delay for TWR (usec)'
+        value: ((uint16_t){0x10})
+      NRNG_TX_GUARD_DELAY:
+        value: ((uint16_t){0x200})
+      NRNG_DEVICE_TYPE:
+        description: 'Initiator(tag = 0) or Responder(node = 1)'
+        value: 1
+      NRNG_NNODES:
+        description: 'Number of nodes to be ranged with'
+        value: 1
+      NRNG_NFRAMES:
+        description: 'Number of frames expected'
+        value: 2
