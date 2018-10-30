@@ -153,10 +153,14 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 }, 
                 .rxdiag_enable = 1,
                 .dblbuffon_enabled = 1,
-#if MYNEWT_VAL(DW1000_MAC_FILTERING)
-                .framefilter_enabled = 1,
+#if MYNEWT_VAL(DW1000_BIAS_CORRECTION_ENABLED)
+                .bias_correction_enable = 1,
 #endif
-                .rxauto_enable = 1,
+                .LDE_enable = 1,
+                .LDO_enable = 0,
+                .sleep_enable = 1,
+                .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
+                .rxauto_enable = 1         //!< On error re-enable
             },
             .spi_sem = 0,
             .task_prio = 0x20
