@@ -88,15 +88,37 @@ void dw1000_gpio_config_leds(struct _dw1000_dev_instance_t * inst, dw1000_led_mo
 /**
  * API to set GPIO direction as an input (1) or output (0).
  *
- * @param gpioNum       This is the GPIO to configure - see GxM0... GxM8 in the deca_regs.h file.
- * @param direction     This sets the GPIO direction - see GxP0... GxP8 in the deca_regs.h file.
+ * @param gpioNum       This is the GPIO to configure (0-8)
+ * @param direction     This sets the GPIO direction input (1) or output (0)
  *
  * @return void
  */
-void dw1000_gpio_set_direction(struct _dw1000_dev_instance_t * inst, uint32_t gpioNum, uint32_t direction)
+void
+dw1000_gpio_set_direction(struct _dw1000_dev_instance_t * inst,
+                          uint8_t gpioNum, uint8_t direction)
 {
+    uint32_t reg;
     uint8_t buf[GPIO_DIR_LEN];
-    uint32_t command = direction | gpioNum;
+    uint32_t command;
+
+    assert(gpioNum < 9);
+
+    /* Activate GPIO Clock if not already active */
+    reg = dw1000_read_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET, sizeof(uint32_t));
+    if ((reg&PMSC_CTRL0_GPCE) == 0 || (reg&PMSC_CTRL0_GPRN) == 0) {
+        dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_OFFSET,
+                         reg|PMSC_CTRL0_GPCE|PMSC_CTRL0_GPRN,
+                         sizeof(uint32_t));
+    }
+
+    /* See GxM1-8 and GxP1-8 in dw1000_regs.h. Mask | Value */
+    if (gpioNum < 4) {
+        command = (1 << (gpioNum+4)) | (direction << gpioNum);
+    } else if (gpioNum<8) {
+        command = (1 << (gpioNum+4+8)) | (direction << (gpioNum+8));
+    } else {
+        command = (1 << (gpioNum+4+12)) | (direction << (gpioNum+12));
+    }
 
     buf[0] = command & 0xff;
     buf[1] = (command >> 8) & 0xff;
@@ -108,16 +130,29 @@ void dw1000_gpio_set_direction(struct _dw1000_dev_instance_t * inst, uint32_t gp
 /**
  * API to set GPIO value as (1) or (0) only applies if the GPIO is configured as output.
  *
- * @param gpioNum    This is the GPIO to configure - see GxM0... GxM8 in the deca_regs.h file.
- * @param value      This sets the GPIO value - see GDP0... GDP8 in the deca_regs.h file.
+ * @param inst  pointer to _dw1000_dev_instance_t.
+ * @param gpioNum       This is the GPIO to configure (0-8)
+ * @param value         This sets the GPIO HIGH (1) or LOW (0)
  *
  * @return void
  */
-void dw1000_gpio_set_value(struct _dw1000_dev_instance_t * inst, uint32_t gpioNum, uint32_t value)
+void
+dw1000_gpio_set_value(struct _dw1000_dev_instance_t * inst,
+                      uint8_t gpioNum, uint8_t value)
 {
     uint8_t buf[GPIO_DOUT_LEN];
-    uint32_t command = value | gpioNum;
+    uint32_t command;
 
+    assert(gpioNum < 9);
+
+    /* See GxM1-8 and GxP1-8 in dw1000_regs.h. Mask | Value */
+    if (gpioNum < 4) {
+        command = (1 << (gpioNum+4)) | (value << gpioNum);
+    } else if (gpioNum<8) {
+        command = (1 << (gpioNum+4+8)) | (value << (gpioNum+8));
+    } else {
+        command = (1 << (gpioNum+4+12)) | (value << (gpioNum+12));
+    }
     buf[0] = command & 0xff;
     buf[1] = (command >> 8) & 0xff;
     buf[2] = (command >> 16) & 0xff;
@@ -125,3 +160,79 @@ void dw1000_gpio_set_value(struct _dw1000_dev_instance_t * inst, uint32_t gpioNu
     dw1000_write(inst, GPIO_CTRL_ID, GPIO_DOUT_OFFSET, buf, GPIO_DOUT_LEN);
 }
 
+/**
+ * API to get GPIO value from an GPIO pin configured as input
+ *
+ * @param inst  pointer to _dw1000_dev_instance_t.
+ *
+ * @return uint32_t     The raw state on the pins currently
+ */
+uint32_t
+dw1000_gpio_get_values(struct _dw1000_dev_instance_t * inst)
+{
+    uint32_t reg;
+    reg = (uint32_t) dw1000_read_reg(inst, GPIO_CTRL_ID, GPIO_RAW_OFFSET,
+                                     sizeof(uint32_t));
+    return (reg&GPIO_RAW_MASK);
+}
+
+/**
+ * API that matches Mynewt's hal_gpio_init_out
+ *
+ * @param inst  pointer to _dw1000_dev_instance_t.
+ * @param gpioNum       This is the GPIO to configure (0-7)
+ * @param val           This sets the GPIO HIGH (1) or LOW (0)
+ *
+ * @return void
+ */
+void
+dw1000_gpio_init_out(struct _dw1000_dev_instance_t * inst, int gpioNum, int val)
+{
+    dw1000_gpio_set_direction(inst, gpioNum, 0);
+    dw1000_gpio_set_value(inst, gpioNum, val);
+}
+
+/**
+ * API that matches Mynewt's hal_gpio_init_in
+ *
+ * @param inst  pointer to _dw1000_dev_instance_t.
+ * @param gpioNum       This is the GPIO to configure (0-7)
+ * @param val           This sets the GPIO HIGH (1) or LOW (0)
+ *
+ * @return void
+ */
+void
+dw1000_gpio_init_in(struct _dw1000_dev_instance_t * inst, int gpioNum)
+{
+    dw1000_gpio_set_direction(inst, gpioNum, 1);
+}
+
+/**
+ * API to get GPIO value from an GPIO pin configured as input
+ *
+ * @param inst  pointer to _dw1000_dev_instance_t.
+ * @param gpioNum       This is the GPIO to read from (0-8)
+ *
+ * @return int          The raw state on the pin currently
+ */
+int
+dw1000_gpio_read(struct _dw1000_dev_instance_t * inst, uint8_t gpioNum)
+{
+    uint32_t reg = dw1000_gpio_get_values(inst);
+    return (reg&(1<<gpioNum));
+}
+
+/**
+ * API that matches Mynewt's hal_gpio_write
+ *
+ * @param inst  pointer to _dw1000_dev_instance_t.
+ * @param gpioNum       This is the GPIO to configure (0-7)
+ * @param val           This sets the GPIO HIGH (1) or LOW (0)
+ *
+ * @return void
+ */
+void
+dw1000_gpio_write(struct _dw1000_dev_instance_t * inst, int gpioNum, int val)
+{
+    dw1000_gpio_set_value(inst, gpioNum, val);
+}
