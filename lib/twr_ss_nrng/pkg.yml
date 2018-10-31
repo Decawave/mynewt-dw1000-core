@@ -36,4 +36,4 @@ pkg.deps:
     - "@mynewt-dw1000-core/lib/nranges"
 
 pkg.init:
-    twr_ss_nrng_pkg_init: 410
+    twr_ss_nrng_pkg_init: 414

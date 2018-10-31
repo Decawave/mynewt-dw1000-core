@@ -120,6 +120,7 @@ typedef struct _dw1000_nrng_instance_t{
     dw1000_rng_status_t status;
     dw1000_rng_control_t control;
     dw1000_rng_config_t config;
+    dw1000_nrng_modes_t code;
     struct os_sem sem;
     uint16_t idx;
     struct _dw1000_dev_instance_t * parent;
