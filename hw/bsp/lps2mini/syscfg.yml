@@ -97,6 +97,9 @@ syscfg.defs.BLE_LP_CLOCK:
     TIMER_5:
         value: 1
 
+syscfg.vals.DW1000_DEVICE_0:
+    SPI_0_MASTER: 1
+
 syscfg.vals:
     CONFIG_FCB_FLASH_AREA: FLASH_AREA_NFFS
     REBOOT_LOG_FLASH_AREA: FLASH_AREA_REBOOT_LOG
