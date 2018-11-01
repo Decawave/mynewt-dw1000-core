@@ -39,6 +39,11 @@
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_phy.h>
 
+#define DIAGMSG(s,u) printf(s,u)
+#ifndef DIAGMSG
+#define DIAGMSG(s,u)
+#endif
+
 /**
  * API to initialize the dw1000 instances.
  *
@@ -47,13 +52,17 @@
  */
 void dw1000_pkg_init(void){
 
+
 #if MYNEWT_VAL(DW1000_DEVICE_0)
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_pkg_init_0\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_dev_config(hal_dw1000_inst(0));
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_pkg_init_1\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_dev_config(hal_dw1000_inst(1));
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_pkg_init_2\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_dev_config(hal_dw1000_inst(2));
 #endif
 
