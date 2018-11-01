@@ -332,7 +332,9 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
     dw1000_sync_rxbufptrs(inst);
     dw1000_write_reg(inst, SYS_MASK_ID, 0, mask, sizeof(uint32_t)); // Restore mask to what it was
 
-    err = os_sem_release(&(inst->rng->sem));  
+    if (inst->rng) {
+        err = os_sem_release(&(inst->rng->sem));
+    }
     bool status = false;
     if(!(SLIST_EMPTY(&inst->extension_cbs))){
         dw1000_extension_callbacks_t *temp = NULL;
