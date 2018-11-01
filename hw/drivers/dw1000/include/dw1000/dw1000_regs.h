@@ -1305,6 +1305,7 @@ extern "C" {
 #define PMSC_CTRL0_TXCLKS_OFF   0x00000030UL    /* Force TX clock off */
 #define PMSC_CTRL0_FACE         0x00000040UL    /* Force Accumulator Clock Enable */
 #define PMSC_CTRL0_GPCE         0x00010000UL    /* GPIO clock enable */
+#define PMSC_CTRL0_GPRN         0x00020000UL    /* GPIO reset (NOT), active low */
 #define PMSC_CTRL0_GPDCE        0x00040000UL    /* GPIO De-bounce Clock Enable */
 #define PMSC_CTRL0_KHZCLEN      0x00800000UL    /* Kilohertz Clock Enable */
 #define PMSC_CTRL0_PLL2_SEQ_EN  0x01000000UL    /* Enable PLL2 on/off sequencing by SNIFF mode */
