@@ -407,8 +407,6 @@ ccp_postprocess(struct os_event * ev){
     ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx-1)%ccp->nframes]; 
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
 
-    float clock_offset = dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator);
-
 #if  MYNEWT_VAL(DW1000_CCP_MASTER_ENABLED) 
     uint64_t delta = (frame->transmission_timestamp - previous_frame->transmission_timestamp);
 #else 
@@ -417,6 +415,8 @@ ccp_postprocess(struct os_event * ev){
     delta = delta & ((uint64_t)1<<63)?delta & 0xFFFFFFFFFF :delta;
 
 #if MYNEWT_VAL(DW1000_CCP_VERBOSE)
+    float clock_offset = dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator);
+
     printf("{\"utime\": %lu,\"ccp\":[\"%llX\",\"%llX\"],\"clock_offset\": %lu,\"seq_num\" :%d}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),   
         frame->transmission_timestamp,
