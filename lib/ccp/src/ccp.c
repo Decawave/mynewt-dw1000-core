@@ -661,15 +661,13 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
         err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
         os_sem_release(&ccp->sem);
     }
-
-    
-   return ccp->status;
+    return ccp->status;
 }
 
 /*! 
  * @fn dw1000_ccp_receive(dw1000_dev_instance_t * inst, dw1000_ccp_modes_t mode)
  *
- * @brief Explisit entry function for reveicing a ccp frame.  
+ * @brief Explicit entry function for reveicing a ccp frame.
  *
  * input parameters
  * @param inst - dw1000_dev_instance_t * 
