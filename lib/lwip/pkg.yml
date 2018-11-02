@@ -18,22 +18,16 @@
 #
 
 pkg.name: lib/lwip
-pkg.description: TWR ranging using range method.
+pkg.description: lwIP library
 pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
     - dw1000
-    - uwb
+    - lwIP
 
 pkg.cflags:
     - "-std=gnu99"
     - "-fms-extensions"
-
-pkg.deps:
-    - "@mynewt-dw1000-core/hw/drivers/dw1000"
-
-pkg.deps.DW1000_LWIP:
-    - "@mynewt-dw1000-core/net/ip/lwip_base"
 
 pkg.lflags:
     - "-lm"

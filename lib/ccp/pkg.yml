@@ -32,3 +32,5 @@ pkg.cflags:
 pkg.lflags:
     - "-lm"
     
+pkg.init:
+    ccp_pkg_init: 410

@@ -91,25 +91,6 @@ extern "C" {
 #define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_5     (-1.0e6/6489.6e6)
 #define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_7     (-1.0e6/6489.6e6)
 
-//! Start transmit mode parameters.
-typedef enum _dw1000_start_tx_modes_t {
-    DWT_START_TX_IMMEDIATE = 1 << 0,     //!< Set up immediate tx to transmit immediately
-    DWT_START_TX_DELAYED = 1 << 1,       //!< Set up delayed TX, if "late" error triggers, then the TX will be enabled immediately
-    DWT_RESPONSE_EXPECTED = 1 << 2       //!< Set up if any response is expected for the transmission sent
-}dw1000_start_tx_modes_t;
-
-//! Start receive mode parameters.
-typedef enum _dw1000_start_rx_modes_t {
-    DWT_START_RX_IMMEDIATE = 1 << 0, //!< Set up immediate RX, to start receiving immediatley 
-    DWT_START_RX_DELAYED = 1 << 1,  //!< Set up delayed RX, if "late" error triggers, then the RX will be enabled immediately.
-    DWT_IDLE_ON_DLY_ERR = 1 << 2,   //!< If delayed RX failed due to "late" error then if this 
-                                    //!< flag is set the RX will not be re-enabled immediately, and device will be in IDLE when function exits.
-    DWT_NO_SYNC_PTRS = 1 << 3       //!< Do not try to sync IC side and Host side buffer pointers when enabling RX. This is used to perform 
-                            
-                                    //!< manual rx re-enabling when receiving a frame in double buffer mode.
-}dw1000_start_rx_modes_t;
-
-
 //! Frame filtering configuration options.
 #define DWT_FF_NOTYPE_EN            0x000           //!< No frame types allowed (FF disabled)
 #define DWT_FF_COORD_EN             0x002           //!< Behave as coordinator (can receive frames with no dest address (PAN ID has to match))
@@ -178,20 +159,16 @@ typedef struct _dw1000_mac_deviceentcnts_t{
     uint16_t TXW ;                    //!< Power up warn
 } dw1000_mac_deviceentcnts_t ;
 
-//! Mac layer callbacks.
-typedef struct _dw1000_mac_callbacks_t{
-    void (* tx_complete_cb) (struct _dw1000_dev_instance_t *);  //!< Transmit complete callback
-    void (* rx_complete_cb) (struct _dw1000_dev_instance_t *);  //!< Receive complete callback
-    void (* rx_timeout_cb) (struct _dw1000_dev_instance_t *);   //!< Receive timeout callback
-    void (* rx_error_cb) (struct _dw1000_dev_instance_t *);     //!< Receive error callback
-}dw1000_mac_callbacks_t;
 
+void dw1000_mac_remove_interface(dw1000_dev_instance_t * inst, dw1000_extension_id_t id);
+void dw1000_mac_append_interface(dw1000_dev_instance_t* inst, dw1000_mac_interface_t * cbs);
+dw1000_mac_interface_t * dw1000_mac_get_interface(dw1000_dev_instance_t * inst, dw1000_extension_id_t id);
 struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_config_t * config);
 void dw1000_tasks_init(struct _dw1000_dev_instance_t * inst);
 struct _dw1000_dev_status_t dw1000_mac_framefilter(struct _dw1000_dev_instance_t * inst, uint16_t enable);
 struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst,  uint8_t *txFrameBytes, uint16_t txBufferOffset, uint16_t txFrameLength);
 struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst);
-struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t delay);
+struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t dx_time);
 struct _dw1000_dev_status_t dw1000_set_wait4resp(struct _dw1000_dev_instance_t * inst, bool enable);
 struct _dw1000_dev_status_t dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay);
 struct _dw1000_dev_status_t dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable);
@@ -223,24 +200,13 @@ void dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev
 #define dw1000_get_eui(inst) (uint64_t) dw1000_read_reg(inst, EUI_64_ID, EUI_64_OFFSET, EUI_64_LEN)
 #define dw1000_checkoverrun(inst) (uint16_t) (dw1000_read_reg(inst, SYS_STATUS_ID, 2, sizeof(uint16_t)) & (SYS_STATUS_RXOVRR >> 16))
 
-#if MYNEWT_VAL(ADAPTIVE_TIMESCALE_ENABLED)
 uint64_t dw1000_read_systime(struct _dw1000_dev_instance_t * inst);
-uint64_t _dw1000_read_systime(struct _dw1000_dev_instance_t * inst);
 uint32_t dw1000_read_systime_lo(struct _dw1000_dev_instance_t * inst);
 uint64_t dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst);
-uint64_t _dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst);
-uint64_t _dw1000_read_rxtime_raw(struct _dw1000_dev_instance_t * inst);
+uint64_t dw1000_read_txrawst(struct _dw1000_dev_instance_t * inst);
 uint32_t dw1000_read_rxtime_lo(struct _dw1000_dev_instance_t * inst);
 uint64_t dw1000_read_txtime(struct _dw1000_dev_instance_t * inst);
 uint32_t dw1000_read_txtime_lo(struct _dw1000_dev_instance_t * inst);
-#else
-#define dw1000_read_systime(inst) ((uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN) & 0x0FFFFFFFFFFULL)
-#define dw1000_read_systime_lo(inst) ((uint32_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, sizeof(uint32_t)))
-#define dw1000_read_rxtime(inst) ((uint64_t) dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFULL)
-#define dw1000_read_rxtime_lo(inst) (uint32_t) dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_RX_STAMP_OFFSET, sizeof(uint32_t))
-#define dw1000_read_txtime(inst) ((uint64_t) dw1000_read_reg(inst, TX_TIME_ID, TX_TIME_TX_STAMP_OFFSET, TX_TIME_TX_STAMP_LEN) & 0x0FFFFFFFFFFULL)
-#define dw1000_read_txtime_lo(inst) (uint32_t) dw1000_read_reg(inst, TX_TIME_ID, TX_TIME_TX_STAMP_OFFSET, sizeof(uint32_t))
-#endif //MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
 
 #define dw1000_get_irqstatus(inst) ((uint8_t) dw1000_read_reg(inst, SYS_STATUS_ID, SYS_STATUS_OFFSET,sizeof(uint8_t)) & (uint8_t) SYS_STATUS_IRQS)
 
