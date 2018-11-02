@@ -323,9 +323,9 @@ hal_bsp_read_battery_voltage()
 
     hal_gpio_write(EXTON_PIN, 1);
 
-    rc = adc_chan_config(dev, BATT_V_PIN, (void*)&channel_config);
+    rc = adc_chan_config(dev, 0, (void*)&channel_config);
     assert(rc==0);
-    adc_read_channel(dev, BATT_V_PIN, &result);
+    adc_read_channel(dev, 0, &result);
     hal_gpio_write(EXTON_PIN, 0);
 
     os_dev_close((struct os_dev*)dev);

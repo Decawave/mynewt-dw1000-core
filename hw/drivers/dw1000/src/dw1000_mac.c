@@ -1477,4 +1477,54 @@ inline uint32_t dw1000_read_txtime_lo(struct _dw1000_dev_instance_t * inst){
     return time;
 }
 
+#endif
 
+/**
+ * @fn dwt_configcwmode()
+ *
+ * @brief this function sets the DW1000 to transmit cw signal at specific channel
+ * frequency.
+ *
+ * input parameters:
+ * @param chan - specifies the operating channel (e.g. 1, 2, 3, 4, 5, 6 or 7)
+ *
+ */
+void
+dw1000_configcwmode(struct _dw1000_dev_instance_t * inst, uint8_t chan)
+{
+    if ((chan < 1) || (chan > 7) || (6 == chan))
+    {
+        assert(0);
+    }
+
+    /* disable TX/RX RF block sequencing (needed for cw frame mode) */
+    dw1000_phy_sysclk_XTAL(inst);
+    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL1_OFFSET,
+                     PMSC_CTRL1_PKTSEQ_DISABLE, sizeof(uint16_t));
+
+    /* config RF pll (for a given channel) */
+    /* configure PLL2/RF PLL block CFG */
+    dw1000_write_reg(inst, FS_CTRL_ID, FS_PLLCFG_OFFSET,
+                     fs_pll_cfg[chan_idx[chan]], sizeof(uint32_t));
+
+    /* Configure RF TX blocks (for specified channel and prf) */
+    /* Config RF TX control */
+    dw1000_write_reg(inst, RF_CONF_ID, RF_TXCTRL_OFFSET,
+                     tx_config[chan_idx[chan]], sizeof(uint32_t));
+
+    /* enable RF PLL */
+    dw1000_write_reg(inst, RF_CONF_ID, 0, RF_CONF_TXPLLPOWEN_MASK, sizeof(uint32_t));
+    dw1000_write_reg(inst, RF_CONF_ID, 0, RF_CONF_TXALLEN_MASK, sizeof(uint32_t));
+
+    /* configure TX clocks */
+    dw1000_write_reg(inst, PMSC_ID,PMSC_CTRL0_OFFSET, 0x22, 1);
+    dw1000_write_reg(inst, PMSC_ID, 0x1, 0x07, 1);
+
+    /* disable fine grain TX seq */
+    dw1000_write_reg(inst, PMSC_ID, PMSC_TXFINESEQ_OFFSET,
+                     PMSC_TXFINESEQ_DISABLE, sizeof(uint16_t));
+
+    /* configure CW mode */
+    dw1000_write_reg(inst, TX_CAL_ID, TC_PGTEST_OFFSET,
+                     TC_PGTEST_CW, TC_PGTEST_LEN);
+}
