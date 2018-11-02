@@ -206,13 +206,13 @@ wcs_postprocess(struct os_event * ev){
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
 
+#if MYNEWT_VAL(WCS_VERBOSE)
     wcs_instance_t * inst = (wcs_instance_t *)ev->ev_arg;
     dw1000_ccp_instance_t * ccp = (void *)inst->ccp; 
     ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx-1)%ccp->nframes]; 
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
     wcs_instance_t * wcs = ccp->wcs;
     timescale_states_t * states = (timescale_states_t *) (wcs->timescale->eke->x); 
-    
     printf("{\"utime\": %lu,\"wcs\": [%llu,%llu,%llu],\"skew\": %llu,\"nT\": [%d,%d,%d]}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),
         (uint64_t) frame->transmission_timestamp,
@@ -223,6 +223,7 @@ wcs_postprocess(struct os_event * ev){
         frame->seq_num,
         previous_frame->seq_num
     );
+#endif
 }
 
 
