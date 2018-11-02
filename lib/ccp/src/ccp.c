@@ -389,7 +389,6 @@ dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, os_event_fn * postproce
     inst->config.postprocess = true;
 }
 
-
 #if !MYNEWT_VAL(WCS_ENABLED)
 /** 
  * API that serves as a place holder for timescale processing and by default is creates json string for the event.
@@ -406,14 +405,15 @@ ccp_postprocess(struct os_event * ev){
     ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx-1)%ccp->nframes]; 
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
 
-    float clock_offset = dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator);
-
 #if  MYNEWT_VAL(DW1000_CCP_MASTER_ENABLED) 
     uint64_t delta = (frame->transmission_timestamp - previous_frame->transmission_timestamp);
 #else 
     uint64_t delta = (frame->reception_timestamp - previous_frame->reception_timestamp);
 #endif
     delta = delta & ((uint64_t)1<<63)?delta & 0xFFFFFFFFFF :delta;
+
+#if MYNEWT_VAL(DW1000_CCP_VERBOSE)
+    float clock_offset = dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator);
 
     printf("{\"utime\": %lu,\"ccp\":[\"%llX\",\"%llX\"],\"clock_offset\": %lu,\"seq_num\" :%d}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),   
@@ -422,12 +422,12 @@ ccp_postprocess(struct os_event * ev){
         *(uint32_t *)&clock_offset,
         frame->seq_num
     );
+#endif
     dw1000_dev_instance_t* inst = ccp->parent;
     inst->control = inst->control_rx_context;
     dw1000_restart_rx(inst,inst->control_rx_context);
 }
 #endif
-
 
 
 /** 
@@ -443,8 +443,8 @@ ccp_postprocess(struct os_event * ev){
  * @return void 
  */
 static bool 
-ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-
+ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
     if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64)
         return false;
 
@@ -462,6 +462,13 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
         return false;
     }
     ccp->os_epoch = os_cputime_get32();
+
+    /* Prevent the rx_timeout_cb from releasing the semaphore before
+     * this function is finished if double buffring is enabled */
+    if (inst->config.dblbuffon_enabled) {
+        dw1000_set_rx_timeout(inst, 1000);
+    }
+
     DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp_rx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_read_rx(inst, frame->array + sizeof(ieee_blink_frame_t), 
                 sizeof(ieee_blink_frame_t), 
@@ -651,15 +658,13 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
         err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
         os_sem_release(&ccp->sem);
     }
-
-    
-   return ccp->status;
+    return ccp->status;
 }
 
 /*! 
  * @fn dw1000_ccp_receive(dw1000_dev_instance_t * inst, dw1000_ccp_modes_t mode)
  *
- * @brief Explisit entry function for reveicing a ccp frame.  
+ * @brief Explicit entry function for reveicing a ccp frame.
  *
  * input parameters
  * @param inst - dw1000_dev_instance_t * 

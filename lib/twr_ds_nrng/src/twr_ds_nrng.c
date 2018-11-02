@@ -55,7 +55,6 @@
 static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
 static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
 static bool rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
-static bool reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
 static void send_final_msg(dw1000_dev_instance_t * inst , nrng_frame_t * frame);
 
 static dw1000_mac_interface_t g_cbs = {
@@ -63,7 +62,6 @@ static dw1000_mac_interface_t g_cbs = {
             .rx_complete_cb = rx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
             .rx_error_cb = rx_error_cb,
-            .reset_cb = reset_cb,
 };
 
 
@@ -81,7 +79,7 @@ static dw1000_rng_config_t g_config = {
 
 void twr_ds_nrng_pkg_init(void){
 
-    printf("{\"utime\": %lu,\"msg\": \"twr_ds_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    printf("{\"utime\": %lu,\"msg\": \"twr_ds_nrng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs);
 }
 
@@ -124,20 +122,28 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     if(inst->fctrl != FCNTL_IEEE_N_RANGES_16){
         return false;
     }
-    assert(inst->nrng);
-    dw1000_nrng_instance_t * nrng = inst->nrng;
-    if(nrng->device_type == DWT_NRNG_INITIATOR){ // only if the device is an initiator
-        if(nrng->resp_count && nrng->t1_final_flag){
-            nrng_frame_t * frame = nrng->frames[nrng->idx][SECOND_FRAME_IDX];
-            send_final_msg(inst,frame);
-        }else{
-            os_error_t err = os_sem_release(&nrng->sem);
-            assert(err == OS_OK);
-            nrng->resp_count = 0;
-        }
-    }else{
-        os_error_t err = os_sem_release(&nrng->sem);
-        assert(err == OS_OK);
+    switch(inst->nrng->code){
+        case DWT_DS_TWR_NRNG ... DWT_DS_TWR_NRNG_FINAL:
+        {
+          assert(inst->nrng);
+          dw1000_nrng_instance_t * nrng = inst->nrng;
+          if(nrng->device_type == DWT_NRNG_INITIATOR){ // only if the device is an initiator
+              if(nrng->resp_count && nrng->t1_final_flag){
+                  nrng_frame_t * frame = nrng->frames[nrng->idx][SECOND_FRAME_IDX];
+                  send_final_msg(inst,frame);
+              }else{
+                  os_error_t err = os_sem_release(&nrng->sem);
+                  assert(err == OS_OK);
+                  nrng->resp_count = 0;
+              }
+          }else{
+              os_error_t err = os_sem_release(&nrng->sem);
+              assert(err == OS_OK);
+          }
+            break;
+      }
+      default:
+        return false;
     }
     return true;
 }
@@ -162,27 +168,6 @@ rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     return true;
 }
 
-/** 
- * API for reset_cb of rng interface
- *
- * @param inst   Pointer to dw1000_dev_instance_t. 
- * @return true on sucess
- */
-static bool
-reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    printf("Inside %s in %s \n",__FILE__, __func__);
-
-    if(os_sem_get_count(&inst->nrng->sem) == 0){
-        os_error_t err = os_sem_release(&inst->nrng->sem);  
-        assert(err == OS_OK);
-        return true;
-    }
-    else 
-       return false;
-
-}
-
-
 /**
  * API for receive complete callback.
  *
@@ -198,218 +183,203 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     }
     assert(inst->nrng);
     dw1000_nrng_instance_t * nrng = inst->nrng;
-    uint16_t code, dst_address;
     dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, DWT_DS_TWR_NRNG);
-    dw1000_dev_control_t control = inst->control_rx_context;
-    dw1000_read_rx(inst, (uint8_t *) &code, offsetof(nrng_request_frame_t,code), sizeof(uint16_t));
-    dw1000_read_rx(inst, (uint8_t *) &dst_address, offsetof(nrng_request_frame_t,dst_address), sizeof(uint16_t));
-    // For initiator: Only Allow the packets with dst_address matching with device my_short_address.
-    // For responder: Only Allow the packets with dst_address matching with device my_short_address/Broadcast address.
-    if (dst_address != inst->my_short_address && (dst_address != BROADCAST_ADDRESS || nrng->device_type == DWT_NRNG_INITIATOR) ){
-        inst->control = inst->control_rx_context;
-        dw1000_restart_rx(inst, control);
-        return true;
-    }
-
-    switch (code){
-        case DWT_DS_TWR_NRNG ... DWT_DS_TWR_NRNG_FINAL:
-            switch(code){
-                case DWT_DS_TWR_NRNG:
-                    {
-                        // This code executes on the device that is responding to a original request
-                        // printf("nrng\n");
-                        nrng_frame_t * frame = nrng->frames[(++nrng->idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
-                        uint16_t slot_id = inst->slot_id;
-                        if (inst->frame_len >= sizeof(nrng_request_frame_t))
-                            dw1000_read_rx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
-                        else
-                            break;
-                        if(!(slot_id >= frame->start_slot_id && slot_id <= frame->end_slot_id))
-                            break;
-
-                        uint64_t request_timestamp = dw1000_read_rxtime(inst);
-                        uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay
-                                    + (uint64_t)((slot_id-1) * ((uint64_t)config->tx_guard_delay
-                                            + (dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)))))))<< 16);
-                        uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
-
-                        frame->reception_timestamp =  request_timestamp;
-                        frame->transmission_timestamp =  response_timestamp;
-
-                        frame->dst_address = frame->src_address;
-                        frame->src_address = inst->my_short_address;
-                        frame->code = DWT_DS_TWR_NRNG_T1;
-                        frame->slot_id = inst->slot_id;
-#if MYNEWT_VAL(WCS_ENABLED)
-                        frame->carrier_integrator  = 0.0l;
-#else
-                        frame->carrier_integrator  = -dw1000_read_carrier_integrator(inst);
-#endif
-                        dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_response_frame_t));
-                        dw1000_write_tx_fctrl(inst, sizeof(nrng_response_frame_t), 0, true);
-                        dw1000_set_wait4resp(inst, true);
-                        uint16_t timeout =config->tx_holdoff_delay + (frame->end_slot_id - slot_id + 1) * (dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t))
-                                + config->rx_timeout_period
-                                + config->tx_guard_delay);
-                        dw1000_set_rx_timeout(inst, timeout);
-                        dw1000_set_delay_start(inst, response_tx_delay);
-                        if (dw1000_start_tx(inst).start_tx_error)
-                            os_sem_release(&nrng->sem);
-                        break;
-                    }
-                case DWT_DS_TWR_NRNG_T1:
-                    {
-                        // This code executes on the device that initiated the original request, and is now preparing the next series of timestamps
-                        // The 1st frame now contains a local copy of the initial first side of the double sided scheme.
-                        // printf("T1 \n");
-                        nrng->resp_count++;
-                        uint16_t nnodes = nrng->nnodes;
-                        uint16_t idx = 0;
-                        nrng_frame_t temp_frame;
-                        if (inst->frame_len >= sizeof(nrng_response_frame_t))
-                            dw1000_read_rx(inst, temp_frame.array, 0, sizeof(nrng_response_frame_t));
-                        else
-                            break;
-                        uint16_t node_slot_id = temp_frame.slot_id;
-                        uint16_t end_slot_id = temp_frame.end_slot_id;
-                        nrng->idx = idx = node_slot_id - temp_frame.start_slot_id;
-
-                        if(idx < (nnodes-1)){
-                            // At the start the device will wait for the entire nnodes to respond as a single huge timeout.
-                            // When a node respond we will recalculate the remaining time to be waited for as (total_nodes - completed_nodes)*(phy_duaration + guard_delay)
-                            uint16_t phy_duration = dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t));
-                            uint16_t timeout = ((phy_duration + dw1000_dwt_usecs_to_usecs(config->tx_guard_delay)) * (end_slot_id - node_slot_id));
-                            dw1000_set_rx_timeout(inst, timeout);
-                            dw1000_start_rx(inst);
-                        }
-
-                        nrng_frame_t * frame = nrng->frames[idx][FIRST_FRAME_IDX];
-                        nrng_frame_t * next_frame = nrng->frames[idx][SECOND_FRAME_IDX];
-                        memcpy(frame, &temp_frame, sizeof(nrng_response_frame_t));
-
-                        frame->request_timestamp = next_frame->request_timestamp = dw1000_read_txtime_lo(inst);    // This corresponds to when the original request was actually sent
-                        frame->response_timestamp = next_frame->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received
-
-                        uint8_t seq_num = frame->seq_num;
-                        frame->dst_address = frame->src_address;
-                        frame->src_address = inst->my_short_address;
-                        frame->code = DWT_DS_TWR_NRNG_T2;
-                        frame->seq_num = seq_num + 1;
-                        // Note:: Advance to next frame
-                        frame = next_frame;
-                        frame->dst_address = 0xffff;
-                        frame->src_address = inst->my_short_address;
-                        frame->seq_num = seq_num + 1;
-                        frame->code = DWT_DS_TWR_NRNG_T2;
-                        frame->start_slot_id = temp_frame.start_slot_id;
-                        frame->end_slot_id = temp_frame.end_slot_id;
-#if MYNEWT_VAL(WCS_ENABLED)
-                        frame->carrier_integrator  = 0.0l;
-#else
-                        frame->carrier_integrator  = dw1000_read_carrier_integrator(inst);
-#endif
-
-                        uint64_t request_timestamp = dw1000_read_rxtime(inst);
-                        uint64_t response_timestamp = (request_timestamp & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
-                        frame->reception_timestamp = request_timestamp;
-                        frame->transmission_timestamp = response_timestamp;
-                        nrng->t1_final_flag = 1;
-                        if(idx == (nnodes - 1))
-                        {
-                            uint16_t timeout = (((nnodes) * (dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_final_frame_t))))
-                                        + (nnodes - 1)*(config->tx_guard_delay))
-                                    + config->tx_holdoff_delay         // Remote side turn arroud time.
-                                    + config->rx_timeout_period);
-                            dw1000_set_rx_timeout(inst, timeout);
-
-                            dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
-                            dw1000_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0, true);
-                            dw1000_set_wait4resp(inst, true);
-                            if (dw1000_start_tx(inst).start_tx_error)
-                                os_sem_release(&nrng->sem);
-
-                            nrng->resp_count = 0;
-                            nrng->t1_final_flag = 0;
-                        }
-                        break;
-                    }
-                case DWT_DS_TWR_NRNG_T2:
-                    {
-                        // This code executes on the device that responded to the original request, and is now preparing the final timestamps
-                        // printf("T2\n"); 
-                        uint16_t slot_id = inst->slot_id;
-                        nrng_frame_t * frame = nrng->frames[(++nrng->idx)%(nrng->nframes/FRAMES_PER_RANGE)][SECOND_FRAME_IDX];
-
-                        if (inst->frame_len >= sizeof(nrng_request_frame_t))
-                            dw1000_read_rx(inst,  frame->array, 0, sizeof(nrng_request_frame_t));
-                        else
-                            break;
-                        if(!(slot_id >= frame->start_slot_id && slot_id <= frame->end_slot_id))
-                            break;
-                        uint64_t request_timestamp = dw1000_read_rxtime(inst);
-                        uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay
-                                    + (uint64_t)((inst->slot_id-1) * ((uint64_t)config->tx_guard_delay 
-                                            + dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_final_frame_t))))))<< 16);
-                        frame->request_timestamp = dw1000_read_txtime_lo(inst); // This corresponds to when the original request was actually sent
-                        frame->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received
-                        frame->dst_address = frame->src_address;
-                        frame->src_address = inst->my_short_address;
-                        frame->code = DWT_DS_TWR_NRNG_FINAL;
-                        frame->slot_id = slot_id;
-#if MYNEWT_VAL(WCS_ENABLED)
-                        frame->carrier_integrator  = 0.0l;
-#else
-                        frame->carrier_integrator  = -dw1000_read_carrier_integrator(inst);
-#endif
-                        dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_final_frame_t));
-                        dw1000_write_tx_fctrl(inst, sizeof(nrng_final_frame_t), 0, true);
-                        dw1000_set_wait4resp(inst, false);
-                        dw1000_set_delay_start(inst, response_tx_delay);
-                        if (dw1000_start_tx(inst).start_tx_error)
-                            os_sem_release(&nrng->sem);
-                        break;
-                    }
-                case  DWT_DS_TWR_NRNG_FINAL:
-                    {
-                        // This code executes on the device that initialed the original request, and has now receive the final response timestamp.
-                        // This marks the completion of the double-single-two-way request.
-                        // printf("Final\n");
-                        nrng->resp_count++;
-                        uint16_t nnodes = nrng->nnodes;
-                        uint16_t idx = 0;
-                        nrng_frame_t temp;
-                        if (inst->frame_len >= sizeof(nrng_final_frame_t))
-                            dw1000_read_rx(inst, (uint8_t *)&temp, 0, sizeof(nrng_final_frame_t));
-                        uint16_t node_slot_id = temp.slot_id;
-                        uint16_t end_slot_id = temp.end_slot_id;
-                        nrng->idx = idx = node_slot_id - temp.start_slot_id;
-                        if(idx < nnodes-1){
-                            // At the start the device will wait for the entire nnodes to respond as a single huge timeout.
-                            // When a node respond we will recalculate the remaining time to be waited for as (total_nodes - completed_nodes)*(phy_duaration + guard_delay)
-                            uint16_t phy_duration = dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_final_frame_t));
-                            uint16_t timeout = ((phy_duration + config->tx_guard_delay) * (end_slot_id - node_slot_id));
-                            dw1000_set_rx_timeout(inst, timeout);
-                            dw1000_start_rx(inst);
-                        }
-                        nrng_frame_t *frame = nrng->frames[idx][SECOND_FRAME_IDX];
-
-                        nrng->t1_final_flag = 0;
-                        frame->request_timestamp = temp.request_timestamp;
-                        frame->response_timestamp = temp.response_timestamp;
-                        frame->code = temp.code;
-                        frame->dst_address = temp.src_address;
-                        frame->transmission_timestamp = dw1000_read_txtime_lo(inst);
-                        if(idx == nnodes -1)
-                        {
-                            os_sem_release(&nrng->sem);
-                            nrng->resp_count = 0;
-                        }
-                        break;
-                    }
-                default:
-                    return false;
+    switch(inst->nrng->code){
+        case DWT_DS_TWR_NRNG:
+            {
+                // This code executes on the device that is responding to a original request
+                // printf("nrng\n");
+                nrng_frame_t * frame = nrng->frames[(++nrng->idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
+                uint16_t slot_id = inst->slot_id;
+                if (inst->frame_len >= sizeof(nrng_request_frame_t))
+                    dw1000_read_rx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
+                else
                     break;
+                if(!(slot_id >= frame->start_slot_id && slot_id <= frame->end_slot_id))
+                    break;
+
+                uint64_t request_timestamp = dw1000_read_rxtime(inst);
+                uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay
+                            + (uint64_t)((slot_id-1) * ((uint64_t)config->tx_guard_delay
+                                    + (dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)))))))<< 16);
+                uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
+
+                frame->reception_timestamp =  request_timestamp;
+                frame->transmission_timestamp =  response_timestamp;
+
+                frame->dst_address = frame->src_address;
+                frame->src_address = inst->my_short_address;
+                frame->code = DWT_DS_TWR_NRNG_T1;
+                frame->slot_id = inst->slot_id;
+#if MYNEWT_VAL(WCS_ENABLED)
+                frame->carrier_integrator  = 0.0l;
+#else
+                frame->carrier_integrator  = -dw1000_read_carrier_integrator(inst);
+#endif
+                dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_response_frame_t));
+                dw1000_write_tx_fctrl(inst, sizeof(nrng_response_frame_t), 0, true);
+                dw1000_set_wait4resp(inst, true);
+                uint16_t timeout =config->tx_holdoff_delay + (frame->end_slot_id - slot_id + 1) * (dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t))
+                        + config->rx_timeout_period
+                        + config->tx_guard_delay);
+                dw1000_set_rx_timeout(inst, timeout);
+                dw1000_set_delay_start(inst, response_tx_delay);
+                if (dw1000_start_tx(inst).start_tx_error)
+                    os_sem_release(&nrng->sem);
+                break;
             }
+        case DWT_DS_TWR_NRNG_T1:
+            {
+                // This code executes on the device that initiated the original request, and is now preparing the next series of timestamps
+                // The 1st frame now contains a local copy of the initial first side of the double sided scheme.
+                // printf("T1 \n");
+                nrng->resp_count++;
+                uint16_t nnodes = nrng->nnodes;
+                uint16_t idx = 0;
+                nrng_frame_t temp_frame;
+                if (inst->frame_len >= sizeof(nrng_response_frame_t))
+                    dw1000_read_rx(inst, temp_frame.array, 0, sizeof(nrng_response_frame_t));
+                else
+                    break;
+                uint16_t node_slot_id = temp_frame.slot_id;
+                uint16_t end_slot_id = temp_frame.end_slot_id;
+                nrng->idx = idx = node_slot_id - temp_frame.start_slot_id;
+
+                if(idx < (nnodes-1)){
+                    // At the start the device will wait for the entire nnodes to respond as a single huge timeout.
+                    // When a node respond we will recalculate the remaining time to be waited for as (total_nodes - completed_nodes)*(phy_duaration + guard_delay)
+                    uint16_t phy_duration = dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t));
+                    uint16_t timeout = ((phy_duration + dw1000_dwt_usecs_to_usecs(config->tx_guard_delay)) * (end_slot_id - node_slot_id));
+                    dw1000_set_rx_timeout(inst, timeout);
+                    dw1000_start_rx(inst);
+                }
+
+                nrng_frame_t * frame = nrng->frames[idx][FIRST_FRAME_IDX];
+                nrng_frame_t * next_frame = nrng->frames[idx][SECOND_FRAME_IDX];
+                memcpy(frame, &temp_frame, sizeof(nrng_response_frame_t));
+
+                frame->request_timestamp = next_frame->request_timestamp = dw1000_read_txtime_lo(inst);    // This corresponds to when the original request was actually sent
+                frame->response_timestamp = next_frame->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received
+
+                uint8_t seq_num = frame->seq_num;
+                frame->dst_address = frame->src_address;
+                frame->src_address = inst->my_short_address;
+                frame->code = DWT_DS_TWR_NRNG_T2;
+                frame->seq_num = seq_num + 1;
+                // Note:: Advance to next frame
+                frame = next_frame;
+                frame->dst_address = 0xffff;
+                frame->src_address = inst->my_short_address;
+                frame->seq_num = seq_num + 1;
+                frame->code = DWT_DS_TWR_NRNG_T2;
+                frame->start_slot_id = temp_frame.start_slot_id;
+                frame->end_slot_id = temp_frame.end_slot_id;
+#if MYNEWT_VAL(WCS_ENABLED)
+                frame->carrier_integrator  = 0.0l;
+#else
+                frame->carrier_integrator  = dw1000_read_carrier_integrator(inst);
+#endif
+
+                uint64_t request_timestamp = dw1000_read_rxtime(inst);
+                uint64_t response_timestamp = (request_timestamp & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
+                frame->reception_timestamp = request_timestamp;
+                frame->transmission_timestamp = response_timestamp;
+                nrng->t1_final_flag = 1;
+                if(idx == (nnodes - 1))
+                {
+                    uint16_t timeout = (((nnodes) * (dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_final_frame_t))))
+                                + (nnodes - 1)*(config->tx_guard_delay))
+                            + config->tx_holdoff_delay         // Remote side turn arroud time.
+                            + config->rx_timeout_period);
+                    dw1000_set_rx_timeout(inst, timeout);
+
+                    dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
+                    dw1000_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0, true);
+                    dw1000_set_wait4resp(inst, true);
+                    if (dw1000_start_tx(inst).start_tx_error)
+                        os_sem_release(&nrng->sem);
+
+                    nrng->resp_count = 0;
+                    nrng->t1_final_flag = 0;
+                }
+                break;
+            }
+        case DWT_DS_TWR_NRNG_T2:
+            {
+                // This code executes on the device that responded to the original request, and is now preparing the final timestamps
+                // printf("T2\n"); 
+                uint16_t slot_id = inst->slot_id;
+                nrng_frame_t * frame = nrng->frames[(++nrng->idx)%(nrng->nframes/FRAMES_PER_RANGE)][SECOND_FRAME_IDX];
+
+                if (inst->frame_len >= sizeof(nrng_request_frame_t))
+                    dw1000_read_rx(inst,  frame->array, 0, sizeof(nrng_request_frame_t));
+                else
+                    break;
+                if(!(slot_id >= frame->start_slot_id && slot_id <= frame->end_slot_id))
+                    break;
+                uint64_t request_timestamp = dw1000_read_rxtime(inst);
+                uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay
+                            + (uint64_t)((inst->slot_id-1) * ((uint64_t)config->tx_guard_delay 
+                                    + dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_final_frame_t))))))<< 16);
+                frame->request_timestamp = dw1000_read_txtime_lo(inst); // This corresponds to when the original request was actually sent
+                frame->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received
+                frame->dst_address = frame->src_address;
+                frame->src_address = inst->my_short_address;
+                frame->code = DWT_DS_TWR_NRNG_FINAL;
+                frame->slot_id = slot_id;
+#if MYNEWT_VAL(WCS_ENABLED)
+                frame->carrier_integrator  = 0.0l;
+#else
+                frame->carrier_integrator  = -dw1000_read_carrier_integrator(inst);
+#endif
+                dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_final_frame_t));
+                dw1000_write_tx_fctrl(inst, sizeof(nrng_final_frame_t), 0, true);
+                dw1000_set_wait4resp(inst, false);
+                dw1000_set_delay_start(inst, response_tx_delay);
+                if (dw1000_start_tx(inst).start_tx_error)
+                    os_sem_release(&nrng->sem);
+                break;
+            }
+        case  DWT_DS_TWR_NRNG_FINAL:
+            {
+                // This code executes on the device that initialed the original request, and has now receive the final response timestamp.
+                // This marks the completion of the double-single-two-way request.
+                // printf("Final\n");
+                nrng->resp_count++;
+                uint16_t nnodes = nrng->nnodes;
+                uint16_t idx = 0;
+                nrng_frame_t temp;
+                if (inst->frame_len >= sizeof(nrng_final_frame_t))
+                    dw1000_read_rx(inst, (uint8_t *)&temp, 0, sizeof(nrng_final_frame_t));
+                uint16_t node_slot_id = temp.slot_id;
+                uint16_t end_slot_id = temp.end_slot_id;
+                nrng->idx = idx = node_slot_id - temp.start_slot_id;
+                if(idx < nnodes-1){
+                    // At the start the device will wait for the entire nnodes to respond as a single huge timeout.
+                    // When a node respond we will recalculate the remaining time to be waited for as (total_nodes - completed_nodes)*(phy_duaration + guard_delay)
+                    uint16_t phy_duration = dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_final_frame_t));
+                    uint16_t timeout = ((phy_duration + config->tx_guard_delay) * (end_slot_id - node_slot_id));
+                    dw1000_set_rx_timeout(inst, timeout);
+                    dw1000_start_rx(inst);
+                }
+                nrng_frame_t *frame = nrng->frames[idx][SECOND_FRAME_IDX];
+
+                nrng->t1_final_flag = 0;
+                frame->request_timestamp = temp.request_timestamp;
+                frame->response_timestamp = temp.response_timestamp;
+                frame->code = temp.code;
+                frame->dst_address = temp.src_address;
+                frame->transmission_timestamp = dw1000_read_txtime_lo(inst);
+                if(idx == nnodes -1)
+                {
+                    os_sem_release(&nrng->sem);
+                    nrng->resp_count = 0;
+                }
+                break;
+            }
+        default:
+            return false;
+            break;
     }
     return true;
 }

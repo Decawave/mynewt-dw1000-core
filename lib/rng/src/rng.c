@@ -520,7 +520,6 @@ dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng){
 #if MYNEWT_VAL(WCS_ENABLED)
             wcs_instance_t * wcs = inst->ccp->wcs;
             float skew = wcs->skew;
-            printf("Skew = %lu \n",(uint32_t)skew);
 #else
             float skew = dw1000_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);
 #endif
@@ -529,12 +528,7 @@ dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng){
             }
         break;
         case DWT_DS_TWR ... DWT_DS_TWR_END:
-        case DWT_DS_TWR_EXT ... DWT_DS_TWR_EXT_END:{
-#if MYNEWT_VAL(WCS_ENABLED)
-            wcs_instance_t * wcs = inst->ccp->wcs;
-            float skew = wcs->skew;
-            printf("Skew = %lu \n",(uint32_t)skew);
-#endif
+        case DWT_DS_TWR_EXT ... DWT_DS_TWR_EXT_END:
             T1R = (first_frame->response_timestamp - first_frame->request_timestamp); 
             T1r = (first_frame->transmission_timestamp  - first_frame->reception_timestamp);         
             T2R = (frame->response_timestamp - frame->request_timestamp); 
@@ -542,7 +536,7 @@ dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng){
             nom = T1R * T2R  - T1r * T2r;
             denom = T1R + T2R  + T1r + T2r;
             ToF = (float) (nom) / denom; 
-            break;}
+            break;
         default: break;       
     }
     return ToF;

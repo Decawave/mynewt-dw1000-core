@@ -88,7 +88,7 @@ void pan_pkg_init(void){
     dw1000_pan_init(hal_dw1000_inst(1), &g_config);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-    dw1000_pan_init(hal_dw1000_inst(1), &g_config);
+    dw1000_pan_init(hal_dw1000_inst(2), &g_config);
 #endif
 }
 
@@ -166,7 +166,11 @@ dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config){
             .rx_timeout_cb = pan_rx_timeout_cb,
             .rx_error_cb = pan_rx_error_cb,
             .tx_error_cb = pan_tx_error_cb,
+<<<<<<< HEAD
             .reset_cb = pan_reset_cb
+=======
+            .reset_cb = pan_reset_cb,
+>>>>>>> origin/refactor
     };
     dw1000_mac_append_interface(inst, &inst->pan->cbs);
 

@@ -37,5 +37,5 @@ pkg.lflags:
     - "-lm"
 
 pkg.init:
-    dw1000_nrng_pkg_init: 402
+    dw1000_nrng_pkg_init: 411
 

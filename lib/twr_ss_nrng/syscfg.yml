@@ -6,7 +6,7 @@ syscfg.defs:
         restrictions: NRNG_ENABLED
       TWR_SS_NRNG_TX_HOLDOFF:
         description: 'tx holdoff delay for DS TWR (usec)'
-        value: ((uint32_t){0x01000})
+        value: ((uint32_t){0x0300})
       TWR_SS_NRNG_RX_TIMEOUT:
         description: 'TOA timeout delay for DS TWR (usec)'
         value: ((uint16_t){0x10})

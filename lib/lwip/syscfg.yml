@@ -1,5 +1,4 @@
-
 syscfg.defs:
       LWIP_ENABLED:
         description: 'Enable toplevel lwIP services'
-        value: 0
+        value: 1

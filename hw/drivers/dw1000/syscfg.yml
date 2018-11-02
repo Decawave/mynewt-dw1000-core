@@ -57,4 +57,11 @@ syscfg.defs:
         description: >
             OS Latency Guardband (usec)
         value: ((uint32_t){1000})
-
+    PANID:
+        description: >
+          Default Pan ID
+        value: ((uint16_t){0xdeca})
+    DEVICE_ID:
+        description: >
+          Default Device ID
+        value: ((uint16_t){0x1234})
