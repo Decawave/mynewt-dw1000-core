@@ -68,6 +68,7 @@ static bool pan_tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interfac
 static bool pan_rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool pan_rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool pan_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool pan_reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static dw1000_pan_status_t dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 static void pan_postprocess(struct os_event * ev);
 
@@ -87,7 +88,7 @@ void pan_pkg_init(void){
     dw1000_pan_init(hal_dw1000_inst(1), &g_config);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-    dw1000_pan_init(hal_dw1000_inst(1), &g_config);
+    dw1000_pan_init(hal_dw1000_inst(2), &g_config);
 #endif
 }
 
@@ -165,6 +166,7 @@ dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config){
             .rx_timeout_cb = pan_rx_timeout_cb,
             .rx_error_cb = pan_rx_error_cb,
             .tx_error_cb = pan_tx_error_cb,
+            .reset_cb = pan_reset_cb,
     };
     dw1000_mac_append_interface(inst, &inst->pan->cbs);
 
@@ -335,6 +337,20 @@ pan_rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     os_sem_release(&inst->pan->sem);
     return true;
 }
+
+/**
+ * API for reset callback.
+ *
+ * @param inst   Pointer to dw1000_dev_instance_t.
+ *
+ * @return bool
+ */
+static bool
+pan_reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+    os_sem_release(&inst->pan->sem);
+    return true;
+}
+
 
 /**
  * API for transmit error callback.

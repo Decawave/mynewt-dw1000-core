@@ -82,9 +82,9 @@ struct os_sem g_spi0_sem;
  * and is handled outside the SPI routines.
  */
 static const struct nrf52_hal_spi_cfg os_bsp_spi0m_cfg = {
-    .sck_pin      =  16,    // P0.16    
-    .mosi_pin     =  20,    // P0.20
-    .miso_pin     =  21,    // P0.21
+    .sck_pin      =  MYNEWT_VAL(SPI_0_MASTER_PIN_SCK),    // P0.16    
+    .mosi_pin     =  MYNEWT_VAL(SPI_0_MASTER_PIN_MOSI),    // P0.20
+    .miso_pin     =  MYNEWT_VAL(SPI_0_MASTER_PIN_MISO),    // P0.21
 };
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)

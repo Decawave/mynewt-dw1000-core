@@ -195,9 +195,10 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
         assert(err == OS_OK);
    
         dw1000_set_rx_timeout(inst, ccp->period);
-        dw1000_start_rx(inst);
-
-        err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
+        ccp->status.start_rx_error = dw1000_start_rx(inst).start_rx_error;
+        if (!ccp->status.start_rx_error){
+            err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER);
+        }
         os_sem_release(&ccp->sem);
     }
     // Schedule next event
@@ -415,6 +416,7 @@ ccp_postprocess(struct os_event * ev){
 #endif
     delta = delta & ((uint64_t)1<<63)?delta & 0xFFFFFFFFFF :delta;
 
+#if MYNEWT_VAL(DW1000_CCP_VERBOSE)
     printf("{\"utime\": %lu,\"ccp\":[\"%llX\",\"%llX\"],\"clock_offset\": %lu,\"seq_num\" :%d}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),   
         frame->transmission_timestamp,
@@ -422,6 +424,7 @@ ccp_postprocess(struct os_event * ev){
         *(uint32_t *)&clock_offset,
         frame->seq_num
     );
+#endif
     dw1000_dev_instance_t* inst = ccp->parent;
     inst->control = inst->control_rx_context;
     dw1000_restart_rx(inst,inst->control_rx_context);
@@ -443,8 +446,8 @@ ccp_postprocess(struct os_event * ev){
  * @return void 
  */
 static bool 
-ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-
+ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
     if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64)
         return false;
 
@@ -462,6 +465,13 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
         return false;
     }
     ccp->os_epoch = os_cputime_get32();
+
+    /* Prevent the rx_timeout_cb from releasing the semaphore before
+     * this function is finished if double buffring is enabled */
+    if (inst->config.dblbuffon_enabled) {
+        dw1000_set_rx_timeout(inst, 1000);
+    }
+
     DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp_rx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_read_rx(inst, frame->array + sizeof(ieee_blink_frame_t), 
                 sizeof(ieee_blink_frame_t), 
@@ -615,8 +625,8 @@ ccp_reset_cb(struct _dw1000_dev_instance_t * inst,  dw1000_mac_interface_t * cbs
  * @return dw1000_ccp_status_t 
  */
 static dw1000_ccp_status_t 
-dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
-
+dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
+{
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_send \"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_ccp_instance_t * ccp = inst->ccp; 
 
@@ -651,15 +661,13 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
         err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
         os_sem_release(&ccp->sem);
     }
-
-    
-   return ccp->status;
+    return ccp->status;
 }
 
 /*! 
  * @fn dw1000_ccp_receive(dw1000_dev_instance_t * inst, dw1000_ccp_modes_t mode)
  *
- * @brief Explisit entry function for reveicing a ccp frame.  
+ * @brief Explicit entry function for reveicing a ccp frame.
  *
  * input parameters
  * @param inst - dw1000_dev_instance_t * 
@@ -670,8 +678,8 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
  * returns dw1000_ccp_status_t 
  */
 static dw1000_ccp_status_t 
-dw1000_ccp_receive(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
-
+dw1000_ccp_receive(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
+{
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_receive\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_ccp_instance_t * ccp = inst->ccp; 
 
@@ -696,7 +704,7 @@ dw1000_ccp_receive(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode
         err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
         os_sem_release(&ccp->sem);
     }
-   return ccp->status;
+    return ccp->status;
 }
 
 

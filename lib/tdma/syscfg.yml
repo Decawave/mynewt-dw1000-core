@@ -11,6 +11,7 @@ syscfg.defs:
     TDMA_PERIOD:
         description: 'Supoerframe period for TDMA scheme, (dwt usec)'
         value: ((uint32_t){0x100000})
-
-        
+    TDMA_SANITY_INTERVAL:
+        description: 'Sanity watchdog timeout (seconds)'
+        value: 0
         

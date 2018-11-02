@@ -167,7 +167,12 @@ static void tdma_tasks_init(struct _tdma_instance_t * inst)
         os_task_init(&inst->task_str, "dw1000_tdma",
                      tdma_task,
                      (void *) inst,
-                     inst->task_prio, OS_WAIT_FOREVER,
+                     inst->task_prio,
+#if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
+                     OS_TICKS_PER_SEC*MYNEWT_VAL(TDMA_SANITY_INTERVAL),
+#else
+                     OS_WAIT_FOREVER,
+#endif
                      inst->task_stack,
                      DW1000_DEV_TASK_STACK_SZ);
     }       
@@ -185,6 +190,9 @@ static void tdma_task(void *arg)
 {
     tdma_instance_t * inst = arg;
     while (1) {
+#if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
+        os_sanity_task_checkin(0);
+#endif
         os_eventq_run(&inst->eventq);
     }
 }
@@ -323,11 +331,11 @@ tdma_superframe_event_cb(struct os_event * ev){
     }
     for (uint16_t i = 0; i < tdma->nslots; i++) {
         if (tdma->slot[i]){
-            hal_timer_start_at(&tdma->slot[i]->timer, 
-                tdma->os_epoch 
-                + os_cputime_usecs_to_ticks((uint32_t) (i * dw1000_dwt_usecs_to_usecs(tdma->period)/tdma->nslots))
-                - (uint32_t)ceilf(dw1000_phy_SHR_duration(&tdma->parent->attrib))
-                - os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY))
+            hal_timer_start_at(&tdma->slot[i]->timer, tdma->os_epoch
+                + os_cputime_usecs_to_ticks(
+                    (uint32_t) (i * dw1000_dwt_usecs_to_usecs(tdma->period)/tdma->nslots) -
+                    (uint32_t)ceilf(dw1000_phy_SHR_duration(&tdma->parent->attrib)) -
+                    MYNEWT_VAL(OS_LATENCY))
             );
         }
     }

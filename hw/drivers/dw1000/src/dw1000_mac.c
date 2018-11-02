@@ -333,7 +333,7 @@ struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst
         dw1000_mac_framefilter(inst, DWT_FF_BEACON_EN | DWT_FF_DATA_EN | DWT_FF_RSVD_EN );
     }
 #endif
-    
+
     return inst->status;
 } 
 
@@ -978,13 +978,10 @@ dw1000_calc_clock_offset_ratio(struct _dw1000_dev_instance_t * inst, int32_t int
 void 
 dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag)
 {  
-    // Read the HW FP index
-    diag->fp_idx = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
-    diag->fp_amp = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_AMPL1_OFFSET, sizeof(uint16_t));
-    diag->rx_std  = dw1000_read_reg(inst, RX_FQUAL_ID, 0, sizeof(uint16_t));
-    diag->fp_amp2 = dw1000_read_reg(inst, RX_FQUAL_ID, 2, sizeof(uint16_t));
-    diag->fp_amp3 = dw1000_read_reg(inst, RX_FQUAL_ID, 4, sizeof(uint16_t));
-    diag->cir_pwr = dw1000_read_reg(inst, RX_FQUAL_ID, 6, sizeof(uint16_t));
+    /* Read several of the diag parameters together, requires that the struct parameters are in the 
+     * same order as the registers */
+    dw1000_read(inst, RX_TIME_ID, 0, (uint8_t*)&diag->fp_idx, sizeof(uint16_t)*2);
+    dw1000_read(inst, RX_FQUAL_ID, 0, (uint8_t*)&diag->rx_std, sizeof(uint16_t)*4);
     diag->pacc_cnt =  (dw1000_read_reg(inst, RX_FINFO_ID, 0, sizeof(uint32_t)) & RX_FINFO_RXPACC_MASK) >> RX_FINFO_RXPACC_SHIFT;
 }
 
@@ -1039,16 +1036,6 @@ static void
 dw1000_irq(void *arg)
 {
     dw1000_dev_instance_t * inst = arg;
-
-    // Allow PLL to settle before SPI transactions, Usermanul Figure 9.
-    if (inst->status.sleeping){
-        uint8_t timeout=100;    
-        uint32_t devid = dw1000_read_reg(inst, DEV_ID_ID, 0, sizeof(uint32_t));
-        while (devid != 0xDECA0130 && --timeout){
-            devid = dw1000_read_reg(inst, DEV_ID_ID, 0, sizeof(uint32_t));
-        }
-    inst->status.sleeping = (devid != DWT_DEVICE_ID);
-    }
     os_eventq_put(&inst->eventq, &inst->interrupt_ev);
 }
 
@@ -1491,3 +1478,52 @@ inline uint32_t dw1000_read_txtime_lo(struct _dw1000_dev_instance_t * inst){
 }
 
 
+/**
+ * @fn dwt_configcwmode()
+ *
+ * @brief this function sets the DW1000 to transmit cw signal at specific channel
+ * frequency.
+ *
+ * input parameters:
+ * @param chan - specifies the operating channel (e.g. 1, 2, 3, 4, 5, 6 or 7)
+ *
+ */
+void
+dw1000_configcwmode(struct _dw1000_dev_instance_t * inst, uint8_t chan)
+{
+    if ((chan < 1) || (chan > 7) || (6 == chan))
+    {
+        assert(0);
+    }
+
+    /* disable TX/RX RF block sequencing (needed for cw frame mode) */
+    dw1000_phy_sysclk_XTAL(inst);
+    dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL1_OFFSET,
+                     PMSC_CTRL1_PKTSEQ_DISABLE, sizeof(uint16_t));
+
+    /* config RF pll (for a given channel) */
+    /* configure PLL2/RF PLL block CFG */
+    dw1000_write_reg(inst, FS_CTRL_ID, FS_PLLCFG_OFFSET,
+                     fs_pll_cfg[chan_idx[chan]], sizeof(uint32_t));
+
+    /* Configure RF TX blocks (for specified channel and prf) */
+    /* Config RF TX control */
+    dw1000_write_reg(inst, RF_CONF_ID, RF_TXCTRL_OFFSET,
+                     tx_config[chan_idx[chan]], sizeof(uint32_t));
+
+    /* enable RF PLL */
+    dw1000_write_reg(inst, RF_CONF_ID, 0, RF_CONF_TXPLLPOWEN_MASK, sizeof(uint32_t));
+    dw1000_write_reg(inst, RF_CONF_ID, 0, RF_CONF_TXALLEN_MASK, sizeof(uint32_t));
+
+    /* configure TX clocks */
+    dw1000_write_reg(inst, PMSC_ID,PMSC_CTRL0_OFFSET, 0x22, 1);
+    dw1000_write_reg(inst, PMSC_ID, 0x1, 0x07, 1);
+
+    /* disable fine grain TX seq */
+    dw1000_write_reg(inst, PMSC_ID, PMSC_TXFINESEQ_OFFSET,
+                     PMSC_TXFINESEQ_DISABLE, sizeof(uint16_t));
+
+    /* configure CW mode */
+    dw1000_write_reg(inst, TX_CAL_ID, TC_PGTEST_OFFSET,
+                     TC_PGTEST_CW, TC_PGTEST_LEN);
+}

@@ -28,9 +28,6 @@ pkg.deps:
     - "@apache-mynewt-core/hw/hal"
     - "@mynewt-dw1000-core/lib/dsp"
     
-pkg.deps.DW1000_LWIP:
-    - "@mynewt-dw1000-core/net/ip/lwip_base"
-
 pkg.req_apis: 
 
 pkg.init:

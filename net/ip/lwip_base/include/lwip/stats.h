@@ -316,7 +316,7 @@ void stats_init(void);
 #define STATS_GET(x) lwip_stats.x
 #else /* LWIP_STATS */
 #define stats_init()
-#define STATS_INC(x)
+//#define STATS_INC(x)
 #define STATS_DEC(x)
 #define STATS_INC_USED(x)
 #endif /* LWIP_STATS */

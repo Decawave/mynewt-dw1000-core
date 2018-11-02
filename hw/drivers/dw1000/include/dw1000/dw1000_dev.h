@@ -195,12 +195,12 @@ typedef struct _dw1000_dev_config_t{
 typedef struct _dw1000_dev_rxdiag_t{
     uint16_t    fp_idx;             //!< First path index (10.6 bits fixed point integer)
     uint16_t    fp_amp;             //!<  Amplitude at floor(index FP) + 1
+    uint16_t    rx_std;             //!<  Standard deviation of noise
     uint16_t    fp_amp2;            //!<  Amplitude at floor(index FP) + 2
     uint16_t    fp_amp3;            //!<  Amplitude at floor(index FP) + 3
-    uint16_t    rx_std;             //!<  Standard deviation of noise
     uint16_t    cir_pwr;            //!<  Channel Impulse Response max growth CIR
     uint16_t    pacc_cnt;           //!<  Count of preamble symbols accumulated
-} dw1000_dev_rxdiag_t;
+} __attribute__((packed, aligned(1))) dw1000_dev_rxdiag_t;
 
 //! physical attributes per IEEE802.15.4-2011 standard, Table 101
 typedef struct _phy_attributes_t{

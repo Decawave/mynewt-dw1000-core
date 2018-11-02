@@ -24,6 +24,6 @@ syscfg.defs:
         value: 1
         restrictions: CCP_ENABLED
         restrictions: TIMESCALE_ENABLED
-        
-    
-  
+    WCS_VERBOSE:
+        description: 'Enable json debug output'
+        value: 0
