@@ -333,7 +333,7 @@ struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst
         dw1000_mac_framefilter(inst, DWT_FF_BEACON_EN | DWT_FF_DATA_EN | DWT_FF_RSVD_EN );
     }
 #endif
-    
+
     return inst->status;
 } 
 
@@ -1477,7 +1477,6 @@ inline uint32_t dw1000_read_txtime_lo(struct _dw1000_dev_instance_t * inst){
     return time;
 }
 
-#endif
 
 /**
  * @fn dwt_configcwmode()
