@@ -6,10 +6,10 @@ syscfg.defs:
     PAN_PERIOD:
         description: >
             PAN Discovery Packets Period
-        value: ((uint32_t){0x1000})
+        value: ((uint32_t){0x100000})
     PAN_TX_HOLDOFF:
         description: 'tx holdoff delay for PAN (usec)'
         value: ((uint32_t){0x0300})
     PAN_RX_TIMEOUT:
         description: 'TOA timeout delay for PAN (usec)'
-        value: ((uint16_t){0x10})
+        value: ((uint16_t){0x1000})

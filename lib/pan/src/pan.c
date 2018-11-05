@@ -166,11 +166,7 @@ dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config){
             .rx_timeout_cb = pan_rx_timeout_cb,
             .rx_error_cb = pan_rx_error_cb,
             .tx_error_cb = pan_tx_error_cb,
-<<<<<<< HEAD
-            .reset_cb = pan_reset_cb
-=======
             .reset_cb = pan_reset_cb,
->>>>>>> origin/refactor
     };
     dw1000_mac_append_interface(inst, &inst->pan->cbs);
 
@@ -265,6 +261,7 @@ pan_postprocess(struct os_event * ev){
  */
 static bool
 pan_rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+    printf("rx\n");
      if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
         dw1000_dev_control_t control = inst->control_rx_context;
         dw1000_restart_rx(inst, control);
