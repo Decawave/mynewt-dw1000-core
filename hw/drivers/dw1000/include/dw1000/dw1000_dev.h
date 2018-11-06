@@ -109,6 +109,7 @@ typedef struct _dw1000_dev_status_t{
     uint32_t tx_frame_error:1;        //!< Transmit frame error
     uint32_t rx_error:1;              //!< Receive error
     uint32_t rx_timeout_error:1;      //!< Receive timeout error
+    uint32_t lde_error:1;             //!< LDE error
     uint32_t spi_error:1;             //!< SPI error
     uint32_t LDE_enabled:1;           //!< Load LDE microcode on wake up
     uint32_t LDO_enabled:1;           //!< Load the LDO tune value on wake up
@@ -225,6 +226,7 @@ typedef struct _dw1000_mac_interface_t {
     uint16_t id;
     bool (* tx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Transmit complete callback
     bool (* rx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive complete callback
+  //  bool (* lde_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive complete callback
     bool (* rx_timeout_cb)  (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive timeout callback
     bool (* rx_error_cb)    (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive error callback
     bool (* tx_error_cb)    (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Transmit error callback  

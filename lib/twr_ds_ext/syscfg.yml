@@ -6,7 +6,7 @@ syscfg.defs:
         restrictions: RNG_ENABLED
       TWR_DS_EXT_TX_HOLDOFF:
         description: 'tx holdoff delay for DS TWR extended frame (usec)'
-        value: ((uint32_t){0x0320})
+        value: ((uint32_t){0x0820})
       TWR_DS_EXT_RX_TIMEOUT:
         description: 'TOA timeout delay for DS TWR extended frame (usec)'
         value: ((uint16_t){0x10})

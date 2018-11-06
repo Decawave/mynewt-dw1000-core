@@ -33,8 +33,6 @@
 #define _DW1000_RNG_H_
 
 
-#if MYNEWT_VAL(RNG_ENABLED)
-
 #include <stdlib.h>
 #include <stdint.h>
 #include "dw1000/triad.h"
@@ -145,6 +143,7 @@ dw1000_rng_instance_t * dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng
 void dw1000_rng_free(dw1000_rng_instance_t * inst);
 dw1000_dev_status_t dw1000_rng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config);
 dw1000_dev_status_t dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t protocal);
+dw1000_dev_status_t dw1000_rng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 dw1000_dev_status_t dw1000_rng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t protocal);
 dw1000_rng_config_t * dw1000_rng_get_config(dw1000_dev_instance_t * inst, dw1000_rng_modes_t code);
 void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, twr_frame_t twr[], uint16_t nframes);
@@ -163,5 +162,4 @@ uint32_t dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code);
 }
 #endif
 
-#endif //  RNG_ENABLED
 #endif /* _DW1000_RNG_H_ */

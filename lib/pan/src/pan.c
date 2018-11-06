@@ -347,7 +347,11 @@ pan_rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  */
 static bool
 pan_reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    os_sem_release(&inst->pan->sem);
+    if (os_sem_get_count(&inst->pan->>sem) == 0){
+        //printf("{\"utime\": %lu,\"log\": \"ccp_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
+        os_sem_release(&inst->pan->sem);  
+        return false;   
+    }
     return true;
 }
 
@@ -381,8 +385,11 @@ pan_rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
         return false;
     }
-    dw1000_pan_instance_t * pan = inst->pan;
-    os_sem_release(&pan->sem);
+    if (os_sem_get_count(&inst->pan->>sem) == 0){
+        //printf("{\"utime\": %lu,\"log\": \"ccp_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
+        os_sem_release(&inst->pan->sem);  
+        return false;   
+    }
     return true;
 }
 

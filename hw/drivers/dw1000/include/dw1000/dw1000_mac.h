@@ -167,6 +167,7 @@ struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst
 void dw1000_tasks_init(struct _dw1000_dev_instance_t * inst);
 struct _dw1000_dev_status_t dw1000_mac_framefilter(struct _dw1000_dev_instance_t * inst, uint16_t enable);
 struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst,  uint8_t *txFrameBytes, uint16_t txBufferOffset, uint16_t txFrameLength);
+struct _dw1000_dev_status_t dw1000_read_rx(struct _dw1000_dev_instance_t * inst,  uint8_t *rxFrameBytes, uint16_t rxBufferOffset, uint16_t rxFrameLength);
 struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst);
 struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t dx_time);
 struct _dw1000_dev_status_t dw1000_set_wait4resp(struct _dw1000_dev_instance_t * inst, bool enable);
@@ -175,7 +176,6 @@ struct _dw1000_dev_status_t dw1000_set_on_error_continue(struct _dw1000_dev_inst
 struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst);
 struct _dw1000_dev_status_t dw1000_restart_rx(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_control_t control);
 void dw1000_write_tx_fctrl(struct _dw1000_dev_instance_t * inst, uint16_t txFrameLength, uint16_t txBufferOffset, bool ranging);
-void dw1000_read_rx(struct _dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t rxBufferOffset, uint16_t length);
 struct _dw1000_dev_status_t dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t * inst);
 struct _dw1000_dev_status_t dw1000_read_accdata(struct _dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t len, uint16_t accOffset);
 struct _dw1000_dev_status_t dw1000_enable_autoack(struct _dw1000_dev_instance_t * inst, uint8_t delay);
@@ -193,7 +193,6 @@ float dw1000_calc_clock_offset_ratio(struct _dw1000_dev_instance_t * inst, int32
 
 void dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag);
 #define dw1000_set_preamble_timeout(counts) dw1000_write_reg(inst, DRX_CONF_ID, DRX_PRETOC_OFFSET, counts, sizeof(uint16_t))
-#define dw1000_read_rx(inst, buffer, rxBufferOffset, length) dw1000_read(inst, RX_BUFFER_ID,  rxBufferOffset, buffer,  length)
 #define dw1000_set_panid(inst, pan_id) dw1000_write_reg(inst, PANADR_ID, PANADR_PAN_ID_OFFSET, pan_id, sizeof(uint16_t))
 #define dw1000_set_address16(inst, shortAddress) dw1000_write_reg(inst ,PANADR_ID, PANADR_SHORT_ADDR_OFFSET, shortAddress, sizeof(uint16_t))
 #define dw1000_set_eui(inst, eui64) dw1000_write_reg(inst, EUI_64_ID, EUI_64_OFFSET, eui64, EUI_64_LEN)

@@ -37,6 +37,7 @@
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
 #include "bsp/bsp.h"
+#include <stats/stats.h>
 
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
@@ -61,6 +62,7 @@
 #endif
 
 
+
 //#define DIAGMSG(s,u) printf(s,u)
 #ifndef DIAGMSG
 #define DIAGMSG(s,u)
@@ -69,6 +71,7 @@
 static bool rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 
 /*
 % From APS011 Table 2 
@@ -88,7 +91,7 @@ static float rng_bias_poly_PRF16[] ={
      	};
 
 static dw1000_rng_config_t g_config = {
-    .tx_holdoff_delay = MYNEWT_VAL(RNG_TX_HOLDOFF),         // Send Time delay in usec.
+    .tx_holdoff_delay = MYNEWT_VAL(RNG_TX_HOLDOFF),       // Send Time delay in usec.
     .rx_timeout_period = MYNEWT_VAL(RNG_RX_TIMEOUT)       // Receive response timeout in usec
 };
 
@@ -160,6 +163,7 @@ static dw1000_mac_interface_t g_cbs[] = {
             .id = DW1000_RNG,
             .rx_complete_cb = rx_complete_cb,
             .tx_complete_cb = tx_complete_cb,
+            .rx_timeout_cb = rx_timeout_cb,
             .reset_cb = reset_cb
         },
 #if MYNEWT_VAL(DW1000_DEVICE_1)
@@ -167,6 +171,7 @@ static dw1000_mac_interface_t g_cbs[] = {
             .id = DW1000_RNG,
             .rx_complete_cb = rx_complete_cb,
             .tx_complete_cb = tx_complete_cb,
+            .rx_timeout_cb = rx_timeout_cb,
             .reset_cb = reset_cb
         },
 #endif
@@ -175,10 +180,35 @@ static dw1000_mac_interface_t g_cbs[] = {
             .id = DW1000_RNG,
             .rx_complete_cb = rx_complete_cb,
             .tx_complete_cb = tx_complete_cb,
+            .rx_timeout_cb = rx_timeout_cb,
             .reset_cb = reset_cb
         }
 #endif
 };
+
+STATS_SECT_START(rng_stat_section)
+    STATS_SECT_ENTRY(rng_request)
+    STATS_SECT_ENTRY(rng_listen)
+    STATS_SECT_ENTRY(tx_complete)
+    STATS_SECT_ENTRY(rx_complete)
+    STATS_SECT_ENTRY(rx_error)
+    STATS_SECT_ENTRY(tx_error)
+    STATS_SECT_ENTRY(rx_timeout)
+    STATS_SECT_ENTRY(reset)
+STATS_SECT_END
+
+STATS_NAME_START(rng_stat_section)
+    STATS_NAME(rng_stat_section, rng_request)
+    STATS_NAME(rng_stat_section, rng_listen)
+    STATS_NAME(rng_stat_section, tx_complete)
+    STATS_NAME(rng_stat_section, rx_complete)
+    STATS_NAME(rng_stat_section, rx_error)
+    STATS_NAME(rng_stat_section, tx_error)
+    STATS_NAME(rng_stat_section, rx_timeout)
+    STATS_NAME(rng_stat_section, reset)
+STATS_NAME_END(rng_stat_section)
+
+STATS_SECT_DECL(rng_stat_section) g_rngstat;
 
 
 /**
@@ -214,6 +244,16 @@ dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint
     };
     inst->rng->idx = 0xFFFF;
     inst->rng->status.initialized = 1;
+    
+    int rc = stats_init(
+    STATS_HDR(g_rngstat),
+    STATS_SIZE_INIT_PARMS(g_rngstat, STATS_SIZE_32),
+    STATS_NAME_INIT_PARMS(rng_stat_section));
+    assert(rc == 0);
+    
+    rc = stats_register("rng", STATS_HDR(g_rngstat));
+    assert(rc == 0);
+
     return inst->rng;
 }
 
@@ -350,7 +390,7 @@ dw1000_dev_status_t
 dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t code){
 
     // This function executes on the device that initiates a request 
-    
+    STATS_INC(g_rngstat, rng_request);
     os_error_t err = os_sem_pend(&inst->rng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
@@ -376,11 +416,41 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     if (rng->control.delay_start_enabled) 
         dw1000_set_delay_start(inst, rng->delay);
    
-    if (dw1000_start_tx(inst).start_tx_error){
+    if (dw1000_start_tx(inst).start_tx_error)
         os_sem_release(&inst->rng->sem);
-    }
+     
     err = os_sem_pend(&inst->rng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
     os_sem_release(&inst->rng->sem);
+    
+   return inst->status;
+}
+
+/**
+ * API to initialise range request.
+ *
+ * @param inst          Pointer to dw1000_dev_instance_t.
+ *
+ * @return dw1000_dev_status_t 
+ */
+dw1000_dev_status_t 
+dw1000_rng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
+
+    os_error_t err = os_sem_pend(&inst->rng->sem,  OS_TIMEOUT_NEVER);
+    assert(err == OS_OK);
+    
+    STATS_INC(g_rngstat, rng_listen);
+    if(dw1000_start_rx(inst).start_rx_error){
+        STATS_INC(g_rngstat, rx_error);
+        err = os_sem_release(&inst->rng->sem);
+        assert(err == OS_OK);
+    }
+      
+    if (mode == DWT_BLOCKING){
+        err = os_sem_pend(&inst->rng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
+        assert(err == OS_OK);
+        err = os_sem_release(&inst->rng->sem);
+        assert(err == OS_OK);
+    }
     
    return inst->status;
 }
@@ -575,6 +645,26 @@ dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code){
 }
 
 
+/**
+ * API for receive timeout callback.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ *
+ * @return true on sucess
+ */
+static bool 
+rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+
+    if(os_sem_get_count(&inst->rng->sem) == 0){
+        STATS_INC(g_rngstat, rx_timeout);
+        os_error_t err = os_sem_release(&inst->rng->sem);
+        assert(err == OS_OK);
+        return true;
+    }
+    else
+        return false;
+}
+
 /** 
  * API for reset_cb of rng interface
  *
@@ -585,12 +675,13 @@ static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(os_sem_get_count(&inst->rng->sem) == 0){
+        STATS_INC(g_rngstat, reset);
         os_error_t err = os_sem_release(&inst->rng->sem);  
         assert(err == OS_OK);
         return true;
     }
     else 
-       return false;
+        return false;
 
 }
 
@@ -604,11 +695,16 @@ reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 static bool 
 rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-    
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
+    STATS_INC(g_rngstat, rx_complete);
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"rx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+
+    if(os_sem_get_count(&inst->rng->sem) == 1){ 
+        // unsolicited inbound
+        return false;
+    }
 
     dw1000_rng_instance_t * rng = inst->rng; 
     twr_frame_t * frame = rng->frames[(++rng->idx)%rng->nframes]; // advance to next frame 
@@ -619,15 +715,18 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         rng->idx--;
         return false;
     }
+    
     inst->rng->code = frame->code;
-    switch(frame->code) {
+    switch(inst->rng->code) {
         case DWT_SS_TWR ... DWT_DS_TWR_EXT_END:
             if (inst->config.framefilter_enabled == false && frame->dst_address != inst->my_short_address){  
                 // IEEE 802.15.4 standard ranging frames, software MAC filtering
                 DIAGMSG("{\"utime\": %lu,\"msg\": \"software MAC filtering\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
                 rng->idx--; // Rewind
-                inst->control = inst->control_rx_context;
-                dw1000_restart_rx(inst, inst->control);             
+                if (inst->config.rxauto_enable == 0){
+                    inst->control = inst->control_rx_context;
+                    dw1000_restart_rx(inst, inst->control);
+                }             
                 return true;
             }  
             break;
@@ -650,7 +749,9 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
-  
+
+    STATS_INC(g_rngstat, tx_complete);
+
     switch(inst->rng->code) {
         case DWT_SS_TWR ... DWT_DS_TWR_EXT_END:
             DIAGMSG("{\"utime\": %lu,\"msg\": \"tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));

@@ -221,9 +221,7 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 static bool 
 rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
-    if (inst->fctrl != FCNTL_IEEE_RANGE_16)
-        return false;
-    else if(os_sem_get_count(&inst->rng->sem) == 0){
+    if(os_sem_get_count(&inst->rng->sem) == 0){
         os_error_t err = os_sem_release(&inst->rng->sem);   
         assert(err == OS_OK);
         return true;
@@ -340,17 +338,16 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                         
                 uint16_t src_address = frame->src_address; 
                 uint8_t seq_num = frame->seq_num; 
-
-                // Note:: Advance to next frame 
-                frame = next_frame;                            
-                frame->dst_address = src_address;
-                frame->src_address = inst->my_short_address;
-                frame->seq_num = seq_num + 1;
 #if MYNEWT_VAL(WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = dw1000_read_carrier_integrator(inst);
 #endif
+                // Note:: Advance to next frame 
+                frame = next_frame;                            
+                frame->dst_address = src_address;
+                frame->src_address = inst->my_short_address;
+                frame->seq_num = seq_num + 1;
                 frame->code = DWT_DS_TWR_EXT_T2;
 
                 uint64_t request_timestamp = dw1000_read_rxtime(inst);  
@@ -406,6 +403,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received            
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
+#if MYNEWT_VAL(WCS_ENABLED)
+                frame->carrier_integrator  = 0.0l;
+#else
+                frame->carrier_integrator  = - dw1000_read_carrier_integrator(inst);
+#endif
                 frame->code = DWT_DS_TWR_EXT_FINAL;
 
                 // Final callback, prior to transmission, use this callback to populate the EXTENDED_FRAME fields.

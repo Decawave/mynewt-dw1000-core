@@ -38,6 +38,7 @@
 #include <hal/hal_gpio.h>
 #include "bsp/bsp.h"
 
+#include <stats/stats.h>
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_hal.h>
@@ -52,9 +53,7 @@
 #define DIAGMSG(s,u)
 #endif
 
-static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
-static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
-static bool rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
+static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
 static bool start_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
 
@@ -62,8 +61,6 @@ static dw1000_mac_interface_t g_cbs[] = {
         [0] = {
             .id = DW1000_RNG_DS,
             .rx_complete_cb = rx_complete_cb,
-            .rx_timeout_cb = rx_timeout_cb,
-            .rx_error_cb = rx_error_cb,
             .reset_cb = reset_cb,
             .start_tx_error_cb = start_tx_error_cb
         },
@@ -71,8 +68,6 @@ static dw1000_mac_interface_t g_cbs[] = {
         [1] = {
             .id = DW1000_RNG_DS,
             .rx_complete_cb = rx_complete_cb,
-            .rx_timeout_cb = rx_timeout_cb,
-            .rx_error_cb = rx_error_cb,
             .reset_cb = reset_cb,
             .start_tx_error_cb = start_tx_error_cb
         },
@@ -81,19 +76,32 @@ static dw1000_mac_interface_t g_cbs[] = {
         [2] = {
             .id = DW1000_RNG_DS,
             .rx_complete_cb = rx_complete_cb,
-            .rx_timeout_cb = rx_timeout_cb,
-            .rx_error_cb = rx_error_cb,
             .reset_cb = reset_cb,
             .start_tx_error_cb = start_tx_error_cb
         }
 #endif
 };
 
+STATS_SECT_START(twr_ds_stat_section)
+    STATS_SECT_ENTRY(complete)
+    STATS_SECT_ENTRY(tx_error)
+    STATS_SECT_ENTRY(reset)
+STATS_SECT_END
+
+STATS_NAME_START(twr_ds_stat_section)
+    STATS_NAME(twr_ds_stat_section, complete)
+    STATS_NAME(twr_ds_stat_section, tx_error)
+    STATS_NAME(twr_ds_stat_section, reset)
+STATS_NAME_END(twr_ds_stat_section)
+
+STATS_SECT_DECL(twr_ds_stat_section) g_twr_ds_stat;
 
 static dw1000_rng_config_t g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(TWR_DS_TX_HOLDOFF),         // Send Time delay in usec.
     .rx_timeout_period = MYNEWT_VAL(TWR_DS_RX_TIMEOUT)       // Receive response timeout in usec
 };
+
+
 /**
  * API to initialise the rng_ss package.
  *
@@ -114,6 +122,15 @@ void twr_ds_pkg_init(void){
 #if MYNEWT_VAL(DW1000_DEVICE_2)
     dw1000_mac_append_interface(hal_dw1000_inst(1), &g_cbs[2]);
 #endif
+
+    int rc = stats_init(
+    STATS_HDR(g_twr_ds_stat),
+    STATS_SIZE_INIT_PARMS(g_twr_ds_stat, STATS_SIZE_32),
+    STATS_NAME_INIT_PARMS(twr_ds_stat_section));
+    assert(rc == 0);
+    
+    rc = stats_register("twr_ds", STATS_HDR(g_twr_ds_stat));
+    assert(rc == 0);
   
 }
 
@@ -144,27 +161,9 @@ twr_ds_config(dw1000_dev_instance_t * inst){
 }
 
 
-/**
- * API for receive timeout callback.
- *
- * @param inst  Pointer to dw1000_dev_instance_t.
- *
- * @return true on sucess
- */
-static bool 
-rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-
-   if(os_sem_get_count(&inst->rng->sem) == 0){
-       // printf("{\"utime\": %lu,\"log\": \"rng_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
-        os_sem_release(&inst->rng->sem);
-        return true;
-    }
-    else
-        return false;
-}
 
 /**
- * API for receive start error callback.
+ * API for start tx error callback.
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
  *
@@ -172,31 +171,10 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  */
 static bool 
 start_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    //printf("{\"utime\": %lu,\"log\": \"start_tx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
+    STATS_INC(g_twr_ds_stat, tx_error);
     return true;
 }
 
-
-/**
- * API for receive error callback.
- *
- * @param inst  Pointer to dw1000_dev_instance_t.
- *
- * @return true on sucess
- */
-static bool 
-rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-
-    if (inst->fctrl != FCNTL_IEEE_RANGE_16)
-        return false;
-    else if(os_sem_get_count(&inst->rng->sem) == 0){
-        os_error_t err = os_sem_release(&inst->rng->sem);   
-        assert(err == OS_OK);
-        return true;
-    }
-    else
-        return false;
-}
 
 /** 
  * API for reset_cb of rng interface
@@ -208,6 +186,7 @@ static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(os_sem_get_count(&inst->rng->sem) == 0){
+        STATS_INC(g_twr_ds_stat, reset);
         os_error_t err = os_sem_release(&inst->rng->sem);  
         assert(err == OS_OK);
         return true;
@@ -235,11 +214,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
        case DWT_DS_TWR:
             {
                 // This code executes on the device that is responding to a original request
-                DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];  // Frame already read within loader layers.
-      
+                
+                if(inst->status.lde_error)
+                    break;
                 uint64_t request_timestamp = dw1000_read_rxtime(inst);
                 uint64_t response_tx_delay = request_timestamp + ((uint64_t)g_config.tx_holdoff_delay << 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
@@ -276,8 +255,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             {
                 // This code executes on the device that initiated the original request, and is now preparing the next series of timestamps
                 // The 1st frame now contains a local copy of the initial first side of the double sided scheme. 
-                DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR_T1\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-
+ 
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                 twr_frame_t * next_frame = rng->frames[(rng->idx+1)%rng->nframes];
@@ -290,7 +268,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 else 
                     break;
 
-                
+                if(inst->status.lde_error)
+                    break;
                 frame->request_timestamp = next_frame->request_timestamp = dw1000_read_txtime_lo(inst); // This corresponds to when the original request was actually sent
                 frame->response_timestamp = next_frame->response_timestamp = dw1000_read_rxtime_lo(inst); // This corresponds to the response just received
                       
@@ -309,6 +288,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->seq_num = seq_num + 1;
                 frame->code = DWT_DS_TWR_T2;
 
+                if(inst->status.lde_error)
+                    break;
                 uint64_t request_timestamp = dw1000_read_rxtime(inst);  
                 uint64_t response_tx_delay = request_timestamp + ((uint64_t)g_config.tx_holdoff_delay << 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
@@ -337,7 +318,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         case DWT_DS_TWR_T2:
             {
                 // This code executes on the device that responded to the original request, and is now preparing the final timestamps
-                DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR_T2\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * previous_frame = rng->frames[(uint16_t)(rng->idx-1)%rng->nframes];
@@ -351,6 +331,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 else 
                     break;
                 
+                if(inst->status.lde_error)
+                    break;
                 previous_frame->request_timestamp = frame->request_timestamp;
                 previous_frame->response_timestamp = frame->response_timestamp;
                 frame->request_timestamp = dw1000_read_txtime_lo(inst);   // This corresponds to when the original request was actually sent
@@ -374,6 +356,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                         cbs->start_tx_error_cb(inst, cbs);
                 }
                 else{   
+                    STATS_INC(g_twr_ds_stat, complete); 
+                    os_sem_release(&rng->sem);  
                     dw1000_mac_interface_t * cbs = NULL;
                     if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
                         SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
@@ -381,15 +365,13 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                             if(cbs->complete_cb(inst, cbs)) continue;          
                         }   
                     }  
-                    os_sem_release(&rng->sem);  
                     }   
-                    break;
+                break;
                 }
         case  DWT_DS_TWR_FINAL:
             {
                 // This code executes on the device that initialed the original request, and has now receive the final response timestamp. 
                 // This marks the completion of the double-single-two-way request. 
-                DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR_FINAL\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
@@ -397,7 +379,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     dw1000_read_rx(inst, frame->array + sizeof(ieee_rng_request_frame_t),  
                                         sizeof(ieee_rng_request_frame_t), 
                                         sizeof(twr_frame_final_t) - sizeof(ieee_rng_request_frame_t)
-                    );                            
+                    );         
+                STATS_INC(g_twr_ds_stat, complete);                   
                 os_sem_release(&rng->sem);
                 dw1000_mac_interface_t * cbs = NULL;
                 if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
