@@ -214,6 +214,11 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 {    
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
+        
+    if(os_sem_get_count(&inst->rng->sem) == 1){ 
+        // unsolicited inbound
+        return false;
+    }
 
     dw1000_rng_instance_t * rng = inst->rng; 
     twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes]; // Frame already read within loader layers.

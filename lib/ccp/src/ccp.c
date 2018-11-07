@@ -96,6 +96,7 @@ STATS_SECT_START(ccp_stat_section)
     STATS_SECT_ENTRY(listen)
     STATS_SECT_ENTRY(tx_complete)
     STATS_SECT_ENTRY(rx_complete)
+    STATS_SECT_ENTRY(rx_unsolicited)
     STATS_SECT_ENTRY(rx_error)
     STATS_SECT_ENTRY(tx_start_error)
     STATS_SECT_ENTRY(rx_timeout)
@@ -110,6 +111,7 @@ STATS_NAME_START(ccp_stat_section)
     STATS_NAME(ccp_stat_section, slave_cnt)
     STATS_NAME(ccp_stat_section, tx_complete)
     STATS_NAME(ccp_stat_section, rx_complete)
+    STATS_NAME(ccp_stat_section, rx_unsolicited)
     STATS_NAME(ccp_stat_section, rx_error)
     STATS_NAME(ccp_stat_section, tx_start_error)
     STATS_NAME(ccp_stat_section, rx_timeout)
@@ -501,30 +503,31 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64)
         return false;
 
-    if(inst->status.lde_error){
-        return false;
-    }
-
-    STATS_INC(g_ccpstat, rx_complete);
-
     if(os_sem_get_count(&inst->ccp->sem) == 1){ 
         //unsolicited inbound
+        STATS_INC(g_ccpstat, rx_unsolicited);
         return false;
     }
+
+    if(inst->status.lde_error)
+        return false;
+    
     dw1000_ccp_instance_t * ccp = inst->ccp; 
-    ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
+    ccp_frame_t * frame = ccp->frames[(ccp->idx+1)%ccp->nframes];  // speculative frame advance
 
     if (inst->frame_len >= sizeof(ieee_blink_frame_t))
         dw1000_read_rx(inst, frame->array, 0, sizeof(ieee_blink_frame_t));
     else {
-        ccp->idx--;
         return false;
     }
+
     if(inst->ccp->uuid != frame->long_address){
-        ccp->idx--;
         return false;
     }
+
+    ccp->idx++; // confirmed frame advance  
     ccp->os_epoch = os_cputime_get32();
+    STATS_INC(g_ccpstat, rx_complete);
 
     if (inst->config.dblbuffon_enabled) {
         dw1000_set_rx_timeout(inst, 1000);
@@ -537,7 +540,6 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
     ccp->epoch_master = frame->transmission_timestamp;
     ccp->epoch = frame->reception_timestamp = dw1000_read_rxtime(inst);
-    
     frame->carrier_integrator  = dw1000_read_carrier_integrator(inst);
     ccp->status.valid |= ccp->idx > 1;
 
@@ -587,6 +589,7 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
 
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
+    
     ccp->os_epoch = os_cputime_get32();
     ccp->epoch = frame->transmission_timestamp = dw1000_read_txrawst(inst); 
 
@@ -713,14 +716,12 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
 {
 
     STATS_INC(g_ccpstat,send);
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_send \"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_ccp_instance_t * ccp = inst->ccp; 
-
     os_error_t err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
     
-    ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx - 1)%ccp->nframes];
-    ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes];
+    ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx)%ccp->nframes];
+    ccp_frame_t * frame = ccp->frames[(ccp->idx+1)%ccp->nframes];
     
     frame->transmission_timestamp = (previous_frame->transmission_timestamp
                                     + ((uint64_t)inst->ccp->period << 16)
@@ -768,11 +769,11 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
 static dw1000_ccp_status_t 
 dw1000_ccp_listen(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
 {
-    STATS_INC(g_ccpstat,listen);
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_receive\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     os_error_t err = os_sem_pend(&ccp->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
+
+    STATS_INC(g_ccpstat,listen);
 
     ccp->status = (dw1000_ccp_status_t){
         .rx_timeout_error = 0,

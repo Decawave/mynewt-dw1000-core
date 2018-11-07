@@ -150,13 +150,14 @@ void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, twr_frame_t twr[], uint
 #if MYNEWT_VAL(DW1000_RANGE)
 float dw1000_rng_twr_to_tof(twr_frame_t *fframe, twr_frame_t *nframe);
 #else
-float dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng);
+float dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng, uint16_t idx);
 #endif
+float dw1000_rng_tof_to_meters(float ToF); 
+
 
 float dw1000_rng_path_loss(float Pt, float G, float fc, float R);
 float dw1000_rng_bias_correction(dw1000_dev_instance_t * inst, float Pr);
 uint32_t dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code);
-#define dw1000_rng_tof_to_meters(ToF) (float)(ToF * 299792458 * (1.0/499.2e6/128.0)) //!< Converts time of flight to meters.
 
 #ifdef __cplusplus
 }

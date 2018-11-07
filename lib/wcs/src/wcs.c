@@ -190,7 +190,7 @@ void wcs_update_cb(struct os_event * ev){
         if (inst->status.valid)
             inst->skew = 1.0l - states->skew * (1e-6l/((uint64_t)1 << 16));
         else {
-            inst->skew = 0;
+            inst->skew = 0.0l;
         }
 
     if(inst->config.postprocess == true)

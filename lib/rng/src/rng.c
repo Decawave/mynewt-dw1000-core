@@ -45,8 +45,8 @@
 #include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_ftypes.h>
-#include <rng/rng.h>
 #include <dsp/polyval.h>
+#include <rng/rng.h>
 
 #if MYNEWT_VAL(TWR_DS_EXT_ENABLED)
 #include <twr_ds_ext/twr_ds_ext.h>
@@ -60,7 +60,6 @@
 #if MYNEWT_VAL(WCS_ENABLED)
 #include <wcs/wcs.h>
 #endif
-
 
 
 //#define DIAGMSG(s,u) printf(s,u)
@@ -191,6 +190,7 @@ STATS_SECT_START(rng_stat_section)
     STATS_SECT_ENTRY(rng_listen)
     STATS_SECT_ENTRY(tx_complete)
     STATS_SECT_ENTRY(rx_complete)
+    STATS_SECT_ENTRY(rx_unsolicited)
     STATS_SECT_ENTRY(rx_error)
     STATS_SECT_ENTRY(tx_error)
     STATS_SECT_ENTRY(rx_timeout)
@@ -202,6 +202,7 @@ STATS_NAME_START(rng_stat_section)
     STATS_NAME(rng_stat_section, rng_listen)
     STATS_NAME(rng_stat_section, tx_complete)
     STATS_NAME(rng_stat_section, rx_complete)
+    STATS_NAME(rng_stat_section, rx_unsolicited)
     STATS_NAME(rng_stat_section, rx_error)
     STATS_NAME(rng_stat_section, tx_error)
     STATS_NAME(rng_stat_section, rx_timeout)
@@ -406,8 +407,7 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
    
     dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_rng_request_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_request_frame_t), 0, true);     
-    dw1000_set_wait4resp(inst, true);  
-     
+    dw1000_set_wait4resp(inst, true);   
     uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_rng_response_frame_t)) 
                     + config->rx_timeout_period         // At least 2 * ToF, 1us ~= 300m
                     + config->tx_holdoff_delay;         // Remote side turn arroud time. 
@@ -420,7 +420,9 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
         os_sem_release(&inst->rng->sem);
      
     err = os_sem_pend(&inst->rng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
-    os_sem_release(&inst->rng->sem);
+    assert(err == OS_OK);
+    err = os_sem_release(&inst->rng->sem);
+    assert(err == OS_OK);
     
    return inst->status;
 }
@@ -573,17 +575,16 @@ dw1000_rng_twr_to_tof(twr_frame_t *fframe, twr_frame_t *nframe){
  * @return Time of flight in float
  */
 float 
-dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng){
+dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng, uint16_t idx){
 
     float ToF = 0;
     uint64_t T1R, T1r, T2R, T2r;
     int64_t nom,denom;
 
     dw1000_dev_instance_t * inst = rng->parent;
-  
 
-    twr_frame_t * first_frame = rng->frames[(uint16_t)(rng->idx-1)%rng->nframes];
-    twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
+    twr_frame_t * first_frame = rng->frames[(uint16_t)(idx-1)%rng->nframes];
+    twr_frame_t * frame = rng->frames[(idx)%rng->nframes];
 
     switch(frame->code){
         case DWT_SS_TWR ... DWT_SS_TWR_END:{
@@ -593,8 +594,8 @@ dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng){
 #else
             float skew = dw1000_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);
 #endif
-            ToF = ((first_frame->response_timestamp - first_frame->request_timestamp) 
-                    -  (first_frame->transmission_timestamp - first_frame->reception_timestamp) * (1 - skew))/2.;
+            ToF = ((frame->response_timestamp - frame->request_timestamp) 
+                    -  (frame->transmission_timestamp - frame->reception_timestamp) * (1.0f - skew))/2.;
             }
         break;
         case DWT_DS_TWR ... DWT_DS_TWR_END:
@@ -612,6 +613,19 @@ dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng){
     return ToF;
 }
 #endif
+
+
+/**
+ * API to calculate range in meters from time-of-flight based on type of ranging.
+ *
+ * @param rng  Pointer to dw1000_rng_instance_t.
+ *
+ * @return range in meters
+ */
+float 
+dw1000_rng_tof_to_meters(float ToF) {
+    return (float)(ToF * 299792458 * (1.0/499.2e6/128.0)); //!< Converts time of flight to meters.
+}
 
 /**
  * API to calculate time of flight for symmetric type of ranging.
@@ -697,36 +711,33 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 {
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
-    STATS_INC(g_rngstat, rx_complete);
-
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"rx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-
+  
     if(os_sem_get_count(&inst->rng->sem) == 1){ 
         // unsolicited inbound
+        STATS_INC(g_rngstat, rx_unsolicited);
         return false;
     }
 
     dw1000_rng_instance_t * rng = inst->rng; 
-    twr_frame_t * frame = rng->frames[(++rng->idx)%rng->nframes]; // advance to next frame 
+    twr_frame_t * frame = rng->frames[(rng->idx+1)%rng->nframes]; // speculative frame advance
     
     if (inst->frame_len >= sizeof(ieee_rng_request_frame_t))
         dw1000_read_rx(inst, frame->array, 0, sizeof(ieee_rng_request_frame_t));
     else {
-        rng->idx--;
         return false;
     }
     
     inst->rng->code = frame->code;
     switch(inst->rng->code) {
-        case DWT_SS_TWR ... DWT_DS_TWR_EXT_END:
-            if (inst->config.framefilter_enabled == false && frame->dst_address != inst->my_short_address){  
-                // IEEE 802.15.4 standard ranging frames, software MAC filtering
-                DIAGMSG("{\"utime\": %lu,\"msg\": \"software MAC filtering\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-                rng->idx--; // Rewind
+        case DWT_SS_TWR ... DWT_DS_TWR_EXT_END:         
+            // IEEE 802.15.4 standard ranging frames, software MAC filtering
+            if (inst->config.framefilter_enabled == false && frame->dst_address != inst->my_short_address){ 
                 if (inst->config.rxauto_enable == 0){
                     inst->control = inst->control_rx_context;
                     dw1000_restart_rx(inst, inst->control);
-                }             
+                }  
+                STATS_INC(g_rngstat, rx_complete); 
+                rng->idx++; // confirmed frame advance  
                 return true;
             }  
             break;
@@ -750,11 +761,9 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
 
-    STATS_INC(g_rngstat, tx_complete);
-
     switch(inst->rng->code) {
         case DWT_SS_TWR ... DWT_DS_TWR_EXT_END:
-            DIAGMSG("{\"utime\": %lu,\"msg\": \"tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+            STATS_INC(g_rngstat, tx_complete);
             return true;
             break;
         default: 
