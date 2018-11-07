@@ -355,7 +355,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 dw1000_write_tx_fctrl(inst, sizeof(twr_frame_t), 0, true); 
                 dw1000_set_wait4resp(inst, true);    
                 dw1000_set_delay_start(inst, response_tx_delay);   
-                
+
                 uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(twr_frame_t)) 
                                 + g_config.rx_timeout_period        
                                 + g_config.tx_holdoff_delay;         // Remote side turn arroud time. 
@@ -373,6 +373,9 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             {
                  // This code executes on the device that responded to the original request, and is now preparing the final timestamps
 
+                if(inst->status.lde_error)
+                    break;
+                    
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * previous_frame = rng->frames[(uint16_t)(rng->idx-1)%rng->nframes];
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
@@ -383,9 +386,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                                         sizeof(twr_frame_t) - sizeof(ieee_rng_request_frame_t)
                     );
                 else 
-                    break;
-
-                if(inst->status.lde_error)
                     break;
 
                 previous_frame->request_timestamp = frame->request_timestamp;

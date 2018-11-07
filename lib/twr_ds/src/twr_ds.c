@@ -326,7 +326,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 // This code executes on the device that responded to the original request, and is now preparing the final timestamps
                 if(inst->status.lde_error)
                     break;
-                    
+
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * previous_frame = rng->frames[(uint16_t)(rng->idx-1)%rng->nframes];
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
@@ -338,8 +338,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     );
                 else 
                     break;
-                
-        
                     
                 previous_frame->request_timestamp = frame->request_timestamp;
                 previous_frame->response_timestamp = frame->response_timestamp;
