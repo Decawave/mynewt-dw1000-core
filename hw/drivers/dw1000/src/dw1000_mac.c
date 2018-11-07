@@ -233,19 +233,20 @@ STATS_NAME_END(mac_stat_section)
 STATS_SECT_DECL(mac_stat_section) g_mac_stat;
 
 /**
- * API to initialize the mac layer.  
+ * API to configure the mac layer in dw1000
  * @param inst     Pointer to _dw1000_dev_instance_t.
  * @param config   Pointer to dw1000_dev_config_t.
  * @return dw1000_dev_status_t 
  *
  */
-struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst, dw1000_dev_config_t * config)
+struct _dw1000_dev_status_t dw1000_mac_config(struct _dw1000_dev_instance_t * inst,
+                                              dw1000_dev_config_t * config)
 {
-
-    if (config == NULL)
+    if (config == NULL) {
         config = &inst->config;
-    else
+    } else {
         memcpy(&inst->config, config, sizeof(dw1000_dev_config_t));
+    }
     
     uint8_t nsSfd_result  = 0;
     uint8_t useDWnsSFD = 0;
@@ -253,26 +254,33 @@ struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst
     uint8_t prfIndex = config->prf - DWT_PRF_16M;
     uint8_t bw = ((chan == 4) || (chan == 7)) ? 1 : 0 ; // Select wide or narrow band
     uint16_t reg16 = lde_replicaCoeff[config->rx.preambleCodeIndex];
-    
+
 #ifdef DW1000_API_ERROR_CHECK
     assert(config->dataRate <= DWT_BR_6M8);
     assert(config->rx.pacLength <= DWT_PAC64);
     assert((chan >= 1) && (chan <= 7) && (chan != 6));
     
-    assert(((config->prf == DWT_PRF_64M) && (config->tx.preambleCodeIndex >= 9) && (config->tx.preambleCodeIndex <= 24))
-           || ((config->prf == DWT_PRF_16M) && (config->tx.preambleCodeIndex >= 1) && (config->tx.preambleCodeIndex <= 8)));
+    assert(((config->prf == DWT_PRF_64M) && (config->tx.preambleCodeIndex >= 9) &&
+            (config->tx.preambleCodeIndex <= 24)) ||
+           ((config->prf == DWT_PRF_16M) && (config->tx.preambleCodeIndex >= 1) &&
+            (config->tx.preambleCodeIndex <= 8)));
 
-    assert(((config->prf == DWT_PRF_64M) && (config->rx.preambleCodeIndex >= 9) && (config->rx.preambleCodeIndex <= 24))
-           || ((config->prf == DWT_PRF_16M) && (config->rx.preambleCodeIndex >= 1) && (config->rx.preambleCodeIndex <= 8)));
+    assert(((config->prf == DWT_PRF_64M) && (config->rx.preambleCodeIndex >= 9) &&
+            (config->rx.preambleCodeIndex <= 24)) ||
+           ((config->prf == DWT_PRF_16M) && (config->rx.preambleCodeIndex >= 1) &&
+            (config->rx.preambleCodeIndex <= 8)));
 
-    assert((config->tx.preambleLength == DWT_PLEN_64) || (config->tx.preambleLength == DWT_PLEN_128) || (config->tx.preambleLength == DWT_PLEN_256)
-           || (config->tx.preambleLength == DWT_PLEN_512) || (config->tx.preambleLength == DWT_PLEN_1024) || (config->tx.preambleLength == DWT_PLEN_1536)
-           || (config->tx.preambleLength == DWT_PLEN_2048) || (config->tx.preambleLength == DWT_PLEN_4096));
+    assert((config->tx.preambleLength == DWT_PLEN_64) || (config->tx.preambleLength == DWT_PLEN_128) ||
+           (config->tx.preambleLength == DWT_PLEN_256)|| (config->tx.preambleLength == DWT_PLEN_512) ||
+           (config->tx.preambleLength == DWT_PLEN_1024) ||
+           (config->tx.preambleLength == DWT_PLEN_1536) ||
+           (config->tx.preambleLength == DWT_PLEN_2048) ||
+           (config->tx.preambleLength == DWT_PLEN_4096));
 
     assert((config->rx.phrMode == DWT_PHRMODE_STD) || (config->rx.phrMode == DWT_PHRMODE_EXT));
 #endif
     
-    // For 110 kbps we need a special setup
+    /* For 110 kbps we need a special setup */
     if(config->dataRate == DWT_BR_110K){
         inst->sys_cfg_reg |= SYS_CFG_RXM110K;
         reg16 >>= 3; // lde_replicaCoeff must be divided by 8
@@ -287,25 +295,26 @@ struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst
         inst->sys_cfg_reg |=SYS_CFG_RXAUTR; 
     
     dw1000_write_reg(inst, SYS_CFG_ID, 0, inst->sys_cfg_reg, sizeof(uint32_t));
-    dw1000_write_reg(inst, LDE_IF_ID, LDE_REPC_OFFSET, reg16, sizeof(uint16_t)); // Set the lde_replicaCoeff 
+    /* Set the lde_replicaCoeff */
+    dw1000_write_reg(inst, LDE_IF_ID, LDE_REPC_OFFSET, reg16, sizeof(uint16_t));
 
     dw1000_phy_config_lde(inst, prfIndex);
 
-    // Configure PLL2/RF PLL block CFG/TUNE (for a given channel)
+    /* Configure PLL2/RF PLL block CFG/TUNE (for a given channel) */
     dw1000_write_reg(inst, FS_CTRL_ID, FS_PLLCFG_OFFSET, fs_pll_cfg[chan_idx[chan]], sizeof(uint32_t));
     dw1000_write_reg(inst, FS_CTRL_ID, FS_PLLTUNE_OFFSET, fs_pll_tune[chan_idx[chan]], sizeof(uint8_t));
 
-    // Configure RF RX blocks (for specified channel/bandwidth)
+    /* Configure RF RX blocks (for specified channel/bandwidth) */
     dw1000_write_reg(inst, RF_CONF_ID, RF_RXCTRLH_OFFSET, rx_config[bw], sizeof(uint8_t));
 
-    // Configure RF TX blocks (for specified channel and PRF)
-    // Configure RF TX control
+    /* Configure RF TX blocks (for specified channel and PRF)
+     * Configure RF TX control */
     dw1000_write_reg(inst, RF_CONF_ID, RF_TXCTRL_OFFSET, tx_config[chan_idx[chan]], sizeof(uint32_t));
 
-    // Configure the baseband parameters (for specified PRF, bit rate, PAC, and SFD settings)
-    // DTUNE0
+    /* Configure the baseband parameters (for specified PRF, bit rate, PAC, and SFD settings) */
+    /* DTUNE0 */
     dw1000_write_reg(inst, DRX_CONF_ID, DRX_TUNE0b_OFFSET, sftsh[config->dataRate][config->rx.sfdType], sizeof(uint16_t));
-    // DTUNE1
+    /* DTUNE1 */
     dw1000_write_reg(inst, DRX_CONF_ID, DRX_TUNE1a_OFFSET, dtune1[prfIndex], sizeof(uint16_t));
 
     if(config->dataRate == DWT_BR_110K){
@@ -320,23 +329,24 @@ struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst
         }
     }
 
-    // DTUNE2
-    dw1000_write_reg(inst, DRX_CONF_ID, DRX_TUNE2_OFFSET, digital_bb_config[prfIndex][config->rx.pacLength], sizeof(uint16_t));
+    /* DTUNE2 */
+    dw1000_write_reg(inst, DRX_CONF_ID, DRX_TUNE2_OFFSET,
+                     digital_bb_config[prfIndex][config->rx.pacLength], sizeof(uint16_t));
 
-    // DTUNE3 (SFD timeout)
-    // Don't allow 0 - SFD timeout will always be enabled
+    /* DTUNE3 (SFD timeout) */
+    /* Don't allow 0 - SFD timeout will always be enabled */
     if(config->rx.sfdTimeout == 0)
         config->rx.sfdTimeout= DWT_SFDTOC_DEF;
     
     dw1000_write_reg(inst, DRX_CONF_ID, DRX_SFDTOC_OFFSET, config->rx.sfdTimeout, sizeof(uint16_t));
 
-    // Configure AGC parameters
+    /* Configure AGC parameters */
     dw1000_write_reg(inst, AGC_CTRL_ID, AGC_TUNE2_OFFSET, agc_config.lo32, sizeof(uint32_t));
     dw1000_write_reg(inst, AGC_CTRL_ID, AGC_TUNE1_OFFSET, agc_config.target[prfIndex], sizeof(uint32_t));
 
-    // Set (non-standard) user SFD for improved performance,
+    /* Set (non-standard) user SFD for improved performance, */
     if(config->rx.sfdType){
-        // Write non standard (DW) SFD length
+        /* Write non standard (DW) SFD length */
         dw1000_write_reg(inst, USR_SFD_ID, 0x0, dwnsSFDlen[config->dataRate], sizeof(uint8_t));
         nsSfd_result = 3 ;
         useDWnsSFD = 1 ;
@@ -351,26 +361,46 @@ struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst
 
     dw1000_write_reg(inst, CHAN_CTRL_ID, 0, regval, sizeof(uint32_t)) ;
 
-    // Set up TX Preamble Size, PRF and Data Rate
-    inst->tx_fctrl = ((config->tx.preambleLength | config->prf) << TX_FCTRL_TXPRF_SHFT) | (config->dataRate << TX_FCTRL_TXBR_SHFT);
+    /* Set up TX Preamble Size, PRF and Data Rate */
+    inst->tx_fctrl = ((config->tx.preambleLength | config->prf) << TX_FCTRL_TXPRF_SHFT) |
+        (config->dataRate << TX_FCTRL_TXBR_SHFT);
     dw1000_write_reg(inst, TX_FCTRL_ID, 0, inst->tx_fctrl, sizeof(uint32_t));
-    // The SFD transmit pattern is initialised by the DW1000 upon a user TX request, but (due to an IC issue) it is not done for an auto-ACK TX. The
-    // SYS_CTRL write below works around this issue, by simultaneously initiating and aborting a transmission, which correctly initialises the SFD
-    // after its configuration or reconfiguration.
-    // This issue is not documented at the time of writing this code. It should be in next release of DW1000 User Manual (v2.09, from July 2016).
-    dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_TXSTRT | SYS_CTRL_TRXOFF, sizeof(uint8_t)); // Request TX start and TRX off at the same time
-    dw1000_tasks_init(inst);
+    /* The SFD transmit pattern is initialised by the DW1000 upon a user TX request,
+     * but (due to an IC issue) it is not done for an auto-ACK TX.
+     * The SYS_CTRL write below works around this issue, by simultaneously initiating
+     * and aborting a transmission, which correctly initialises the SFD
+     * after its configuration or reconfiguration. */
+    /* Request TX start and TRX off at the same time */
+    dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_TXSTRT | SYS_CTRL_TRXOFF,
+                     sizeof(uint8_t));
 
 #if MYNEWT_VAL(DW1000_MAC_FILTERING)
     if(inst->config.framefilter_enabled){
         dw1000_mac_framefilter(inst, DWT_FF_BEACON_EN | DWT_FF_DATA_EN | DWT_FF_RSVD_EN );
     }
 #endif
+    return inst->status;
+}
+
+
+/**
+ * API to initialize the mac layer.
+ * @param inst     Pointer to _dw1000_dev_instance_t.
+ * @param config   Pointer to dw1000_dev_config_t.
+ * @return dw1000_dev_status_t
+ *
+ */
+struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst, dw1000_dev_config_t * config)
+{
+    /* Configure DW1000 */
+    dw1000_mac_config(inst, config);
+
+    dw1000_tasks_init(inst);
 
     int rc = stats_init(
-    STATS_HDR(g_mac_stat),
-    STATS_SIZE_INIT_PARMS(g_mac_stat, STATS_SIZE_32),
-    STATS_NAME_INIT_PARMS(mac_stat_section));
+        STATS_HDR(g_mac_stat),
+        STATS_SIZE_INIT_PARMS(g_mac_stat, STATS_SIZE_32),
+        STATS_NAME_INIT_PARMS(mac_stat_section));
     assert(rc == 0);
     
     rc = stats_register("mac_stats", STATS_HDR(g_mac_stat));
@@ -512,7 +542,8 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
             */
             sys_ctrl_reg = SYS_CTRL_TRXOFF; // This assumes the bit is in the lowest byte
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint8_t) sys_ctrl_reg, sizeof(uint8_t)); 
-            os_sem_release(&inst->sem);  
+            err = os_sem_release(&inst->sem);
+            assert(err == OS_OK);
         }
     }else{
         dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sys_ctrl_reg, sizeof(uint8_t));
