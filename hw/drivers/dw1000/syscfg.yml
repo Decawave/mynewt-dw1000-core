@@ -10,19 +10,7 @@ syscfg.defs:
         description: >
           Size of spi read/write buffer, sets the 
           maximum allowed nonblocking read operation
-        value: 136
-    DW1000_SS_TWR_ENABLED:
-        description: 'Single sided TWR Enabled'
-        value: 1
-    DW1000_DS_TWR_ENABLED:
-        description: 'Double sided TWR Enabled'
-        value: 1
-    DW1000_DS_TWR_EXT_ENABLED:
-        description: 'Double sided extended mode Enable'
-        value: 1
-    DW1000_SS_TWR_EXT_ENABLED:
-        description: 'Single sided extended mode Enable'
-        value: 1
+        value: 256
     DW1000_MAC_FILTERING:
         description: 'Enable the mac filtering'
         value: 0
@@ -38,13 +26,13 @@ syscfg.defs:
     DW1000_DEVICE_FREQ:  
         description: 'Center frequency Hz'
         value: ((float){6489.6f})
+    DW1000_RNG_INDICATE_LED:
+        description: 'Toggle LED_1 for every range packet received'
+        value: 0
     LOCAL_COORDINATE_X:
         description: >
             Default Anchor X Coordinate  
         value: ((float){0.0f})
-    DW1000_RNG_INDICATE_LED:
-        description: 'Toggle LED_1 for every range packet received'
-        value: 0
     LOCAL_COORDINATE_Y:
         description: >
             Default Anchor Y Coordinate  
@@ -65,12 +53,15 @@ syscfg.defs:
         description: >
             Ranging period
         value: ((uint32_t){0x3000})
-    PROVISION_PERIOD:
-        description: >
-            Provision packet period (ms)
-        value: ((uint32_t){100})
     OS_LATENCY:
         description: >
             OS Latency Guardband (usec)
         value: ((uint32_t){1000})
-
+    PANID:
+        description: >
+          Default Pan ID
+        value: ((uint16_t){0xdeca})
+    DEVICE_ID:
+        description: >
+          Default Device ID
+        value: ((uint16_t){0x1234})

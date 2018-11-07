@@ -1,4 +1,4 @@
 syscfg.defs:
-    DW1000_LWIP:
-        description: 'Enable LWIP functionality'
-        value: 0
+      LWIP_ENABLED:
+        description: 'Enable toplevel lwIP services'
+        value: 1

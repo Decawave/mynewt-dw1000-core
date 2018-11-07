@@ -31,4 +31,5 @@ pkg.cflags:
 
 pkg.lflags:
     - "-lm"
-    
+pkg.init:
+    pan_pkg_init: 409

@@ -40,8 +40,10 @@
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_phy.h>
 
-
-static dw1000_extension_callbacks_t* dw1000_new_extension_callbacks(dw1000_dev_instance_t* inst);
+#define DIAGMSG(s,u) printf(s,u)
+#ifndef DIAGMSG
+#define DIAGMSG(s,u)
+#endif
 
 /**
  * API to perform dw1000_read from given address.
@@ -121,7 +123,6 @@ dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, ui
     } else {
         hal_dw1000_write_noblock(inst, header, len, buffer, length);
     }
-
     return inst->status;
 }
 
@@ -243,6 +244,7 @@ dw1000_softreset(dw1000_dev_instance_t * inst)
 int 
 dw1000_dev_init(struct os_dev *odev, void *arg)
 {
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_dev_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     struct dw1000_dev_cfg *cfg = (struct dw1000_dev_cfg*)arg;
     dw1000_dev_instance_t *inst = (dw1000_dev_instance_t *)odev;
     
@@ -254,13 +256,17 @@ dw1000_dev_init(struct os_dev *odev, void *arg)
     }
 
     inst->spi_sem = cfg->spi_sem;
-    inst->spi_num  = cfg->spi_num;
+    inst->spi_num = cfg->spi_num;
 
     os_error_t err = os_mutex_init(&inst->mutex);
     assert(err == OS_OK);
 
     err = os_sem_init(&inst->sem, 0x1); 
     assert(err == OS_OK);
+    err = os_sem_init(&inst->spi_nb_sem, 0x1);
+    assert(err == OS_OK);
+
+    SLIST_INIT(&inst->interface_cbs);
 
     return OS_OK;
 }
@@ -313,6 +319,13 @@ retry:
     assert(rc == 0);
     rc = hal_spi_enable(inst->spi_num);
     assert(rc == 0);
+
+    inst->PANID = MYNEWT_VAL(PANID);
+    inst->my_short_address = MYNEWT_VAL(DEVICE_ID);
+    inst->my_long_address = ((uint64_t) inst->device_id << 32) + inst->partID;
+
+    dw1000_set_panid(inst,inst->PANID);
+    dw1000_mac_init(inst, NULL);
 
     return OS_OK;
 }
@@ -514,69 +527,3 @@ dw1000_dev_enter_sleep_after_rx(dw1000_dev_instance_t * inst, uint8_t enable)
     return inst->status;
 }
 
-/**
- * API to set sleep callback.
- *
- * @param inst             Pointer to dw1000_dev_instance_t.
- * @param sleep_timer_cb   Callback to set sleep time.
- *
- */
-inline void 
-dw1000_dev_set_sleep_callback(dw1000_dev_instance_t * inst,  dw1000_dev_cb_t sleep_timer_cb){
-    inst->sleep_timer_cb = sleep_timer_cb;
-}
-/**
- * API to register extension  callbacks for different services.
- *
- * @param inst       Pointer to dw1000_dev_instance_t.
- * @param callbacks  callback instance.
- * @return void
- */
-void
-dw1000_add_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_callbacks_t callbacks){
-    assert(inst);
-    dw1000_extension_callbacks_t* prev_cbs = NULL;
-    dw1000_extension_callbacks_t* cur_cbs = NULL;
-    dw1000_extension_callbacks_t* new_cbs = dw1000_new_extension_callbacks(inst);
-    assert(new_cbs);
-    memcpy(new_cbs,&callbacks,sizeof(dw1000_extension_callbacks_t));
-    if(!(SLIST_EMPTY(&inst->extension_cbs))){
-        SLIST_FOREACH(cur_cbs, &inst->extension_cbs, cbs_next) {
-            prev_cbs = cur_cbs;
-        }
-        SLIST_INSERT_AFTER(prev_cbs, new_cbs, cbs_next);
-    }else
-        SLIST_INSERT_HEAD(&inst->extension_cbs, new_cbs, cbs_next);
-}
-
-/**
- * API to assign memory for new callbacks.
- *
- * @param inst  Pointer to dw1000_dev_instance_t.
- * @return new callbacks
- */
-static dw1000_extension_callbacks_t*
-dw1000_new_extension_callbacks(dw1000_dev_instance_t* inst){
-    assert(inst);
-    dw1000_extension_callbacks_t* new_cbs = (dw1000_extension_callbacks_t*)malloc(sizeof(dw1000_extension_callbacks_t));
-    memset(new_cbs, 0, sizeof(dw1000_extension_callbacks_t));
-    return new_cbs;
-}
-
-/**
- * API to remove specified callbacks.
- *
- * @param inst  Pointer to dw1000_dev_instance_t.
- * @param id    ID of the service.
- * @return void
- */
-void
-dw1000_remove_extension_callbacks(dw1000_dev_instance_t* inst, dw1000_extension_id_t id){
-    dw1000_extension_callbacks_t* temp;
-    SLIST_FOREACH(temp, &inst->extension_cbs, cbs_next) {
-        if(temp->id == id){
-            SLIST_REMOVE(&inst->extension_cbs, temp, _dw1000_extension_callback_t, cbs_next);
-            break;
-        }
-    }
-}
