@@ -69,7 +69,6 @@ static bool pan_rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface
 static bool pan_rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool pan_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool pan_reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static dw1000_pan_status_t dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 static void pan_postprocess(struct os_event * ev);
 
 /**
@@ -92,36 +91,6 @@ void pan_pkg_init(void){
 #endif
 }
 
-/**
- * API periodically sends pan blink request.
- *
- * @param ev  Pointer to os_events.
- * @return void
- */
-static void
-pan_timer_ev_cb(struct os_event *ev) {
-    assert(ev != NULL);
-    assert(ev->ev_arg != NULL);
-
-    dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
-
-    dw1000_pan_blink(inst, DWT_BLOCKING);
-}
-
-/**
- * API to initialise the timer based callout (pan_callout_timer).
- *
- * @param inst  Pointer to dw1000_dev_instance_t.
- * @return void
- */
-
-static void
-pan_timer_init(dw1000_dev_instance_t * inst) {
-    dw1000_pan_instance_t * pan = inst->pan;
-    os_callout_init(&pan->pan_callout_timer, os_eventq_dflt_get(), pan_timer_ev_cb, (void *) inst);
-    os_callout_reset(&pan->pan_callout_timer, OS_TICKS_PER_SEC/100);
-    pan->status.timer_enabled = true;
-}
 
 /**
  * API to initialise pan parameters.
@@ -205,7 +174,8 @@ dw1000_pan_free(dw1000_dev_instance_t * inst){
 void
 dw1000_pan_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * pan_postprocess){
     dw1000_pan_instance_t * pan = inst->pan;
-    os_callout_init(&pan->pan_callout_postprocess, os_eventq_dflt_get(), pan_postprocess, (void *) inst);
+    os_callout_init(&pan->pan_callout_postprocess, os_eventq_dflt_get(),
+                    pan_postprocess, (void *) inst);
     pan->control.postprocess = true;
 }
 
@@ -251,7 +221,7 @@ pan_postprocess(struct os_event * ev){
 
 /**
  * This is an internal static function that executes on both the pan_master Node and the TAG/ANCHOR
- * that initiated the blink. On the pan_master the postprecess function should allocate a PANID and a SLOTID,
+ * that initiated the blink. On the pan_master the postprocess function should allocate a PANID and a SLOTID,
  * while on the TAG/ANCHOR the returned allocations are assigned and the PAN discover event is stopped. The pan
  * discovery resources can be released.
  *
@@ -260,14 +230,19 @@ pan_postprocess(struct os_event * ev){
  * @return bool
  */
 static bool
-pan_rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
-        dw1000_dev_control_t control = inst->control_rx_context;
-        dw1000_restart_rx(inst, control);
+pan_rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64) {
+        if (inst->pan->status.valid == false) {
+            /* Grab all packets if we're not prosisioned */
+            return true;
+        }
         return false;
-    }else if(inst->pan->status.valid == true){
-        dw1000_dev_control_t control = inst->control_rx_context;
-        dw1000_restart_rx(inst, control);
+    } else if(inst->pan->status.valid == true) {
+        if (!inst->config.dblbuffon_enabled) {
+            dw1000_dev_control_t control = inst->control_rx_context;
+            dw1000_restart_rx(inst, control);
+        }
         return true;
     }
     dw1000_pan_instance_t * pan = inst->pan;
@@ -289,7 +264,6 @@ pan_rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
             inst->PANID = frame->pan_id;
             inst->slot_id = frame->slot_id;
             pan->status.valid = true;
-            dw1000_pan_stop(inst);
             os_sem_release(&pan->sem);
             os_sem_release(&pan->sem_waitforsucess);
         }
@@ -310,13 +284,10 @@ pan_rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 static bool
 pan_tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     //printf("pan_tx_complete_cb\n");
-   if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
+    if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
         return false;
     }
     dw1000_pan_instance_t * pan = inst->pan;
-    if (pan->status.timer_enabled && pan->status.valid == false)
-        os_callout_reset(&pan->pan_callout_timer, OS_TICKS_PER_SEC * (pan->period - MYNEWT_VAL(OS_LATENCY)) * 1e-6);
-    os_sem_release(&inst->pan->sem);
     pan->idx++;
     return true;
 }
@@ -347,7 +318,7 @@ pan_rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  */
 static bool
 pan_reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    if (os_sem_get_count(&inst->pan->>sem) == 0){
+    if (os_sem_get_count(&inst->pan->sem) == 0){
         //printf("{\"utime\": %lu,\"log\": \"ccp_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
         os_sem_release(&inst->pan->sem);  
         return false;   
@@ -365,7 +336,8 @@ pan_reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  */
 
 static bool
-pan_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+pan_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
     /* Place holder */
     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
         return false;
@@ -380,18 +352,47 @@ pan_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  * @return bool
  */
 static bool
-pan_rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    //printf("pan_rx_timeout_cb\n");
+pan_rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    if (os_sem_get_count(&inst->pan->sem) == 0){
+        //printf("{\"utime\": %lu,\"log\": \"ccp_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
+        os_sem_release(&inst->pan->sem);  
+        return false;
+    }
     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
         return false;
     }
-    if (os_sem_get_count(&inst->pan->>sem) == 0){
-        //printf("{\"utime\": %lu,\"log\": \"ccp_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
-        os_sem_release(&inst->pan->sem);  
-        return false;   
-    }
     return true;
 }
+
+/**
+ * Listen for PAN requests
+ *
+ * @param inst          Pointer to dw1000_dev_instance_t.
+ *
+ * @return dw1000_dev_status_t 
+ */
+dw1000_dev_status_t 
+dw1000_pan_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
+{
+    os_error_t err = os_sem_pend(&inst->pan->sem,  OS_TIMEOUT_NEVER);
+    assert(err == OS_OK);
+
+    if(dw1000_start_rx(inst).start_rx_error){
+        err = os_sem_release(&inst->pan->sem);
+        assert(err == OS_OK);
+    }
+
+    if (mode == DWT_BLOCKING){
+        err = os_sem_pend(&inst->pan->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
+        assert(err == OS_OK);
+        err = os_sem_release(&inst->pan->sem);
+        assert(err == OS_OK);
+    }
+
+    return inst->status;
+}
+
 
 /**
  * A Personal Area Network blink request is a discovery phase in which a TAG/ANCHOR seeks to discover
@@ -402,21 +403,14 @@ pan_rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  *
  * @return dw1000_pan_status_t
  */
-static dw1000_pan_status_t
-dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
-
+dw1000_pan_status_t
+dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t delay)
+{
     os_error_t err = os_sem_pend(&inst->pan->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
-    //printf("pan_blink\n");
-
     dw1000_pan_instance_t * pan = inst->pan;
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
-    pan_frame_t * previous_frame = pan->frames[(pan->idx-1)%pan->nframes];
-
-    frame->transmission_timestamp = previous_frame->transmission_timestamp
-        + 2 * ((uint64_t)inst->pan->period << 15)
-        + ((uint64_t)inst->pan->config->tx_holdoff_delay << 15); // random component
 
     frame->seq_num += inst->pan->nframes;
     frame->long_address = inst->my_long_address;
@@ -424,13 +418,12 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_blink_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(ieee_blink_frame_t), 0, true);
     dw1000_set_wait4resp(inst, true);
-    dw1000_set_delay_start(inst, frame->transmission_timestamp);
+    dw1000_set_delay_start(inst, delay);
     dw1000_set_rx_timeout(inst, pan->config->rx_timeout_period);
     pan->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
     if (pan->status.start_tx_error){
         // Half Period Delay Warning occured try for the next epoch
         // Use seq_num to detect this on receiver size
-        printf("Half Period Delay Warning\n");
         frame->transmission_timestamp += ((uint64_t)inst->pan->period << 15);
         os_sem_release(&inst->pan->sem);
     }
@@ -445,17 +438,16 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 
 /**
  * A Personal Area Network blink is a discovery phase in which a TAG/ANCHOR seeks to discover
- * an available PAN Master. This function scheduled this discovery timer event. The pan_master does not
+ * an available PAN Master. The pan_master does not
  * need to call this function.
  *
  * @param inst    Pointer to dw1000_dev_instance_t.
- * @param mode    BLOCKING and NONBLOCKING modes.
  *
  * @return void
  */
 void
-dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
-    // Initialise previous frame timestamp to current time
+dw1000_pan_start(dw1000_dev_instance_t * inst)
+{
     dw1000_pan_instance_t * pan = inst->pan;
 
     os_error_t err = os_sem_pend(&pan->sem_waitforsucess, OS_TIMEOUT_NEVER);
@@ -463,37 +455,11 @@ dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 
     pan->idx = 0x1;
     pan->status.valid = false;
-    pan_frame_t * frame = pan->frames[(pan->idx-1)%pan->nframes];
-    frame->transmission_timestamp = dw1000_read_systime(inst);
-    pan_timer_init(inst);
 
     printf("{\"utime\":%lu,\"PAN\":\"%s\"}\n",
             os_cputime_ticks_to_usecs(os_cputime_get32()),
             "Provisioning"
     );
-
-    if(mode == DWT_BLOCKING){
-        os_error_t err = os_sem_pend(&pan->sem_waitforsucess, OS_TIMEOUT_NEVER);
-        assert(err == OS_OK);
-        os_sem_release(&pan->sem_waitforsucess);
-    }
 }
 
-/*!
- * @fn dw1000_pan_stop(dw1000_dev_instance_t * inst)
- *
- * @param inst    Pointer to dw1000_dev_instance_t.
- *
- * @return void
- */
-void
-dw1000_pan_stop(dw1000_dev_instance_t * inst){
-    dw1000_pan_instance_t * pan = inst->pan;
-    pan->status.timer_enabled = false;
-    os_callout_stop(&pan->pan_callout_timer);
-    printf("{\"utime\":%lu,\"PAN\":\"%s\"}\n",
-            os_cputime_ticks_to_usecs(os_cputime_get32()),
-            "Stopped"
-    );
-}
 #endif // PAN_ENABLED

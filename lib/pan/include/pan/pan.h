@@ -75,7 +75,6 @@ typedef struct _dw1000_pan_status_t{
     uint16_t initialized:1;                //!< Instance allocated
     uint16_t valid:1;                      //!< Set for valid parameters
     uint16_t start_tx_error:1;             //!< Set for start transmit error
-    uint16_t timer_enabled:1;              //!< Indicates timer is enabled
 }dw1000_pan_status_t;
 
 //! Pan configure parameters
@@ -98,7 +97,6 @@ typedef struct _dw1000_pan_instance_t{
     struct os_sem sem_waitforsucess;             //!< Structure containig os semaphores
     dw1000_pan_status_t status;                  //!< DW1000 pan status parameters
     dw1000_pan_control_t control;                //!< DW1000 pan control parameters
-    struct os_callout pan_callout_timer;         //!< Structure of pan_callout_timer
     struct os_callout pan_callout_postprocess;   //!< Structure of pan_callout_postprocess
     dw1000_pan_config_t * config;                //!< DW1000 pan config parameters
     uint32_t period;                             //!< Pulse repetition period
@@ -110,8 +108,9 @@ typedef struct _dw1000_pan_instance_t{
 dw1000_pan_instance_t * dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config);
 void dw1000_pan_free(dw1000_dev_instance_t * inst);
 void dw1000_pan_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * postprocess);
-void dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
-void dw1000_pan_stop(dw1000_dev_instance_t * inst);
+void dw1000_pan_start(dw1000_dev_instance_t * inst);
+dw1000_dev_status_t dw1000_pan_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
+dw1000_pan_status_t dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t delay);
 
 #ifdef __cplusplus
 }
