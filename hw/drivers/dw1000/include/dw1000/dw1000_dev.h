@@ -183,6 +183,7 @@ typedef struct _dw1000_dev_config_t{
     uint32_t autoack_delay_enabled:1;       //!< Enables automatic acknowledgement feature with delay
     uint32_t dblbuffon_enabled:1;           //!< Enables double buffer
     uint32_t framefilter_enabled:1;         //!< Enables frame fileter
+    uint32_t trxoff_enable:1;               //!< Enables forced TRXOFF in start_tx and start_tx interface 
     uint32_t rxdiag_enable:1;               //!< Enables receive diagnostics parameters 
     uint32_t rxauto_enable:1;               //!< Enables auto receive parameter
     uint32_t bias_correction_enable:1;      //!< Enables bias correction ploynomial
@@ -226,7 +227,6 @@ typedef struct _dw1000_mac_interface_t {
     uint16_t id;
     bool (* tx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Transmit complete callback
     bool (* rx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive complete callback
-  //  bool (* lde_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive complete callback
     bool (* rx_timeout_cb)  (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive timeout callback
     bool (* rx_error_cb)    (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive error callback
     bool (* tx_error_cb)    (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Transmit error callback  
