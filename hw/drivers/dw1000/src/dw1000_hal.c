@@ -90,8 +90,9 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                     .BOOSTP250 = dw1000_power_value(DW1000_txrf_config_9db, 5),
                     .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_9db, 5)   
                 }, 
+                .trxoff_enable = 1,
                 .rxdiag_enable = 0,
-                .dblbuffon_enabled = 0,
+                .dblbuffon_enabled = 1,
 #if MYNEWT_VAL(DW1000_MAC_FILTERING)
                 .framefilter_enabled = 1,
 #endif
