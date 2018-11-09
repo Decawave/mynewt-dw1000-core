@@ -98,7 +98,7 @@ STATS_NAME_START(twr_ds_ext_stat_section)
     STATS_NAME(twr_ds_ext_stat_section, reset)
 STATS_NAME_END(twr_ds_ext_stat_section)
 
-STATS_SECT_DECL(twr_ds_ext_stat_section) g_twr_ds_ext_stat;
+static STATS_SECT_DECL(twr_ds_ext_stat_section) g_stat;
 
 
 static dw1000_rng_config_t g_config = {
@@ -128,12 +128,12 @@ void twr_ds_ext_pkg_init(void){
 #endif
   
     int rc = stats_init(
-    STATS_HDR(g_twr_ds_ext_stat),
-    STATS_SIZE_INIT_PARMS(g_twr_ds_ext_stat, STATS_SIZE_32),
+    STATS_HDR(g_stat),
+    STATS_SIZE_INIT_PARMS(g_stat, STATS_SIZE_32),
     STATS_NAME_INIT_PARMS(twr_ds_ext_stat_section));
     assert(rc == 0);
     
-    rc = stats_register("twr_ds_ext", STATS_HDR(g_twr_ds_ext_stat));
+    rc = stats_register("twr_ds_ext", STATS_HDR(g_stat));
     assert(rc == 0);
 }
 
@@ -176,8 +176,6 @@ tx_final_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     dw1000_rng_instance_t * rng = inst->rng; 
     twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
 
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"tx_final_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-
     frame->cartesian.x = MYNEWT_VAL(LOCAL_COORDINATE_X);
     frame->cartesian.y = MYNEWT_VAL(LOCAL_COORDINATE_Y);
     frame->cartesian.z = MYNEWT_VAL(LOCAL_COORDINATE_Z);
@@ -214,7 +212,7 @@ tx_final_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  */
 static bool 
 start_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    STATS_INC(g_twr_ds_ext_stat, tx_error);
+    STATS_INC(g_stat, tx_error);
     return true;
 }
 
@@ -229,7 +227,7 @@ static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(os_sem_get_count(&inst->rng->sem) == 0){
-        STATS_INC(g_twr_ds_ext_stat, reset);
+        STATS_INC(g_stat, reset);
         os_error_t err = os_sem_release(&inst->rng->sem);  
         assert(err == OS_OK);
         return true;
@@ -262,7 +260,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         case DWT_DS_TWR_EXT:
             {
                 // This code executes on the device that is responding to a original request
-                DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_DS_TWR_EXT\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
@@ -414,7 +411,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     if (cbs!=NULL && cbs->start_tx_error_cb) 
                         cbs->start_tx_error_cb(inst, cbs);
                 }else{
-                    STATS_INC(g_twr_ds_ext_stat, complete); 
+                    STATS_INC(g_stat, complete); 
                     os_sem_release(&rng->sem);
                     dw1000_mac_interface_t * cbs = NULL;
                     if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
@@ -438,7 +435,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                                         sizeof(ieee_rng_request_frame_t), 
                                         sizeof(twr_frame_t) - sizeof(ieee_rng_request_frame_t)
                     );   
-                STATS_INC(g_twr_ds_ext_stat, complete);          
+                STATS_INC(g_stat, complete);          
                 os_sem_release(&rng->sem);
                 dw1000_mac_interface_t * cbs = NULL;
                 if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
