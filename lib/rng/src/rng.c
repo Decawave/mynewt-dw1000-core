@@ -67,8 +67,8 @@
 #define DIAGMSG(s,u)
 #endif
 
-static bool rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 
@@ -97,23 +97,23 @@ static dw1000_rng_config_t g_config = {
 #if MYNEWT_VAL(DW1000_DEVICE_0)
 static twr_frame_t g_twr_0[] = {
     [0] = {
-        .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
+        .fctrl = FCNTL_IEEE_RANGE_16,               // frame control (0x8841 to indicate a data frame using 16-bit addressing).
         .PANID = MYNEWT_VAL(PANID),                 // PAN ID (0xDECA)
         .code = DWT_TWR_INVALID
     },
     [1] = {
-        .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
+        .fctrl = FCNTL_IEEE_RANGE_16,               // frame control (0x8841 to indicate a data frame using 16-bit addressing).
         .PANID = MYNEWT_VAL(PANID),                 // PAN ID (0xDECA)
         .code = DWT_TWR_INVALID,
     },
     [2] = {
-        .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
+        .fctrl = FCNTL_IEEE_RANGE_16,               // frame control (0x8841 to indicate a data frame using 16-bit addressing).
         .PANID = MYNEWT_VAL(PANID),                 // PAN ID (0xDECA)
         .code = DWT_TWR_INVALID
     },
     [3] = {
         .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
-        .PANID = MYNEWT_VAL(PANID),                 // PAN ID (0xDECA)
+        .PANID = MYNEWT_VAL(PANID),                  // PAN ID (0xDECA)
         .code = DWT_TWR_INVALID,
     }
 };
@@ -122,22 +122,22 @@ static twr_frame_t g_twr_0[] = {
 static twr_frame_t g_twr_1[] = {
     [0] = {
         .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
-        .PANID = MYNEWT_VAL(PANID),                 // PAN ID (0xDECA)
+        .PANID = MYNEWT_VAL(PANID),                  // PAN ID (0xDECA)
         .code = DWT_TWR_INVALID
     },
     [1] = {
         .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
-        .PANID = MYNEWT_VAL(PANID),                 // PAN ID (0xDECA)
+        .PANID = MYNEWT_VAL(PANID),                  // PAN ID (0xDECA)
         .code = DWT_TWR_INVALID,
     },
     [2] = {
         .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
-        .PANID = MYNEWT_VAL(PANID),                 // PAN ID (0xDECA)
+        .PANID = MYNEWT_VAL(PANID),                  // PAN ID (0xDECA)
         .code = DWT_TWR_INVALID
     },
     [3] = {
         .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
-        .PANID = MYNEWT_VAL(PANID),                 // PAN ID (0xDECA)
+        .PANID = MYNEWT_VAL(PANID),                  // PAN ID (0xDECA)
         .code = DWT_TWR_INVALID,
     }
 };
@@ -209,8 +209,7 @@ STATS_NAME_START(rng_stat_section)
     STATS_NAME(rng_stat_section, reset)
 STATS_NAME_END(rng_stat_section)
 
-STATS_SECT_DECL(rng_stat_section) g_rngstat;
-
+static STATS_SECT_DECL(rng_stat_section) g_stat; //!< Stats instance
 
 /**
  * API to initialise the ranging by setting all the required configurations and callbacks.
@@ -247,12 +246,11 @@ dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint
     inst->rng->status.initialized = 1;
     
     int rc = stats_init(
-    STATS_HDR(g_rngstat),
-    STATS_SIZE_INIT_PARMS(g_rngstat, STATS_SIZE_32),
-    STATS_NAME_INIT_PARMS(rng_stat_section));
-    assert(rc == 0);
-    
-    rc = stats_register("rng", STATS_HDR(g_rngstat));
+                    STATS_HDR(g_stat),
+                    STATS_SIZE_INIT_PARMS(g_stat, STATS_SIZE_32),
+                    STATS_NAME_INIT_PARMS(rng_stat_section)
+            );
+    rc |= stats_register("rng", STATS_HDR(g_stat));
     assert(rc == 0);
 
     return inst->rng;
@@ -391,7 +389,7 @@ dw1000_dev_status_t
 dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t code){
 
     // This function executes on the device that initiates a request 
-    STATS_INC(g_rngstat, rng_request);
+    STATS_INC(g_stat, rng_request);
     os_error_t err = os_sem_pend(&inst->rng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
@@ -416,8 +414,10 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     if (rng->control.delay_start_enabled) 
         dw1000_set_delay_start(inst, rng->delay);
    
-    if (dw1000_start_tx(inst).start_tx_error)
+    if (dw1000_start_tx(inst).start_tx_error){
+        STATS_INC(g_stat, tx_error);
         os_sem_release(&inst->rng->sem);
+    }
      
     err = os_sem_pend(&inst->rng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
     assert(err == OS_OK);
@@ -440,9 +440,9 @@ dw1000_rng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     os_error_t err = os_sem_pend(&inst->rng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
     
-    STATS_INC(g_rngstat, rng_listen);
+    STATS_INC(g_stat, rng_listen);
     if(dw1000_start_rx(inst).start_rx_error){
-        STATS_INC(g_rngstat, rx_error);
+        STATS_INC(g_stat, rx_error);
         err = os_sem_release(&inst->rng->sem);
         assert(err == OS_OK);
     }
@@ -670,7 +670,7 @@ static bool
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(os_sem_get_count(&inst->rng->sem) == 0){
-        STATS_INC(g_rngstat, rx_timeout);
+        STATS_INC(g_stat, rx_timeout);
         os_error_t err = os_sem_release(&inst->rng->sem);
         assert(err == OS_OK);
         return true;
@@ -689,7 +689,8 @@ static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(os_sem_get_count(&inst->rng->sem) == 0){
-        STATS_INC(g_rngstat, reset);
+        STATS_INC(g_stat, reset);
+
         os_error_t err = os_sem_release(&inst->rng->sem);  
         assert(err == OS_OK);
         return true;
@@ -714,7 +715,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
   
     if(os_sem_get_count(&inst->rng->sem) == 1){ 
         // unsolicited inbound
-        STATS_INC(g_rngstat, rx_unsolicited);
+        STATS_INC(g_stat, rx_unsolicited);
         return false;
     }
 
@@ -736,7 +737,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                     inst->control = inst->control_rx_context;
                     dw1000_restart_rx(inst, inst->control);
                 }  
-                STATS_INC(g_rngstat, rx_complete); 
+                STATS_INC(g_stat, rx_complete); 
                 rng->idx++; // confirmed frame advance  
                 return true;
             }  
@@ -744,7 +745,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         default: 
             return false;
     }
-return false;
+    return false;
 }
 
 
@@ -763,7 +764,7 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     switch(inst->rng->code) {
         case DWT_SS_TWR ... DWT_DS_TWR_EXT_END:
-            STATS_INC(g_rngstat, tx_complete);
+            STATS_INC(g_stat, tx_complete);
             return true;
             break;
         default: 
