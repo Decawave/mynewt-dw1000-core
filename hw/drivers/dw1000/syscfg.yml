@@ -72,8 +72,8 @@ syscfg.defs:
     PANID:
         description: >
           Default Pan ID
-        value: ((uint16_t){0xdeca})
+        value: ((const uint16_t){0xdeca})
     DEVICE_ID:
         description: >
           Default Device ID
-        value: ((uint16_t){0x1234})
+        value: ((const uint16_t){0x1234})
