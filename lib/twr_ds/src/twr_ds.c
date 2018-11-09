@@ -94,7 +94,7 @@ STATS_NAME_START(twr_ds_stat_section)
     STATS_NAME(twr_ds_stat_section, reset)
 STATS_NAME_END(twr_ds_stat_section)
 
-STATS_SECT_DECL(twr_ds_stat_section) g_twr_ds_stat;
+static STATS_SECT_DECL(twr_ds_stat_section) g_stat;
 
 static dw1000_rng_config_t g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(TWR_DS_TX_HOLDOFF),         // Send Time delay in usec.
@@ -124,12 +124,12 @@ void twr_ds_pkg_init(void){
 #endif
 
     int rc = stats_init(
-    STATS_HDR(g_twr_ds_stat),
-    STATS_SIZE_INIT_PARMS(g_twr_ds_stat, STATS_SIZE_32),
+    STATS_HDR(g_stat),
+    STATS_SIZE_INIT_PARMS(g_stat, STATS_SIZE_32),
     STATS_NAME_INIT_PARMS(twr_ds_stat_section));
     assert(rc == 0);
     
-    rc = stats_register("twr_ds", STATS_HDR(g_twr_ds_stat));
+    rc = stats_register("twr_ds", STATS_HDR(g_stat));
     assert(rc == 0);
   
 }
@@ -171,7 +171,7 @@ twr_ds_config(dw1000_dev_instance_t * inst){
  */
 static bool 
 start_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    STATS_INC(g_twr_ds_stat, tx_error);
+    STATS_INC(g_stat, tx_error);
     return true;
 }
 
@@ -186,7 +186,7 @@ static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(os_sem_get_count(&inst->rng->sem) == 0){
-        STATS_INC(g_twr_ds_stat, reset);
+        STATS_INC(g_stat, reset);
         os_error_t err = os_sem_release(&inst->rng->sem);  
         assert(err == OS_OK);
         return true;
@@ -362,7 +362,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                         cbs->start_tx_error_cb(inst, cbs);
                 }
                 else{   
-                    STATS_INC(g_twr_ds_stat, complete); 
+                    STATS_INC(g_stat, complete); 
                     os_sem_release(&rng->sem);  
                     dw1000_mac_interface_t * cbs = NULL;
                     if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
@@ -386,7 +386,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                                         sizeof(ieee_rng_request_frame_t), 
                                         sizeof(twr_frame_final_t) - sizeof(ieee_rng_request_frame_t)
                     );         
-                STATS_INC(g_twr_ds_stat, complete);                   
+                STATS_INC(g_stat, complete);                   
                 os_sem_release(&rng->sem);
                 dw1000_mac_interface_t * cbs = NULL;
                 if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
