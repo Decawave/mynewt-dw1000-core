@@ -46,6 +46,7 @@ extern "C" {
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
 #include <dw1000/triad.h>
+#include <stats/stats.h>
 
 //! Range configuration parameters.
 typedef struct _dw1000_rng_config_t{
@@ -125,8 +126,7 @@ typedef union {
 
 //! Structure of range instance
 typedef struct _dw1000_rng_instance_t{
-    struct _dw1000_dev_instance_t * parent;    //!< Structure of DW1000_dev_instance
-    dw1000_mac_interface_t cbs;             //!< MAC interface
+    struct _dw1000_dev_instance_t * parent; //!< Structure of DW1000_dev_instance
     uint16_t code;                          //!< Range profile code
     struct os_sem sem;                      //!< Structure of semaphores
     uint64_t delay;                         //!< Delay in transmission
