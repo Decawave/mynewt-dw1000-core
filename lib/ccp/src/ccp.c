@@ -238,8 +238,9 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
 
     dw1000_ccp_status_t status = dw1000_ccp_listen(inst, DWT_BLOCKING);
     if(status.start_rx_error){
-        // Sync lost, switch to always for two periods
-        dw1000_set_rx_timeout(inst, dw1000_dwt_usecs_to_usecs(ccp->period));
+        /* Sync lost, switch to always for two periods */
+        //dw1000_set_rx_timeout(inst, dw1000_dwt_usecs_to_usecs(ccp->period));
+        dw1000_set_rx_timeout(inst, 0);
         dw1000_ccp_listen(inst, DWT_BLOCKING);
     }
     // Schedule event
@@ -498,8 +499,15 @@ ccp_postprocess(struct os_event * ev){
 static bool 
 rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-    if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64)
+    if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64) {
+        /* If we're waiting for a ccp packet but instead got something else
+         * release the semafore */
+        if(os_sem_get_count(&inst->ccp->sem) == 0) {
+            os_sem_release(&inst->ccp->sem);
+            return true;
+        }
         return false;
+    }
 
     if(os_sem_get_count(&inst->ccp->sem) == 1){ 
         //unsolicited inbound
@@ -662,8 +670,8 @@ ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * c
  * @return void 
  */
 static bool
-ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-
+ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     if (ccp->config.role == CCP_ROLE_MASTER) 
         return false;
@@ -829,7 +837,7 @@ dw1000_ccp_start(struct _dw1000_dev_instance_t * inst, dw1000_ccp_role_t role){
 void 
 dw1000_ccp_stop(dw1000_dev_instance_t * inst){
     dw1000_ccp_instance_t * ccp = inst->ccp; 
-   os_cputime_timer_stop(&ccp->timer);
+    os_cputime_timer_stop(&ccp->timer);
 }
 
 
