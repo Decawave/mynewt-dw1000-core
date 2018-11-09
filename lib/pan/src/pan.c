@@ -271,6 +271,10 @@ pan_rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     // both pan_master and TAG/ANCHOR
     if (pan->control.postprocess)
         os_eventq_put(os_eventq_dflt_get(), &pan->pan_callout_postprocess.c_ev);
+
+    /* Release sem */
+    os_error_t err = os_sem_release(&inst->pan->sem);
+    assert(err == OS_OK);
     return true;
 }
 
@@ -355,14 +359,11 @@ static bool
 pan_rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     if (os_sem_get_count(&inst->pan->sem) == 0){
-        //printf("{\"utime\": %lu,\"log\": \"ccp_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
+        //printf("{\"utime\": %lu,\"log\": \"pan_rx_timeout_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__);
         os_sem_release(&inst->pan->sem);  
-        return false;
+        return true;
     }
-    if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
-        return false;
-    }
-    return true;
+    return false;
 }
 
 /**

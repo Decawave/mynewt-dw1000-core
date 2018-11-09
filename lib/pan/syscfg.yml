@@ -12,4 +12,4 @@ syscfg.defs:
         value: ((uint32_t){0x0300})
     PAN_RX_TIMEOUT:
         description: 'TOA timeout delay for PAN (usec)'
-        value: ((uint16_t){0x0500})
+        value: ((uint16_t){0x0600})
