@@ -722,9 +722,11 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     dw1000_rng_instance_t * rng = inst->rng; 
     twr_frame_t * frame = rng->frames[(rng->idx+1)%rng->nframes]; // speculative frame advance
     
-    if (inst->frame_len >= sizeof(ieee_rng_request_frame_t))
-        dw1000_read_rx(inst, frame->array, 0, sizeof(ieee_rng_request_frame_t));
-    else {
+    if (inst->frame_len >= sizeof(ieee_rng_request_frame_t)) {
+        /* No need to re-read the fctrl bytes */
+        frame->fctrl = inst->fctrl;
+        dw1000_read_rx(inst, frame->array + 2, 2, sizeof(ieee_rng_request_frame_t)-2);
+    } else {
         return false;
     }
     
