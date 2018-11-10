@@ -33,5 +33,5 @@ pkg.lflags:
     - "-lm"
     
 pkg.init:
-    tdma_pkg_init: 410
+    tdma_pkg_init: 403
     

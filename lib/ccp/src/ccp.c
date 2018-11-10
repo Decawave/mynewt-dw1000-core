@@ -657,7 +657,7 @@ ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * c
         if(os_sem_get_count(&inst->ccp->sem) == 0){
             os_error_t err = os_sem_release(&inst->ccp->sem);  
             assert(err == OS_OK);
-        return true;    
+        return false;    
         }
     }
     return false;
@@ -680,7 +680,7 @@ ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t *
         STATS_INC(g_stat, rx_timeout);
         os_error_t err = os_sem_release(&ccp->sem); 
         assert(err == OS_OK); 
-        return true;   
+        return false;   
     }
     return false;
 }

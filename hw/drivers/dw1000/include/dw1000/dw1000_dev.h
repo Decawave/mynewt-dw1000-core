@@ -222,7 +222,7 @@ typedef struct _dw1000_mac_interface_t dw1000_mac_interface_t;
 typedef struct _dw1000_mac_interface_t {
     struct _status{
         uint16_t selfmalloc:1;            //!< Internal flag for memory garbage collection 
-        uint16_t initialized:1;           //!< Instance allocated 
+        uint16_t initialized:1;           //!< Instance allocated          
     } status;
     uint16_t id;
     bool (* tx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Transmit complete callback

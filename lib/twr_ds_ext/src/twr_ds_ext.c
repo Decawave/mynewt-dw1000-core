@@ -255,7 +255,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         // unsolicited inbound
         return false;
     }
-
+        
     switch(inst->rng->code){
         case DWT_DS_TWR_EXT:
             {

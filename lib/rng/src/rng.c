@@ -725,7 +725,10 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     if (inst->frame_len >= sizeof(ieee_rng_request_frame_t)) {
         /* No need to re-read the fctrl bytes */
         frame->fctrl = inst->fctrl;
-        dw1000_read_rx(inst, frame->array + 2, 2, sizeof(ieee_rng_request_frame_t)-2);
+        dw1000_read_rx(inst, frame->array + offsetof(ieee_rng_request_frame_t, seq_num), 
+                                            offsetof(ieee_rng_request_frame_t, seq_num), 
+                                            sizeof(ieee_rng_request_frame_t) - offsetof(ieee_rng_request_frame_t, seq_num)
+        );
     } else {
         return false;
     }
@@ -739,10 +742,12 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                     inst->control = inst->control_rx_context;
                     dw1000_restart_rx(inst, inst->control);
                 }  
-                STATS_INC(g_stat, rx_complete); 
-                rng->idx++; // confirmed frame advance  
                 return true;
-            }  
+            }else{
+                STATS_INC(g_stat, rx_complete); 
+                rng->idx++;     // confirmed frame advance  
+                return false;   // Allow sub extensions to handle event
+            }
             break;
         default: 
             return false;
@@ -760,7 +765,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
  */
 static bool
 tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    
+
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
 
