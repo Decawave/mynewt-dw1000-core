@@ -216,7 +216,6 @@ typedef struct _phy_attributes_t{
 
 struct _dw1000_dev_instance_t;
 
-
 //! Structure of extension callbacks structure common for mac layer.
 typedef struct _dw1000_mac_interface_t dw1000_mac_interface_t;
 typedef struct _dw1000_mac_interface_t {

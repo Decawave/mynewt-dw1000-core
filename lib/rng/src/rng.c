@@ -496,7 +496,7 @@ dw1000_rng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_addres
  */
 float 
 dw1000_rng_path_loss(float Pt, float G, float fc, float R){
-    float Pr = Pt + 2 * G + 20 * log10(299792458) - 20 * log10(4 * M_PI * fc * R);
+    float Pr = Pt + 2 * G + 20 * log10(299792458.0l/1.000293l) - 20 * log10(4 * M_PI * fc * R);
     return Pr;
 }
 
@@ -624,7 +624,7 @@ dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng, uint16_t idx){
  */
 float 
 dw1000_rng_tof_to_meters(float ToF) {
-    return (float)(ToF * 299792458 * (1.0/499.2e6/128.0)); //!< Converts time of flight to meters.
+    return (float)(ToF * (299792458.0l/1.000293l) * (1.0/499.2e6/128.0)); //!< Converts time of flight to meters.
 }
 
 /**
