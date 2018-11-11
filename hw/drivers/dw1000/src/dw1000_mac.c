@@ -517,8 +517,11 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
     dw1000_dev_control_t control = inst->control;
     dw1000_dev_config_t config = inst->config;
 
-    if (config.trxoff_enable) // force return to idle state  
-        dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); 
+    if (config.trxoff_enable){ // force return to idle state, if is RX state
+        uint16_t sys_ctrl = (uint16_t) dw1000_read_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sizeof(uint16_t));
+        if(sys_ctrl & SYS_CTRL_RXENAB)    
+            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); 
+    }    
 
     inst->status.rx_error = inst->status.rx_timeout_error = 0;    
     uint32_t sys_ctrl_reg = SYS_CTRL_TXSTRT;
@@ -550,7 +553,6 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
         inst->status.start_tx_error = 0;
     }
 
-    inst->control_tx_context = inst->control;
     inst->control = (dw1000_dev_control_t){
         .wait4resp_enabled=0,
         .wait4resp_delay_enabled=0,
@@ -602,33 +604,35 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
     dw1000_dev_control_t control = inst->control;
     dw1000_dev_config_t config = inst->config;
 
-    if (config.trxoff_enable) // force return to idle state  
-        dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); 
+    if (config.trxoff_enable){ // force return to idle state, if is TX state
+        uint16_t sys_ctrl = (uint16_t) dw1000_read_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sizeof(uint16_t));
+        if(sys_ctrl & SYS_CTRL_TXSTRT)
+            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); 
+    }
 
     inst->status.rx_error = inst->status.rx_timeout_error = 0;
     inst->status.rx_buffer_overrun_error = 0;
-    uint32_t sys_ctrl_reg = SYS_CTRL_RXENAB;
+    uint16_t sys_ctrl = SYS_CTRL_RXENAB;
     if (control.start_rx_syncbuf_enabled)
         dw1000_sync_rxbufptrs(inst);
     if (control.delay_start_enabled) 
-        sys_ctrl_reg |= SYS_CTRL_RXDLYE;
+        sys_ctrl |= SYS_CTRL_RXDLYE;
 
-    dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sys_ctrl_reg, sizeof(uint16_t));
+    dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sys_ctrl, sizeof(uint16_t));
     if (control.delay_start_enabled){   // check for errors    
-        uint8_t sys_status_reg = dw1000_read_reg(inst, SYS_STATUS_ID, 3, sizeof(uint8_t));  // Read 1 byte at offset 3 to get the 4th byte out of 5
-        inst->status.start_rx_error = (sys_status_reg & (SYS_STATUS_HPDWARN >> 24)) != 0;   
+        uint8_t sys_status = dw1000_read_reg(inst, SYS_STATUS_ID, 3, sizeof(uint8_t));  // Read 1 byte at offset 3 to get the 4th byte out of 5
+        inst->status.start_rx_error = (sys_status & (SYS_STATUS_HPDWARN >> 24)) != 0;   
         if (inst->status.start_rx_error){   // if delay has passed do immediate RX on unless DWT_IDLE_ON_DLY_ERR is true
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); // return to idle state
             if (control.on_error_continue_enabled){
-                sys_ctrl_reg &= ~SYS_CTRL_RXDLYE;
-                dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sys_ctrl_reg, sizeof(uint16_t)); // turn on receiver 
+                sys_ctrl &= ~SYS_CTRL_RXDLYE;
+                dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sys_ctrl, sizeof(uint16_t)); // turn on receiver 
             }       
         }
     }else{
         inst->status.start_rx_error = 0;
     }
 
-    inst->control_rx_context = control;
     inst->control = (dw1000_dev_control_t){
         .wait4resp_enabled=0,
         .wait4resp_delay_enabled=0,
@@ -646,46 +650,6 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
 } 
 
 
-/**
- * API to restore the transceiver to the state prior to the recent interrupt.
- * restart_rx  differs from start_rx in so far as errors are not cleared. 
- *
- * @param inst     Pointer to _dw1000_dev_instance_t.
- * @param control  System control register.
- * @return dw1000_dev_status_t
- */
-struct _dw1000_dev_status_t dw1000_restart_rx(struct _dw1000_dev_instance_t * inst, dw1000_dev_control_t control)
-{
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_restart_rx\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
-    assert(err == OS_OK);
-   
-    uint32_t sys_ctrl_reg = SYS_CTRL_RXENAB;
-    if (control.start_rx_syncbuf_enabled)
-        dw1000_sync_rxbufptrs(inst);
-    if (control.delay_start_enabled) 
-        sys_ctrl_reg |= SYS_CTRL_RXDLYE;
-
-    dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sys_ctrl_reg, sizeof(uint16_t));
-    if (control.delay_start_enabled){ // check for errors
-        uint8_t sys_status_reg = dw1000_read_reg(inst, SYS_STATUS_ID, 3, sizeof(uint8_t));  // Read 1 byte at offset 3 to get the 4th byte out of 5
-        inst->status.start_rx_error = (sys_status_reg & (SYS_STATUS_HPDWARN >> 24)) != 0;   
-        if (inst->status.start_rx_error){   // if delay has passed do immediate RX on unless DWT_IDLE_ON_DLY_ERR is true
-            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); // return to idle state
-            sys_ctrl_reg &= ~SYS_CTRL_RXDLYE;
-            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sys_ctrl_reg, sizeof(uint16_t)); // turn on receiver
-        }
-    }else{
-         inst->status.start_rx_error = 0;
-    }
-
-    err = os_mutex_release(&inst->mutex); 
-    assert(err == OS_OK); 
-
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_restart_rx_\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-
-    return inst->status;
-} 
 
 /**
  * API to enable wait for response feature.
@@ -1014,7 +978,6 @@ dw1000_read_carrier_integrator(struct _dw1000_dev_instance_t * inst)
         /* make sure upper bits are clear if not sign extending */
         regval &= DRX_CARRIER_INT_MASK;
     }
-
     /* cast unsigned value to signed quantity */
     return (int32_t) regval;
 }
@@ -1367,6 +1330,10 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         dw1000_phy_forcetrxoff(inst);
         dw1000_phy_rx_reset(inst);
 
+        // Restart the receiver in the even to a RXPHE if rxauto is not enabled. Timeout remain active if set.
+        if (inst->config.rxauto_enable == 0 && (inst->sys_status && SYS_STATUS_RXPHE))
+            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
+    
          // Call the corresponding ranging frame services callback if present
         dw1000_mac_interface_t * cbs = NULL;
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 

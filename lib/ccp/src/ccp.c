@@ -476,9 +476,9 @@ ccp_postprocess(struct os_event * ev){
         frame->seq_num
     );
 #endif
-    dw1000_dev_instance_t* inst = ccp->parent;
-    inst->control = inst->control_rx_context;
-    dw1000_restart_rx(inst,inst->control_rx_context);
+//    dw1000_dev_instance_t* inst = ccp->parent;
+//    inst->control = inst->control_rx_context;
+//    dw1000_restart_rx(inst,inst->control_rx_context);
 }
 #endif
 
@@ -630,8 +630,10 @@ ccp_rx_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * c
 
     STATS_INC(g_stat, rx_error);
 
-    if(os_sem_get_count(&inst->ccp->sem) == 0){
-        printf("{\"utime\": %lu,\"log\": \"ccp_rx_error_cb\",\"%s\":%d}\n",os_cputime_ticks_to_usecs(os_cputime_get32()),__FILE__, __LINE__); 
+    // Release semaphore if rxauto enable is not set. 
+    if(inst->config.rxauto_enable)
+        return false;
+    else if(os_sem_get_count(&inst->ccp->sem) == 0){
         os_error_t err = os_sem_release(&inst->ccp->sem); 
         assert(err == OS_OK); 
 	    return false;
