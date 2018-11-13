@@ -283,14 +283,12 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     assert(inst->nrng);
     dw1000_nrng_instance_t * nrng = inst->nrng;
     uint16_t code, dst_address;
-    dw1000_dev_control_t control = inst->control_rx_context;
     dw1000_read_rx(inst, (uint8_t *) &code, offsetof(nrng_request_frame_t,code), sizeof(uint16_t));
     dw1000_read_rx(inst, (uint8_t *) &dst_address, offsetof(nrng_request_frame_t,dst_address), sizeof(uint16_t));
     // For initiator: Only Allow the packets with dst_address matching with device my_short_address.
     // For responder: Only Allow the packets with dst_address matching with device my_short_address/Broadcast address.
     if (dst_address != inst->my_short_address && (dst_address != BROADCAST_ADDRESS || nrng->device_type == DWT_NRNG_INITIATOR) ){
-        inst->control = inst->control_rx_context;
-        dw1000_restart_rx(inst, control);
+        dw1000_start_rx(inst);
         return true;
     }
     inst->nrng->code = code;
@@ -298,8 +296,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
         case DWT_SS_TWR_NRNG ... DWT_DS_TWR_NRNG_EXT_END:
             return false;
         default:
-            inst->control = inst->control_rx_context;
-            dw1000_restart_rx(inst, control);
+            dw1000_start_rx(inst);
             return true;
     }
 }

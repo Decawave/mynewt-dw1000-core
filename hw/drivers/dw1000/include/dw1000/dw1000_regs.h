@@ -310,7 +310,7 @@ extern "C" {
 
 /* All RX events after a correct packet reception mask. */
 #define SYS_STATUS_ALL_RX_GOOD (SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXPRD | \
-                                SYS_STATUS_RXSFDD | SYS_STATUS_RXPHD | SYS_STATUS_LDEDONE)
+                                SYS_STATUS_RXSFDD | SYS_STATUS_RXPHD)
 
                                 /* All TX events mask. */
 #define SYS_STATUS_ALL_TX      (SYS_STATUS_AAT | SYS_STATUS_TXFRB | SYS_STATUS_TXPRS | \
@@ -321,9 +321,9 @@ extern "C" {
 
 /* All RX errors mask. */
 #define SYS_STATUS_ALL_RX_ERR  (SYS_STATUS_RXPHE | SYS_STATUS_RXFCE | SYS_STATUS_RXRFSL | SYS_STATUS_RXSFDTO \
-                                | SYS_STATUS_AFFREJ | SYS_STATUS_LDEERR)
+                                | SYS_STATUS_AFFREJ )
 #define SYS_MASK_ALL_RX_ERR  (SYS_MASK_MRXPHE | SYS_MASK_MRXFCE | SYS_MASK_MRXRFSL | SYS_MASK_MRXSFDTO \
-                                | SYS_MASK_MAFFREJ | SYS_MASK_MLDEERR)
+                                | SYS_MASK_MAFFREJ )
 
 /* User defined RX timeouts (frame wait timeout and preamble detect timeout) mask. */
 #define SYS_STATUS_ALL_RX_TO    (SYS_STATUS_RXRFTO | SYS_STATUS_RXPTO)

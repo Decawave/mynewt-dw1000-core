@@ -9,4 +9,7 @@ syscfg.defs:
       RNG_RX_TIMEOUT:
         description: 'TOA timeout delay for TWR (usec)'
         value: ((uint16_t){0x10})
+      RNG_VERBOSE:
+        description: 'Show debug output from postprocess'
+        value: 0
   
