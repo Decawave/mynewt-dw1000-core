@@ -51,6 +51,7 @@
 #include <rng/rng.h>
 #endif
 
+int dw1000_cli_register(void);
 static void dw1000_interrupt_task(void *arg);
 static void dw1000_interrupt_ev_cb(struct os_event *ev);
 static void dw1000_irq(void *arg);
@@ -405,6 +406,10 @@ struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst
     
     rc = stats_register("mac", STATS_HDR(g_stat));
     assert(rc == 0);
+
+#if MYNEWT_VAL(DW1000_CLI)
+    dw1000_cli_register();
+#endif
 
     return inst->status;
 } 
