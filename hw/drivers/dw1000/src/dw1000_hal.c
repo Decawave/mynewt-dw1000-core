@@ -92,7 +92,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 }, 
                 .trxoff_enable = 0,
                 .rxdiag_enable = 0,
-                .dblbuffon_enabled = 0,
+                .dblbuffon_enabled = 1,
 #if MYNEWT_VAL(DW1000_MAC_FILTERING)
                 .framefilter_enabled = 1,
 #endif
@@ -103,7 +103,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .LDO_enable = 0,
                 .sleep_enable = 1,
                 .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
-                .rxauto_enable = 1         //!< On error re-enable
+                .rxauto_enable = 0         //!< On error re-enable
             },
             .spi_sem = 0,
             .task_prio = 0x10

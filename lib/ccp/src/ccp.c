@@ -239,8 +239,8 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
     dw1000_ccp_status_t status = dw1000_ccp_listen(inst, DWT_BLOCKING);
     if(status.start_rx_error){
         /* Sync lost, switch to always on for two periods */
-        //dw1000_set_rx_timeout(inst, dw1000_dwt_usecs_to_usecs(ccp->period));
-        dw1000_set_rx_timeout(inst, 0);
+//        dw1000_set_rx_timeout(inst, dw1000_dwt_usecs_to_usecs(ccp->period));
+        dw1000_set_rx_timeout(inst, (uint16_t) 0);
         dw1000_ccp_listen(inst, DWT_BLOCKING);
     }
     // Schedule event

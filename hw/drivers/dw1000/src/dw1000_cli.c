@@ -31,6 +31,8 @@
 
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_dev.h>
+#include <dw1000/dw1000_regs.h>
+
 #include <shell/shell.h>
 #include <console/console.h>
 #if MYNEWT_VAL(CCP_ENABLED)

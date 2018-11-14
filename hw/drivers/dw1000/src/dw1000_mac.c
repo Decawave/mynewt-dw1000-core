@@ -380,6 +380,9 @@ struct _dw1000_dev_status_t dw1000_mac_config(struct _dw1000_dev_instance_t * in
         dw1000_mac_framefilter(inst, DWT_FF_BEACON_EN | DWT_FF_DATA_EN | DWT_FF_RSVD_EN );
     }
 #endif
+    
+    if (inst->config.dblbuffon_enabled)     
+        assert(inst->config.rxauto_enable ==0);
 
     if(inst->config.dblbuffon_enabled)
         dw1000_set_dblrxbuff(inst, true);
