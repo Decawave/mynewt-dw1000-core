@@ -296,7 +296,7 @@ uwbcfg_pkg_init()
     int rc;
     rc = conf_register(&uwbcfg_handler);
     SYSINIT_PANIC_ASSERT(rc == 0);
-
+    
     SLIST_INIT(&uwbcfg_callbacks);
 #if MYNEWT_VAL(UWBCFG_APPLY_AT_INIT)
     uwbcfg_commit();

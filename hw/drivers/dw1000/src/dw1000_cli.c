@@ -33,6 +33,12 @@
 #include <dw1000/dw1000_dev.h>
 #include <shell/shell.h>
 #include <console/console.h>
+#if MYNEWT_VAL(CCP_ENABLED)
+#include <ccp/ccp.h>
+#endif
+#if MYNEWT_VAL(RNG_ENABLED)
+#include <rng/rng.h>
+#endif
 
 #if MYNEWT_VAL(DW1000_CLI)
 
@@ -83,6 +89,7 @@ dw1000_dump_registers(struct _dw1000_dev_instance_t * inst)
         case (RX_SNIFF_ID):
         case (TX_POWER_ID):
         case (CHAN_CTRL_ID):
+        case (TX_ANTD_ID):
             reg = dw1000_read_reg(inst, i, 0, 4);
             console_printf("{\"reg[%02X]\"=\"0x%08llX\"}\n",i,reg&0xffffffff);
             break;
@@ -104,6 +111,11 @@ dw1000_dump_registers(struct _dw1000_dev_instance_t * inst)
                            reg&0xffffffffffffffffll);
         }
     }
+//    console_printf("{\"inst->mutex\"=\"0x%0X\"}\n",inst->mutex);
+    console_printf("{\"rng->sem\"=\"0x%0X\"}\n", os_sem_get_count(&inst->rng->sem));
+#if MYNEWT_VAL(CCP_ENABLED)
+    console_printf("{\"ccp->sem\"=\"0x%0X\"}\n", os_sem_get_count(&inst->ccp->sem));
+#endif
 }
 
 static void

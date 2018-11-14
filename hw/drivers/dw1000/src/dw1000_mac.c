@@ -380,6 +380,10 @@ struct _dw1000_dev_status_t dw1000_mac_config(struct _dw1000_dev_instance_t * in
         dw1000_mac_framefilter(inst, DWT_FF_BEACON_EN | DWT_FF_DATA_EN | DWT_FF_RSVD_EN );
     }
 #endif
+
+    if(inst->config.dblbuffon_enabled)
+        dw1000_set_dblrxbuff(inst, true);
+
     return inst->status;
 }
 
@@ -528,7 +532,7 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); 
     }    
 
-    inst->status.rx_error = inst->status.rx_timeout_error = 0;    
+//    inst->status.rx_error = inst->status.rx_timeout_error = 0;    
     uint32_t sys_ctrl_reg = SYS_CTRL_TXSTRT;
     if (control.wait4resp_enabled)
         sys_ctrl_reg |= SYS_CTRL_WAIT4RESP; 
@@ -615,10 +619,12 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); 
     }
 
-    inst->status.rx_error = inst->status.rx_timeout_error = 0;
-    inst->status.rx_buffer_overrun_error = 0;
+//    inst->status.rx_error = 0;
+//    inst->status.rx_timeout_error = 0;
+//    inst->status.overrun_error = 0;
+    
     uint16_t sys_ctrl = SYS_CTRL_RXENAB;
-    if (control.start_rx_syncbuf_enabled)
+    if (config.dblbuffon_enabled)
         dw1000_sync_rxbufptrs(inst);
     if (control.delay_start_enabled) 
         sys_ctrl |= SYS_CTRL_RXDLYE;
@@ -744,8 +750,8 @@ dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t * inst)
     buff = dw1000_read_reg(inst, SYS_STATUS_ID, 3, sizeof(uint8_t)); // Read 1 byte at offset 3 to get the 4th byte out of 5
     
     if((buff & (SYS_STATUS_ICRBP >> 24)) !=     // IC side Receive Buffer Pointer
-       ((buff & (SYS_STATUS_HSRBP>>24)) << 1) ) // Host Side Receive Buffer Pointer
-        dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET , 0x01, sizeof(uint8_t)) ; // We need to swap RX buffer status reg (write one to toggle internally)
+       ((buff & (SYS_STATUS_HSRBP >> 24)) << 1) ) // Host Side Receive Buffer Pointer
+        dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET , 0x01, sizeof(uint8_t)); // We need to swap RX buffer status reg (write one to toggle internally)
 
     return inst->status;
 }
@@ -1070,7 +1076,7 @@ dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
         hal_gpio_irq_init(inst->irq_pin, dw1000_irq, inst, HAL_GPIO_TRIG_RISING, HAL_GPIO_PULL_UP);
         hal_gpio_irq_enable(inst->irq_pin);
     }    
-    dw1000_phy_interrupt_mask(inst,          SYS_MASK_MCPLOCK | SYS_MASK_MRXDFR | SYS_MASK_MLDEERR | SYS_MASK_MTXFRS  | SYS_MASK_ALL_RX_TO   | SYS_MASK_ALL_RX_ERR, false);
+    dw1000_phy_interrupt_mask(inst,          SYS_MASK_MCPLOCK | SYS_MASK_MRXDFR | SYS_MASK_MLDEERR |  SYS_MASK_MTXFRS  | SYS_MASK_ALL_RX_TO   | SYS_MASK_ALL_RX_ERR, false);
     dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_CPLOCK| SYS_STATUS_RXDFR | SYS_STATUS_LDEERR | SYS_STATUS_TXFRS | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR, sizeof(uint32_t)); // Clear SLP2INIT event bits
     dw1000_phy_interrupt_mask(inst,          SYS_MASK_MCPLOCK | SYS_MASK_MRXDFR | SYS_MASK_MLDEERR | SYS_MASK_MTXFRS  | SYS_MASK_ALL_RX_TO   | SYS_MASK_ALL_RX_ERR, true);
 }
@@ -1238,11 +1244,12 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         
         // Toggle the Host side Receive Buffer Pointer
         if (inst->config.dblbuffon_enabled) {
-            if (dw1000_checkoverrun(inst) == 0) {
+            inst->status.overrun_error = dw1000_checkoverrun(inst);
+            if (inst->status.overrun_error == 0){
                 dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 1, sizeof(uint8_t));
-            } else {
-                /* Overrun flag has been set before callback completed */
-                inst->status.rx_buffer_overrun_error = 1;
+            }else{
+                STATS_INC(g_stat, ROV_err);
+                /* Overrun flag has been set */
                 dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_RXOVRR, sizeof(uint32_t));
                 dw1000_phy_forcetrxoff(inst);
                 dw1000_phy_rx_reset(inst);
@@ -1250,13 +1257,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
                     dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
                 }
             }
-        }  
-    }
-
-    // Handle RX Overrun event confirmation event
-    if(inst->sys_status & SYS_STATUS_RXOVRR){
-        STATS_INC(g_stat, ROV_err);
-        dw1000_write_reg(inst, SYS_STATUS_ID, 0,SYS_STATUS_RXOVRR, sizeof(uint32_t)); // RX overrun
+        }
     }
 
     // Handle TX confirmation event
@@ -1294,9 +1295,8 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         dw1000_write_reg(inst, SYS_STATUS_ID, 0,  SYS_STATUS_LDEERR, sizeof(uint32_t)); // Clear SYS_STATUS_RXPHD event bits
 
         // Toggle the Host side Receive Buffer Pointer
-        if (inst->config.dblbuffon_enabled) 
-            if (dw1000_checkoverrun(inst) == 0)
-                dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 1, sizeof(uint8_t));
+        if (inst->config.dblbuffon_enabled && (inst->status.overrun_error == 0)) 
+            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 1, sizeof(uint8_t));
     }
 
     // Handle frame reception/preamble detect timeout events
@@ -1335,10 +1335,10 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         dw1000_phy_forcetrxoff(inst);
         dw1000_phy_rx_reset(inst);
 
-        // Restart the receiver in the even to a RXPHE if rxauto is not enabled. Timeout remain active if set.
-        if (inst->config.rxauto_enable == 0 && (inst->sys_status && SYS_STATUS_RXPHE))
+        // Restart the receiver in the event of a RXPHE if rxauto is not enabled. Timeout remain active if set.
+        if (inst->config.rxauto_enable == 0 && (inst->sys_status & SYS_STATUS_RXPHE))
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
-    
+        
          // Call the corresponding ranging frame services callback if present
         dw1000_mac_interface_t * cbs = NULL;
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
@@ -1372,7 +1372,6 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         }         
         return;
     }
-  
 }
 
 
