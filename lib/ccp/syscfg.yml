@@ -5,6 +5,10 @@ syscfg.defs:
             'Enable clock calibration'
         value: 1
         restrictions: CCP_PERIOD
+        restrictions: XTALT_GUARD
+    CCP_VERBOSE:
+        description: 'Show debug output from postprocess'
+        value: 0
     CCP_PERIOD:
         description: >
             Clock Calibration Packets Period (dwt usec)
@@ -17,10 +21,6 @@ syscfg.defs:
     XTALT_GUARD:
         description: >
             Guardband for xtal drift (dwt units)
-        value: ((uint32_t){0x10})
-    ADAPTIVE_TIMESCALE_ENABLED:
-        description: 'Enable Adaptive timescale adjustments'
-        value: 0
-        restrictions: CCP_ENABLED
-        restrictions: WCS_ENABLED
-        restrictions: XTALT_GUARD
+        value: ((uint32_t){0x100})
+
+       

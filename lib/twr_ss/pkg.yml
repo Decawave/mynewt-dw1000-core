@@ -36,5 +36,5 @@ pkg.deps:
     - "@mynewt-dw1000-core/lib/rng"
 
 pkg.init:
-    twr_ss_pkg_init: 410
+    twr_ss_pkg_init: 406
     

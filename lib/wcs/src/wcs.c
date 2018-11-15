@@ -142,7 +142,7 @@ void wcs_update_cb(struct os_event * ev){
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)ev->ev_arg;
     wcs_instance_t * inst = ccp->wcs;
 
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"clkcal_update_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"wcs_update_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
     if(ccp->status.valid){ 
         ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx-1)%ccp->nframes]; 
@@ -175,12 +175,22 @@ void wcs_update_cb(struct os_event * ev){
             uint32_t toc = os_cputime_ticks_to_usecs(os_cputime_get32());
             printf("{\"utime\": %lu,\"slot_timer_cb_tic_toc\": %ld}\n",toc, (toc - tic));
 #endif
-
-        } 
+        }
+/*
+        if(timescale->status.illconditioned || timescale->status.NotPositiveDefinitive ){
+            inst->status.valid = 0;
+            inst->status.initialized = 0;
+            double x0[TIMESCALE_N] = {0};
+            double q[] = {MYNEWT_VAL(TIMESCALE_QVAR) * 1.0, MYNEWT_VAL(TIMESCALE_QVAR) * 0.1, MYNEWT_VAL(TIMESCALE_QVAR) * 0.01};
+            double T = 1e-6l * MYNEWT_VAL(CCP_PERIOD);  // peroid in sec
+            timescale_init(inst->timescale, x0, q, T);
+        }
+*/
+        inst->status.valid = fabs(1.0l - states->skew * (1e-6l/((uint64_t)1 << 16))) < 1e-5;
         if (inst->status.valid)
             inst->skew = 1.0l - states->skew * (1e-6l/((uint64_t)1 << 16));
         else {
-            inst->skew = 0;
+            inst->skew = 0.0l;
         }
 
     if(inst->config.postprocess == true)
@@ -226,7 +236,6 @@ wcs_postprocess(struct os_event * ev){
 #endif
 }
 
-
 /*! 
  * @fn wcs_set_postprocess(wcs_instance_t *  inst * inst, os_event_fn * ccp_postprocess)
  *
@@ -245,8 +254,6 @@ wcs_set_postprocess(wcs_instance_t * inst, os_event_fn * postprocess){
     inst->config.postprocess = true;
 }
 
-
-
 /**
  * API to compensate for local frequency to reference frequency clock skew
  *
@@ -263,6 +270,7 @@ inline uint64_t wcs_dtu_time_adjust(struct _dw1000_dev_instance_t * inst, uint64
 
     if (wcs->status.valid)
        dtu_time = (uint64_t) roundl(dtu_time * (states->skew * (1e-6l/((uint64_t)1 << 16))));
+//       dtu_time = (uint64_t) roundl(dtu_time / (states->skew * (1e-6l/((uint64_t)1 << 16))));
 
     return dtu_time & 0x00FFFFFFFFFFUL;
 }
