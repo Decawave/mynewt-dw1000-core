@@ -85,10 +85,10 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .txrf={
                     .PGdly = TC_PGDELAY_CH5,
                     //.power = 0x2A4A6A8A,
-                    .BOOSTNORM = dw1000_power_value(DW1000_txrf_config_9db, 5),
-                    .BOOSTP500 = dw1000_power_value(DW1000_txrf_config_9db, 5),
-                    .BOOSTP250 = dw1000_power_value(DW1000_txrf_config_9db, 5),
-                    .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_9db, 5)   
+                    .BOOSTNORM = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
+                    .BOOSTP500 = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
+                    .BOOSTP250 = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
+                    .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_9db, 2.5)   
                 }, 
                 .trxoff_enable = 0,
                 .rxdiag_enable = 0,
@@ -103,7 +103,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .LDO_enable = 0,
                 .sleep_enable = 1,
                 .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
-                .rxauto_enable = 0         //!< On error re-enable
+                .rxauto_enable = 0        //!< On error re-enable
             },
             .spi_sem = 0,
             .task_prio = 0x10
@@ -161,7 +161,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .LDO_enable = 0,
                 .sleep_enable = 1,
                 .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
-                .rxauto_enable = 1         //!< On error re-enable
+                .rxauto_enable = 0         //!< On error re-enable
             },
             .spi_sem = 0,
             .task_prio = 0x11
@@ -215,7 +215,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
 #if MYNEWT_VAL(DW1000_MAC_FILTERING)
                 .framefilter_enabled = 1,
 #endif
-                .rxauto_enable = 1
+                .rxauto_enable = 0
             },
             .spi_sem = 0
             .task_prio = 0x12

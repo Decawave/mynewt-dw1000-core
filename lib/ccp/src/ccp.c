@@ -239,7 +239,6 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
     dw1000_ccp_status_t status = dw1000_ccp_listen(inst, DWT_BLOCKING);
     if(status.start_rx_error){
         /* Sync lost, switch to always on for two periods */
-//        dw1000_set_rx_timeout(inst, dw1000_dwt_usecs_to_usecs(ccp->period));
         dw1000_set_rx_timeout(inst, (uint16_t) 0);
         dw1000_ccp_listen(inst, DWT_BLOCKING);
     }
@@ -499,24 +498,17 @@ ccp_postprocess(struct os_event * ev){
 static bool 
 rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-    if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64) {
-        /* If we're waiting for a ccp packet but instead got something else
-         * release the semafore */
-        if(os_sem_get_count(&inst->ccp->sem) == 0) {
-            os_sem_release(&inst->ccp->sem);
-            return true;
-        }
+    if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64)
         return false;
-    }
+
+    if(inst->status.lde_error)
+        return false;
 
     if(os_sem_get_count(&inst->ccp->sem) == 1){ 
         //unsolicited inbound
         STATS_INC(g_stat, rx_unsolicited);
         return false;
     }
-
-    if(inst->status.lde_error)
-        return false;
     
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     ccp_frame_t * frame = ccp->frames[(ccp->idx+1)%ccp->nframes];  // speculative frame advance
@@ -534,10 +526,6 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     ccp->idx++; // confirmed frame advance  
     ccp->os_epoch = os_cputime_get32();
     STATS_INC(g_stat, rx_complete);
-
-    if (inst->config.dblbuffon_enabled) {
-        dw1000_set_rx_timeout(inst, 1000);
-    }
 
     dw1000_read_rx(inst, frame->array + sizeof(ieee_blink_frame_t), 
                 sizeof(ieee_blink_frame_t), 
@@ -624,19 +612,20 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
 static bool
 ccp_rx_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
-   dw1000_ccp_instance_t * ccp = inst->ccp; 
+    dw1000_ccp_instance_t * ccp = inst->ccp; 
+    STATS_INC(g_stat, rx_error);
+
     if (ccp->config.role == CCP_ROLE_MASTER) 
         return false;
-
-    STATS_INC(g_stat, rx_error);
 
     // Release semaphore if rxauto enable is not set. 
     if(inst->config.rxauto_enable)
         return false;
+        
     else if(os_sem_get_count(&inst->ccp->sem) == 0){
         os_error_t err = os_sem_release(&inst->ccp->sem); 
         assert(err == OS_OK); 
-	    return false;
+	    return true;
     }
     return false;
 }
@@ -659,7 +648,7 @@ ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * c
         if(os_sem_get_count(&inst->ccp->sem) == 0){
             os_error_t err = os_sem_release(&inst->ccp->sem);  
             assert(err == OS_OK);
-        return false;    
+        return true;    
         }
     }
     return false;
@@ -682,7 +671,7 @@ ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t *
         STATS_INC(g_stat, rx_timeout);
         os_error_t err = os_sem_release(&ccp->sem); 
         assert(err == OS_OK); 
-        return false;   
+        return true;   
     }
     return false;
 }

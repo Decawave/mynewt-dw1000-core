@@ -535,7 +535,6 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); 
     }    
 
-//    inst->status.rx_error = inst->status.rx_timeout_error = 0;    
     uint32_t sys_ctrl_reg = SYS_CTRL_TXSTRT;
     if (control.wait4resp_enabled)
         sys_ctrl_reg |= SYS_CTRL_WAIT4RESP; 
@@ -621,10 +620,6 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
         if(sys_ctrl & SYS_CTRL_TXSTRT)
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); 
     }
-
-//    inst->status.rx_error = 0;
-//    inst->status.rx_timeout_error = 0;
-//    inst->status.overrun_error = 0;
     
     uint16_t sys_ctrl = SYS_CTRL_RXENAB;
     if (config.dblbuffon_enabled)
@@ -721,7 +716,11 @@ dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
     control.rx_timeout_enabled = timeout > 0;
     
     if(control.rx_timeout_enabled){  
-        dw1000_write_reg(inst, RX_FWTO_ID, RX_FWTO_OFFSET, (uint16_t)ceilf(dw1000_usecs_to_dwt_usecs(timeout)), sizeof(uint16_t));
+        if (inst->config.dblbuffon_enabled) // Double the timeout for dblbuf usecase
+            dw1000_write_reg(inst, RX_FWTO_ID, RX_FWTO_OFFSET, (uint16_t)ceilf(dw1000_usecs_to_dwt_usecs(timeout<<1)), sizeof(uint16_t));
+        else
+            dw1000_write_reg(inst, RX_FWTO_ID, RX_FWTO_OFFSET, (uint16_t)ceilf(dw1000_usecs_to_dwt_usecs(timeout)), sizeof(uint16_t));
+
         sys_cfg_reg |= SYS_CFG_RXWTOE;
         dw1000_write_reg(inst, SYS_CFG_ID, 0, sys_cfg_reg, sizeof(uint32_t));
     }else{
@@ -1322,7 +1321,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
             SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
             if (cbs!=NULL && cbs->rx_timeout_cb) 
-                if(cbs->rx_timeout_cb(inst,cbs)) break; 
+                if(cbs->rx_timeout_cb(inst,cbs)) continue; 
             }   
         }      
     }
@@ -1334,12 +1333,12 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         // Because of an issue with receiver restart after error conditions, an RX reset must be applied after any error or timeout event to ensure
         // the next good frame's timestamp is computed correctly.
         // See section "RX Message timestamp" in DW1000 User Manual.
-        dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t)SYS_CTRL_TRXOFF, sizeof(uint16_t)) ; // Disable the radio
+//        dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t)SYS_CTRL_TRXOFF, sizeof(uint16_t)) ; // Disable the radio
         dw1000_phy_forcetrxoff(inst);
-        dw1000_phy_rx_reset(inst);
+//        dw1000_phy_rx_reset(inst);
 
-        // Restart the receiver in the event of a RXPHE if rxauto is not enabled. Timeout remain active if set.
-        if (inst->config.rxauto_enable == 0 && (inst->sys_status & SYS_STATUS_RXPHE))
+        // Restart the receiver in the event if rxauto is not enabled. Timeout remain active if set.
+        if (inst->config.rxauto_enable == 0) //&& (inst->sys_status & SYS_STATUS_RXPHE))
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
         
          // Call the corresponding ranging frame services callback if present

@@ -113,7 +113,6 @@ dw1000_dump_registers(struct _dw1000_dev_instance_t * inst)
                            reg&0xffffffffffffffffll);
         }
     }
-//    console_printf("{\"inst->mutex\"=\"0x%0X\"}\n",inst->mutex);
     console_printf("{\"rng->sem\"=\"0x%0X\"}\n", os_sem_get_count(&inst->rng->sem));
 #if MYNEWT_VAL(CCP_ENABLED)
     console_printf("{\"ccp->sem\"=\"0x%0X\"}\n", os_sem_get_count(&inst->ccp->sem));

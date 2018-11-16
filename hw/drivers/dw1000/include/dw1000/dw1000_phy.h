@@ -65,7 +65,7 @@ typedef enum {
     DW1000_txrf_config_off         //!< txrf_config_off
 }coarse_power_levels_t;
 
-#define dw1000_power_value(COARSE,FINE) ((COARSE<<5) + FINE)    //!< To configure power values
+#define dw1000_power_value(COARSE,FINE) ((COARSE<<5) + (0xFFFFF & (uint16_t)(FINE * 2)))    //!< To configure power values
 
 struct _dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_txrf_config_t * txrf_config);
 void dw1000_phy_sysclk_XTAL(struct _dw1000_dev_instance_t * inst);

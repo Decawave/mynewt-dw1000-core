@@ -84,13 +84,13 @@ static dw1000_mac_interface_t g_cbs[] = {
 
 STATS_SECT_START(twr_ds_stat_section)
     STATS_SECT_ENTRY(complete)
-    STATS_SECT_ENTRY(tx_error)
+    STATS_SECT_ENTRY(start_tx_error)
     STATS_SECT_ENTRY(reset)
 STATS_SECT_END
 
 STATS_NAME_START(twr_ds_stat_section)
     STATS_NAME(twr_ds_stat_section, complete)
-    STATS_NAME(twr_ds_stat_section, tx_error)
+    STATS_NAME(twr_ds_stat_section, start_tx_error)
     STATS_NAME(twr_ds_stat_section, reset)
 STATS_NAME_END(twr_ds_stat_section)
 
@@ -171,7 +171,7 @@ twr_ds_config(dw1000_dev_instance_t * inst){
  */
 static bool 
 start_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    STATS_INC(g_stat, tx_error);
+    STATS_INC(g_stat, start_tx_error);
     return true;
 }
 

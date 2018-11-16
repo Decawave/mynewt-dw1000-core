@@ -328,7 +328,10 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
     dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t)SYS_CTRL_TRXOFF, sizeof(uint16_t)) ; // Disable the radio
     // Forcing Transceiver off - so we do not want to see any new events that may have happened
     dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_ALL_TX | SYS_STATUS_ALL_RX_ERR | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_GOOD), sizeof(uint32_t));
-    dw1000_sync_rxbufptrs(inst);
+    
+    if (inst->config.dblbuffon_enabled) 
+        dw1000_sync_rxbufptrs(inst);
+        
     dw1000_write_reg(inst, SYS_MASK_ID, 0, mask, sizeof(uint32_t)); // Restore mask to what it was
 
     dw1000_mac_interface_t * cbs = NULL;
