@@ -175,6 +175,7 @@ struct _dw1000_dev_status_t dw1000_set_wait4resp(struct _dw1000_dev_instance_t *
 struct _dw1000_dev_status_t dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay);
 struct _dw1000_dev_status_t dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable);
 struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst);
+struct _dw1000_dev_status_t dw1000_stop_rx(struct _dw1000_dev_instance_t * inst);
 void dw1000_write_tx_fctrl(struct _dw1000_dev_instance_t * inst, uint16_t txFrameLength, uint16_t txBufferOffset, bool ranging);
 struct _dw1000_dev_status_t dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t * inst);
 struct _dw1000_dev_status_t dw1000_read_accdata(struct _dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t len, uint16_t accOffset);

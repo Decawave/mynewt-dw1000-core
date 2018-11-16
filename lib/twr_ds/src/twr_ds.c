@@ -355,7 +355,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 // Transmit timestamp final report
                 dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_final_t));
                 dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true); 
-
+        
                 if (dw1000_start_tx(inst).start_tx_error){
                     os_sem_release(&rng->sem);  
                     if (cbs!=NULL && cbs->start_tx_error_cb) 
@@ -378,6 +378,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             {
                 // This code executes on the device that initialed the original request, and has now receive the final response timestamp. 
                 // This marks the completion of the double-single-two-way request. 
+                if (inst->config.dblbuffon_enabled && inst->config.rxauto_enable)  
+                    dw1000_stop_rx(inst); // Need to prevent timeout event 
 
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];

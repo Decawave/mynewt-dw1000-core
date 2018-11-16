@@ -381,9 +381,9 @@ struct _dw1000_dev_status_t dw1000_mac_config(struct _dw1000_dev_instance_t * in
     }
 #endif
     
-    if (inst->config.dblbuffon_enabled)     
-        assert(inst->config.rxauto_enable ==0);
-
+    if (inst->config.rxauto_enable)     
+        assert(inst->config.trxoff_enable);
+        
     if(inst->config.dblbuffon_enabled)
         dw1000_set_dblrxbuff(inst, true);
 
@@ -529,10 +529,8 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
     dw1000_dev_control_t control = inst->control;
     dw1000_dev_config_t config = inst->config;
 
-    if (config.trxoff_enable){ // force return to idle state, if is RX state
-        uint16_t sys_ctrl = (uint16_t) dw1000_read_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sizeof(uint16_t));
-        if(sys_ctrl & SYS_CTRL_RXENAB)    
-            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); 
+    if (config.trxoff_enable){ // force return to idle state, if in RX state
+        dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); 
     }    
 
     uint32_t sys_ctrl_reg = SYS_CTRL_TXSTRT;
@@ -615,11 +613,11 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
     dw1000_dev_control_t control = inst->control;
     dw1000_dev_config_t config = inst->config;
 
-    if (config.trxoff_enable){ // force return to idle state, if is TX state
-        uint16_t sys_ctrl = (uint16_t) dw1000_read_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sizeof(uint16_t));
-        if(sys_ctrl & SYS_CTRL_TXSTRT)
+    if (config.trxoff_enable){ // force return to idle state, if in RX state
+        uint16_t state = (uint16_t) dw1000_read_reg(inst, SYS_STATE_ID, PMSC_STATE_OFFSET, sizeof(uint16_t));
+        if(state != PMSC_STATE_IDLE )    
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); 
-    }
+    }    
     
     uint16_t sys_ctrl = SYS_CTRL_RXENAB;
     if (config.dblbuffon_enabled)
@@ -657,6 +655,29 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
 
     return inst->status;
 } 
+
+/**
+ * API to gracefully turnoff reception mode.
+ *
+ * @param inst  pointer to _dw1000_dev_instance_t.
+ * @return dw1000_dev_status_t
+ * 
+ */
+
+struct _dw1000_dev_status_t dw1000_stop_rx(struct _dw1000_dev_instance_t * inst)
+{
+    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
+    assert(err == OS_OK);
+            
+//    dw1000_set_rx_timeout(inst, 0);
+    dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); // return to idle state
+
+    err = os_mutex_release(&inst->mutex); 
+    assert(err == OS_OK); 
+
+    return inst->status;
+} 
+
 
 
 
@@ -1247,7 +1268,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         // Toggle the Host side Receive Buffer Pointer
         if (inst->config.dblbuffon_enabled) {
             inst->status.overrun_error = dw1000_checkoverrun(inst);
-            if (inst->status.overrun_error == 0){
+            if (inst->status.overrun_error == 0){ 
                 dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 1, sizeof(uint8_t));
             }else{
                 STATS_INC(g_stat, ROV_err);
@@ -1335,7 +1356,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         // See section "RX Message timestamp" in DW1000 User Manual.
 //        dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t)SYS_CTRL_TRXOFF, sizeof(uint16_t)) ; // Disable the radio
         dw1000_phy_forcetrxoff(inst);
-//        dw1000_phy_rx_reset(inst);
+        dw1000_phy_rx_reset(inst);
 
         // Restart the receiver in the event if rxauto is not enabled. Timeout remain active if set.
         if (inst->config.rxauto_enable == 0) //&& (inst->sys_status & SYS_STATUS_RXPHE))

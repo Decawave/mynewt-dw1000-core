@@ -498,8 +498,19 @@ ccp_postprocess(struct os_event * ev){
 static bool 
 rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-    if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64)
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp:rx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64){     
+        if(os_sem_get_count(&inst->ccp->sem) == 0){
+            dw1000_set_rx_timeout(inst, (uint16_t) 0);
+            if (inst->config.dblbuffon_enabled == 0){
+                dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
+            } else if (inst->config.rxauto_enable == 0){
+                dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
+            }
+            return true;
+        }
         return false;
+    }
 
     if(inst->status.lde_error)
         return false;
@@ -522,6 +533,9 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     if(inst->ccp->uuid != frame->long_address){
         return false;
     }
+
+    if (inst->config.dblbuffon_enabled && inst->config.rxauto_enable)  
+        dw1000_stop_rx(inst); //Prevent timeout event 
 
     ccp->idx++; // confirmed frame advance  
     ccp->os_epoch = os_cputime_get32();
@@ -780,7 +794,14 @@ dw1000_ccp_listen(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     if (ccp->status.start_rx_error){
         err =  os_sem_release(&ccp->sem);
         assert(err == OS_OK); 
-
+        // Force a reset event 
+        dw1000_mac_interface_t * cbs = NULL;
+        if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
+            SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+            if (cbs!=NULL && cbs->reset_cb) 
+                if(cbs->reset_cb(inst,cbs)) continue;          
+            }   
+        }      
     }else if(mode == DWT_BLOCKING){
         err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
         assert(err == OS_OK); 
