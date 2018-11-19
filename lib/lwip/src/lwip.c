@@ -57,12 +57,12 @@
 #include <lwip/icmp.h>
 #include <lwip/inet_chksum.h>
 
-//static bool complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 dw1000_lwip_context_t cntxt;
+
 /**
  * API to assign the config parameters.
  *
@@ -190,30 +190,10 @@ lwip_rx_cb(void *arg, struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *addr
 
     	 if(inst->lwip->cbs.complete_cb != NULL)
 	    	inst->lwip->cbs.complete_cb(inst, &inst->lwip->cbs);
-
-#if 0
-		if(inst->lwip_rx_complete_cb != NULL)
-	    	inst->lwip_rx_complete_cb(inst);
-#endif
     }
     memp_free(MEMP_PBUF_POOL,p);
     return 1;
 }
-
-/**
- * API to confirm lwip receive complete callback.
- *
- * @param inst  Pointer to dw1000_dev_instance_t.
- * @return void
- */
-#if 0
-static bool complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-        if(inst->lwip->ext_rx_complete_cb != NULL){
-        	inst->lwip->ext_rx_complete_cb(inst);
-        }
-	return false;
-}
-#endif
 
 /**
  * API to send lwIP buffer to radio.
@@ -274,8 +254,6 @@ dw1000_lwip_write(dw1000_dev_instance_t * inst, struct pbuf *p, dw1000_lwip_mode
 void
 dw1000_lwip_start_rx(dw1000_dev_instance_t * inst, uint16_t timeout){
 
-    //os_error_t err = os_sem_pend(&inst->lwip->data_sem, OS_TIMEOUT_NEVER);
-    //assert(err == OS_OK);
     dw1000_set_rx_timeout(inst, timeout);
     dw1000_start_rx(inst);
 }
@@ -291,9 +269,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
 	if(strncmp((char *)&inst->fctrl, "LW",2))
         return false;
-
-    //os_error_t err = os_sem_release(&inst->lwip->data_sem);
-    //assert(err == OS_OK);
 
 	char *ptr = inst->lwip->data_buf[0];
     dw1000_read_rx(inst, (uint8_t *)ptr, 0, inst->lwip->buf_len);
@@ -316,12 +291,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 	}
     else{
 		inst->lwip->status.rx_error = 1;
-		#if 1
 		dw1000_set_rx_timeout(inst, 0);
         dw1000_start_rx(inst);
-        #else
-		dw1000_lwip_start_rx(inst, 0);
-		#endif
     }
 
 	return true;
@@ -357,21 +328,11 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 static bool 
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
-	#if 1
 	if(strncmp((char *)&inst->fctrl, "LW",2))
         return false;
     else
 		inst->lwip->status.rx_timeout_error = 1;
 	return true;
-	#else
- 	if (os_sem_get_count(&inst->lwip->data_sem) == 0){
-		os_error_t err = os_sem_release(&inst->lwip->data_sem);
-		assert(err == OS_OK);
-		inst->lwip->status.rx_timeout_error = 1;
-		return true;
-	}else 
-		return false;
-	#endif
 }
 
 /**
@@ -383,21 +344,11 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 static bool 
 rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
-	#if 1
 	if(strncmp((char *)&inst->fctrl, "LW",2))
         return false;
     else
 		inst->lwip->status.rx_error = 1;
 	return true;
-	#else
-	if (os_sem_get_count(&inst->lwip->data_sem) == 0){
-		os_error_t err = os_sem_release(&inst->lwip->data_sem);
-		assert(err == OS_OK);
-		inst->lwip->status.rx_error = 1;
-			return true;
-	}else 
-		return false;
-	#endif
 }
 
 
