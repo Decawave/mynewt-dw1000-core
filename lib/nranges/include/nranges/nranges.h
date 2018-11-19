@@ -134,6 +134,7 @@ float dw1000_nrng_twr_to_tof_frames(struct _dw1000_dev_instance_t * inst, nrng_f
 void dw1000_nrng_set_frames(dw1000_dev_instance_t* inst, uint16_t nframes);
 dw1000_dev_status_t dw1000_nrng_config(struct _dw1000_dev_instance_t* inst, dw1000_rng_config_t * config);
 dw1000_rng_config_t * dw1000_nrng_get_config(dw1000_dev_instance_t * inst, dw1000_nrng_modes_t code);
+dw1000_dev_status_t dw1000_nrng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 #ifdef __cplusplus
 }
 #endif

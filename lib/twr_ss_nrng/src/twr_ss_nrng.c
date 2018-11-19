@@ -66,6 +66,19 @@ static dw1000_mac_interface_t g_cbs = {
             .rx_error_cb = rx_error_cb,
 };
 
+STATS_SECT_START(twr_ss_nrng_stat_section)
+    STATS_SECT_ENTRY(complete)
+    STATS_SECT_ENTRY(rx_error)
+    STATS_SECT_ENTRY(rx_timeout)
+STATS_SECT_END
+
+STATS_NAME_START(twr_ss_nrng_stat_section)
+    STATS_NAME(twr_ss_nrng_stat_section, complete)
+    STATS_NAME(twr_ss_nrng_stat_section, rx_error)
+    STATS_NAME(twr_ss_nrng_stat_section, rx_timeout)
+STATS_NAME_END(twr_ss_nrng_stat_section)
+
+static STATS_SECT_DECL(twr_ss_nrng_stat_section) g_stat;
 
 static dw1000_rng_config_t g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(TWR_SS_NRNG_TX_HOLDOFF),         // Send Time delay in usec.
@@ -83,6 +96,14 @@ void twr_ss_nrng_pkg_init(void){
 
     printf("{\"utime\": %lu,\"msg\": \"twr_ss_nrng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs);
+
+    int rc = stats_init(
+    STATS_HDR(g_stat),
+    STATS_SIZE_INIT_PARMS(g_stat, STATS_SIZE_32),
+    STATS_NAME_INIT_PARMS(twr_ss_nrng_stat_section));
+    rc |= stats_register("twr_ss_nrng", STATS_HDR(g_stat));
+    assert(rc == 0);
+
 }
 
 
@@ -125,6 +146,7 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
         return false;
     }
     assert(inst->nrng);
+    STATS_INC(g_stat, rx_timeout);
     switch(inst->nrng->code){
         case DWT_SS_TWR_NRNG ... DWT_SS_TWR_NRNG_FINAL:
             {
@@ -158,6 +180,7 @@ rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     if(inst->fctrl != FCNTL_IEEE_N_RANGES_16){
         return false;
     }
+    STATS_INC(g_stat, rx_error);
     assert(inst->nrng);
     dw1000_nrng_instance_t * nrng = inst->nrng;
     os_error_t err = os_sem_release(&nrng->sem);
@@ -178,6 +201,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if(inst->fctrl != FCNTL_IEEE_N_RANGES_16){
         return false;
     }
+    if(os_sem_get_count(&inst->nrng->sem) == 1)
+	return false;
     assert(inst->nrng);
     dw1000_nrng_instance_t * nrng = inst->nrng;
     dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, DWT_SS_TWR_NRNG);
@@ -264,6 +289,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->code = DWT_SS_TWR_NRNG_FINAL;
 
                 if(idx == nnodes-1){
+                    STATS_INC(g_stat, complete);
                     os_sem_release(&nrng->sem);
                     if(!(SLIST_EMPTY(&inst->interface_cbs))){
                         SLIST_FOREACH(cbs, &inst->interface_cbs, next){
