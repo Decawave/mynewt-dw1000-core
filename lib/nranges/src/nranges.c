@@ -237,12 +237,11 @@ dw1000_nrng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_addre
    
     dw1000_nrng_instance_t * nrng = inst->nrng;    
 
-    dw1000_set_dblrxbuff(inst, true);
     nrng->control.delay_start_enabled = 1;
     nrng->delay = delay;
     dw1000_nrng_request(inst, dst_address, code, start_slot_id, end_slot_id);
     nrng->control.delay_start_enabled = 0;
-    dw1000_set_dblrxbuff(inst, false);
+
     return inst->status;
 }
 
@@ -275,7 +274,8 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_n
 
     if (nrng->control.delay_start_enabled)
        dw1000_set_delay_start(inst, nrng->delay);
-             
+
+    dw1000_set_dblrxbuff(inst, true);        
     if (dw1000_start_tx(inst).start_tx_error){
         STATS_INC(g_stat, start_tx_error_cb);
         if(!(SLIST_EMPTY(&inst->interface_cbs))){
@@ -287,7 +287,7 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_n
             os_sem_release(&nrng->sem);
         }
     }
-
+    dw1000_set_dblrxbuff(inst, false);
     err = os_sem_pend(&nrng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
     os_sem_release(&nrng->sem);
     
@@ -306,7 +306,7 @@ dw1000_nrng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 
     assert(inst);
     dw1000_nrng_instance_t * nrng = inst->nrng;
-//    dw1000_set_dblrxbuff(inst, true);
+
     os_error_t err = os_sem_pend(&nrng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
@@ -323,7 +323,6 @@ dw1000_nrng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
         err = os_sem_release(&nrng->sem);
         assert(err == OS_OK);
     }
-//    dw1000_set_dblrxbuff(inst, false);
 
    return inst->status;
 }

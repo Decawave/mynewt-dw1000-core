@@ -201,8 +201,10 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if(inst->fctrl != FCNTL_IEEE_N_RANGES_16){
         return false;
     }
+    
     if(os_sem_get_count(&inst->nrng->sem) == 1)
 	return false;
+
     assert(inst->nrng);
     dw1000_nrng_instance_t * nrng = inst->nrng;
     dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, DWT_SS_TWR_NRNG);
@@ -229,7 +231,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->carrier_integrator  = dw1000_read_carrier_integrator(inst);
 #endif
                 uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay
-                            + (uint64_t)((slot_id-1) * ((uint64_t)config->tx_guard_delay
+                                    + (uint64_t)((slot_id-1) * ((uint64_t)config->tx_guard_delay
                                     + (dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)))))))<< 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
@@ -271,7 +273,12 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     uint16_t phy_duration = dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t));
                     uint16_t timeout = ((phy_duration + dw1000_dwt_usecs_to_usecs(config->tx_guard_delay)) * (end_slot_id - node_slot_id));
                     dw1000_set_rx_timeout(inst, timeout);
-                    dw1000_start_rx(inst);
+
+                    if (inst->config.dblbuffon_enabled == 0 || inst->config.rxauto_enable == 0) 
+                        dw1000_start_rx(inst);
+                }else{
+                    if (inst->config.dblbuffon_enabled) 
+                        dw1000_stop_rx(inst);
                 }
                 nrng_frame_t * frame = nrng->frames[idx][FIRST_FRAME_IDX];
                 memcpy(frame, &temp_frame, sizeof(nrng_response_frame_t));

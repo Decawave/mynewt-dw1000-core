@@ -1324,7 +1324,15 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
     // leading edge detection complete
     if(inst->sys_status &  SYS_STATUS_LDEERR){
         STATS_INC(g_stat, LDE_err);
-        dw1000_write_reg(inst, SYS_STATUS_ID, 0,  SYS_STATUS_LDEERR, sizeof(uint32_t)); // Clear SYS_STATUS_RXPHD event bits
+
+        if (inst->config.dblbuffon_enabled) {
+            uint32_t mask = dw1000_read_reg(inst, SYS_MASK_ID, 0 , sizeof(uint32_t)) ;  
+            dw1000_write_reg(inst, SYS_MASK_ID, 0, 0, sizeof(uint32_t)) ;       
+            dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_LDEERR, sizeof(uint32_t)); 
+            dw1000_write_reg(inst, SYS_MASK_ID, 0, mask, sizeof(uint32_t)); 
+        }else{
+            dw1000_write_reg(inst, SYS_STATUS_ID, 0,  SYS_STATUS_LDEERR, sizeof(uint32_t)); // Clear SYS_STATUS_RXPHD event bits
+        }
 
         // Toggle the Host side Receive Buffer Pointer
         if (inst->config.dblbuffon_enabled && (inst->status.overrun_error == 0)) 
@@ -1341,6 +1349,10 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t)SYS_CTRL_TRXOFF, sizeof(uint16_t)) ; // Disable the radio
         dw1000_phy_rx_reset(inst);
     
+        // Toggle the Host side Receive Buffer Pointer
+        if (inst->config.dblbuffon_enabled && (inst->status.overrun_error == 0)) 
+            dw1000_sync_rxbufptrs(inst);
+
         if(os_sem_get_count(&inst->sem) == 0){
             os_error_t err = os_sem_release(&inst->sem);  
             assert(err == OS_OK);
