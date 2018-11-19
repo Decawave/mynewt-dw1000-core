@@ -289,7 +289,6 @@ dw1000_lwip_start_rx(dw1000_dev_instance_t * inst, uint16_t timeout){
 static bool 
 rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
-	printf("RXCB\n");
 	if(strncmp((char *)&inst->fctrl, "LW",2))
         return false;
 
@@ -305,7 +304,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     pkt_addr = (uint8_t)(*(inst->lwip->data_buf[0]+4)) + ((uint8_t)(*(inst->lwip->data_buf[0]+5)) << 8);
 
     if(pkt_addr == inst->my_short_address){
-    	printf("A\n");
         char * data_buf = (char *)malloc(buf_size);
         assert(data_buf != NULL);
 
@@ -338,7 +336,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 static bool 
 tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
-	printf("TXCB\n");
 	if(strncmp((char *)&inst->fctrl, "LW",2))
         return false;
 
@@ -361,7 +358,6 @@ static bool
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
 	#if 1
-	printf("RXTO\n");
 	if(strncmp((char *)&inst->fctrl, "LW",2))
         return false;
     else

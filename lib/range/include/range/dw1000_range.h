@@ -42,7 +42,7 @@ extern "C" {
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
-#include <dw1000/dw1000_rng.h>
+#include <rng/rng.h>
 
 //! Range configuration parameters
 typedef struct _dw1000_range_config_t{
