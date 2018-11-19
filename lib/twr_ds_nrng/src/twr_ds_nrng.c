@@ -212,8 +212,12 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if(inst->fctrl != FCNTL_IEEE_N_RANGES_16){
         return false;
     }
-    if(os_sem_get_count(&inst->nrng->sem) == 1)
+
+    if(os_sem_get_count(&inst->nrng->sem) == 1){ 
+        // unsolicited inbound
         return false;
+    }
+
     assert(inst->nrng);
     dw1000_nrng_instance_t * nrng = inst->nrng;
     dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, DWT_DS_TWR_NRNG);
@@ -234,7 +238,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 uint64_t request_timestamp = dw1000_read_rxtime(inst);
                 uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay
                             + (uint64_t)((slot_id-1) * ((uint64_t)config->tx_guard_delay
-                                    + (dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)))))))<< 16);
+                            + (dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)))))))<< 16);
+
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
                 frame->reception_timestamp =  request_timestamp;
@@ -252,9 +257,9 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_response_frame_t));
                 dw1000_write_tx_fctrl(inst, sizeof(nrng_response_frame_t), 0, true);
                 dw1000_set_wait4resp(inst, true);
-                uint16_t timeout =config->tx_holdoff_delay + (frame->end_slot_id - slot_id + 1) * (dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t))
-                        + config->rx_timeout_period
-                        + config->tx_guard_delay);
+                uint16_t timeout =  config->tx_holdoff_delay + (uint16_t)(frame->end_slot_id - slot_id + 1) * (dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t))
+                                    + config->rx_timeout_period
+                                    + config->tx_guard_delay);
                 dw1000_set_rx_timeout(inst, timeout);
                 dw1000_set_delay_start(inst, response_tx_delay);
                 if (dw1000_start_tx(inst).start_tx_error){
@@ -394,7 +399,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             {
                 // This code executes on the device that initialed the original request, and has now receive the final response timestamp.
                 // This marks the completion of the double-single-two-way request.
-                // printf("Final\n");
+                //printf("Final\n");
                 nrng->resp_count++;
                 uint16_t nnodes = nrng->nnodes;
                 uint16_t idx = 0;

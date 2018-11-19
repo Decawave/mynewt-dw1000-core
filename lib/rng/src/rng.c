@@ -275,7 +275,7 @@ dw1000_rng_free(dw1000_rng_instance_t * inst){
 }
 
 /**
- * API to initialise the rng_ss package.
+ * API to initialise the rng package.
  *
  *
  * @return void

@@ -666,20 +666,22 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
 
 struct _dw1000_dev_status_t dw1000_stop_rx(struct _dw1000_dev_instance_t * inst)
 {
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
+    os_error_t err = os_mutex_pend(&inst->mutex,  OS_WAIT_FOREVER);
     assert(err == OS_OK);
-            
-//    dw1000_set_rx_timeout(inst, 0);
-    dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); // return to idle state
 
+    dw1000_set_rx_timeout(inst, 0);
+
+    uint32_t mask = dw1000_read_reg(inst, SYS_MASK_ID, 0 , sizeof(uint32_t)) ; // Read set interrupt mask
+    dw1000_write_reg(inst, SYS_MASK_ID, 0, 0, sizeof(uint32_t)) ; // Clear interrupt mask - so we don't get any unwanted events        
+    dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); // return to idle state
+    dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_ALL_TX | SYS_STATUS_ALL_RX_ERR | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_GOOD), sizeof(uint32_t));
+    dw1000_write_reg(inst, SYS_MASK_ID, 0, mask, sizeof(uint32_t)); // Restore mask to what it was
+    
     err = os_mutex_release(&inst->mutex); 
     assert(err == OS_OK); 
 
     return inst->status;
 } 
-
-
-
 
 /**
  * API to enable wait for response feature.
@@ -763,7 +765,7 @@ dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
  * @param inst  pointer to _dw1000_dev_instance_t.
  * @return dw1000_dev_status_t
  */
-struct _dw1000_dev_status_t 
+inline struct _dw1000_dev_status_t 
 dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t * inst)
 {
     uint8_t  buff;
@@ -1232,7 +1234,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
     inst->status.rx_error = (inst->sys_status & SYS_STATUS_ALL_RX_ERR) !=0;
     inst->status.rx_timeout_error = (inst->sys_status & SYS_STATUS_ALL_RX_TO) !=0;
     inst->status.lde_error = (inst->sys_status & SYS_STATUS_LDEDONE) == 0;
-
+  
       // leading edge detection complete
     if((inst->sys_status & SYS_STATUS_RXFCG)){
         STATS_INC(g_stat, DFR_cnt);
@@ -1241,8 +1243,15 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         inst->status.rx_ranging_frame = (finfo & RX_FINFO_RNG) !=0;       // Report ranging bit
         inst->fctrl = dw1000_read_reg(inst, RX_BUFFER_ID, MAC_FFORMAT_FCTRL, MAC_FFORMAT_FCTRL_LEN);// Report frame control - First bytes of the received frame.
 
-        dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_LDEERR | SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG), sizeof(uint32_t)); 
-
+        if (inst->config.dblbuffon_enabled) {
+            uint32_t mask = dw1000_read_reg(inst, SYS_MASK_ID, 0 , sizeof(uint32_t)) ;  
+            dw1000_write_reg(inst, SYS_MASK_ID, 0, 0, sizeof(uint32_t)) ;       
+            dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_LDEERR | SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR), sizeof(uint32_t)); 
+            dw1000_write_reg(inst, SYS_MASK_ID, 0, mask, sizeof(uint32_t)); 
+        }else{
+            dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_LDEERR | SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG), sizeof(uint32_t)); 
+        }
+  
         // Because of a previous frame not being received properly, AAT bit can be set upon the proper reception of a frame not requesting for
         // acknowledgement (ACK frame is not actually sent though). If the AAT bit is set, check ACK request bit in frame control to confirm (this
         // implementation works only for IEEE802.15.4-2011 compliant frames).
@@ -1269,7 +1278,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         if (inst->config.dblbuffon_enabled) {
             inst->status.overrun_error = dw1000_checkoverrun(inst);
             if (inst->status.overrun_error == 0){ 
-                dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 1, sizeof(uint8_t));
+                dw1000_sync_rxbufptrs(inst);
             }else{
                 STATS_INC(g_stat, ROV_err);
                 /* Overrun flag has been set */
@@ -1293,15 +1302,15 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         // ACK TX).
         // See section "Transmit and automatically wait for response" in DW1000 User Manual
 
-        os_error_t err = os_sem_release(&inst->sem);  
-        assert(err == OS_OK); 
-
         if((inst->sys_status & SYS_STATUS_AAT) && inst->control.wait4resp_enabled){
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t) SYS_CTRL_TRXOFF, sizeof(uint16_t)); // return to idle state
             dw1000_phy_forcetrxoff(inst);
             dw1000_phy_rx_reset(inst);      // Reset in case we were late and a frame was already being received
         }
 
+        os_error_t err = os_sem_release(&inst->sem);  
+        assert(err == OS_OK); 
+        
         // Call the corresponding callback if present
         dw1000_mac_interface_t * cbs = NULL;
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
@@ -1319,7 +1328,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
 
         // Toggle the Host side Receive Buffer Pointer
         if (inst->config.dblbuffon_enabled && (inst->status.overrun_error == 0)) 
-            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 1, sizeof(uint8_t));
+            dw1000_sync_rxbufptrs(inst);
     }
 
     // Handle frame reception/preamble detect timeout events
@@ -1354,7 +1363,6 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         // Because of an issue with receiver restart after error conditions, an RX reset must be applied after any error or timeout event to ensure
         // the next good frame's timestamp is computed correctly.
         // See section "RX Message timestamp" in DW1000 User Manual.
-//        dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t)SYS_CTRL_TRXOFF, sizeof(uint16_t)) ; // Disable the radio
         dw1000_phy_forcetrxoff(inst);
         dw1000_phy_rx_reset(inst);
 
