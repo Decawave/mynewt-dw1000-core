@@ -275,7 +275,7 @@ dw1000_rng_free(dw1000_rng_instance_t * inst){
 }
 
 /**
- * API to initialise the rng_ss package.
+ * API to initialise the rng package.
  *
  *
  * @return void
@@ -404,11 +404,13 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     frame->dst_address = dst_address;
    
     dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_rng_request_frame_t));
-    dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_request_frame_t), 0, true);     
-    dw1000_set_wait4resp(inst, true);   
+    dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_request_frame_t), 0, true); 
+    dw1000_set_wait4resp(inst, true);    
+   // dw1000_set_wait4resp_delay(inst, config->tx_holdoff_delay - dw1000_phy_SHR_duration(&inst->attrib));
     uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_rng_response_frame_t)) 
-                    + config->rx_timeout_period         // At least 2 * ToF, 1us ~= 300m
-                    + config->tx_holdoff_delay;         // Remote side turn arroud time. 
+                    + config->rx_timeout_period // At least 2 * ToF, 1us ~= 300m
+                    + config->tx_holdoff_delay;
+
     dw1000_set_rx_timeout(inst, timeout); 
    
     if (rng->control.delay_start_enabled) 
@@ -690,7 +692,6 @@ reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(os_sem_get_count(&inst->rng->sem) == 0){
         STATS_INC(g_stat, reset);
-
         os_error_t err = os_sem_release(&inst->rng->sem);  
         assert(err == OS_OK);
         return true;
@@ -722,26 +723,16 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     dw1000_rng_instance_t * rng = inst->rng; 
     twr_frame_t * frame = rng->frames[(rng->idx+1)%rng->nframes]; // speculative frame advance
     
-    if (inst->frame_len >= sizeof(ieee_rng_request_frame_t)) {
-        /* No need to re-read the fctrl bytes */
-        frame->fctrl = inst->fctrl;
-        dw1000_read_rx(inst, frame->array + offsetof(ieee_rng_request_frame_t, seq_num), 
-                                            offsetof(ieee_rng_request_frame_t, seq_num), 
-                                            sizeof(ieee_rng_request_frame_t) - offsetof(ieee_rng_request_frame_t, seq_num)
-        );
-    } else {
+    if (inst->frame_len >= sizeof(ieee_rng_request_frame_t) && inst->frame_len <= sizeof(frame->array)) 
+        memcpy(frame->array, inst->rxbuf, inst->frame_len);
+    else 
         return false;
-    }
-    
+
     inst->rng->code = frame->code;
     switch(inst->rng->code) {
-        case DWT_SS_TWR ... DWT_DS_TWR_EXT_END:         
+        case DWT_SS_TWR ... DWT_DS_TWR_EXT_END:    
             // IEEE 802.15.4 standard ranging frames, software MAC filtering
             if (inst->config.framefilter_enabled == false && frame->dst_address != inst->my_short_address){ 
-//                if (inst->config.rxauto_enable == 0){
-//                    inst->control = inst->control_rx_context;
-//                    dw1000_restart_rx(inst, inst->control);
-//                }  
                 return true;
             }else{
                 STATS_INC(g_stat, rx_complete); 

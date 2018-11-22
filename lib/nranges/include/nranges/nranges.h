@@ -34,7 +34,9 @@ extern "C" {
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
 #include <dw1000/triad.h>
+#if MYNEWT_VAL(RNG_ENABLED)
 #include <rng/rng.h>
+#endif
 
 #define FCNTL_IEEE_N_RANGES_16 0x88C1
 #define FRAMES_PER_RANGE       2

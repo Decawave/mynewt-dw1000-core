@@ -167,14 +167,7 @@ void wcs_update_cb(struct os_event * ev){
             double q[] = {MYNEWT_VAL(TIMESCALE_QVAR) * 1.0, MYNEWT_VAL(TIMESCALE_QVAR) * 0.1, MYNEWT_VAL(TIMESCALE_QVAR) * 0.01};
             double r[] = {MYNEWT_VAL(TIMESCALE_RVAR), MYNEWT_VAL(TIMESCALE_RVAR) * 1e10};
             double z[] = {(double)inst->local_epoch, skew};
-#ifdef TICTOC
-            uint32_t tic = os_cputime_ticks_to_usecs(os_cputime_get32());
-#endif
             inst->status.valid  = timescale_main(timescale, z, q, r, T).valid;
-#ifdef TICTOC
-            uint32_t toc = os_cputime_ticks_to_usecs(os_cputime_get32());
-            printf("{\"utime\": %lu,\"slot_timer_cb_tic_toc\": %ld}\n",toc, (toc - tic));
-#endif
         }
 /*
         if(timescale->status.illconditioned || timescale->status.NotPositiveDefinitive ){
@@ -266,14 +259,26 @@ wcs_set_postprocess(wcs_instance_t * inst, os_event_fn * postprocess){
 inline uint64_t wcs_dtu_time_adjust(struct _dw1000_dev_instance_t * inst, uint64_t dtu_time){
     wcs_instance_t * wcs = inst->ccp->wcs;
     assert(wcs);
-    timescale_states_t * states = (timescale_states_t *) (wcs->timescale->eke->x); 
-
+    
     if (wcs->status.valid)
-       dtu_time = (uint64_t) roundl(dtu_time * (states->skew * (1e-6l/((uint64_t)1 << 16))));
-//       dtu_time = (uint64_t) roundl(dtu_time / (states->skew * (1e-6l/((uint64_t)1 << 16))));
+       dtu_time = (uint64_t) roundl(dtu_time / wcs_dtu_time_correction(inst));
 
     return dtu_time & 0x00FFFFFFFFFFUL;
 }
+
+inline double wcs_dtu_time_correction(struct _dw1000_dev_instance_t * inst){
+    wcs_instance_t * wcs = inst->ccp->wcs;
+    assert(wcs);
+    
+    timescale_states_t * states = (timescale_states_t *) (wcs->timescale->eke->x); 
+
+    double correction = 1.0l;
+    if (wcs->status.valid)
+       correction = (double) roundl(states->skew * (1e-6l/(0x1UL << 16)));
+
+    return correction;
+}
+
 
 /**
  * API compensate for clock skew and offset relative to master clock

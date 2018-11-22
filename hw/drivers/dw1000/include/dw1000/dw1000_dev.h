@@ -117,10 +117,8 @@ typedef struct _dw1000_dev_status_t{
     uint32_t tx_ranging_frame:1;      //!< Range Request bit set for outbound frame
     uint32_t sleep_enabled:1;         //!< Indicates sleep_enabled bit is set
     uint32_t sleeping:1;              //!< Indicates sleeping state
-
     uint32_t sem_force_released:1;    //!< Semaphore was released in forcetrxoff
-
-    uint32_t rx_buffer_overrun_error:1;//!< Dblbuffer overrun detected
+    uint32_t overrun_error:1;         //!< Dblbuffer overrun detected
 }dw1000_dev_status_t;
 
 //! Device control status bits.
@@ -255,6 +253,7 @@ typedef struct _dw1000_dev_instance_t{
         uint16_t fctrl;                         //!< Reported frame control 
         uint8_t fctrl_array[sizeof(uint16_t)];  //!< Endianness safe interface
     };
+    uint32_t tic;
     uint16_t frame_len;            //!< Reported frame length
     uint8_t spi_num;               //!< SPI number
     uint8_t irq_pin;               //!< Interrupt request pin
@@ -266,6 +265,7 @@ typedef struct _dw1000_dev_instance_t{
     uint64_t timestamp;            //!< Timestamp
     uint64_t rxtimestamp;          //!< Receive timestamp
     uint64_t txtimestamp;          //!< Transmit timestamp
+    int32_t carrier_integrator;
     uint16_t PANID;                //!< personal network inetrface id
     uint16_t slot_id;              //!< Slot id  
     uint32_t partID;               //!< Identifier of a particular part design
@@ -278,7 +278,7 @@ typedef struct _dw1000_dev_instance_t{
     uint32_t tx_fctrl;             //!< Transmit frame control register parameter 
     uint32_t sys_status;           //!< SYS_STATUS_ID for current event
     uint16_t rx_antenna_delay;     //!< Receive antenna delay
-    uint16_t tx_antenna_delay;     //!< Transmit antenna delay   
+    uint16_t tx_antenna_delay;     //!< Transmit antenna delay  
     
     struct hal_spi_settings spi_settings;  //!< Structure of SPI settings in hal layer 
     struct os_eventq eventq;     //!< Structure of os_eventq that has event queue 
@@ -287,6 +287,7 @@ typedef struct _dw1000_dev_instance_t{
     uint8_t task_prio;           //!< Priority of the interrupt task  
     os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]  //!< Stack of the interrupt task 
         __attribute__((aligned(OS_STACK_ALIGNMENT)));
+    uint8_t rxbuf[RX_BUFFER_LEN];               //!< local rxbuf  
     struct _dw1000_rng_instance_t * rng;     //!< DW1000 rng instance 
 #if MYNEWT_VAL(LWIP_ENABLED) 
     struct _dw1000_lwip_instance_t * lwip;   //!< DW1000 lwip instance
@@ -313,11 +314,10 @@ typedef struct _dw1000_dev_instance_t{
     dw1000_dev_rxdiag_t rxdiag;                    //!< DW1000 receive diagnostics
     dw1000_dev_config_t config;                    //!< DW1000 device configurations  
     dw1000_dev_control_t control;                  //!< DW1000 device control parameters      
-//    dw1000_dev_control_t control_rx_context;       //!< DW1000 device control receive context 
-//    dw1000_dev_control_t control_tx_context;       //!< DW1000 device control transmit context  
     dw1000_dev_status_t status;                    //!< DW1000 device status 
     dw1000_dev_role_t dev_type;                    //!< Type of the device (tag/node)
     struct _phy_attributes_t attrib;
+    
 }dw1000_dev_instance_t;
 
 //! SPI parameters
