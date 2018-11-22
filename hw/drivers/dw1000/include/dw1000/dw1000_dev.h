@@ -202,6 +202,17 @@ typedef struct _dw1000_dev_rxdiag_t{
     uint16_t    pacc_cnt;           //!<  Count of preamble symbols accumulated
 } __attribute__((packed, aligned(1))) dw1000_dev_rxdiag_t;
 
+//! DW1000 For reading out accumulator CIR data
+typedef struct _dw1000_cir_complex {
+    union {
+        struct  _cir_complex_t{
+            int16_t real;
+            int16_t imag;
+        }__attribute__((__packed__));
+        uint8_t array[sizeof(struct _cir_complex_t)];
+    };
+} dw1000_cir_complex_t;
+
 //! physical attributes per IEEE802.15.4-2011 standard, Table 101
 typedef struct _phy_attributes_t{
     float Tpsym;
