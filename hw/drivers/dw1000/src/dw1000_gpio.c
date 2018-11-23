@@ -36,7 +36,68 @@
 #include <hal/hal_gpio.h>
 #include <dw1000/dw1000_gpio.h>
 
+/**
+ * API to set up gpio 4/5/6 as pa/lna mode
+ *
+ * @param inst  pointer to _dw1000_dev_instance_t.
+ *
+ * @return void
+ */
+void dw1000_gpio4_config_ext_pa(struct _dw1000_dev_instance_t * inst)
+{
+    uint32_t reg;
 
+	reg = (uint32_t) dw1000_read_reg(inst, GPIO_CTRL_ID, GPIO_MODE_OFFSET, sizeof(uint32_t));
+	reg &= ~GPIO_MSGP4_MASK;
+	reg |= GPIO_PIN4_EXTPA;
+	dw1000_write_reg(inst, GPIO_CTRL_ID, GPIO_MODE_OFFSET, reg, sizeof(uint32_t));
+}
+
+void dw1000_gpio5_config_ext_txe(struct _dw1000_dev_instance_t * inst)
+{
+    uint32_t reg;
+
+	reg = (uint32_t) dw1000_read_reg(inst, GPIO_CTRL_ID, GPIO_MODE_OFFSET, sizeof(uint32_t));
+	reg &= ~GPIO_MSGP5_MASK;
+	reg |= GPIO_PIN5_EXTTXE;
+	dw1000_write_reg(inst, GPIO_CTRL_ID, GPIO_MODE_OFFSET, reg, sizeof(uint32_t));
+}
+
+void dw1000_gpio6_config_ext_rxe(struct _dw1000_dev_instance_t * inst)
+{
+    uint32_t reg;
+
+	reg = (uint32_t) dw1000_read_reg(inst, GPIO_CTRL_ID, GPIO_MODE_OFFSET, sizeof(uint32_t));
+	reg &= ~GPIO_MSGP6_MASK;
+	reg |= GPIO_PIN6_EXTRXE;
+	dw1000_write_reg(inst, GPIO_CTRL_ID, GPIO_MODE_OFFSET, reg, sizeof(uint32_t));
+}
+
+uint32_t dw1000_get_gpio_mode(struct _dw1000_dev_instance_t * inst)
+{
+	uint32_t reg;
+
+	reg = (uint32_t) dw1000_read_reg(inst, GPIO_CTRL_ID, GPIO_MODE_OFFSET, sizeof(uint32_t));
+	
+	return reg;
+}
+
+void dw1000_support_pa_lna(struct _dw1000_dev_instance_t * inst)
+{
+	uint8_t buf[2] = {0x00,0x00};
+	
+	//enable GPIOx external mode
+	dw1000_gpio4_config_ext_pa(inst);
+	
+	//TODO, gpio5 no config as txe mode, need more test, but gpio4 config as extpa pass
+	dw1000_gpio5_config_ext_txe(inst);
+	
+	//enable GPIO6 RXE mode
+	dw1000_gpio6_config_ext_rxe(inst);
+	
+	//if an external power amplifier is being used, TX fine grain power dequeencing must be disabled
+	dw1000_write(inst, PMSC_ID, PMSC_TXFINESEQ_OFFSET, buf, 2);
+}
 /**
  * API to set up Tx/Rx GPIOs which could be used to control LEDs.
  * Note: not completely IC dependent, also needs board with LEDS fitted on right I/O lines
