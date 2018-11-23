@@ -109,6 +109,7 @@ typedef struct _dw1000_dev_status_t{
     uint32_t tx_frame_error:1;        //!< Transmit frame error
     uint32_t rx_error:1;              //!< Receive error
     uint32_t rx_timeout_error:1;      //!< Receive timeout error
+    uint32_t lde_error:1;             //!< LDE error
     uint32_t spi_error:1;             //!< SPI error
     uint32_t LDE_enabled:1;           //!< Load LDE microcode on wake up
     uint32_t LDO_enabled:1;           //!< Load the LDO tune value on wake up
@@ -182,6 +183,7 @@ typedef struct _dw1000_dev_config_t{
     uint32_t autoack_delay_enabled:1;       //!< Enables automatic acknowledgement feature with delay
     uint32_t dblbuffon_enabled:1;           //!< Enables double buffer
     uint32_t framefilter_enabled:1;         //!< Enables frame fileter
+    uint32_t trxoff_enable:1;               //!< Enables forced TRXOFF in start_tx and start_tx interface 
     uint32_t rxdiag_enable:1;               //!< Enables receive diagnostics parameters 
     uint32_t rxauto_enable:1;               //!< Enables auto receive parameter
     uint32_t bias_correction_enable:1;      //!< Enables bias correction ploynomial
@@ -214,13 +216,12 @@ typedef struct _phy_attributes_t{
 
 struct _dw1000_dev_instance_t;
 
-
 //! Structure of extension callbacks structure common for mac layer.
 typedef struct _dw1000_mac_interface_t dw1000_mac_interface_t;
 typedef struct _dw1000_mac_interface_t {
     struct _status{
         uint16_t selfmalloc:1;            //!< Internal flag for memory garbage collection 
-        uint16_t initialized:1;           //!< Instance allocated 
+        uint16_t initialized:1;           //!< Instance allocated          
     } status;
     uint16_t id;
     bool (* tx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Transmit complete callback
@@ -312,8 +313,8 @@ typedef struct _dw1000_dev_instance_t{
     dw1000_dev_rxdiag_t rxdiag;                    //!< DW1000 receive diagnostics
     dw1000_dev_config_t config;                    //!< DW1000 device configurations  
     dw1000_dev_control_t control;                  //!< DW1000 device control parameters      
-    dw1000_dev_control_t control_rx_context;       //!< DW1000 device control receive context 
-    dw1000_dev_control_t control_tx_context;       //!< DW1000 device control transmit context  
+//    dw1000_dev_control_t control_rx_context;       //!< DW1000 device control receive context 
+//    dw1000_dev_control_t control_tx_context;       //!< DW1000 device control transmit context  
     dw1000_dev_status_t status;                    //!< DW1000 device status 
     dw1000_dev_role_t dev_type;                    //!< Type of the device (tag/node)
     struct _phy_attributes_t attrib;

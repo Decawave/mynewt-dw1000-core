@@ -64,6 +64,19 @@ static dw1000_mac_interface_t g_cbs = {
             .rx_error_cb = rx_error_cb,
 };
 
+STATS_SECT_START(twr_ds_nrng_stat_section)
+    STATS_SECT_ENTRY(complete)
+    STATS_SECT_ENTRY(rx_timeout)
+    STATS_SECT_ENTRY(rx_error)
+STATS_SECT_END
+
+STATS_NAME_START(twr_ds_nrng_stat_section)
+    STATS_NAME(twr_ds_nrng_stat_section, complete)
+    STATS_NAME(twr_ds_nrng_stat_section, rx_timeout)
+    STATS_NAME(twr_ds_nrng_stat_section, rx_error)
+STATS_NAME_END(twr_ds_nrng_stat_section)
+
+static STATS_SECT_DECL(twr_ds_nrng_stat_section) g_stat;
 
 static dw1000_rng_config_t g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(TWR_DS_NRNG_TX_HOLDOFF),         // Send Time delay in usec.
@@ -81,6 +94,16 @@ void twr_ds_nrng_pkg_init(void){
 
     printf("{\"utime\": %lu,\"msg\": \"twr_ds_nrng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs);
+
+    int rc = stats_init(
+    STATS_HDR(g_stat),
+    STATS_SIZE_INIT_PARMS(g_stat, STATS_SIZE_32),
+    STATS_NAME_INIT_PARMS(twr_ds_nrng_stat_section));
+    assert(rc == 0);
+
+    rc = stats_register("twr_ds_nrng", STATS_HDR(g_stat));
+    assert(rc == 0);
+
 }
 
 
@@ -122,6 +145,7 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     if(inst->fctrl != FCNTL_IEEE_N_RANGES_16){
         return false;
     }
+    STATS_INC(g_stat, rx_timeout);
     switch(inst->nrng->code){
         case DWT_DS_TWR_NRNG ... DWT_DS_TWR_NRNG_FINAL:
         {
@@ -132,17 +156,22 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
                   nrng_frame_t * frame = nrng->frames[nrng->idx][SECOND_FRAME_IDX];
                   send_final_msg(inst,frame);
               }else{
-                  os_error_t err = os_sem_release(&nrng->sem);
-                  assert(err == OS_OK);
-                  nrng->resp_count = 0;
+                  if(os_sem_get_count(&nrng->sem) == 0){
+                      os_error_t err = os_sem_release(&nrng->sem);
+                      assert(err == OS_OK);
+                      nrng->resp_count = 0;
+                  }
               }
           }else{
-              os_error_t err = os_sem_release(&nrng->sem);
-              assert(err == OS_OK);
+              if(os_sem_get_count(&nrng->sem) == 0){
+                  os_error_t err = os_sem_release(&nrng->sem);
+                  assert(err == OS_OK);
+              }
           }
             break;
       }
       default:
+        printf("Missed it \n");
         return false;
     }
     return true;
@@ -161,10 +190,13 @@ rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     if(inst->fctrl != FCNTL_IEEE_N_RANGES_16){
         return false;
     }
+    STATS_INC(g_stat, rx_error);
     assert(inst->nrng);
     dw1000_nrng_instance_t * nrng = inst->nrng;
-    os_error_t err = os_sem_release(&nrng->sem);
-    assert(err == OS_OK);
+    if(os_sem_get_count(&nrng->sem) == 0){
+        os_error_t err = os_sem_release(&nrng->sem);
+        assert(err == OS_OK);
+    }
     return true;
 }
 
@@ -224,8 +256,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                         + config->tx_guard_delay);
                 dw1000_set_rx_timeout(inst, timeout);
                 dw1000_set_delay_start(inst, response_tx_delay);
-                if (dw1000_start_tx(inst).start_tx_error)
+                if (dw1000_start_tx(inst).start_tx_error){
                     os_sem_release(&nrng->sem);
+                    if (cbs!=NULL && cbs->start_tx_error_cb)
+                        cbs->start_tx_error_cb(inst, cbs);
+                }
                 break;
             }
         case DWT_DS_TWR_NRNG_T1:
@@ -296,9 +331,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
                     dw1000_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0, true);
                     dw1000_set_wait4resp(inst, true);
-                    if (dw1000_start_tx(inst).start_tx_error)
+                    if (dw1000_start_tx(inst).start_tx_error){
                         os_sem_release(&nrng->sem);
-
+                        if (cbs!=NULL && cbs->start_tx_error_cb)
+                            cbs->start_tx_error_cb(inst, cbs);
+                    }
                     nrng->resp_count = 0;
                     nrng->t1_final_flag = 0;
                 }
@@ -336,8 +373,21 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 dw1000_write_tx_fctrl(inst, sizeof(nrng_final_frame_t), 0, true);
                 dw1000_set_wait4resp(inst, false);
                 dw1000_set_delay_start(inst, response_tx_delay);
-                if (dw1000_start_tx(inst).start_tx_error)
+                if (dw1000_start_tx(inst).start_tx_error){
                     os_sem_release(&nrng->sem);
+                    if (cbs!=NULL && cbs->start_tx_error_cb)
+                        cbs->start_tx_error_cb(inst, cbs);
+                }else{
+                    STATS_INC(g_stat, complete);
+                    os_sem_release(&nrng->sem);
+                    dw1000_mac_interface_t * cbs = NULL;
+                    if(!(SLIST_EMPTY(&inst->interface_cbs))){
+                        SLIST_FOREACH(cbs, &inst->interface_cbs, next){
+                            if (cbs!=NULL && cbs->complete_cb)
+                                if(cbs->complete_cb(inst, cbs)) continue;
+                        }
+                    }
+                }
                 break;
             }
         case  DWT_DS_TWR_NRNG_FINAL:
@@ -372,7 +422,15 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->transmission_timestamp = dw1000_read_txtime_lo(inst);
                 if(idx == nnodes -1)
                 {
+                    STATS_INC(g_stat, complete);
                     os_sem_release(&nrng->sem);
+                    dw1000_mac_interface_t * cbs = NULL;
+                    if(!(SLIST_EMPTY(&inst->interface_cbs))){
+                        SLIST_FOREACH(cbs, &inst->interface_cbs, next){
+                            if (cbs!=NULL && cbs->complete_cb)
+                                if(cbs->complete_cb(inst, cbs)) continue;
+                        }
+                    }
                     nrng->resp_count = 0;
                 }
                 break;

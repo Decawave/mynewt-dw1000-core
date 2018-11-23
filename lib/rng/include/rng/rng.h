@@ -33,8 +33,6 @@
 #define _DW1000_RNG_H_
 
 
-#if MYNEWT_VAL(RNG_ENABLED)
-
 #include <stdlib.h>
 #include <stdint.h>
 #include "dw1000/triad.h"
@@ -48,6 +46,7 @@ extern "C" {
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
 #include <dw1000/triad.h>
+#include <stats/stats.h>
 
 //! Range configuration parameters.
 typedef struct _dw1000_rng_config_t{
@@ -127,8 +126,7 @@ typedef union {
 
 //! Structure of range instance
 typedef struct _dw1000_rng_instance_t{
-    struct _dw1000_dev_instance_t * parent;    //!< Structure of DW1000_dev_instance
-    dw1000_mac_interface_t cbs;             //!< MAC interface
+    struct _dw1000_dev_instance_t * parent; //!< Structure of DW1000_dev_instance
     uint16_t code;                          //!< Range profile code
     struct os_sem sem;                      //!< Structure of semaphores
     uint64_t delay;                         //!< Delay in transmission
@@ -145,23 +143,24 @@ dw1000_rng_instance_t * dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng
 void dw1000_rng_free(dw1000_rng_instance_t * inst);
 dw1000_dev_status_t dw1000_rng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config);
 dw1000_dev_status_t dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t protocal);
+dw1000_dev_status_t dw1000_rng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 dw1000_dev_status_t dw1000_rng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t protocal);
 dw1000_rng_config_t * dw1000_rng_get_config(dw1000_dev_instance_t * inst, dw1000_rng_modes_t code);
 void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, twr_frame_t twr[], uint16_t nframes);
 #if MYNEWT_VAL(DW1000_RANGE)
 float dw1000_rng_twr_to_tof(twr_frame_t *fframe, twr_frame_t *nframe);
 #else
-float dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng);
+float dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng, uint16_t idx);
 #endif
+float dw1000_rng_tof_to_meters(float ToF); 
+
 
 float dw1000_rng_path_loss(float Pt, float G, float fc, float R);
 float dw1000_rng_bias_correction(dw1000_dev_instance_t * inst, float Pr);
 uint32_t dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code);
-#define dw1000_rng_tof_to_meters(ToF) (float)(ToF * 299792458 * (1.0/499.2e6/128.0)) //!< Converts time of flight to meters.
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif //  RNG_ENABLED
 #endif /* _DW1000_RNG_H_ */

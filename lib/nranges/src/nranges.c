@@ -59,6 +59,28 @@ static dw1000_rng_config_t g_config = {
     .tx_guard_delay = MYNEWT_VAL(NRNG_TX_GUARD_DELAY)
 };
 
+STATS_SECT_START(nrng_stat_section)
+    STATS_SECT_ENTRY(nrng_request)
+    STATS_SECT_ENTRY(nrng_listen)
+    STATS_SECT_ENTRY(rx_complete)
+    STATS_SECT_ENTRY(rx_error)
+    STATS_SECT_ENTRY(tx_error)
+    STATS_SECT_ENTRY(rx_unsolicited)
+    STATS_SECT_ENTRY(reset)
+STATS_SECT_END
+
+STATS_NAME_START(nrng_stat_section)
+    STATS_NAME(nrng_stat_section, nrng_request)
+    STATS_NAME(nrng_stat_section, nrng_listen)
+    STATS_NAME(nrng_stat_section, rx_complete)
+    STATS_NAME(nrng_stat_section, rx_error)
+    STATS_NAME(nrng_stat_section, tx_error)
+    STATS_NAME(nrng_stat_section, rx_unsolicited)
+    STATS_NAME(nrng_stat_section, reset)
+STATS_NAME_END(nrng_stat_section)
+
+static STATS_SECT_DECL(nrng_stat_section) g_stat; //!< Stats instance
+
 static dw1000_mac_interface_t g_cbs = {
     .id = DW1000_NRNG,
     .rx_complete_cb = rx_complete_cb,
@@ -89,6 +111,12 @@ dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t* config, dw10
     if (config != NULL ){
         dw1000_nrng_config(inst, config);
     }
+    int rc = stats_init(
+                    STATS_HDR(g_stat),
+                    STATS_SIZE_INIT_PARMS(g_stat, STATS_SIZE_32),
+                    STATS_NAME_INIT_PARMS(nrng_stat_section)
+            );
+    rc |= stats_register("nrng", STATS_HDR(g_stat));
 
     return nrng;
 }
@@ -218,11 +246,12 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_n
     dw1000_nrng_instance_t * nrng = inst->nrng;
     os_error_t err = os_sem_pend(&nrng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
+    STATS_INC(g_stat, nrng_request);
     dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, code);
     nrng_frame_t * frame  = nrng->frames[0][FIRST_FRAME_IDX];
 
     frame->seq_num++;
-    frame->code = code;
+    inst->nrng->code = frame->code = code;
     frame->src_address = inst->my_short_address;
     frame->dst_address = dst_address;
     frame->start_slot_id = start_slot_id;
@@ -238,6 +267,7 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_n
     if (nrng->control.delay_start_enabled)
        dw1000_set_delay_start(inst, nrng->delay);
     if (dw1000_start_tx(inst).start_tx_error){
+        STATS_INC(g_stat, tx_error);
         if(!(SLIST_EMPTY(&inst->interface_cbs))){
             dw1000_mac_interface_t *temp = NULL;
             SLIST_FOREACH(temp, &inst->interface_cbs, next){
@@ -252,6 +282,38 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_n
     return inst->status;
 }
 
+/**
+ * API to initialise range listen.
+ *
+ * @param inst          Pointer to dw1000_dev_instance_t.
+ *
+ * @return dw1000_dev_status_t 
+ */
+dw1000_dev_status_t
+dw1000_nrng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
+
+    assert(inst);
+    dw1000_nrng_instance_t * nrng = inst->nrng;
+    os_error_t err = os_sem_pend(&nrng->sem,  OS_TIMEOUT_NEVER);
+    assert(err == OS_OK);
+
+    STATS_INC(g_stat, nrng_listen);
+    if(dw1000_start_rx(inst).start_rx_error){
+        STATS_INC(g_stat, rx_error);
+        err = os_sem_release(&nrng->sem);
+        assert(err == OS_OK);
+    }
+
+    if (mode == DWT_BLOCKING){
+        err = os_sem_pend(&nrng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
+        assert(err == OS_OK);
+        err = os_sem_release(&nrng->sem);
+        assert(err == OS_OK);
+    }
+
+   return inst->status;
+}
+
 /** 
  * API for reset_cb of rng interface
  *
@@ -261,6 +323,7 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_n
 static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     if(os_sem_get_count(&inst->nrng->sem) == 0){
+        STATS_INC(g_stat, reset);
         os_error_t err = os_sem_release(&inst->nrng->sem);
         assert(err == OS_OK);
         return true;
@@ -282,24 +345,27 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     }
     assert(inst->nrng);
     dw1000_nrng_instance_t * nrng = inst->nrng;
+    if(os_sem_get_count(&nrng->sem) == 1){
+        // unsolicited inbound
+        STATS_INC(g_stat, rx_unsolicited);
+        return false;
+    }
     uint16_t code, dst_address;
-    dw1000_dev_control_t control = inst->control_rx_context;
     dw1000_read_rx(inst, (uint8_t *) &code, offsetof(nrng_request_frame_t,code), sizeof(uint16_t));
     dw1000_read_rx(inst, (uint8_t *) &dst_address, offsetof(nrng_request_frame_t,dst_address), sizeof(uint16_t));
     // For initiator: Only Allow the packets with dst_address matching with device my_short_address.
     // For responder: Only Allow the packets with dst_address matching with device my_short_address/Broadcast address.
     if (dst_address != inst->my_short_address && (dst_address != BROADCAST_ADDRESS || nrng->device_type == DWT_NRNG_INITIATOR) ){
-        inst->control = inst->control_rx_context;
-        dw1000_restart_rx(inst, control);
+        dw1000_start_rx(inst);
         return true;
     }
     inst->nrng->code = code;
     switch(code){
         case DWT_SS_TWR_NRNG ... DWT_DS_TWR_NRNG_EXT_END:
+            STATS_INC(g_stat, rx_complete);
             return false;
         default:
-            inst->control = inst->control_rx_context;
-            dw1000_restart_rx(inst, control);
+            dw1000_start_rx(inst);
             return true;
     }
 }

@@ -78,22 +78,24 @@ typedef struct _dw1000_ccp_status_t{
     uint16_t initialized:1;           //!< Instance allocated 
     uint16_t valid:1;                 //!< Set for valid parameters 
     uint16_t start_tx_error:1;        //!< Set for start transmit error 
-    uint16_t start_rx_error:1;        //!< Set for start request error 
+    uint16_t start_rx_error:1;        //!< Set for start request error
+    uint16_t rx_timeout_error:1;      //!< Receive timeout error 
     uint16_t timer_enabled:1;         //!< Indicates timer is enabled 
 }dw1000_ccp_status_t;
+
+//! Extension ids for services.
+typedef enum _dw1000_ccp_role_t{
+    CCP_ROLE_MASTER,                        //!< Clock calibration packet master mode
+    CCP_ROLE_SLAVE,                         //!< Clock calibration packet slave mode
+    CCP_ROLE_RELAY                          //!< Clock calibration packet master replay mode
+}dw1000_ccp_role_t;
 
 //! ccp config parameters.  
 typedef struct _dw1000_ccp_config_t{
     uint16_t postprocess:1;           //!< CCP postprocess
     uint16_t fs_xtalt_autotune:1;     //!< Autotune XTALT to Clock Master
+    uint16_t role:4;                  //!< dw1000_ccp_role_t
 }dw1000_ccp_config_t;
-
-//! Extension ids for services.
-typedef enum _dw1000_ccp_role_t{
-    CCP_ROLE_MASTER,                        //!< Clock calibration packet master mode
-    CCP_ROLE_SLAVE,                          //!< Clock calibration packet slave mode
-    CCP_ROLE_RELAY                          //!< Clock calibration packet master replay mode
-}dw1000_ccp_role_t;
 
 //! ccp instance parameters.
 typedef struct _dw1000_ccp_instance_t{
