@@ -49,6 +49,10 @@ typedef enum _dw1000_led_modes_t{
     DWT_LEDS_INIT_BLINK = 1 << 2 //!< Set for initiation blink
 }dw1000_led_modes_t;
 
+void dw1000_gpio4_config_ext_pa(struct _dw1000_dev_instance_t * inst);
+void dw1000_gpio5_config_ext_txe(struct _dw1000_dev_instance_t * inst);
+void dw1000_gpio6_config_ext_rxe(struct _dw1000_dev_instance_t * inst);
+
 void dw1000_gpio_config_leds(struct _dw1000_dev_instance_t * inst, dw1000_led_modes_t mode);
 void dw1000_gpio_set_value(struct _dw1000_dev_instance_t * inst, uint8_t gpioNum, uint8_t value);
 void dw1000_gpio_set_direction(struct _dw1000_dev_instance_t * inst, uint8_t gpioNum, uint8_t direction);

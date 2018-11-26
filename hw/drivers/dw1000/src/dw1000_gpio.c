@@ -73,31 +73,6 @@ void dw1000_gpio6_config_ext_rxe(struct _dw1000_dev_instance_t * inst)
 	dw1000_write_reg(inst, GPIO_CTRL_ID, GPIO_MODE_OFFSET, reg, sizeof(uint32_t));
 }
 
-uint32_t dw1000_get_gpio_mode(struct _dw1000_dev_instance_t * inst)
-{
-	uint32_t reg;
-
-	reg = (uint32_t) dw1000_read_reg(inst, GPIO_CTRL_ID, GPIO_MODE_OFFSET, sizeof(uint32_t));
-	
-	return reg;
-}
-
-void dw1000_support_pa_lna(struct _dw1000_dev_instance_t * inst)
-{
-	uint8_t buf[2] = {0x00,0x00};
-	
-	//enable GPIOx external mode
-	dw1000_gpio4_config_ext_pa(inst);
-	
-	//TODO, gpio5 no config as txe mode, need more test, but gpio4 config as extpa pass
-	dw1000_gpio5_config_ext_txe(inst);
-	
-	//enable GPIO6 RXE mode
-	dw1000_gpio6_config_ext_rxe(inst);
-	
-	//if an external power amplifier is being used, TX fine grain power dequeencing must be disabled
-	dw1000_write(inst, PMSC_ID, PMSC_TXFINESEQ_OFFSET, buf, 2);
-}
 /**
  * API to set up Tx/Rx GPIOs which could be used to control LEDs.
  * Note: not completely IC dependent, also needs board with LEDS fitted on right I/O lines

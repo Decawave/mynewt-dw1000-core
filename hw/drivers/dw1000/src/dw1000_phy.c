@@ -40,6 +40,35 @@
 
 static inline void _dw1000_phy_load_microcode(struct _dw1000_dev_instance_t * inst);
 
+void dw1000_phy_enable_ext_pa(struct _dw1000_dev_instance_t* inst, bool enable)
+{
+	uint8_t buf[2] = {0x00,0x00};
+	
+	if(enable == true)
+	{
+		dw1000_gpio4_config_ext_pa(inst);
+		
+		dw1000_gpio5_config_ext_txe(inst);
+		
+		//if an external power amplifier is being used, TX fine grain power dequeencing must be disabled
+		dw1000_write(inst, PMSC_ID, PMSC_TXFINESEQ_OFFSET, buf, 2);
+	}else
+	{
+		//TODO, config as gpio mode
+	}
+}
+
+void dw1000_phy_enable_ext_lna(struct _dw1000_dev_instance_t* inst, bool enable)
+{
+	if(enable == true)
+	{
+		dw1000_gpio6_config_ext_rxe(inst);
+	}else
+	{
+		//TODO, config as gpio mode
+	}
+}
+
 /**
  * API that force system clock to be the 19.2 MHz XTI clock.
  * 

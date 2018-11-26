@@ -92,6 +92,9 @@ void dw1000_phy_external_sync(struct _dw1000_dev_instance_t * inst, uint8_t dela
 uint16_t dw1000_phy_SHR_duration(struct _phy_attributes_t * attrib);
 uint16_t dw1000_phy_frame_duration(struct _phy_attributes_t * attrib, uint16_t nlen);
 
+void dw1000_phy_enable_ext_pa(struct _dw1000_dev_instance_t* inst, bool enable);
+void dw1000_phy_enable_ext_lna(struct _dw1000_dev_instance_t* inst, bool enable);
+
 #ifdef __cplusplus
 }
 #endif
