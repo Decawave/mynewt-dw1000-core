@@ -487,6 +487,46 @@ extern "C" {
 #define SYS_STATE_ID            0x19            /* System State information READ ONLY */
 #define SYS_STATE_LEN           (5)
 
+#define TX_STATE_OFFSET         0x00            /* 7:0 TX _STATE Bits 3:0 */
+#define TX_STATE_MASK           0x07
+#define TX_STATE_IDLE           0x00
+#define TX_STATE_PREAMBLE       0x01
+#define TX_STATE_SFD            0x02
+#define TX_STATE_PHR            0x03
+#define TX_STATE_SDE            0x04
+#define TX_STATE_DATA           0x05
+#define TX_STATE_RSP_DATE       0x06
+#define TX_STATE_TAIL           0x07
+
+#define RX_STATE_OFFSET         0x01            /*  */
+#define RX_STATE_IDLE           0x00
+#define RX_STATE_START_ANALOG   0x01
+#define RX_STATE_RX_RDY         0x04
+#define RX_STATE_PREAMBLE_FOUND 0x05
+#define RX_STATE_PRMBL_TIMEOUT  0x06
+#define RX_STATE_SFD_FOUND      0x07
+#define RX_STATE_CNFG_PHR_RX    0x08
+#define RX_STATE_PHR_RX_STRT    0x09
+#define RX_STATE_DATA_RATE_RDY  0x0A
+#define RX_STATE_DATA_RX_SEQ    0x0C
+#define RX_STATE_CNFG_DATA_RX   0x0D
+#define RX_STATE_PHR_NOT_OK     0x0E
+#define RX_STATE_LAST_SYMBOL    0x0F
+#define RX_STATE_WAIT_RSD_DONE  0x10
+#define RX_STATE_RSD_OK         0x11
+#define RX_STATE_RSD_NOT_OK     0x12
+#define RX_STATE_RECONFIG_110   0x13
+#define RX_STATE_WAIT_110_PHR   0x14
+
+#define PMSC_STATE_OFFSET       0x02            /*  */
+#define PMSC_STATE_INIT         0x00
+#define PMSC_STATE_IDLE         0x01
+#define PMSC_STATE_TX_WAIT      0x02
+#define PMSC_STATE_RX_WAIT      0x03
+#define PMSC_STATE_TX           0x04
+#define PMSC_STATE_RX           0x05
+
+    
 /****************************************************************************//**
  * @brief Bit definitions for register ACK_RESP_T
 **/

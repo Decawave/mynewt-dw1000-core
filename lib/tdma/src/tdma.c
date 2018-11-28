@@ -214,8 +214,8 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
     tdma_instance_t * tdma = inst->tdma;
    
-    if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
-        DIAGMSG("{\"utime\": %lu,\"msg\": \"rx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    if (inst->ccp->status.valid && inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma:rx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         if (inst->tdma != NULL && inst->tdma->status.initialized){
             tdma->os_epoch = inst->ccp->os_epoch;//os_cputime_get32();
 #ifdef TDMA_TASKS_ENABLE
@@ -240,7 +240,7 @@ static bool
 tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
    tdma_instance_t * tdma = inst->tdma;
-   
+    
     if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
         DIAGMSG("{\"utime\": %lu,\"msg\": \"tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         if (inst->tdma != NULL && inst->tdma->status.initialized){

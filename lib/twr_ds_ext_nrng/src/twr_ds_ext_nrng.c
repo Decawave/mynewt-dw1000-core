@@ -71,12 +71,14 @@ STATS_SECT_START(twr_ds_ext_nrng_stat_section)
     STATS_SECT_ENTRY(complete)
     STATS_SECT_ENTRY(rx_error)
     STATS_SECT_ENTRY(rx_timeout)
+    STATS_SECT_ENTRY(rx_unsolicited)
 STATS_SECT_END
 
 STATS_NAME_START(twr_ds_ext_nrng_stat_section)
     STATS_NAME(twr_ds_ext_nrng_stat_section, complete)
     STATS_NAME(twr_ds_ext_nrng_stat_section, rx_error)
     STATS_NAME(twr_ds_ext_nrng_stat_section, rx_timeout)
+    STATS_NAME(twr_ds_ext_nrng_stat_section, rx_unsolicited)
 STATS_NAME_END(twr_ds_ext_nrng_stat_section)
 
 static STATS_SECT_DECL(twr_ds_ext_nrng_stat_section) g_stat;
@@ -214,6 +216,10 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if(inst->fctrl != FCNTL_IEEE_N_RANGES_16){
         return false;
     }
+    if(os_sem_get_count(&inst->nrng->sem)){
+        STATS_INC(g_stat, rx_unsolicited);
+	    return false;
+    }
     assert(inst->nrng);
     dw1000_nrng_instance_t * nrng = inst->nrng;
     dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, DWT_DS_TWR_NRNG_EXT);
@@ -228,12 +234,16 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     dw1000_read_rx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
                 else
                     break;
-                if(!(slot_id >= frame->start_slot_id && slot_id <= frame->end_slot_id))
+                if(!(slot_id >= frame->start_slot_id && slot_id <= frame->end_slot_id)){
+                    //Not supposed to range as it doesn't fall in the required slot range
+                    //So release the semaphore and make it ready for atleast next ranging
+                    os_sem_release(&nrng->sem);
                     break;
+                }
 
                 uint64_t request_timestamp = dw1000_read_rxtime(inst);
                 uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay
-                            + (uint64_t)((slot_id-1) * ((uint64_t)config->tx_guard_delay
+                            + (uint64_t)((slot_id - frame->start_slot_id) * ((uint64_t)config->tx_guard_delay
                                     + (dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)))))))<< 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
@@ -344,11 +354,15 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     dw1000_read_rx(inst,  frame->array, 0, sizeof(nrng_request_frame_t));
                 else
                     break;
-                if(!(slot_id >= frame->start_slot_id && slot_id <= frame->end_slot_id))
+                if(!(slot_id >= frame->start_slot_id && slot_id <= frame->end_slot_id)){
+                    //Not supposed to range as it doesn't fall in the required slot range
+                    //So release the semaphore and make it ready for atleast next ranging
+                    os_sem_release(&nrng->sem);
                     break;
+                }
                 uint64_t request_timestamp = dw1000_read_rxtime(inst);
                 uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay
-                            + (uint64_t)((inst->slot_id-1) * ((uint64_t)config->tx_guard_delay 
+                            + (uint64_t)((inst->slot_id - frame->start_slot_id) * ((uint64_t)config->tx_guard_delay 
                                     + dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_frame_t))))))<< 16);
                 frame->request_timestamp = dw1000_read_txtime_lo(inst); // This corresponds to when the original request was actually sent
                 frame->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received

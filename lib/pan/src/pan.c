@@ -234,14 +234,13 @@ pan_rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64) {
         if (inst->pan->status.valid == false) {
-            /* Grab all packets if we're not prosisioned */
+            /* Grab all packets if we're not provisioned */
             return true;
         }
         return false;
     } else if(inst->pan->status.valid == true) {
         if (!inst->config.dblbuffon_enabled) {
-            dw1000_dev_control_t control = inst->control_rx_context;
-            dw1000_restart_rx(inst, control);
+            dw1000_start_rx(inst);
         }
         return true;
     }
@@ -378,6 +377,9 @@ dw1000_pan_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
 {
     os_error_t err = os_sem_pend(&inst->pan->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
+
+    /* We're listening for others, hence we have to have a valid pan */
+    inst->pan->status.valid = true;
 
     if(dw1000_start_rx(inst).start_rx_error){
         err = os_sem_release(&inst->pan->sem);

@@ -52,6 +52,7 @@
 
 static bool reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
 static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
+static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
 
 static dw1000_rng_config_t g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(NRNG_TX_HOLDOFF),         // Send Time delay in usec.
@@ -64,7 +65,9 @@ STATS_SECT_START(nrng_stat_section)
     STATS_SECT_ENTRY(nrng_listen)
     STATS_SECT_ENTRY(rx_complete)
     STATS_SECT_ENTRY(rx_error)
+    STATS_SECT_ENTRY(rx_timeout)
     STATS_SECT_ENTRY(tx_error)
+    STATS_SECT_ENTRY(start_tx_error_cb)
     STATS_SECT_ENTRY(rx_unsolicited)
     STATS_SECT_ENTRY(reset)
 STATS_SECT_END
@@ -74,7 +77,9 @@ STATS_NAME_START(nrng_stat_section)
     STATS_NAME(nrng_stat_section, nrng_listen)
     STATS_NAME(nrng_stat_section, rx_complete)
     STATS_NAME(nrng_stat_section, rx_error)
+    STATS_NAME(nrng_stat_section, rx_timeout)
     STATS_NAME(nrng_stat_section, tx_error)
+    STATS_NAME(nrng_stat_section, start_tx_error_cb)
     STATS_NAME(nrng_stat_section, rx_unsolicited)
     STATS_NAME(nrng_stat_section, reset)
 STATS_NAME_END(nrng_stat_section)
@@ -84,6 +89,7 @@ static STATS_SECT_DECL(nrng_stat_section) g_stat; //!< Stats instance
 static dw1000_mac_interface_t g_cbs = {
     .id = DW1000_NRNG,
     .rx_complete_cb = rx_complete_cb,
+    .rx_timeout_cb = rx_timeout_cb,
     .reset_cb = reset_cb,
 };
 
@@ -228,13 +234,14 @@ void dw1000_nrng_pkg_init(void)
 
 dw1000_dev_status_t 
 dw1000_nrng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_address, uint64_t delay, dw1000_nrng_modes_t code, uint16_t start_slot_id, uint16_t end_slot_id){
-
+   
     dw1000_nrng_instance_t * nrng = inst->nrng;    
 
     nrng->control.delay_start_enabled = 1;
     nrng->delay = delay;
     dw1000_nrng_request(inst, dst_address, code, start_slot_id, end_slot_id);
     nrng->control.delay_start_enabled = 0;
+
     return inst->status;
 }
 
@@ -264,21 +271,24 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_n
                        + config->tx_holdoff_delay         // Remote side turn arroud time.
                        + config->rx_timeout_period);
     dw1000_set_rx_timeout(inst, timeout);
+
     if (nrng->control.delay_start_enabled)
        dw1000_set_delay_start(inst, nrng->delay);
+
     if (dw1000_start_tx(inst).start_tx_error){
-        STATS_INC(g_stat, tx_error);
+        STATS_INC(g_stat, start_tx_error_cb);
         if(!(SLIST_EMPTY(&inst->interface_cbs))){
             dw1000_mac_interface_t *temp = NULL;
             SLIST_FOREACH(temp, &inst->interface_cbs, next){
-                if(temp != NULL && temp->tx_error_cb)
-                    temp->tx_error_cb(inst, temp);
+                if(temp != NULL && temp->start_tx_error_cb)
+                    temp->start_tx_error_cb(inst, temp);
             }
             os_sem_release(&nrng->sem);
         }
     }
     err = os_sem_pend(&nrng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
     os_sem_release(&nrng->sem);
+    
     return inst->status;
 }
 
@@ -294,6 +304,7 @@ dw1000_nrng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 
     assert(inst);
     dw1000_nrng_instance_t * nrng = inst->nrng;
+
     os_error_t err = os_sem_pend(&nrng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
@@ -331,6 +342,24 @@ reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     else
        return false;
 }
+
+/** 
+ * API for timeout of rng interface
+ *
+ * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @return true on sucess
+ */
+static bool
+rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+    if(os_sem_get_count(&inst->nrng->sem) == 0 && inst->nrng->device_type != DWT_NRNG_INITIATOR){
+        STATS_INC(g_stat, rx_timeout);
+        os_error_t err = os_sem_release(&inst->nrng->sem);
+        assert(err == OS_OK);
+        return true;
+    }
+    else
+       return false;
+}
 /**
  * API for receive complete callback.
  *
@@ -350,13 +379,16 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
         STATS_INC(g_stat, rx_unsolicited);
         return false;
     }
+ 
     uint16_t code, dst_address;
     dw1000_read_rx(inst, (uint8_t *) &code, offsetof(nrng_request_frame_t,code), sizeof(uint16_t));
     dw1000_read_rx(inst, (uint8_t *) &dst_address, offsetof(nrng_request_frame_t,dst_address), sizeof(uint16_t));
+
     // For initiator: Only Allow the packets with dst_address matching with device my_short_address.
     // For responder: Only Allow the packets with dst_address matching with device my_short_address/Broadcast address.
     if (dst_address != inst->my_short_address && (dst_address != BROADCAST_ADDRESS || nrng->device_type == DWT_NRNG_INITIATOR) ){
-        dw1000_start_rx(inst);
+        if(!inst->config.dblbuffon_enabled || !inst->config.rxauto_enable)
+            dw1000_start_rx(inst);
         return true;
     }
     inst->nrng->code = code;
@@ -365,7 +397,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
             STATS_INC(g_stat, rx_complete);
             return false;
         default:
-            dw1000_start_rx(inst);
+            if(!inst->config.dblbuffon_enabled || !inst->config.rxauto_enable)
+                dw1000_start_rx(inst);
             return true;
     }
 }

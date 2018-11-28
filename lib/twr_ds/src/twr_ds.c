@@ -84,13 +84,13 @@ static dw1000_mac_interface_t g_cbs[] = {
 
 STATS_SECT_START(twr_ds_stat_section)
     STATS_SECT_ENTRY(complete)
-    STATS_SECT_ENTRY(tx_error)
+    STATS_SECT_ENTRY(start_tx_error)
     STATS_SECT_ENTRY(reset)
 STATS_SECT_END
 
 STATS_NAME_START(twr_ds_stat_section)
     STATS_NAME(twr_ds_stat_section, complete)
-    STATS_NAME(twr_ds_stat_section, tx_error)
+    STATS_NAME(twr_ds_stat_section, start_tx_error)
     STATS_NAME(twr_ds_stat_section, reset)
 STATS_NAME_END(twr_ds_stat_section)
 
@@ -171,7 +171,7 @@ twr_ds_config(dw1000_dev_instance_t * inst){
  */
 static bool 
 start_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    STATS_INC(g_stat, tx_error);
+    STATS_INC(g_stat, start_tx_error);
     return true;
 }
 
@@ -355,7 +355,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 // Transmit timestamp final report
                 dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_final_t));
                 dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true); 
-
+        
                 if (dw1000_start_tx(inst).start_tx_error){
                     os_sem_release(&rng->sem);  
                     if (cbs!=NULL && cbs->start_tx_error_cb) 
@@ -378,6 +378,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             {
                 // This code executes on the device that initialed the original request, and has now receive the final response timestamp. 
                 // This marks the completion of the double-single-two-way request. 
+                if (inst->config.dblbuffon_enabled && inst->config.rxauto_enable)  
+                    dw1000_stop_rx(inst); // Need to prevent timeout event 
 
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
