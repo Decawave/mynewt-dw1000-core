@@ -224,21 +224,22 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
             {
                 // This code executes on the device that is responding to a request
 
+#if !MYNEWT_VAL(WCS_ENABLED) 
+                double correction = 1.0l/wcs_dtu_time_correction(inst); 
+                uint64_t request_timestamp = (uint64_t)roundl( correction * inst->rxtimestamp);
+#else
                 uint64_t request_timestamp = inst->rxtimestamp;
+#endif
                 uint64_t response_tx_delay = request_timestamp + ((uint64_t) g_config.tx_holdoff_delay << 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
-#if MYNEWT_VAL(WCS_ENABLED) 
-                double correction = 1.0l/wcs_dtu_time_correction(inst); 
-                frame->reception_timestamp = (uint32_t)roundl( correction * request_timestamp) & 0xFFFFFFFFUL;
-                frame->transmission_timestamp = (uint32_t)roundl( correction * response_timestamp) & 0xFFFFFFFFUL;
-#else
-                frame->reception_timestamp = request_timestamp & 0xFFFFFFFFUL;
-                frame->transmission_timestamp = response_timestamp & 0xFFFFFFFFUL;
-#endif
+                frame->reception_timestamp =  (uint32_t) (request_timestamp & 0xFFFFFFFFUL);
+                frame->transmission_timestamp =  (uint32_t) (response_timestamp & 0xFFFFFFFFUL);
+
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
                 frame->code = DWT_SS_TWR_T1;
+                
 #if MYNEWT_VAL(WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
@@ -253,13 +254,9 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                                         + g_config.rx_timeout_period        
                                         + g_config.tx_holdoff_delay;         // Remote side turn arroud time. 
 
-#if MYNEWT_VAL(WCS_ENABLED)
-                dw1000_set_delay_start(inst, (uint64_t)roundl( correction * response_tx_delay));
-                dw1000_set_rx_timeout(inst, (uint16_t)roundl( correction * timeout)); 
-#else
                 dw1000_set_delay_start(inst, response_tx_delay);
                 dw1000_set_rx_timeout(inst, timeout); 
-#endif
+
                 if (dw1000_start_tx(inst).start_tx_error){
                     os_sem_release(&rng->sem);  
                     if (cbs!=NULL && cbs->start_tx_error_cb) 
@@ -276,14 +273,15 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 if(inst->status.lde_error)
                     break;
 
-                uint64_t response_timestamp = inst->rxtimestamp;
-#if MYNEWT_VAL(WCS_ENABLED)
+#if !MYNEWT_VAL(WCS_ENABLED)
                 double correction = 1.0l/wcs_dtu_time_correction(inst); 
-                frame->request_timestamp = (uint32_t)roundl( correction * dw1000_read_txtime_lo(inst)) & 0xFFFFFFFFUL;   
-                frame->response_timestamp = (uint32_t)roundl( correction * (response_timestamp & 0xFFFFFFFFUL)) & 0xFFFFFFFFUL;
+                uint64_t response_timestamp = (uint64_t)roundl( correction * inst->rxtimestamp);
+                frame->request_timestamp = (uint32_t)((uint64_t)roundl( correction * dw1000_read_txtime_lo(inst))) & 0xFFFFFFFFUL;   
+                frame->response_timestamp = ((uint32_t) response_timestamp) & 0xFFFFFFFFUL;
 #else
+                uint64_t response_timestamp = inst->rxtimestamp;
                 frame->request_timestamp = dw1000_read_txtime_lo(inst);                     // This corresponds to when the original request was actually sent
-                frame->response_timestamp = (uint32_t) response_timestamp & 0xFFFFFFFFUL;   // This corresponds to the response just received   
+                frame->response_timestamp = (uint32_t) (response_timestamp & 0xFFFFFFFFUL);   // This corresponds to the response just received   
 #endif
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;

@@ -43,6 +43,7 @@
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_phy.h>
+#include <dw1000/dw1000_stats.h>
 #include <dw1000/dw1000_mac.h>
 
 #if MYNEWT_VAL(CCP_ENABLED)
@@ -54,6 +55,18 @@
 #if MYNEWT_VAL(WCS_ENABLED)
 #include <wcs/wcs.h>
 #endif
+
+
+STATS_NAME_START(mac_stat_section)
+    STATS_NAME(mac_stat_section, tx_bytes)
+    STATS_NAME(mac_stat_section, rx_bytes)
+    STATS_NAME(mac_stat_section, DFR_cnt)
+    STATS_NAME(mac_stat_section, RTO_cnt)
+    STATS_NAME(mac_stat_section, ROV_err)
+    STATS_NAME(mac_stat_section, TFG_cnt)
+    STATS_NAME(mac_stat_section, LDE_err)
+    STATS_NAME(mac_stat_section, RX_err)
+STATS_NAME_END(mac_stat_section)
 
 int dw1000_cli_register(void);
 static void dw1000_interrupt_task(void *arg);
@@ -70,6 +83,7 @@ static void dw1000_irq(void *arg);
 #define NUM_PACS 4          //!< Preamble Acquisition Chunk
 #define NUM_BW 2            //!< Bandwidths
 #define NUM_SFD 2           //!< Start of frame delimiter
+
 
 //! map the channel number to the index in the configuration arrays below.
 //! 0th element is chan 1, 1st is chan 2, 2nd is chan 3, 3rd is chan 4, 4th is chan 5, 5th is chan 7.
@@ -212,30 +226,6 @@ const double txpwr_compensation[] = {
     0.0
 };
 
-
-STATS_SECT_START(mac_stat_section)
-    STATS_SECT_ENTRY(tx_bytes)
-    STATS_SECT_ENTRY(rx_bytes)
-    STATS_SECT_ENTRY(DFR_cnt)
-    STATS_SECT_ENTRY(RTO_cnt)
-    STATS_SECT_ENTRY(ROV_err)
-    STATS_SECT_ENTRY(TFG_cnt)
-    STATS_SECT_ENTRY(LDE_err)
-    STATS_SECT_ENTRY(RX_err)
-STATS_SECT_END
-
-STATS_NAME_START(mac_stat_section)
-    STATS_NAME(mac_stat_section, tx_bytes)
-    STATS_NAME(mac_stat_section, rx_bytes)
-    STATS_NAME(mac_stat_section, DFR_cnt)
-    STATS_NAME(mac_stat_section, RTO_cnt)
-    STATS_NAME(mac_stat_section, ROV_err)
-    STATS_NAME(mac_stat_section, TFG_cnt)
-    STATS_NAME(mac_stat_section, LDE_err)
-    STATS_NAME(mac_stat_section, RX_err)
-STATS_NAME_END(mac_stat_section)
-
-static STATS_SECT_DECL(mac_stat_section) g_stat;
 
 /**
  * API to configure the mac layer in dw1000
@@ -409,12 +399,19 @@ struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst
     dw1000_tasks_init(inst);
 
     int rc = stats_init(
-        STATS_HDR(g_stat),
-        STATS_SIZE_INIT_PARMS(g_stat, STATS_SIZE_32),
+        STATS_HDR(inst->stat),
+        STATS_SIZE_INIT_PARMS(inst->stat, STATS_SIZE_32),
         STATS_NAME_INIT_PARMS(mac_stat_section));
     assert(rc == 0);
-    
-    rc = stats_register("mac", STATS_HDR(g_stat));
+
+#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
+    rc = stats_register("mac", STATS_HDR(inst->stat));
+#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
+    if (inst == hal_dw1000_inst(0))
+        rc |= stats_register("mac0", STATS_HDR(inst->stat));
+    else
+        rc |= stats_register("mac1", STATS_HDR(inst->stat));
+#endif
     assert(rc == 0);
 
 #if MYNEWT_VAL(DW1000_CLI)
@@ -431,7 +428,7 @@ struct _dw1000_dev_status_t dw1000_read_rx(struct _dw1000_dev_instance_t * inst,
     assert((config->rx.phrMode && (txFrameLength <= 1023)) || (txFrameLength <= 127));
     assert((txBufferOffset + txFrameLength) <= 1024);
 #endif
-    STATS_INCN(g_stat, rx_bytes, rxFrameLength);
+    STATS_INCN(inst->stat, rx_bytes, rxFrameLength);
 
     os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
@@ -465,7 +462,7 @@ struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst
     assert((config->rx.phrMode && (txFrameLength <= 1023)) || (txFrameLength <= 127));
     assert((txBufferOffset + txFrameLength) <= 1024);
 #endif
-    STATS_INCN(g_stat, tx_bytes, txFrameLength);
+    STATS_INCN(inst->stat, tx_bytes, txFrameLength);
 
     os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
@@ -730,7 +727,6 @@ struct _dw1000_dev_status_t
 dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
 {
 
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_set_rx_timeout\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_dev_control_t control = inst->control;
 
     os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
@@ -743,11 +739,7 @@ dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
     control.rx_timeout_enabled = timeout > 0;
     
     if(control.rx_timeout_enabled){  
-       // if (inst->config.dblbuffon_enabled) // Double the timeout for dblbuf usecase
-      //      dw1000_write_reg(inst, RX_FWTO_ID, RX_FWTO_OFFSET, (uint16_t)ceilf(dw1000_usecs_to_dwt_usecs(timeout<<1)), sizeof(uint16_t));
-      ///  else
-            dw1000_write_reg(inst, RX_FWTO_ID, RX_FWTO_OFFSET, (uint16_t)ceilf(dw1000_usecs_to_dwt_usecs(timeout)), sizeof(uint16_t));
-
+        dw1000_write_reg(inst, RX_FWTO_ID, RX_FWTO_OFFSET, (uint16_t)ceilf(dw1000_usecs_to_dwt_usecs(timeout)), sizeof(uint16_t));
         sys_cfg_reg |= SYS_CFG_RXWTOE;
         dw1000_write_reg(inst, SYS_CFG_ID, 0, sys_cfg_reg, sizeof(uint32_t));
     }else{
@@ -759,7 +751,6 @@ dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
     err = os_mutex_release(&inst->mutex);  
     assert(err == OS_OK);
 
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_set_rx_timeout_\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     return inst->status;
 } 
 
@@ -1236,34 +1227,57 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
 {
 
     dw1000_dev_instance_t * inst = ev->ev_arg;
-    inst->tic = os_cputime_ticks_to_usecs(os_cputime_get32());
+
     inst->sys_status = dw1000_read_reg(inst, SYS_STATUS_ID, 0, sizeof(uint32_t)); // Read status register low 32bits
 
     // Set status flags
     inst->status.rx_error = (inst->sys_status & SYS_STATUS_ALL_RX_ERR) !=0;
     inst->status.rx_timeout_error = (inst->sys_status & SYS_STATUS_ALL_RX_TO) !=0;
     inst->status.lde_error = (inst->sys_status & SYS_STATUS_LDEDONE) == 0;
+    inst->status.overrun_error = (inst->sys_status & SYS_STATUS_RXOVRR) != 0;
   
       // leading edge detection complete
     if((inst->sys_status & SYS_STATUS_RXFCG)){
-        STATS_INC(g_stat, DFR_cnt);
+        STATS_INC(inst->stat, DFR_cnt);
         uint16_t finfo = dw1000_read_reg(inst, RX_FINFO_ID, RX_FINFO_OFFSET, sizeof(uint16_t));     // Read frame info - Only the first two bytes of the register are used here.
         inst->frame_len = (finfo & RX_FINFO_RXFL_MASK_1023) - 2;          // Report frame length - Standard frame length up to 127, extended frame length up to 1023 bytes
         inst->status.rx_ranging_frame = (finfo & RX_FINFO_RNG) !=0;       // Report ranging bit
+#if 0
+        if (inst->status.overrun_error){
+            STATS_INC(g_stat, ROV_err);
+            /* Overrun flag has been set */
+            dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_RXOVRR, sizeof(uint32_t));
+            dw1000_phy_forcetrxoff(inst);
+            dw1000_phy_rx_reset(inst);
+            if (inst->control.on_error_continue_enabled) 
+                dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
+            return;
+        }
+#endif
 
-        dw1000_read_rx(inst, inst->rxbuf, 0, inst->frame_len);            // Read the whole frame
-     
+        if (inst->config.rxauto_enable == 0 && inst->config.dblbuffon_enabled) 
+            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
+        if (inst->frame_len < sizeof(inst->rxbuf))
+            dw1000_read_rx(inst, inst->rxbuf, 0, inst->frame_len);            // Read the whole frame
+        
         inst->fctrl = ((ieee_rng_request_frame_t * ) inst->rxbuf)->fctrl; 
+
+        if (inst->status.lde_error) // retest lde_error condition
+            inst->status.lde_error = (dw1000_read_reg(inst, SYS_STATUS_ID, 1, sizeof(uint8_t))  & (SYS_STATUS_LDEDONE >> 8)) == 0;
+        if (inst->status.lde_error) // LDE eror or LDE late
+            STATS_INC(inst->stat, LDE_err);
+        
         inst->rxtimestamp = dw1000_read_rxtime(inst);  
         inst->carrier_integrator = dw1000_read_carrier_integrator(inst);
-  
+
+
         // Because of a previous frame not being received properly, AAT bit can be set upon the proper reception of a frame not requesting for
         // acknowledgement (ACK frame is not actually sent though). If the AAT bit is set, check ACK request bit in frame control to confirm (this
         // implementation works only for IEEE802.15.4-2011 compliant frames).
         // This issue is not documented at the time of writing this code. It should be in next release of DW1000 User Manual (v2.09, from July 2016).
 
         if((inst->sys_status & SYS_STATUS_AAT) && ((inst->fctrl & MAC_FTYPE_ACK) == 0)){
-            dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_AAT, sizeof(uint32_t));     // Clear AAT status bit in register
+            dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_AAT, sizeof(uint8_t));     // Clear AAT status bit in register
             inst->sys_status &= ~SYS_STATUS_AAT; // Clear AAT status bit in callback data register copy
         }
         // Collect RX Frame Quality diagnositics
@@ -1275,24 +1289,27 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
             inst->status.overrun_error = dw1000_checkoverrun(inst);
             if (inst->status.overrun_error == 0){ 
                  uint8_t mask = dw1000_read_reg(inst, SYS_MASK_ID, 1 , sizeof(uint8_t)) ;  
-                 dw1000_write_reg(inst, SYS_MASK_ID, 1, 0, sizeof(uint8_t)) ;       
-                 dw1000_write_reg(inst, SYS_STATUS_ID, 1, (SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR) >> 8, sizeof(uint8_t)); 
-                 dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET , 0x01, sizeof(uint8_t)); 
+                 dw1000_write_reg(inst, SYS_MASK_ID, 1, 0, sizeof(uint8_t));       
+                 dw1000_write_reg(inst, SYS_STATUS_ID, 1, (SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR), sizeof(uint8_t)); 
+
+                 dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET , 0b1, sizeof(uint8_t)); 
                  dw1000_write_reg(inst, SYS_MASK_ID, 1, mask, sizeof(uint8_t)); 
             }else{
-                STATS_INC(g_stat, ROV_err);
+                STATS_INC(inst->stat, ROV_err);
                 /* Overrun flag has been set */
                 dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_RXOVRR, sizeof(uint32_t));
                 dw1000_phy_forcetrxoff(inst);
                 dw1000_phy_rx_reset(inst);
-                if (inst->control.on_error_continue_enabled) {
+                if (inst->control.on_error_continue_enabled) 
                     dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
-                }
             }
         }else{
-            dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_LDEERR | SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG), sizeof(uint16_t)); 
+            dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR), sizeof(uint16_t)); 
+            if (inst->config.rxauto_enable == 0) 
+                dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
         }
-        
+
+                
         // Call the corresponding ranging frame services callback if present
         dw1000_mac_interface_t * cbs = NULL;
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
@@ -1305,7 +1322,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
 
     // Handle TX confirmation event
     if(inst->sys_status & SYS_STATUS_TXFRS){
-        STATS_INC(g_stat, TFG_cnt);
+        STATS_INC(inst->stat, TFG_cnt);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_TX, sizeof(uint32_t)); // Clear TX event bits
         // In the case where this TXFRS interrupt is due to the automatic transmission of an ACK solicited by a response (with ACK request bit set)
         // that we receive through using wait4resp to a previous TX (and assuming that the IRQ processing of that TX has already been handled), then
@@ -1334,13 +1351,13 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
 
     // leading edge detection complete
     if(inst->sys_status &  SYS_STATUS_LDEERR){
-        STATS_INC(g_stat, LDE_err);
+        STATS_INC(inst->stat, LDE_err);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_LDEERR, sizeof(uint32_t)); 
     }
 
     // Handle frame reception/preamble detect timeout events
     if(inst->status.rx_timeout_error){
-        STATS_INC(g_stat, RTO_cnt);
+        STATS_INC(inst->stat, RTO_cnt);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_TO, sizeof(uint32_t)); // Clear RX timeout event bits        
         // Because of an issue with receiver restart after error conditions, an RX reset must be applied 
         // after any error or timeout event to ensure the next good frame's timestamp is computed correctly.
@@ -1365,8 +1382,8 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
 
     // Handle RX errors events
     if(inst->status.rx_error){
-        STATS_INC(g_stat, RX_err);
-        dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_RXDFR | SYS_STATUS_ALL_RX_ERR), sizeof(uint32_t)); // Clear RX error event bits
+        STATS_INC(inst->stat, RX_err);
+        dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_ALL_RX_ERR), sizeof(uint32_t)); // Clear RX error event bits
         // Because of an issue with receiver restart after error conditions, an RX reset must be applied after any error or timeout event to ensure
         // the next good frame's timestamp is computed correctly.
         // See section "RX Message timestamp" in DW1000 User Manual.

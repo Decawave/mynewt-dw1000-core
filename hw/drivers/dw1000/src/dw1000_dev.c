@@ -35,6 +35,7 @@
 #include <os/os.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
+#include <stats/stats.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_hal.h>
@@ -320,7 +321,15 @@ retry:
     assert(rc == 0);
 
     inst->PANID = MYNEWT_VAL(PANID);
+
+#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
     inst->my_short_address = MYNEWT_VAL(DEVICE_ID);
+#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
+    if (inst == hal_dw1000_inst(0))
+        inst->my_short_address = MYNEWT_VAL(DEVICE_ID_0);
+    else
+        inst->my_short_address = MYNEWT_VAL(DEVICE_ID_1);
+#endif
     inst->my_long_address = ((uint64_t) inst->device_id << 32) + inst->partID;
 
     dw1000_set_panid(inst,inst->PANID);

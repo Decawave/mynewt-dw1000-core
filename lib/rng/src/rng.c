@@ -45,6 +45,7 @@
 #include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_ftypes.h>
+#include <dw1000/dw1000_stats.h>
 #include <dsp/polyval.h>
 #include <rng/rng.h>
 
@@ -61,6 +62,17 @@
 #include <wcs/wcs.h>
 #endif
 
+STATS_NAME_START(rng_stat_section)
+    STATS_NAME(rng_stat_section, rng_request)
+    STATS_NAME(rng_stat_section, rng_listen)
+    STATS_NAME(rng_stat_section, tx_complete)
+    STATS_NAME(rng_stat_section, rx_complete)
+    STATS_NAME(rng_stat_section, rx_unsolicited)
+    STATS_NAME(rng_stat_section, rx_error)
+    STATS_NAME(rng_stat_section, tx_error)
+    STATS_NAME(rng_stat_section, rx_timeout)
+    STATS_NAME(rng_stat_section, reset)
+STATS_NAME_END(rng_stat_section)
 
 //#define DIAGMSG(s,u) printf(s,u)
 #ifndef DIAGMSG
@@ -185,31 +197,6 @@ static dw1000_mac_interface_t g_cbs[] = {
 #endif
 };
 
-STATS_SECT_START(rng_stat_section)
-    STATS_SECT_ENTRY(rng_request)
-    STATS_SECT_ENTRY(rng_listen)
-    STATS_SECT_ENTRY(tx_complete)
-    STATS_SECT_ENTRY(rx_complete)
-    STATS_SECT_ENTRY(rx_unsolicited)
-    STATS_SECT_ENTRY(rx_error)
-    STATS_SECT_ENTRY(tx_error)
-    STATS_SECT_ENTRY(rx_timeout)
-    STATS_SECT_ENTRY(reset)
-STATS_SECT_END
-
-STATS_NAME_START(rng_stat_section)
-    STATS_NAME(rng_stat_section, rng_request)
-    STATS_NAME(rng_stat_section, rng_listen)
-    STATS_NAME(rng_stat_section, tx_complete)
-    STATS_NAME(rng_stat_section, rx_complete)
-    STATS_NAME(rng_stat_section, rx_unsolicited)
-    STATS_NAME(rng_stat_section, rx_error)
-    STATS_NAME(rng_stat_section, tx_error)
-    STATS_NAME(rng_stat_section, rx_timeout)
-    STATS_NAME(rng_stat_section, reset)
-STATS_NAME_END(rng_stat_section)
-
-static STATS_SECT_DECL(rng_stat_section) g_stat; //!< Stats instance
 
 /**
  * API to initialise the ranging by setting all the required configurations and callbacks.
@@ -246,13 +233,20 @@ dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint
     inst->rng->status.initialized = 1;
     
     int rc = stats_init(
-                    STATS_HDR(g_stat),
-                    STATS_SIZE_INIT_PARMS(g_stat, STATS_SIZE_32),
+                    STATS_HDR(inst->rng->stat),
+                    STATS_SIZE_INIT_PARMS(inst->rng->stat, STATS_SIZE_32),
                     STATS_NAME_INIT_PARMS(rng_stat_section)
             );
-    rc |= stats_register("rng", STATS_HDR(g_stat));
+   
+#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
+        rc |= stats_register("rng", STATS_HDR(inst->rng->stat));
+#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
+    if (inst == hal_dw1000_inst(0))
+        rc |= stats_register("rng0", STATS_HDR(inst->rng->stat));
+    else
+        rc |= stats_register("rng1", STATS_HDR(inst->rng->stat));
+#endif
     assert(rc == 0);
-
     return inst->rng;
 }
 
@@ -389,7 +383,7 @@ dw1000_dev_status_t
 dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t code){
 
     // This function executes on the device that initiates a request 
-    STATS_INC(g_stat, rng_request);
+    STATS_INC(inst->rng->stat, rng_request);
     os_error_t err = os_sem_pend(&inst->rng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
@@ -417,7 +411,7 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
         dw1000_set_delay_start(inst, rng->delay);
    
     if (dw1000_start_tx(inst).start_tx_error){
-        STATS_INC(g_stat, tx_error);
+        STATS_INC(inst->rng->stat, tx_error);
         os_sem_release(&inst->rng->sem);
     }
      
@@ -442,9 +436,9 @@ dw1000_rng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     os_error_t err = os_sem_pend(&inst->rng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
     
-    STATS_INC(g_stat, rng_listen);
+    STATS_INC(inst->rng->stat, rng_listen);
     if(dw1000_start_rx(inst).start_rx_error){
-        STATS_INC(g_stat, rx_error);
+        STATS_INC(inst->rng->stat, rx_error);
         err = os_sem_release(&inst->rng->sem);
         assert(err == OS_OK);
     }
@@ -672,7 +666,7 @@ static bool
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(os_sem_get_count(&inst->rng->sem) == 0){
-        STATS_INC(g_stat, rx_timeout);
+        STATS_INC(inst->rng->stat, rx_timeout);
         os_error_t err = os_sem_release(&inst->rng->sem);
         assert(err == OS_OK);
         return true;
@@ -691,7 +685,7 @@ static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(os_sem_get_count(&inst->rng->sem) == 0){
-        STATS_INC(g_stat, reset);
+        STATS_INC(inst->rng->stat, reset);
         os_error_t err = os_sem_release(&inst->rng->sem);  
         assert(err == OS_OK);
         return true;
@@ -716,7 +710,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
   
     if(os_sem_get_count(&inst->rng->sem) == 1){ 
         // unsolicited inbound
-        STATS_INC(g_stat, rx_unsolicited);
+        STATS_INC(inst->rng->stat, rx_unsolicited);
         return false;
     }
 
@@ -735,7 +729,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
             if (inst->config.framefilter_enabled == false && frame->dst_address != inst->my_short_address){ 
                 return true;
             }else{
-                STATS_INC(g_stat, rx_complete); 
+                STATS_INC(inst->rng->stat, rx_complete); 
                 rng->idx++;     // confirmed frame advance  
                 return false;   // Allow sub extensions to handle event
             }
@@ -762,7 +756,7 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     switch(inst->rng->code) {
         case DWT_SS_TWR ... DWT_DS_TWR_EXT_END:
-            STATS_INC(g_stat, tx_complete);
+            STATS_INC(inst->rng->stat, tx_complete);
             return true;
             break;
         default: 

@@ -11,4 +11,4 @@ syscfg.defs:
         description: 'TOA timeout delay for DS TWR (usec)'
         value: ((uint16_t){0x10})
       TWR_SS_NRNG_TX_GUARD_DELAY:
-        value: ((uint16_t){0x40})
+        value: ((uint32_t){0x200})

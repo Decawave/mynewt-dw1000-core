@@ -93,7 +93,7 @@ tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots
         tdma->period = period; 
         tdma->parent = inst;
 #ifdef TDMA_TASKS_ENABLE
-        tdma->task_prio = inst->task_prio + 0x1;
+        tdma->task_prio = inst->task_prio + 0x4;
 #endif
         inst->tdma = tdma;
     }else{
@@ -149,8 +149,16 @@ void tdma_pkg_init(void){
 
     printf("{\"utime\": %lu,\"msg\": \"tdma_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
-    dw1000_dev_instance_t * inst = hal_dw1000_inst(0);
-    tdma_init(inst, MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS)); 
+#if MYNEWT_VAL(DW1000_DEVICE_0) 
+        tdma_init(hal_dw1000_inst(0), MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS)); 
+#endif
+#if MYNEWT_VAL(DW1000_DEVICE_1)
+        tdma_init(hal_dw1000_inst(1), MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS)); 
+#endif
+#if MYNEWT_VAL(DW1000_DEVICE_2)
+        tdma_init(hal_dw1000_inst(2), MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS));     
+#endif
+
 }
 
 #ifdef TDMA_TASKS_ENABLE

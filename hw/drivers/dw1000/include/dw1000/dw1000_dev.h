@@ -44,7 +44,7 @@ extern "C" {
 #include <os/os_mutex.h>
 #include <hal/hal_spi.h>
 #include <dw1000/dw1000_regs.h>
-
+#include <dw1000/dw1000_stats.h>
 
 #define DWT_DEVICE_ID   (0xDECA0130) //!< Decawave Device ID 
 #define DWT_SUCCESS (0)              //!< DWT Success
@@ -242,6 +242,7 @@ typedef struct _dw1000_dev_instance_t{
     struct os_sem spi_nb_sem;                  //!< Semaphore for nonblocking rd/wr operations
     struct os_sem sem;                         //!< semphore for low level mac/phy functions
     struct os_mutex mutex;                     //!< os_mutex
+    uint32_t epoch; 
 
     SLIST_HEAD(,_dw1000_mac_interface_t) interface_cbs;
 
@@ -253,7 +254,8 @@ typedef struct _dw1000_dev_instance_t{
         uint16_t fctrl;                         //!< Reported frame control 
         uint8_t fctrl_array[sizeof(uint16_t)];  //!< Endianness safe interface
     };
-    uint32_t tic;
+
+    STATS_SECT_DECL(mac_stat_section) stat;
     uint16_t frame_len;            //!< Reported frame length
     uint8_t spi_num;               //!< SPI number
     uint8_t irq_pin;               //!< Interrupt request pin

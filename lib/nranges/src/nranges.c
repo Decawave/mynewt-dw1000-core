@@ -255,6 +255,7 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_n
     dw1000_nrng_instance_t * nrng = inst->nrng;
     os_error_t err = os_sem_pend(&nrng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
+
     STATS_INC(g_stat, nrng_request);
     dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, code);
     nrng_frame_t * frame  = nrng->frames[0][FIRST_FRAME_IDX];
@@ -271,15 +272,16 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_n
     dw1000_set_wait4resp(inst, true);
     uint16_t timeout = (((nrng->nnodes)*((dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)))))
                        + (nrng->nnodes - 1)*(config->tx_guard_delay))
-                       + config->tx_holdoff_delay         // Remote side turn arroud time.
+                       + config->tx_holdoff_delay         // Remote side turn arround time.
                        + config->rx_timeout_period);
+        
     dw1000_set_rx_timeout(inst, timeout);
     
     if (nrng->control.delay_start_enabled)
        dw1000_set_delay_start(inst, nrng->delay); 
     
     dw1000_set_dblrxbuff(inst, true);  
-
+    
     if (dw1000_start_tx(inst).start_tx_error){
         STATS_INC(g_stat, start_tx_error_cb);
             os_sem_release(&nrng->sem);
@@ -383,7 +385,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
         return false;
     }
  
-    nrng_frame_t * frame = (nrng_frame_t *) inst->rxbuf; //nrng->frames[(nrng->idx+1)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
+    nrng_frame_t * frame = (nrng_frame_t *) inst->rxbuf; 
 
     if (inst->frame_len < sizeof(nrng_request_frame_t)) 
         return false;
@@ -399,7 +401,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     switch(inst->nrng->code) {
         case DWT_SS_TWR_NRNG ... DWT_DS_TWR_NRNG_EXT_END:
             STATS_INC(g_stat, rx_complete);
-            nrng->idx++;     // confirmed frame advance  
             return false;
             break;
         default:

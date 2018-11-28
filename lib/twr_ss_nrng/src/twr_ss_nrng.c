@@ -162,11 +162,10 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
                     dw1000_nrng_instance_t * nrng = inst->nrng;
                     os_error_t err = os_sem_release(&nrng->sem);
                     assert(err == OS_OK);
-                    break;
+                    return true;
                 }
             default:
                 return false;
-        return true;
         }
     }
     return false;
@@ -219,21 +218,21 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             {
                 // This code executes on the device that is responding to a request
                 DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_SS_TWR_NRNG\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-                nrng_frame_t * frame = nrng->frames[(nrng->idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
+                nrng_frame_t * frame = nrng->frames[(++nrng->idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
                 uint16_t slot_id = inst->slot_id;
 
-                if (inst->frame_len == sizeof(nrng_request_frame_t) && inst->frame_len <= sizeof(frame->array))
+                if (inst->frame_len == sizeof(nrng_request_frame_t))
                     memcpy(frame->array, inst->rxbuf, sizeof(nrng_request_frame_t));
                 else
                     break;
 
                 if(!(slot_id >= frame->start_slot_id && slot_id <= frame->end_slot_id))
                     break;
-
+                
                 uint64_t request_timestamp = inst->rxtimestamp;
                 uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay
-                                    + (uint64_t)((slot_id-1) * ((uint64_t)config->tx_guard_delay
-                                    + (dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)))))))<< 16);
+                            + (uint64_t)((slot_id-1) * ((uint64_t)config->tx_guard_delay
+                            + (dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)))))))<< 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
 #if MYNEWT_VAL(WCS_ENABLED)                
@@ -288,16 +287,20 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     uint16_t timeout = ((phy_duration + dw1000_dwt_usecs_to_usecs(config->tx_guard_delay)) * (end_slot_id - node_slot_id));
                     dw1000_set_rx_timeout(inst, timeout);
 
-                    if (inst->config.dblbuffon_enabled == 0 || inst->config.rxauto_enable == 0) 
+                   if (inst->config.rxauto_enable == 0) 
                         dw1000_start_rx(inst);
                 }else{
                     if (inst->config.dblbuffon_enabled) 
                         dw1000_stop_rx(inst);
                 }
+            
                 nrng_frame_t * frame = nrng->frames[idx][FIRST_FRAME_IDX];
                 memcpy(frame, inst->rxbuf, sizeof(nrng_response_frame_t));
 
-                uint64_t response_timestamp = inst->rxtimestamp;
+                uint64_t response_timestamp = 0;
+                if (inst->status.lde_error == 0) 
+                   response_timestamp = inst->rxtimestamp;
+
 #if MYNEWT_VAL(WCS_ENABLED) 
                 double correction = 1.0l/wcs_dtu_time_correction(inst); 
                 frame->request_timestamp = (uint32_t)roundl( correction * dw1000_read_txtime_lo(inst)) & 0xFFFFFFFFUL;   

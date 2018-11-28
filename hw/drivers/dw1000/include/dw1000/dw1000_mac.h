@@ -40,6 +40,7 @@ extern "C" {
 #endif
 
 #include <hal/hal_spi.h>
+#include <stats/stats.h>
 #include <dw1000/dw1000_dev.h>
 
 #define DWT_DEVICE_ID   (0xDECA0130)        //!< DW1000 MP device ID
