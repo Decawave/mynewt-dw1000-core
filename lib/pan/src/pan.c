@@ -142,6 +142,7 @@ dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config){
     dw1000_pan_instance_t * pan = inst->pan;
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
     frame->transmission_timestamp = dw1000_read_systime(inst);
+    inst->pan->status.valid = true;
     inst->pan->status.initialized = 1;
     return inst->pan;
 }
@@ -233,16 +234,12 @@ static bool
 pan_rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64) {
-        if (inst->pan->status.valid == false) {
-            /* Grab all packets if we're not prosisioned */
+        if (inst->pan->status.valid == false && inst->pan->config->role == PAN_ROLE_SLAVE) {
+            /* Grab all packets if we're not prosisioned as slave */
             return true;
         }
         return false;
-    } else if(inst->pan->status.valid == true) {
-        if (!inst->config.dblbuffon_enabled) {
-            dw1000_dev_control_t control = inst->control_rx_context;
-            dw1000_restart_rx(inst, control);
-        }
+    } else if(inst->pan->status.valid == true && inst->pan->config->role == PAN_ROLE_SLAVE) {
         return true;
     }
     dw1000_pan_instance_t * pan = inst->pan;
@@ -385,7 +382,7 @@ dw1000_pan_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     }
 
     if (mode == DWT_BLOCKING){
-        err = os_sem_pend(&inst->pan->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
+        err = os_sem_pend(&inst->pan->sem, OS_TIMEOUT_NEVER);
         assert(err == OS_OK);
         err = os_sem_release(&inst->pan->sem);
         assert(err == OS_OK);
@@ -447,20 +444,25 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t
  * @return void
  */
 void
-dw1000_pan_start(dw1000_dev_instance_t * inst)
+dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_pan_role_t role)
 {
     dw1000_pan_instance_t * pan = inst->pan;
+    pan->config->role = role;
 
-    os_error_t err = os_sem_pend(&pan->sem_waitforsucess, OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    if (pan->config->role == PAN_ROLE_MASTER) {
+        /* Nothing for now */
+    } else if (pan->config->role == PAN_ROLE_SLAVE) {
+        os_error_t err = os_sem_pend(&pan->sem_waitforsucess, OS_TIMEOUT_NEVER);
+        assert(err == OS_OK);
 
-    pan->idx = 0x1;
-    pan->status.valid = false;
+        pan->idx = 0x1;
+        pan->status.valid = false;
 
-    printf("{\"utime\":%lu,\"PAN\":\"%s\"}\n",
-            os_cputime_ticks_to_usecs(os_cputime_get32()),
-            "Provisioning"
-    );
+        printf("{\"utime\":%lu,\"PAN\":\"%s\"}\n",
+               os_cputime_ticks_to_usecs(os_cputime_get32()),
+               "Provisioning"
+            );
+    }
 }
 
 #endif // PAN_ENABLED

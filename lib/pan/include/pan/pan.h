@@ -77,11 +77,19 @@ typedef struct _dw1000_pan_status_t{
     uint16_t start_tx_error:1;             //!< Set for start transmit error
 }dw1000_pan_status_t;
 
+//! Roles available for PAN
+typedef enum _dw1000_pan_role_t{
+    PAN_ROLE_MASTER,                        //!< Pan master mode
+    PAN_ROLE_SLAVE,                         //!< Pan slave mode
+    PAN_ROLE_RELAY                          //!< Pan relay mode
+}dw1000_pan_role_t;
+
 //! Pan configure parameters
 typedef struct _dw1000_pan_config_t{
     uint32_t rx_holdoff_delay;        //!< Delay between frames, in UWB usec.
     uint16_t rx_timeout_period;       //!< Receive response timeout, in UWB usec.
-    uint32_t tx_holdoff_delay;        //!< Delay between frames, in UWB usec.
+    uint32_t tx_holdoff_delay:28;     //!< Delay between frames, in UWB usec.
+    uint32_t role:4;                  //!< dw1000_pan_role_t
 }dw1000_pan_config_t;
 
 //! Pan control parameters
@@ -108,7 +116,7 @@ typedef struct _dw1000_pan_instance_t{
 dw1000_pan_instance_t * dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config);
 void dw1000_pan_free(dw1000_dev_instance_t * inst);
 void dw1000_pan_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * postprocess);
-void dw1000_pan_start(dw1000_dev_instance_t * inst);
+void dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_pan_role_t role);
 dw1000_dev_status_t dw1000_pan_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 dw1000_pan_status_t dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t delay);
 
