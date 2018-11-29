@@ -160,8 +160,10 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
                         nrng_frame_t * frame = nrng->frames[nrng->idx][SECOND_FRAME_IDX];
                         send_final_msg(inst,frame);
                     }else{
-                        os_error_t err = os_sem_release(&nrng->sem);
-                        assert(err == OS_OK);
+                        if(os_sem_get_count(&nrng->sem) == 0){
+                            os_error_t err = os_sem_release(&nrng->sem);
+                            assert(err == OS_OK);
+                        }
                         nrng->resp_count = 0;
                         if(!(SLIST_EMPTY(&inst->interface_cbs))){
                             SLIST_FOREACH(cbs, &inst->interface_cbs, next){
@@ -171,8 +173,10 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
                         }
                     }
                 }else{
-                    os_error_t err = os_sem_release(&nrng->sem);
-                    assert(err == OS_OK);
+                    if(os_sem_get_count(&nrng->sem) == 0){
+                        os_error_t err = os_sem_release(&nrng->sem);
+                        assert(err == OS_OK);
+                    }
                 }
                 break;
             }
@@ -217,6 +221,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         return false;
     }
     if(os_sem_get_count(&inst->nrng->sem)){
+        printf("Unxoli \n");
         STATS_INC(g_stat, rx_unsolicited);
 	    return false;
     }
@@ -292,7 +297,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     uint16_t phy_duration = dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t));
                     uint16_t timeout = ((phy_duration + dw1000_dwt_usecs_to_usecs(config->tx_guard_delay)) * (end_slot_id - node_slot_id));
                     dw1000_set_rx_timeout(inst, timeout);
-                    dw1000_start_rx(inst);
+                    if (inst->config.dblbuffon_enabled == 0 || inst->config.rxauto_enable == 0) 
+                        dw1000_start_rx(inst);
+                }else{
+                    if (inst->config.dblbuffon_enabled) 
+                        dw1000_stop_rx(inst);
                 }
 
                 nrng_frame_t * frame = nrng->frames[idx][FIRST_FRAME_IDX];
@@ -370,7 +379,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->src_address = inst->my_short_address;
                 frame->code = DWT_DS_TWR_NRNG_EXT_FINAL;
                 frame->slot_id = slot_id;
-
+#if MYNEWT_VAL(WCS_ENABLED)
+                frame->carrier_integrator  = 0.0l;
+#else
+                frame->carrier_integrator  = -dw1000_read_carrier_integrator(inst);
+#endif
                 // Final callback, prior to transmission, use this callback to populate the EXTENDED_FRAME fields.
                 if (cbs!=NULL && cbs->final_cb) 
                     cbs->final_cb(inst, cbs);
@@ -380,12 +393,10 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 dw1000_set_wait4resp(inst, false);
                 dw1000_set_delay_start(inst, response_tx_delay);
                 if (dw1000_start_tx(inst).start_tx_error){
-                    os_sem_release(&nrng->sem);
                     if (cbs!=NULL && cbs->start_tx_error_cb)
                         cbs->start_tx_error_cb(inst, cbs);
                 }else{
                     STATS_INC(g_stat, complete);
-                    os_sem_release(&nrng->sem);
                     dw1000_mac_interface_t * cbs = NULL;
                     if(!(SLIST_EMPTY(&inst->interface_cbs))){
                         SLIST_FOREACH(cbs, &inst->interface_cbs, next){
@@ -394,6 +405,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                         }
                     }
                 }
+                os_sem_release(&nrng->sem);
                 break;
             }
         case  DWT_DS_TWR_NRNG_EXT_FINAL:
@@ -416,9 +428,14 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     uint16_t phy_duration = dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_frame_t));
                     uint16_t timeout = ((phy_duration + config->tx_guard_delay) * (end_slot_id - node_slot_id));
                     dw1000_set_rx_timeout(inst, timeout);
-                    dw1000_start_rx(inst);
+                    if (inst->config.dblbuffon_enabled == 0 || inst->config.rxauto_enable == 0) 
+                        dw1000_start_rx(inst);
+                }else{
+                     if (inst->config.dblbuffon_enabled)  
+                        dw1000_stop_rx(inst);
                 }
                 nrng_frame_t *frame = nrng->frames[idx][SECOND_FRAME_IDX];
+                memcpy((frame->array + sizeof(nrng_final_frame_t)), (temp.array + sizeof(nrng_final_frame_t)), sizeof(twr_data_t));
 
                 nrng->t1_final_flag = 0;
                 frame->request_timestamp = temp.request_timestamp;
@@ -426,6 +443,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->code = temp.code;
                 frame->dst_address = temp.src_address;
                 frame->transmission_timestamp = dw1000_read_txtime_lo(inst);
+                
                 if(idx == nnodes -1){
                     os_sem_release(&nrng->sem);
                     nrng->resp_count = 0;

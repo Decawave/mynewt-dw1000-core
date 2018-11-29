@@ -161,7 +161,13 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
                   if(os_sem_get_count(&nrng->sem) == 0){
                       os_error_t err = os_sem_release(&nrng->sem);
                       assert(err == OS_OK);
-                      nrng->resp_count = 0;
+                  }
+                  nrng->resp_count = 0;
+                  if(!(SLIST_EMPTY(&inst->interface_cbs))){
+                      SLIST_FOREACH(cbs, &inst->interface_cbs, next){
+                          if (cbs!=NULL && cbs->complete_cb)
+                              if(cbs->complete_cb(inst, cbs)) continue;
+                      }
                   }
               }
           }else{
