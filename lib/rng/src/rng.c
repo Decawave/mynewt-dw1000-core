@@ -392,7 +392,12 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     dw1000_rng_instance_t * rng = inst->rng;                            
     twr_frame_t * frame  = inst->rng->frames[(rng->idx+1)%rng->nframes];    
 
-    frame->seq_num++;
+    if (code == DWT_SS_TWR)
+        rng->seq_num+=1;
+    else
+        rng->seq_num+=2;
+        
+    frame->seq_num = rng->seq_num;
     frame->code = code;
     frame->src_address = inst->my_short_address;
     frame->dst_address = dst_address;

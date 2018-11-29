@@ -25,7 +25,7 @@
  * @date 10/24/18
  * @brief ftypes file
  *
- * @details This is the ftypes base class which include all the frames implemented in dw1000.
+ * @details 
  */
 
 #ifndef _DW1000_STATS_H_

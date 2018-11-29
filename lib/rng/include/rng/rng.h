@@ -142,6 +142,7 @@ typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * parent; //!< Structure of DW1000_dev_instance
     STATS_SECT_DECL(rng_stat_section) stat; //!< Stats instance
     uint16_t code;                          //!< Range profile code
+    uint16_t seq_num;                       //!< Local sequence number
     struct os_sem sem;                      //!< Structure of semaphores
     uint64_t delay;                         //!< Delay in transmission
     dw1000_rng_config_t config;             //!< Structure of range config

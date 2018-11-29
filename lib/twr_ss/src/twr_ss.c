@@ -224,7 +224,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
             {
                 // This code executes on the device that is responding to a request
 
-#if !MYNEWT_VAL(WCS_ENABLED) 
+#if MYNEWT_VAL(WCS_ENABLED) 
                 double correction = 1.0l/wcs_dtu_time_correction(inst); 
                 uint64_t request_timestamp = (uint64_t)roundl( correction * inst->rxtimestamp);
 #else
@@ -273,7 +273,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 if(inst->status.lde_error)
                     break;
 
-#if !MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(WCS_ENABLED)
                 double correction = 1.0l/wcs_dtu_time_correction(inst); 
                 uint64_t response_timestamp = (uint64_t)roundl( correction * inst->rxtimestamp);
                 frame->request_timestamp = (uint32_t)((uint64_t)roundl( correction * dw1000_read_txtime_lo(inst))) & 0xFFFFFFFFUL;   

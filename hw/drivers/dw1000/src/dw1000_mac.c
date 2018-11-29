@@ -326,7 +326,7 @@ struct _dw1000_dev_status_t dw1000_mac_config(struct _dw1000_dev_instance_t * in
 
     /* DTUNE2 */
     dw1000_write_reg(inst, DRX_CONF_ID, DRX_TUNE2_OFFSET,
-                     digital_bb_config[prfIndex][config->rx.pacLength], sizeof(uint16_t));
+                     digital_bb_config[prfIndex][config->rx.pacLength], sizeof(uint32_t));
 
     /* DTUNE3 (SFD timeout) */
     /* Don't allow 0 - SFD timeout will always be enabled */
@@ -337,7 +337,7 @@ struct _dw1000_dev_status_t dw1000_mac_config(struct _dw1000_dev_instance_t * in
 
     /* Configure AGC parameters */
     dw1000_write_reg(inst, AGC_CTRL_ID, AGC_TUNE2_OFFSET, agc_config.lo32, sizeof(uint32_t));
-    dw1000_write_reg(inst, AGC_CTRL_ID, AGC_TUNE1_OFFSET, agc_config.target[prfIndex], sizeof(uint32_t));
+    dw1000_write_reg(inst, AGC_CTRL_ID, AGC_TUNE1_OFFSET, agc_config.target[prfIndex], sizeof(uint16_t));
 
     /* Set (non-standard) user SFD for improved performance, */
     if(config->rx.sfdType){
@@ -1305,8 +1305,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
             }
         }else{
             dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR), sizeof(uint16_t)); 
-            if (inst->config.rxauto_enable == 0) 
-                dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
+            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
         }
 
                 

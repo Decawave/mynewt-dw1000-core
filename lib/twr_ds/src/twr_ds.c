@@ -47,10 +47,15 @@
 #include <dw1000/dw1000_ftypes.h>
 #include <rng/rng.h>
 #include <dsp/polyval.h>
+#if MYNEWT_VAL(WCS_ENABLED)
+#include <wcs/wcs.h>
+#endif
 
-//#define DIAGMSG(s,u) printf(s,u)
+#if MYNEWT_VAL(RNG_VERBOSE)
+#define DIAGMSG(s,u) printf(s,u)
 #ifndef DIAGMSG
 #define DIAGMSG(s,u)
+#endif
 #endif
 
 static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
@@ -227,11 +232,18 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 if (inst->frame_len != sizeof(ieee_rng_request_frame_t)) 
                     break;
    
-                uint64_t response_tx_delay = inst->rxtimestamp + ((uint64_t)g_config.tx_holdoff_delay << 16);
+#if MYNEWT_VAL(WCS_ENABLED) 
+                double correction = 1.0l/wcs_dtu_time_correction(inst); 
+                uint64_t request_timestamp = (uint64_t)roundl( correction * inst->rxtimestamp);
+#else
+                uint64_t request_timestamp = inst->rxtimestamp;
+#endif
+                uint64_t response_tx_delay = request_timestamp + ((uint64_t)g_config.tx_holdoff_delay << 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
             
-                frame->reception_timestamp = inst->rxtimestamp;
-                frame->transmission_timestamp = response_timestamp;
+                frame->reception_timestamp =  (uint32_t) (request_timestamp & 0xFFFFFFFFUL);
+                frame->transmission_timestamp =  (uint32_t) (response_timestamp & 0xFFFFFFFFUL);
+
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
 #if MYNEWT_VAL(WCS_ENABLED)
@@ -271,9 +283,14 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                 twr_frame_t * next_frame = rng->frames[(rng->idx+1)%rng->nframes];
-   
+#if MYNEWT_VAL(WCS_ENABLED) 
+                double correction = 1.0l/wcs_dtu_time_correction(inst); 
+                uint64_t request_timestamp = (uint64_t)roundl( correction * inst->rxtimestamp);
+#else
+                uint64_t request_timestamp = inst->rxtimestamp;
+#endif
                 frame->request_timestamp = next_frame->request_timestamp = dw1000_read_txtime_lo(inst); // This corresponds to when the original request was actually sent
-                frame->response_timestamp = next_frame->response_timestamp = inst->rxtimestamp & 0xFFFFFFFFUL; // This corresponds to the response just received
+                frame->response_timestamp = next_frame->response_timestamp = (uint32_t)(request_timestamp & 0xFFFFFFFFUL); // This corresponds to the response just received
                       
                 uint16_t src_address = frame->src_address; 
                 uint8_t seq_num = frame->seq_num; 
@@ -294,11 +311,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 if(inst->status.lde_error)
                     break;
 
-                uint64_t response_tx_delay = inst->rxtimestamp + ((uint64_t)g_config.tx_holdoff_delay << 16);
+                uint64_t response_tx_delay = request_timestamp + ((uint64_t)g_config.tx_holdoff_delay << 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
-                            
-                frame->reception_timestamp = inst->rxtimestamp;
-                frame->transmission_timestamp = response_timestamp;
+
+                frame->reception_timestamp =  (uint32_t) (request_timestamp & 0xFFFFFFFFUL);
+                frame->transmission_timestamp =  (uint32_t) (response_timestamp & 0xFFFFFFFFUL);
 
                 dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_final_t));                
                 dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true);
@@ -327,13 +344,19 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * previous_frame = rng->frames[(uint16_t)(rng->idx-1)%rng->nframes];
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
-
-
-                    
+ 
                 previous_frame->request_timestamp = frame->request_timestamp;
                 previous_frame->response_timestamp = frame->response_timestamp;
+
+#if MYNEWT_VAL(WCS_ENABLED) 
+                double correction = 1.0l/wcs_dtu_time_correction(inst); 
+                uint64_t request_timestamp = (uint64_t)roundl( correction * inst->rxtimestamp);
+#else
+                uint64_t request_timestamp = inst->rxtimestamp;
+#endif
                 frame->request_timestamp = dw1000_read_txtime_lo(inst);   // This corresponds to when the original request was actually sent
-                frame->response_timestamp = inst->rxtimestamp & 0xFFFFFFFFUL;  // This corresponds to the response just received            
+                frame->response_timestamp = (uint32_t) (request_timestamp & 0xFFFFFFFFUL);  // This corresponds to the response just received       
+
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
 #if MYNEWT_VAL(WCS_ENABLED)
