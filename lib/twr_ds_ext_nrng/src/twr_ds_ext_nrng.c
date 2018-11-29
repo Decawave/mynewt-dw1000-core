@@ -221,7 +221,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         return false;
     }
     if(os_sem_get_count(&inst->nrng->sem)){
-        printf("Unxoli \n");
         STATS_INC(g_stat, rx_unsolicited);
 	    return false;
     }
