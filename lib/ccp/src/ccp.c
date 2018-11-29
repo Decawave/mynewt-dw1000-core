@@ -227,8 +227,8 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
 
     dw1000_ccp_status_t status = dw1000_ccp_listen(inst, DWT_BLOCKING);
     if(status.start_rx_error){
-        /* Sync lost, switch to always on for two periods */
-        dw1000_set_rx_timeout(inst, (uint16_t) 0);
+        /* Sync lost, set a long rx timeout */
+        dw1000_set_rx_timeout(inst, (uint16_t) 0xffff);
         dw1000_ccp_listen(inst, DWT_BLOCKING);
     }
     // Schedule event
@@ -491,7 +491,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 {
     if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64){     
         if(os_sem_get_count(&inst->ccp->sem) == 0){
-            dw1000_set_rx_timeout(inst, (uint16_t) 0);
+            dw1000_set_rx_timeout(inst, (uint16_t) 0xffff);
             return true;
         }
         return false;
