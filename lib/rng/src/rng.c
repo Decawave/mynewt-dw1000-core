@@ -737,6 +737,8 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         case DWT_SS_TWR ... DWT_DS_TWR_EXT_END:         
             // IEEE 802.15.4 standard ranging frames, software MAC filtering
             if (inst->config.framefilter_enabled == false && frame->dst_address != inst->my_short_address){ 
+                if(!inst->config.dblbuffon_enabled || !inst->config.rxauto_enable)
+                    dw1000_start_rx(inst);
                 return true;
             }else{
                 STATS_INC(g_stat, rx_complete); 
