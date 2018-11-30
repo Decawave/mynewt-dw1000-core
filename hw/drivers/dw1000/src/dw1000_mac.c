@@ -1268,7 +1268,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
             STATS_INC(inst->stat, LDE_err);
         
         inst->rxtimestamp = dw1000_read_rxtime(inst);  
-        inst->carrier_integrator = dw1000_read_carrier_integrator(inst);
+       
 
 
         // Because of a previous frame not being received properly, AAT bit can be set upon the proper reception of a frame not requesting for
@@ -1283,7 +1283,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         // Collect RX Frame Quality diagnositics
         if(inst->config.rxdiag_enable)  
             dw1000_read_rxdiag(inst, &inst->rxdiag);
-
+        
           // Toggle the Host side Receive Buffer Pointer
         if (inst->config.dblbuffon_enabled) {
             inst->status.overrun_error = dw1000_checkoverrun(inst);
@@ -1304,6 +1304,16 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
                     dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
             }
         }else{
+            // carrier_integrator only avialble while in single buffer mode.
+            inst->carrier_integrator = dw1000_read_carrier_integrator(inst);
+            // Call CIR complete calbacks if present
+            dw1000_mac_interface_t * cbs = NULL;
+            if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
+                SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+                if (cbs != NULL && cbs->cir_complete_cb) 
+                    if(cbs->cir_complete_cb(inst,cbs)) break;
+                }   
+            }  
             dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR), sizeof(uint16_t)); 
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
         }
