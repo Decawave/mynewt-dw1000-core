@@ -20,7 +20,7 @@
  */
 
 /**
- * @file twr_ss.c
+ * @file twr_ds.c
  * @author paul kettle
  * @date 2018
  * @brief Range 
@@ -227,17 +227,10 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];  // Frame already read within loader layers.
                 
-                if(inst->status.lde_error)
-                    break;
                 if (inst->frame_len != sizeof(ieee_rng_request_frame_t)) 
                     break;
    
-#if MYNEWT_VAL(WCS_ENABLED) 
-                double correction = 1.0l/wcs_dtu_time_correction(inst); 
-                uint64_t request_timestamp = (uint64_t)roundl( correction * inst->rxtimestamp);
-#else
                 uint64_t request_timestamp = inst->rxtimestamp;
-#endif
                 uint64_t response_tx_delay = request_timestamp + ((uint64_t)g_config.tx_holdoff_delay << 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
             
@@ -283,12 +276,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                 twr_frame_t * next_frame = rng->frames[(rng->idx+1)%rng->nframes];
-#if MYNEWT_VAL(WCS_ENABLED) 
-                double correction = 1.0l/wcs_dtu_time_correction(inst); 
-                uint64_t request_timestamp = (uint64_t)roundl( correction * inst->rxtimestamp);
-#else
+
                 uint64_t request_timestamp = inst->rxtimestamp;
-#endif
                 frame->request_timestamp = next_frame->request_timestamp = dw1000_read_txtime_lo(inst); // This corresponds to when the original request was actually sent
                 frame->response_timestamp = next_frame->response_timestamp = (uint32_t)(request_timestamp & 0xFFFFFFFFUL); // This corresponds to the response just received
                       
@@ -300,7 +289,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 #else
                 frame->carrier_integrator  = inst->carrier_integrator;
 #endif
-
                 // Note:: Advance to next frame 
                 frame = next_frame;                            
                 frame->dst_address = src_address;
@@ -348,12 +336,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 previous_frame->request_timestamp = frame->request_timestamp;
                 previous_frame->response_timestamp = frame->response_timestamp;
 
-#if MYNEWT_VAL(WCS_ENABLED) 
-                double correction = 1.0l/wcs_dtu_time_correction(inst); 
-                uint64_t request_timestamp = (uint64_t)roundl( correction * inst->rxtimestamp);
-#else
                 uint64_t request_timestamp = inst->rxtimestamp;
-#endif
                 frame->request_timestamp = dw1000_read_txtime_lo(inst);   // This corresponds to when the original request was actually sent
                 frame->response_timestamp = (uint32_t) (request_timestamp & 0xFFFFFFFFUL);  // This corresponds to the response just received       
 

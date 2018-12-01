@@ -365,7 +365,7 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
 #if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
     rc = stats_register("ccp", STATS_HDR(inst->ccp->stat));
 #elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
-    if (inst == hal_dw1000_inst(0))
+    if (inst->idx == 0)
         rc |= stats_register("ccp0", STATS_HDR(inst->ccp->stat));
     else
         rc |= stats_register("ccp1", STATS_HDR(inst->ccp->stat));

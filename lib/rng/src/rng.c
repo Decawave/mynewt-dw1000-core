@@ -47,8 +47,11 @@
 #include <dw1000/dw1000_ftypes.h>
 #include <dw1000/dw1000_stats.h>
 #include <dsp/polyval.h>
-#include <rng/rng.h>
 
+#if MYNEWT_VAL(RNG_ENABLED)
+#include <rng/rng.h>
+#include <rng/rng_encode.h>
+#endif
 #if MYNEWT_VAL(TWR_DS_EXT_ENABLED)
 #include <twr_ds_ext/twr_ds_ext.h>
 #endif
@@ -60,6 +63,9 @@
 #endif
 #if MYNEWT_VAL(WCS_ENABLED)
 #include <wcs/wcs.h>
+#endif
+#if MYNEWT_VAL(CIR_ENABLED)
+#include <cir/cir.h>
 #endif
 
 STATS_NAME_START(rng_stat_section)
@@ -83,6 +89,9 @@ static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
 static bool tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+#if MYNEWT_VAL(RNG_VERBOSE)
+static bool complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+#endif
 
 /*
 % From APS011 Table 2 
@@ -175,6 +184,9 @@ static dw1000_mac_interface_t g_cbs[] = {
             .rx_complete_cb = rx_complete_cb,
             .tx_complete_cb = tx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
+#if MYNEWT_VAL(RNG_VERBOSE)
+            .complete_cb  = complete_cb,
+#endif
             .reset_cb = reset_cb
         },
 #if MYNEWT_VAL(DW1000_DEVICE_1)
@@ -183,6 +195,9 @@ static dw1000_mac_interface_t g_cbs[] = {
             .rx_complete_cb = rx_complete_cb,
             .tx_complete_cb = tx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
+#if MYNEWT_VAL(RNG_VERBOSE)
+            .complete_cb  = complete_cb,
+#endif
             .reset_cb = reset_cb
         },
 #endif
@@ -192,6 +207,9 @@ static dw1000_mac_interface_t g_cbs[] = {
             .rx_complete_cb = rx_complete_cb,
             .tx_complete_cb = tx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
+#if MYNEWT_VAL(RNG_VERBOSE)
+            .complete_cb  = complete_cb,
+#endif
             .reset_cb = reset_cb
         }
 #endif
@@ -401,7 +419,12 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     frame->code = code;
     frame->src_address = inst->my_short_address;
     frame->dst_address = dst_address;
-   
+
+    // Download the CIR on the response    
+#if MYNEWT_VAL(CIR_ENABLED)   
+    cir_enable(inst->cir, true);
+#endif 
+
     dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_rng_request_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_request_frame_t), 0, true); 
     dw1000_set_wait4resp(inst, true);    
@@ -414,7 +437,7 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
    
     if (rng->control.delay_start_enabled) 
         dw1000_set_delay_start(inst, rng->delay);
-   
+
     if (dw1000_start_tx(inst).start_tx_error){
         STATS_INC(inst->rng->stat, tx_error);
         os_sem_release(&inst->rng->sem);
@@ -440,6 +463,11 @@ dw1000_rng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 
     os_error_t err = os_sem_pend(&inst->rng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
+
+    // Download the CIR on the response    
+#if MYNEWT_VAL(CIR_ENABLED)   
+    cir_enable(inst->cir, true);
+#endif 
     
     STATS_INC(inst->rng->stat, rng_listen);
     if(dw1000_start_rx(inst).start_rx_error){
@@ -768,3 +796,30 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
             return false;
     }
 }
+
+
+#if MYNEWT_VAL(RNG_VERBOSE)
+
+static void
+complete_ev_cb(struct os_event *ev) {
+    assert(ev != NULL);
+    assert(ev->ev_arg != NULL);
+
+    dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
+    rng_encode(inst->rng);
+}
+
+
+struct os_callout rng_callout;
+static bool
+complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+        if (inst->fctrl != FCNTL_IEEE_RANGE_16)
+        return false;
+
+        os_callout_init(&rng_callout, os_eventq_dflt_get(), complete_ev_cb, inst);
+        os_eventq_put(os_eventq_dflt_get(), &rng_callout.c_ev);
+        return false;
+}
+
+
+#endif

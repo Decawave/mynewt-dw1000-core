@@ -45,6 +45,9 @@ extern "C" {
 #include <hal/hal_spi.h>
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_stats.h>
+#if MYNEWT_VAL(CIR_ENABLED)
+#include <cir/cir.h>
+#endif
 
 #define DWT_DEVICE_ID   (0xDECA0130) //!< Decawave Device ID 
 #define DWT_SUCCESS (0)              //!< DWT Success
@@ -86,6 +89,7 @@ typedef enum _dw1000_extension_id_t{
     DW1000_LWIP,
     DW1000_PAN,                              //!< Personal area network
     DW1000_PROVISION,                        //!< Provisioning
+    DW1000_CIR,                              //!< Channel impulse response 
     DW1000_APP0 = 1024, 
     DW1000_APP1, 
     DW1000_APP2
@@ -189,6 +193,7 @@ typedef struct _dw1000_dev_config_t{
     uint32_t LDO_enable:1;                  //!< Enables LDO
     uint32_t wakeup_rx_enable:1;            //!< Enables wakeup_rx_enable 
     uint32_t sleep_enable:1;                //!< Enables sleep_enable bit
+    uint32_t cir_enable:1;                  //!< Enables reading CIR as default
 }dw1000_dev_config_t;
 
 //! DW1000 receiver diagnostics parameters.
@@ -244,6 +249,7 @@ typedef struct _dw1000_dev_instance_t{
     struct os_sem sem;                         //!< semphore for low level mac/phy functions
     struct os_mutex mutex;                     //!< os_mutex
     uint32_t epoch; 
+    uint8_t idx;                               //!< instance number number {0, 1, 2 etc}
 
     SLIST_HEAD(,_dw1000_mac_interface_t) interface_cbs;
 
@@ -312,7 +318,10 @@ typedef struct _dw1000_dev_instance_t{
     struct _tdma_instance_t * tdma;               //!< DW1000 tdma instance
 #endif
 #if MYNEWT_VAL(NRNG_ENABLED)
-    struct _dw1000_nrng_instance_t* nrng;
+    struct _dw1000_nrng_instance_t * nrng;
+#endif
+#if MYNEWT_VAL(CIR_ENABLED)
+    struct _cir_instance_t * cir;                  //!< CIR instance
 #endif
     dw1000_dev_rxdiag_t rxdiag;                    //!< DW1000 receive diagnostics
     dw1000_dev_config_t config;                    //!< DW1000 device configurations  
