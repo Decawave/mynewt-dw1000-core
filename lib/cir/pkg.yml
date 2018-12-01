@@ -32,6 +32,7 @@ pkg.cflags:
 
 pkg.deps:
     - "@mynewt-dw1000-core/hw/drivers/dw1000"
+    - "@apache-mynewt-core/encoding/json"
         
 pkg.init:
     cir_pkg_init: 405
