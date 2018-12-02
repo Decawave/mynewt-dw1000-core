@@ -96,13 +96,14 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
         cir->control.enable = inst->config.cir_enable; // restore defaults behavior
 
         cir->fp_idx = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
-        cir->fp_idx = (uint16_t) roundf( ((float) cir->fp_idx)/64.0f + 0.5f) - 2;
+        cir->fp_idx = (uint16_t) roundf( ((float) cir->fp_idx)/64.0f + 0.5f);
 
-        dw1000_read_accdata(inst, (uint8_t *)&cir->cir, cir->fp_idx * sizeof(cir_complex_t), sizeof(cir_t));
+        assert(cir->fp_idx > MYNEWT_VAL(CIR_OFFSET));
+        dw1000_read_accdata(inst, (uint8_t *)&cir->cir, (cir->fp_idx - MYNEWT_VAL(CIR_OFFSET)) * sizeof(cir_complex_t), sizeof(cir_t));
 
         float _rcphase = (float)((uint8_t)dw1000_read_reg(inst, RX_TTCKO_ID, 4, sizeof(uint8_t)) & 0x7F);
         cir->rcphase = _rcphase * (M_PI/64.0f);
-        cir->angle = atan2f((float)cir->cir.array[0].imag, (float)cir->cir.array[0].real);
+        cir->angle = atan2f((float)cir->cir.array[MYNEWT_VAL(CIR_OFFSET)].imag, (float)cir->cir.array[MYNEWT_VAL(CIR_OFFSET)].real);
 
         cir->status.valid = 1;
     #if MYNEWT_VAL(CIR_VERBOSE)
@@ -219,7 +220,7 @@ void cir_pkg_init(void){
     dw1000_mac_append_interface(inst, &cbs[1]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-    inst = hal_dw1000_inst(1);
+    inst = hal_dw1000_inst(2);
     inst->cir = cir_init(NULL);
     dw1000_mac_append_interface(inst, &cbs[2]);
 #endif

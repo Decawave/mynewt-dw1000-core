@@ -26,6 +26,9 @@ syscfg.defs:
     CIR_SIZE:
         description: 'Number of samples'
         value: 8
+    CIR_OFFSET:
+        description: 'offsert in CIR readout'
+        value: 1
     CIR_VERBOSE:
         description: 'JSON print of CIR'
         value: 0
