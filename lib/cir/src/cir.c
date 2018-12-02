@@ -51,7 +51,7 @@
 struct os_callout cir_callout;
 
 static void
-complete_ev_cb(struct os_event *ev) {
+cir_complete_ev_cb(struct os_event *ev) {
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
 
@@ -106,7 +106,7 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
         cir->status.valid = 1;
     #if MYNEWT_VAL(CIR_VERBOSE)
-        os_callout_init(&cir_callout, os_eventq_dflt_get(), complete_ev_cb,inst);
+        os_callout_init(&cir_callout, os_eventq_dflt_get(), cir_complete_ev_cb,inst);
         os_eventq_put(os_eventq_dflt_get(), &cir_callout.c_ev);
     #endif
         return true;        

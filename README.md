@@ -37,7 +37,7 @@ The mynewt-dw1000-core driver implements the MAC layers and exports a MAC extens
 
 ### Ranging Services (RNG)
 
-Ranging services binds to the MAC interface; this interfaces expose callbacks to various events within the ranging process. The driver currently support the following ranging profiles;
+Ranging services binds to the MAC interface--this interface exposes callbacks to various events within the ranging process. The driver currently support the following ranging profiles;
 
 ### Default Config:
 
@@ -64,8 +64,13 @@ Ranging services binds to the MAC interface; this interfaces expose callbacks to
 
 
 ### Clock Calibration Packet (CCP) Service
+The CCP service is the metronome with the system and defines the superframe events. The CCP service has a master and slave profiles. CCP is used in conjunction with Wireless Clock Synchronization (WCS) library and the TDMA library. 
 
 ### Time Division Multiple Access (TDMA) Service
+The TDMA library subdivides the superframe into slots. The architecture is a synchronous design with all node/tags confining their transmission to within their assigned slot. The number of slots in the resulting architecture is user defined, and as such consideration should be given to the benchmarks above. 
+
+### Wireless Clock Synchronization (WCS) Service
+With the exception of explicitly wired synchronization, the various clock within the system drifts over time and temperature. The Double Sided Two Way Ranging (DS-TWR) scheme inherently compensates for the clock drift. The WCS service provides a mechanism for explicitly measuring the relative clock skew and compensating for same. With WCS a single-sided two way ranging (SS-TWR) achieves comparable performance to a DS-TWR scheme. 
 
 ### Light Weight IP (lwIP) Service
 
@@ -91,7 +96,7 @@ The mynewt-dw1000-core repo is still a work in progress with the following exten
 ├── dw1000
 │   ├── pkg.yml                 // Project file
 │   ├── src
-│   │   ├── dw1000_ccp.c        // Clock calibration packets
+│   │   ├── dw1000_cli.c        // Command Line interface 
 │   │   ├── dw1000_dev.c        // Driver instance
 │   │   ├── dw1000_gpio.c       // GPIO interface
 │   │   ├── dw1000_hal.c        // Hardware abstraction
@@ -113,13 +118,15 @@ The mynewt-dw1000-core repo is still a work in progress with the following exten
 ├── rng                         // TWR toplevel API
 ├── tdma                        // Time Devision Multiplex API
 ├── twr_ds                      // Double Sided TWR
+├── twr_ss                      // Single Sided TWR
 ├── twr_ds_ext                  // Double Sided TWR with extended payload
-└── twr_ss                      // Single Sided TWR
+├── twr_ss_ext                  // Single Sided TWR with extended payload
+└── wcs                         // Wireless clock synchronization
 
 ```
 
 ## Building
 
-See the companion repo https://github.com/decawave/mynewt-dw1000-apps for building instructions. Recall that the above driver will be cloned as a dependent repo and will be built from within that parent project. 
+See the companion repo https://github.com/decawave/mynewt-dw1000-apps for building instructions. Recall that the above driver is a dependent repo and will be built from within that parent project. 
 
 

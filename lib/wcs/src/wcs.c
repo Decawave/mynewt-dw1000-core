@@ -25,7 +25,7 @@
  * @date Oct 20 2018
  * @brief Wireless Clock Synchronization
  *
- * @details This is a topleval package for managing Clock Calibration using Clock Calibration Packet (CCP). 
+ * @details This is a top-level package for managing Clock Calibration using Clock Calibration Packet (CCP). 
  * In an RTLS system the Clock Master send a periodic blink which is received by the anchor nodes. The device driver model on the node
  * handles the ccp frame and schedules a callback for post-processing of the event. The Clock Calibration herein is an example 
  * of this post-processing. In TDOA-base RTLS system clock synchronization is essential, this can be either wired or wireless depending on the requirements.
