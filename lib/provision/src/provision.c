@@ -220,7 +220,6 @@ static void
 provision_postprocess(struct os_event * ev){
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
-    printf("Default post process implementation \n");
 }
 
 /**
@@ -248,7 +247,7 @@ provision_rx_complete_cb(dw1000_dev_instance_t* inst, dw1000_mac_interface_t * c
     dw1000_read_rx(inst, (uint8_t *) &dst_address, offsetof(ieee_rng_request_frame_t,dst_address), sizeof(uint16_t));
 
     if ((dst_address != inst->my_short_address) && (dst_address != (uint16_t)0xFFFF)){
-        if (dw1000_restart_rx(inst, inst->control).start_rx_error){}
+        dw1000_start_rx(inst);
             //inst->rng_rx_error_cb(inst);
         return true;
     }
@@ -260,26 +259,24 @@ provision_rx_complete_cb(dw1000_dev_instance_t* inst, dw1000_mac_interface_t * c
                 if (inst->frame_len >= sizeof(ieee_rng_request_frame_t))
                     dw1000_read_rx(inst, frame->array, 0, sizeof(ieee_rng_request_frame_t));
                 else{
-                    if (dw1000_restart_rx(inst, inst->control).start_rx_error){}
+                    dw1000_start_rx(inst);
                         //inst->rng_rx_error_cb(inst);
                     break;
                 }
                 uint8_t delay_factor = 1;  //Delay_factor for NODE_0
                 if(inst->slot_id > 0) // if device is of NODE type
-                   delay_factor = (inst->slot_id) * 4;  //Increase the delay factor for late response for Anchor provisioning
+                   delay_factor = (inst->slot_id) ;  //Increase the delay factor for late response for Anchor provisioning
                 uint64_t request_timestamp = dw1000_read_rxtime(inst);
                 uint64_t response_tx_delay = request_timestamp + ((uint64_t)(config.tx_holdoff_delay*delay_factor) << 16);
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
                 frame->code = DWT_PROVISION_RESP;
-
                 dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_rng_response_frame_t));
                 dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true);
-                dw1000_set_wait4resp(inst,true);
+                //dw1000_set_wait4resp(inst,true);
                 dw1000_set_delay_start(inst, response_tx_delay);
-                dw1000_set_rx_timeout(inst,0);
+                //dw1000_set_rx_timeout(inst,0);
                 if (dw1000_start_tx(inst).start_tx_error){
-                    printf("DWT_PROVISION_START tx error\n");
                 }
                 break;
             }
@@ -288,7 +285,7 @@ provision_rx_complete_cb(dw1000_dev_instance_t* inst, dw1000_mac_interface_t * c
                 if (inst->frame_len >= sizeof(ieee_rng_response_frame_t))
                     dw1000_read_rx(inst, frame->array, 0, sizeof(ieee_rng_response_frame_t));
                 else{
-                    if (dw1000_restart_rx(inst,inst->control).start_rx_error){}
+                    dw1000_start_rx(inst);
                         //inst->rng_rx_error_cb(inst);
                     break;
                 }
@@ -302,7 +299,7 @@ provision_rx_complete_cb(dw1000_dev_instance_t* inst, dw1000_mac_interface_t * c
                     }
                     break;
                 }
-                if (dw1000_restart_rx(inst, inst->control).start_rx_error){}
+                dw1000_start_rx(inst);
                     //inst->rng_rx_error_cb(inst);
                 break;
             }
@@ -336,7 +333,6 @@ provision_rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * c
             os_eventq_put(os_eventq_dflt_get(), &provision->provision_callout_postprocess.c_ev);
         }
     }else{
-        inst->control = inst->control_rx_context;
         dw1000_start_rx(inst);
     }
     return true;
@@ -361,7 +357,6 @@ provision_rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs
         assert(err == OS_OK);
         inst->provision->status.provision_status = PROVISION_DONE;
     }else{
-        inst->control = inst->control_rx_context;
         dw1000_start_rx(inst);
     }
     return true;

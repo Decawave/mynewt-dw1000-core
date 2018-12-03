@@ -32,4 +32,4 @@ pkg.cflags:
 pkg.lflags:
     - "-lm"
 pkg.init:
-    pan_pkg_init: 403
+    pan_pkg_init: 404

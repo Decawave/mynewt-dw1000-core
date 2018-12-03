@@ -238,11 +238,6 @@ pan_rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             return true;
         }
         return false;
-    } else if(inst->pan->status.valid == true) {
-        if (!inst->config.dblbuffon_enabled) {
-            dw1000_start_rx(inst);
-        }
-        return true;
     }
     dw1000_pan_instance_t * pan = inst->pan;
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
@@ -286,7 +281,6 @@ pan_rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  */
 static bool
 pan_tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    //printf("pan_tx_complete_cb\n");
     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
         return false;
     }
@@ -422,7 +416,10 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t
     dw1000_write_tx_fctrl(inst, sizeof(ieee_blink_frame_t), 0, true);
     dw1000_set_wait4resp(inst, true);
     dw1000_set_delay_start(inst, delay);
-    dw1000_set_rx_timeout(inst, pan->config->rx_timeout_period);
+    uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_blink_frame_t))
+                    + pan->config->rx_timeout_period
+                    + pan->config->tx_holdoff_delay;
+    dw1000_set_rx_timeout(inst, timeout);
     pan->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
     if (pan->status.start_tx_error){
         // Half Period Delay Warning occured try for the next epoch
