@@ -217,16 +217,19 @@ void hal_bsp_init(void)
     assert(rc == 0);
 #endif
 
-	hal_gpio_init_out(PA_EN_N_PIN, 1);
-	hal_gpio_init_out(DW1000_TX_EN_PIN, 1);
-	hal_gpio_init_out(DW1000_RX_EN_PIN, 1);
-	
-	hal_gpio_write(PA_EN_N_PIN,0);
-	hal_gpio_write(DW1000_TX_EN_PIN,0);
-	hal_gpio_write(DW1000_RX_EN_PIN,0);
-	
-	printf("[LOCOMO]:\t dw1000 pa and tx rx switch gpio control output enable\n");
-	
+
+#if MYNEWT_VAL(DW1000_0_PA)
+	hal_gpio_init_out(PA_POWER_EN_N_PIN, 1);
+	hal_gpio_write(PA_POWER_EN_N_PIN,0);
+	printf("DW1000_0_PA power on\n");
+#endif
+
+#if MYNEWT_VAL(DW1000_0_POWER)
+	hal_gpio_init_out(DW_POWER_EN_N_PIN, 1);
+	hal_gpio_write(DW_POWER_EN_N_PIN,0);
+	printf("DW1000_0 power on\n");
+#endif
+
 #if MYNEWT_VAL(SPI_0_MASTER)
     rc = hal_spi_init(0, (void *)&os_bsp_spi0m_cfg, HAL_SPI_TYPE_MASTER);
     assert(rc == 0);

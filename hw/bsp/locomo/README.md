@@ -2,6 +2,8 @@
 
 LOCOMO is ultra low-power UWB position module developed by UbiTraq. 
 
+LOCOMO2 -- UT100-TE1
+
 welcome to our website:
 
 	http://www.ubitraq.com/html/index.html

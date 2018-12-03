@@ -36,6 +36,42 @@
 #include <hal/hal_gpio.h>
 #include <dw1000/dw1000_gpio.h>
 
+/**
+ * API to set up gpio 4/5/6 as pa/lna mode
+ *
+ * @param inst  pointer to _dw1000_dev_instance_t.
+ *
+ * @return void
+ */
+void dw1000_gpio4_config_ext_pa(struct _dw1000_dev_instance_t * inst)
+{
+    uint32_t reg;
+
+	reg = (uint32_t) dw1000_read_reg(inst, GPIO_CTRL_ID, GPIO_MODE_OFFSET, sizeof(uint32_t));
+	reg &= ~GPIO_MSGP4_MASK;
+	reg |= GPIO_PIN4_EXTPA;
+	dw1000_write_reg(inst, GPIO_CTRL_ID, GPIO_MODE_OFFSET, reg, sizeof(uint32_t));
+}
+
+void dw1000_gpio5_config_ext_txe(struct _dw1000_dev_instance_t * inst)
+{
+    uint32_t reg;
+
+	reg = (uint32_t) dw1000_read_reg(inst, GPIO_CTRL_ID, GPIO_MODE_OFFSET, sizeof(uint32_t));
+	reg &= ~GPIO_MSGP5_MASK;
+	reg |= GPIO_PIN5_EXTTXE;
+	dw1000_write_reg(inst, GPIO_CTRL_ID, GPIO_MODE_OFFSET, reg, sizeof(uint32_t));
+}
+
+void dw1000_gpio6_config_ext_rxe(struct _dw1000_dev_instance_t * inst)
+{
+    uint32_t reg;
+
+	reg = (uint32_t) dw1000_read_reg(inst, GPIO_CTRL_ID, GPIO_MODE_OFFSET, sizeof(uint32_t));
+	reg &= ~GPIO_MSGP6_MASK;
+	reg |= GPIO_PIN6_EXTRXE;
+	dw1000_write_reg(inst, GPIO_CTRL_ID, GPIO_MODE_OFFSET, reg, sizeof(uint32_t));
+}
 
 /**
  * API to set up Tx/Rx GPIOs which could be used to control LEDs.

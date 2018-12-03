@@ -20,17 +20,17 @@
 bsp.arch: cortex_m4
 bsp.compiler: '@apache-mynewt-core/compiler/arm-none-eabi-m4'
 bsp.linkerscript:
-    - 'hw/bsp/locomo/nrf52xxaa.ld'
+    - 'hw/bsp/locomo2/nrf52xxaa.ld'
     - '@apache-mynewt-core/hw/mcu/nordic/nrf52xxx/nrf52.ld'
 bsp.linkerscript.BOOT_LOADER.OVERWRITE:
-    - 'hw/bsp/locomo/boot-nrf52xxaa.ld'
+    - 'hw/bsp/locomo2/boot-nrf52xxaa.ld'
     - '@apache-mynewt-core/hw/mcu/nordic/nrf52xxx/nrf52.ld'
 
-bsp.part2linkerscript: "hw/bsp/locomo/split-nrf52.ld"
-bsp.downloadscript: "hw/bsp/locomo/locomo_download.sh"
-bsp.debugscript: "hw/bsp/locomo/locomo_debug.sh"
-bsp.downloadscript.WINDOWS.OVERWRITE: "hw/bsp/locomo/locomo_download.cmd"
-bsp.debugscript.WINDOWS.OVERWRITE: "hw/bsp/locomo/locomo_debug.cmd"
+bsp.part2linkerscript: "hw/bsp/locomo2/split-nrf52.ld"
+bsp.downloadscript: "hw/bsp/locomo2/locomo2_download.sh"
+bsp.debugscript: "hw/bsp/locomo2/locomo2_debug.sh"
+bsp.downloadscript.WINDOWS.OVERWRITE: "hw/bsp/locomo2/locomo2_download.cmd"
+bsp.debugscript.WINDOWS.OVERWRITE: "hw/bsp/locomo2/locomo2_debug.cmd"
 
 bsp.flash_map:
     areas:
