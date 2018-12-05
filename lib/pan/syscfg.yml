@@ -2,11 +2,6 @@ syscfg.defs:
     PAN_ENABLED:
         description: 'Private Area Network functionality'
         value: 1
-        restrictions: PAN_PERIOD
-    PAN_PERIOD:
-        description: >
-            PAN Discovery Packets Period
-        value: ((uint32_t){0x1000})
     PAN_TX_HOLDOFF:
         description: 'tx holdoff delay for PAN (usec)'
         value: ((uint32_t){0x0300})

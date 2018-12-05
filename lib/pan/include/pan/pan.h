@@ -44,12 +44,37 @@ extern "C" {
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
 
+//! Roles available for PAN
+typedef enum _dw1000_pan_role_t{
+    PAN_ROLE_MASTER,                        //!< Pan master mode
+    PAN_ROLE_SLAVE,                         //!< Pan slave mode
+    PAN_ROLE_RELAY                          //!< Pan relay mode
+}dw1000_pan_role_t;
+
+//! Pan package codes.
+typedef enum _dw1000_pan_modes_t{
+    DWT_PAN_INVALID = 0,             //!< Invalid Pan message
+    DWT_PAN_REQ,                     //!< Pan request
+    DWT_PAN_RESP,                    //!< Pan response
+}dw1000_pan_code_t;
+
 //! Union of response frame format
 typedef union{
 //! Structure containing pan response frame format
-    struct _pan_frame_resp_t{
-//! Structure of IEEE blink frame
+    struct _pan_frame_req_t{
+        //! Structure of IEEE blink frame
         struct _ieee_blink_frame_t;
+        uint16_t code;                       //!< Package type code
+        uint16_t role;                       //!< Requested role in network
+    }__attribute__((__packed__, aligned(1)));
+    uint8_t array[sizeof(struct _pan_frame_req_t)];
+}pan_frame_req_t;
+
+//! Union of response frame format
+typedef union{
+    //! Structure containing pan response frame format
+    struct _pan_frame_resp_t{
+        struct _pan_frame_req_t;
         uint16_t pan_id;                     //!< Assigned pan_id
         uint16_t short_address;              //!< Assigned device_id
         uint8_t slot_id;                     //!< Assigned slot_id
@@ -59,15 +84,12 @@ typedef union{
 
 //! Union of pan frame format
 typedef union {
-//! Structure of pan frame format
+    //! Structure of pan frame format
     struct _pan_frame_t{
         struct _pan_frame_resp_t;
-        uint64_t transmission_timestamp;    //!< Transmission timestamp
-        uint64_t reception_timestamp;       //!< Reception timestamp
-        float correction_factor;            //!< Receiver clock correction factor
     }__attribute__((__packed__, aligned(1)));
     uint8_t array[sizeof(struct _pan_frame_t)];
-}pan_frame_t;
+} pan_frame_t;
 
 //! Pan status parameters
 typedef struct _dw1000_pan_status_t{
@@ -76,13 +98,6 @@ typedef struct _dw1000_pan_status_t{
     uint16_t valid:1;                      //!< Set for valid parameters
     uint16_t start_tx_error:1;             //!< Set for start transmit error
 }dw1000_pan_status_t;
-
-//! Roles available for PAN
-typedef enum _dw1000_pan_role_t{
-    PAN_ROLE_MASTER,                        //!< Pan master mode
-    PAN_ROLE_SLAVE,                         //!< Pan slave mode
-    PAN_ROLE_RELAY                          //!< Pan relay mode
-}dw1000_pan_role_t;
 
 //! Pan configure parameters
 typedef struct _dw1000_pan_config_t{
@@ -102,23 +117,21 @@ typedef struct _dw1000_pan_instance_t{
     struct _dw1000_dev_instance_t * parent;      //!< pointer to _dw1000_dev_instance_t
     dw1000_mac_interface_t cbs;                  //!< MAC Layer Callbacks
     struct os_sem sem;                           //!< Structure containing os semaphores
-    struct os_sem sem_waitforsucess;             //!< Structure containig os semaphores
     dw1000_pan_status_t status;                  //!< DW1000 pan status parameters
     dw1000_pan_control_t control;                //!< DW1000 pan control parameters
     struct os_callout pan_callout_postprocess;   //!< Structure of pan_callout_postprocess
     dw1000_pan_config_t * config;                //!< DW1000 pan config parameters
-    uint32_t period;                             //!< Pulse repetition period
     uint16_t nframes;                            //!< Number of buffers defined to store the data
     uint16_t idx;                                //!< Indicates number of DW1000 instances
     pan_frame_t * frames[];                      //!< Buffers to pan frames
 }dw1000_pan_instance_t;
 
-dw1000_pan_instance_t * dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config);
+dw1000_pan_instance_t * dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config, uint16_t nframes);
 void dw1000_pan_free(dw1000_dev_instance_t * inst);
 void dw1000_pan_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * postprocess);
 void dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_pan_role_t role);
 dw1000_dev_status_t dw1000_pan_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
-dw1000_pan_status_t dw1000_pan_blink(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t delay);
+dw1000_pan_status_t dw1000_pan_blink(dw1000_dev_instance_t * inst, uint16_t role, dw1000_dev_modes_t mode, uint64_t delay);
 
 #ifdef __cplusplus
 }
