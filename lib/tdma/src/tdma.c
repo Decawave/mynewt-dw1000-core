@@ -315,9 +315,10 @@ tdma_assign_slot(struct _tdma_instance_t * inst, void (* callout )(struct os_eve
 void 
 tdma_release_slot(struct _tdma_instance_t * inst, uint16_t idx){
     assert(idx < inst->nslots);
-    assert(inst->slot[idx]);
-    free(inst->slot[idx]);
-    inst->slot[idx] =  NULL;
+    if (inst->slot[idx]) {
+        free(inst->slot[idx]);
+        inst->slot[idx] =  NULL;
+    }
 }
 
 /** 
