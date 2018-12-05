@@ -1516,6 +1516,24 @@ dw1000_get_rssi(struct _dw1000_dev_instance_t * inst)
     return dw1000_calc_rssi(inst, &inst->rxdiag);
 }
 
+/**
+ * API to give a rough estimate of how likely the received packet is
+ * line of sight (LOS). Taken from 4.7 of DW1000 manual.
+ *
+ * @param rssi rssi as calculated by dw1000_calc_rssi
+ * @param fppl fppl as calculated by dw1000_calc_fppl
+ *
+ * @return 1.0 for likely LOS, 0.0 for non-LOS, with a sliding scale in between.
+ */
+float
+dw1000_estimate_los(float rssi, float fppl)
+{
+    float d = fabs(rssi-fppl);
+    if (d<6)  return 1.0;       /* Less than 6dB difference - LOS */
+    if (d>10) return 0.0;       /* More than 10dB difference - NLOS */
+    return 1.0 - (d-6)/4.0;
+}
+
 
 /**
  * With ADAPTIVE_TIMESCALE_ENABLED all time local clock are adjusted to master clock frequency. 
