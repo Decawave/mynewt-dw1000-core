@@ -330,7 +330,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
     /* Postprocess, all roles */
     if (pan->control.postprocess)
-        os_eventq_put(os_eventq_dflt_get(), &pan->pan_callout_postprocess.c_ev);
+        os_eventq_put(&inst->eventq, &pan->pan_callout_postprocess.c_ev);
 
     /* Release sem */
     os_error_t err = os_sem_release(&pan->sem);
