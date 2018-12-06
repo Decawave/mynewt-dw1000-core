@@ -36,7 +36,6 @@
 #include <hal/hal_gpio.h>
 #include "bsp/bsp.h"
 
-
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_hal.h>
@@ -81,6 +80,33 @@ static pan_frame_t g_pan_2[] = {
     }
 };
 #endif
+
+#include <stats/stats.h>
+STATS_SECT_START(pan_stat_section)
+    STATS_SECT_ENTRY(pan_request)
+    STATS_SECT_ENTRY(pan_listen)
+    STATS_SECT_ENTRY(tx_complete)
+    STATS_SECT_ENTRY(rx_complete)
+    STATS_SECT_ENTRY(rx_unsolicited)
+    STATS_SECT_ENTRY(rx_error)
+    STATS_SECT_ENTRY(tx_error)
+    STATS_SECT_ENTRY(rx_timeout)
+    STATS_SECT_ENTRY(reset)
+STATS_SECT_END
+
+STATS_NAME_START(pan_stat_section)
+    STATS_NAME(pan_stat_section, pan_request)
+    STATS_NAME(pan_stat_section, pan_listen)
+    STATS_NAME(pan_stat_section, tx_complete)
+    STATS_NAME(pan_stat_section, rx_complete)
+    STATS_NAME(pan_stat_section, rx_unsolicited)
+    STATS_NAME(pan_stat_section, rx_error)
+    STATS_NAME(pan_stat_section, tx_error)
+    STATS_NAME(pan_stat_section, rx_timeout)
+    STATS_NAME(pan_stat_section, reset)
+STATS_NAME_END(pan_stat_section)
+
+static STATS_SECT_DECL(pan_stat_section) g_stat; //!< Stats instance
 
 static dw1000_pan_config_t g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(PAN_TX_HOLDOFF),         // Send Time delay in usec.
@@ -153,6 +179,14 @@ dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config, uin
     assert(err == OS_OK);
 
     dw1000_pan_set_postprocess(inst, pan_postprocess);
+
+    err = stats_init(
+        STATS_HDR(g_stat),
+        STATS_SIZE_INIT_PARMS(g_stat, STATS_SIZE_32),
+        STATS_NAME_INIT_PARMS(pan_stat_section)
+        );
+    err |= stats_register("pan", STATS_HDR(g_stat));
+    assert(err == OS_OK);
 
     inst->pan->status.valid = true;
     inst->pan->status.initialized = 1;
@@ -299,9 +333,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
     if (os_sem_get_count(&inst->pan->sem) == 1){
         /* Unsolicited */
+        STATS_INC(g_stat, rx_unsolicited);
         return false;
     }
 
+    STATS_INC(g_stat, rx_complete);
     dw1000_pan_instance_t * pan = inst->pan;
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
 
@@ -313,6 +349,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
     switch(frame->code) {
     case DWT_PAN_REQ:
+        STATS_INC(g_stat, pan_request);
         break;
     case DWT_PAN_RESP:
         if(frame->long_address == inst->my_long_address){
@@ -353,6 +390,7 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     }
     dw1000_pan_instance_t * pan = inst->pan;
     pan->idx++;
+    STATS_INC(g_stat, tx_complete);
     return true;
 }
 
@@ -366,7 +404,9 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     if (os_sem_get_count(&inst->pan->sem) == 0){
-        os_sem_release(&inst->pan->sem);  
+        STATS_INC(g_stat, reset);
+        os_error_t err = os_sem_release(&inst->pan->sem);
+        assert(err == OS_OK);
         return true;
     }
     return false;
@@ -383,7 +423,9 @@ static bool
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     if (os_sem_get_count(&inst->pan->sem) == 0){
-        os_sem_release(&inst->pan->sem);  
+        STATS_INC(g_stat, rx_timeout);
+        os_error_t err = os_sem_release(&inst->pan->sem);
+        assert(err == OS_OK);
         return true;
     }
     return false;
@@ -402,7 +444,9 @@ dw1000_pan_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     os_error_t err = os_sem_pend(&inst->pan->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
+    STATS_INC(g_stat, pan_listen);
     if(dw1000_start_rx(inst).start_rx_error){
+        STATS_INC(g_stat, rx_error);
         err = os_sem_release(&inst->pan->sem);
         assert(err == OS_OK);
     }
@@ -436,6 +480,7 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, uint16_t role,
     os_error_t err = os_sem_pend(&inst->pan->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
+    STATS_INC(g_stat, pan_request);
     dw1000_pan_instance_t * pan = inst->pan;
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
 
@@ -451,6 +496,7 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, uint16_t role,
     dw1000_set_rx_timeout(inst, pan->config->rx_timeout_period);
     pan->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
     if (pan->status.start_tx_error){
+        STATS_INC(g_stat, tx_error);
         // Half Period Delay Warning occured try for the next epoch
         // Use seq_num to detect this on receiver size
         os_sem_release(&inst->pan->sem);
