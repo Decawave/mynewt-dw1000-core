@@ -445,6 +445,9 @@ dw1000_pan_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     assert(err == OS_OK);
 
     STATS_INC(g_stat, pan_listen);
+    /* We're listening for others, hence we have to have a valid pan */
+    inst->pan->status.valid = true;
+
     if(dw1000_start_rx(inst).start_rx_error){
         STATS_INC(g_stat, rx_error);
         err = os_sem_release(&inst->pan->sem);
