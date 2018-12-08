@@ -1057,7 +1057,8 @@ dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdi
 {  
     /* Read several of the diag parameters together, requires that the struct parameters are in the 
      * same order as the registers */
-    dw1000_read(inst, RX_TIME_ID, 0, (uint8_t*)&diag->fp_idx, sizeof(uint16_t)*2);
+    dw1000_read(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET,
+                (uint8_t*)&diag->fp_idx, sizeof(uint16_t)*2);
     dw1000_read(inst, RX_FQUAL_ID, 0, (uint8_t*)&diag->rx_std, sizeof(uint16_t)*4);
     diag->pacc_cnt =  (dw1000_read_reg(inst, RX_FINFO_ID, 0, sizeof(uint32_t)) & RX_FINFO_RXPACC_MASK) >> RX_FINFO_RXPACC_SHIFT;
 }
