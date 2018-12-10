@@ -1243,9 +1243,8 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         uint16_t finfo = dw1000_read_reg(inst, RX_FINFO_ID, RX_FINFO_OFFSET, sizeof(uint16_t));     // Read frame info - Only the first two bytes of the register are used here.
         inst->frame_len = (finfo & RX_FINFO_RXFL_MASK_1023) - 2;          // Report frame length - Standard frame length up to 127, extended frame length up to 1023 bytes
         inst->status.rx_ranging_frame = (finfo & RX_FINFO_RNG) !=0;       // Report ranging bit
-#if 0
         if (inst->status.overrun_error){
-            STATS_INC(g_stat, ROV_err);
+            STATS_INC(inst->stat, ROV_err);
             /* Overrun flag has been set */
             dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_RXOVRR, sizeof(uint32_t));
             dw1000_phy_forcetrxoff(inst);
@@ -1254,7 +1253,6 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
                 dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
             return;
         }
-#endif
 
         if (inst->config.rxauto_enable == 0 && inst->config.dblbuffon_enabled) 
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
@@ -1291,8 +1289,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
             if (inst->status.overrun_error == 0){ 
                  uint8_t mask = dw1000_read_reg(inst, SYS_MASK_ID, 1 , sizeof(uint8_t)) ;  
                  dw1000_write_reg(inst, SYS_MASK_ID, 1, 0, sizeof(uint8_t));       
-                 dw1000_write_reg(inst, SYS_STATUS_ID, 1, (SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR), sizeof(uint8_t)); 
-
+                 dw1000_write_reg(inst, SYS_STATUS_ID, 1, (SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR)>>8, sizeof(uint8_t)); 
                  dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET , 0b1, sizeof(uint8_t)); 
                  dw1000_write_reg(inst, SYS_MASK_ID, 1, mask, sizeof(uint8_t)); 
             }else{
