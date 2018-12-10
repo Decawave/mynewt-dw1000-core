@@ -137,7 +137,7 @@ void dw1000_phy_disable_sequencing(struct _dw1000_dev_instance_t * inst){
 dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, dw1000_dev_txrf_config_t * txrf_config){
 
     if (txrf_config == NULL)
-         txrf_config = &inst->config.txrf;
+        txrf_config = &inst->config.txrf;
     else
         memcpy(&inst->config.txrf, txrf_config, sizeof(dw1000_dev_txrf_config_t));
 

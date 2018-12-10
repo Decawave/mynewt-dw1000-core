@@ -25,6 +25,7 @@ pkg.keywords:
     - dw1000
     - uwb
     - cir
+    - pmem
     
 pkg.cflags:
     - "-std=gnu99"

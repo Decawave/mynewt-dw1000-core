@@ -92,7 +92,7 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                     .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_9db, 2.5)   
                 }, 
                 .trxoff_enable = 1,
-                .rxdiag_enable = 0,
+                .rxdiag_enable = 1,
                 .dblbuffon_enabled = 0,
 #if MYNEWT_VAL(DW1000_MAC_FILTERING)
                 .framefilter_enabled = 1,
@@ -105,7 +105,8 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .sleep_enable = 1,
                 .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
                 .rxauto_enable = 1,        //!< On error re-enable
-                .cir_enable = 0            //!< Default behavior for CIR interface
+                .cir_enable = 0,            //!< Default behavior for CIR interface
+                .pmem_enable = 0            //!< Default behavior for Preamble detection memory
             },
             .spi_sem = 0,
             .task_prio = 0x10
@@ -166,7 +167,8 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .sleep_enable = 1,
                 .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
                 .rxauto_enable = 1,        //!< On error re-enabl
-                .cir_enable = 0            //!< Default behavior for CIR interface
+                .cir_enable = 0,            //!< Default behavior for CIR interface
+                .pmem_enable = 0            //!< Default behavior for Preamble detection memory
             },
             .spi_sem = 0,
             .task_prio = 0x11
@@ -227,7 +229,8 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .sleep_enable = 1,
                 .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
                 .rxauto_enable = 1,
-                .cir_enable = 0            //!< Default behavior for CIR interface
+                .cir_enable = 0,            //!< Default behavior for CIR interface
+                .pmem_enable = 0            //!< Default behavior for Preamble detection memory
             },
             .spi_sem = 0
             .task_prio = 0x12

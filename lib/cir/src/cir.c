@@ -47,15 +47,66 @@
 #include <cir/cir.h>
 #include <cir/cir_encode.h>
 
-#if MYNEWT_VAL(CIR_VERBOSE)
-struct os_callout cir_callout;
+#if MYNEWT_VAL(PMEM_VERBOSE)
 
+struct os_callout pmem_callout;
+
+static void
+pmem_complete_ev_cb(struct os_event *ev) {
+    assert(ev != NULL);
+    assert(ev->ev_arg != NULL);
+
+    dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
+
+#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
+    pmem_encode(inst->cir, "pmem", MYNEWT_VAL(PMEM_SIZE));
+#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
+    if (inst->idx == 0)
+        pmem_encode(inst->cir, "pmem0", MYNEWT_VAL(PMEM_SIZE));   
+    else     
+        pmem_encode(inst->cir, "pmem1", MYNEWT_VAL(PMEM_SIZE)); 
+#endif
+}
+#endif //PMEM_VERBOSE
+
+
+/*! 
+ * @fn pre_enable(cir_instance_t * inst, bool mode){
+ *
+ * @brief Enable Reading of Preamble detect memory. 
+ * 
+ * @param inst - cir_instance_t *
+ * @param mode - bool
+ * 
+ * output parameters
+ *
+ * returns cir_instance_t * 
+ */
+
+cir_instance_t * 
+pmem_enable(cir_instance_t * inst, bool mode){
+    inst->status.valid = 0;
+    inst->control.pmem_enable = mode;
+    return inst;
+}
+
+#if MYNEWT_VAL(CIR_VERBOSE) 
+
+struct os_callout cir_callout;
 static void
 cir_complete_ev_cb(struct os_event *ev) {
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
 
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
+    cir_t * cir  = &inst->cir->cir;
+    if(inst->config.rxdiag_enable){
+        for (uint16_t i=0; i < MYNEWT_VAL(CIR_SIZE); i++){
+            cir->array[i].real /= inst->rxdiag.pacc_cnt;
+            cir->array[i].imag /= inst->rxdiag.pacc_cnt;
+        }
+    }
+    inst->cir->fp_power = dw1000_get_fppl(inst);
 
 #if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
     cir_encode(inst->cir, "cir", MYNEWT_VAL(CIR_SIZE));
@@ -66,8 +117,8 @@ cir_complete_ev_cb(struct os_event *ev) {
         cir_encode(inst->cir, "cir1", MYNEWT_VAL(CIR_SIZE)); 
 #endif
 }
-#endif
 
+#endif //CIR_VERBOSE
 
 /*! 
  * @fn cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
@@ -90,16 +141,29 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
         return false;
     }
 
+    bool status = false;
     cir_instance_t * cir = inst->cir;
 
-    if (cir->control.enable || inst->config.cir_enable){
-        cir->control.enable = inst->config.cir_enable; // restore defaults behavior
+    if (cir->control.pmem_enable || inst->config.pmem_enable){
+        cir->control.pmem_enable = inst->config.pmem_enable; // restore defaults behavior
+        //dw1000_read_accdata(inst, (uint8_t *)&cir->pmem, 4096 + MYNEWT_VAL(PMEM_OFFSET) * sizeof(cir_complex_t), sizeof(pmem_t));
+        dw1000_read(inst, ACC_MEM_ID, 4096 + MYNEWT_VAL(PMEM_OFFSET) * sizeof(cir_complex_t), (uint8_t *)&cir->pmem, sizeof(pmem_t)); 
+#if MYNEWT_VAL(PMEM_VERBOSE)
+        os_callout_init(&pmem_callout, os_eventq_dflt_get(), pmem_complete_ev_cb,inst);
+        os_eventq_put(os_eventq_dflt_get(), &pmem_callout.c_ev);
+#endif
+        status = true;
+     }
+    
+    if (cir->control.cir_enable || inst->config.cir_enable){
+        cir->control.cir_enable = inst->config.cir_enable; // restore defaults behavior
 
-        cir->fp_idx = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
-        cir->fp_idx = (uint16_t) roundf( ((float) cir->fp_idx)/64.0f + 0.5f);
+        uint16_t fp_idx = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
+        cir->fp_idx = (float)fp_idx / 64.0f + 0.5f;
+        fp_idx  = (uint16_t)floorf(cir->fp_idx);
 
         assert(cir->fp_idx > MYNEWT_VAL(CIR_OFFSET));
-        dw1000_read_accdata(inst, (uint8_t *)&cir->cir, (cir->fp_idx - MYNEWT_VAL(CIR_OFFSET)) * sizeof(cir_complex_t), sizeof(cir_t));
+        dw1000_read_accdata(inst, (uint8_t *)&cir->cir, (fp_idx - MYNEWT_VAL(CIR_OFFSET)) * sizeof(cir_complex_t), sizeof(cir_t));
 
         float _rcphase = (float)((uint8_t)dw1000_read_reg(inst, RX_TTCKO_ID, 4, sizeof(uint8_t)) & 0x7F);
         cir->rcphase = _rcphase * (M_PI/64.0f);
@@ -110,9 +174,9 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
         os_callout_init(&cir_callout, os_eventq_dflt_get(), cir_complete_ev_cb,inst);
         os_eventq_put(os_eventq_dflt_get(), &cir_callout.c_ev);
     #endif
-        return true;        
+        status |= true;
     }
-    return false;
+    return status;
 
 }
 
@@ -132,7 +196,7 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 cir_instance_t * 
 cir_enable(cir_instance_t * inst, bool mode){
     inst->status.valid = 0;
-    inst->control.enable = mode;
+    inst->control.cir_enable = mode;
     return inst;
 }
 
@@ -226,7 +290,6 @@ void cir_pkg_init(void){
 #endif
   
 }
-
 
 
 

@@ -528,7 +528,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         return false;
     }
 
-    if (inst->ccp->config.role==CCP_ROLE_MASTER) {
+    if (inst->ccp->config.role == CCP_ROLE_MASTER) {
         return true;
     }
     DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp:rx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
@@ -573,7 +573,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     }
 
     /* Cascade relay of ccp packet */
-    if (ccp->config.role==CCP_ROLE_RELAY && ccp->status.valid &&
+    if (ccp->config.role == CCP_ROLE_RELAY && ccp->status.valid &&
         rx_slot < (inst->slot_id-1) && inst->slot_id != 0xffff) {
         ccp_frame_t tx_frame;
         memcpy(tx_frame.array, frame->array, sizeof(ccp_frame_t));

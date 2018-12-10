@@ -37,7 +37,8 @@ typedef struct _cir_status_t{
 }cir_status_t;
 
 typedef struct _cir_control_t{
-    uint16_t enable:1;
+    uint16_t cir_enable:1;
+    uint16_t pmem_enable:1;
 }cir_control_t;
 
 typedef union{
@@ -53,18 +54,26 @@ typedef struct _cir_t{
     struct _cir_complex_t array[MYNEWT_VAL(CIR_SIZE)]; 
 }cir_t;
 
+typedef struct _pmem_t{
+    uint8_t dummy;  //Errata
+    struct _cir_complex_t array[MYNEWT_VAL(PMEM_SIZE)]; 
+}pmem_t;
+
 typedef struct _cir_instance_t{
     cir_status_t status;
     cir_control_t control;
-    uint16_t fp_idx;
     uint16_t fp_amp1;
+    float fp_idx;
+    float fp_power;
     float rcphase;
     float angle;
     cir_t cir;
+    pmem_t pmem;
 }cir_instance_t; 
 
 cir_instance_t * cir_init(cir_instance_t * inst);
 cir_instance_t * cir_enable(cir_instance_t * inst, bool mode);
+cir_instance_t * pmem_enable(cir_instance_t * inst, bool mode);
 void cir_free(cir_instance_t * inst);
 
 #ifdef __cplusplus

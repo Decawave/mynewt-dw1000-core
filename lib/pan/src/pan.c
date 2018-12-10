@@ -287,7 +287,7 @@ pan_postprocess(struct os_event * ev){
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
 
     if(pan->status.valid && frame->long_address == inst->my_long_address)
-        printf("{\"utime\":%lu,\"UUID\":\"%llX\",\"ID\":\"%X\",\"PANID\":\"%X\",\"slot\":%d}\n",
+        printf("{\"utime\": %lu,\"UUID\": \"%llX\",\"ID\": \"%X\",\"PANID\": \"%X\",\"slot\": %d}\n",
             os_cputime_ticks_to_usecs(os_cputime_get32()),
             frame->long_address,
             frame->short_address,
@@ -295,13 +295,13 @@ pan_postprocess(struct os_event * ev){
             frame->slot_id
         );
     else if (inst->frame_len == sizeof(struct _ieee_blink_frame_t))
-        printf("{\"utime\":%lu,\"UUID\":\"%llX\",\"seq_num\":%d}\n",
+        printf("{\"utime\": %lu,\"UUID\": \"%llX\",\"seq_num\": %d}\n",
             os_cputime_ticks_to_usecs(os_cputime_get32()),
             frame->long_address,
             frame->seq_num
         );
     else if (inst->frame_len == sizeof(struct _pan_frame_resp_t))
-        printf("{\"utime\":%lu,\"UUID\":\"%llX\",\"ID\":\"%X\",\"PANID\":\"%X\",\"slot\":%d}\n",
+        printf("{\"utime\": %lu,\"UUID\": \"%llX\",\"ID\": \"%X\",\"PANID\": \"%X\",\"slot\": %d}\n",
             os_cputime_ticks_to_usecs(os_cputime_get32()),
             frame->long_address,
             frame->short_address,

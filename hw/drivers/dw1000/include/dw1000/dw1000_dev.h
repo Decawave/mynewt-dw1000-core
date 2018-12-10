@@ -194,29 +194,29 @@ typedef struct _dw1000_dev_config_t{
     uint32_t wakeup_rx_enable:1;            //!< Enables wakeup_rx_enable 
     uint32_t sleep_enable:1;                //!< Enables sleep_enable bit
     uint32_t cir_enable:1;                  //!< Enables reading CIR as default
+    uint32_t pmem_enable:1;                 //!< Enables reading Preamble memory as default behaviour
 }dw1000_dev_config_t;
 
 //! DW1000 receiver diagnostics parameters.
 typedef struct _dw1000_dev_rxdiag_t{
-    uint16_t    fp_idx;             //!< First path index (10.6 bits fixed point integer)
-    uint16_t    fp_amp;             //!<  Amplitude at floor(index FP) + 1
-    uint16_t    rx_std;             //!<  Standard deviation of noise
-    uint16_t    fp_amp2;            //!<  Amplitude at floor(index FP) + 2
-    uint16_t    fp_amp3;            //!<  Amplitude at floor(index FP) + 3
-    uint16_t    cir_pwr;            //!<  Channel Impulse Response max growth CIR
-    uint16_t    pacc_cnt;           //!<  Count of preamble symbols accumulated
-} __attribute__((packed, aligned(1))) dw1000_dev_rxdiag_t;
-
-//! DW1000 For reading out accumulator CIR data
-typedef struct _dw1000_cir_complex {
     union {
-        struct  _cir_complex_t{
-            int16_t real;
-            int16_t imag;
-        }__attribute__((__packed__));
-        uint8_t array[sizeof(struct _cir_complex_t)];
+        struct _rx_time {
+            uint32_t    fp_idx:16;          //!< First path index (10.6 bits fixed point integer)
+            uint32_t    fp_amp:16;          //!<  Amplitude at floor(index FP) + 1
+        };
+        uint32_t rx_time;
     };
-} dw1000_cir_complex_t;
+    union {
+        struct _rx_fqual {
+            uint64_t    rx_std:16;          //!<  Standard deviation of noise
+            uint64_t    fp_amp2:16;         //!<  Amplitude at floor(index FP) + 2
+            uint64_t    fp_amp3:16;         //!<  Amplitude at floor(index FP) + 3
+            uint64_t    cir_pwr:16;         //!<  Channel Impulse Response max growth CIR
+        };
+        uint64_t rx_fqual;
+    };
+    uint16_t    pacc_cnt;                   //!<  Count of preamble symbols accumulated
+} __attribute__((packed, aligned(1))) dw1000_dev_rxdiag_t;
 
 //! physical attributes per IEEE802.15.4-2011 standard, Table 101
 typedef struct _phy_attributes_t{
@@ -240,6 +240,7 @@ typedef struct _dw1000_mac_interface_t {
     uint16_t id;
     bool (* tx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Transmit complete callback
     bool (* rx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive complete callback
+    bool (* pre_complete_cb)(struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Preamble Detected complete callback, prior to RXEN
     bool (* cir_complete_cb)(struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< CIR complete callback, prior to RXEN
     bool (* rx_timeout_cb)  (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive timeout callback
     bool (* rx_error_cb)    (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive error callback
@@ -312,7 +313,6 @@ typedef struct _dw1000_dev_instance_t{
 #if MYNEWT_VAL(LWIP_ENABLED) 
     struct _dw1000_lwip_instance_t * lwip;   //!< DW1000 lwip instance
 #endif
-
 #if MYNEWT_VAL(PROVISION_ENABLED)
     struct _dw1000_provision_instance_t * provision; //!< DW1000 provision instance
 #endif 

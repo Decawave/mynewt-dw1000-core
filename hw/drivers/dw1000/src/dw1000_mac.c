@@ -1057,9 +1057,8 @@ dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdi
 {  
     /* Read several of the diag parameters together, requires that the struct parameters are in the 
      * same order as the registers */
-    dw1000_read(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET,
-                (uint8_t*)&diag->fp_idx, sizeof(uint16_t)*2);
-    dw1000_read(inst, RX_FQUAL_ID, 0, (uint8_t*)&diag->rx_std, sizeof(uint16_t)*4);
+    dw1000_read(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, (uint8_t*)&diag->rx_time, sizeof(diag->rx_time));
+    dw1000_read(inst, RX_FQUAL_ID, 0, (uint8_t*)&diag->rx_fqual, sizeof(diag->rx_fqual));
     diag->pacc_cnt =  (dw1000_read_reg(inst, RX_FINFO_ID, 0, sizeof(uint32_t)) & RX_FINFO_RXPACC_MASK) >> RX_FINFO_RXPACC_SHIFT;
 }
 
@@ -1114,7 +1113,7 @@ dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
 static void 
 dw1000_irq(void *arg){
     dw1000_dev_instance_t * inst = arg;
-    os_eventq_put(&inst->eventq, &inst->interrupt_ev);
+    os_eventq_put(&inst->eventq, &inst->interrupt_ev);   
 }
 
 /**
@@ -1236,13 +1235,15 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
     inst->status.rx_timeout_error = (inst->sys_status & SYS_STATUS_ALL_RX_TO) !=0;
     inst->status.lde_error = (inst->sys_status & SYS_STATUS_LDEDONE) == 0;
     inst->status.overrun_error = (inst->sys_status & SYS_STATUS_RXOVRR) != 0;
-  
+
       // leading edge detection complete
     if((inst->sys_status & SYS_STATUS_RXFCG)){
         STATS_INC(inst->stat, DFR_cnt);
+
         uint16_t finfo = dw1000_read_reg(inst, RX_FINFO_ID, RX_FINFO_OFFSET, sizeof(uint16_t));     // Read frame info - Only the first two bytes of the register are used here.
         inst->frame_len = (finfo & RX_FINFO_RXFL_MASK_1023) - 2;          // Report frame length - Standard frame length up to 127, extended frame length up to 1023 bytes
         inst->status.rx_ranging_frame = (finfo & RX_FINFO_RNG) !=0;       // Report ranging bit
+        
         if (inst->status.overrun_error){
             STATS_INC(inst->stat, ROV_err);
             /* Overrun flag has been set */
@@ -1268,8 +1269,6 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         
         inst->rxtimestamp = dw1000_read_rxtime(inst);  
        
-
-
         // Because of a previous frame not being received properly, AAT bit can be set upon the proper reception of a frame not requesting for
         // acknowledgement (ACK frame is not actually sent though). If the AAT bit is set, check ACK request bit in frame control to confirm (this
         // implementation works only for IEEE802.15.4-2011 compliant frames).
@@ -1304,6 +1303,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         }else{
             // carrier_integrator only avialble while in single buffer mode.
             inst->carrier_integrator = dw1000_read_carrier_integrator(inst);
+#if MYNEWT_VAL(CIR_ENABLED) || MYNEWT_VAL(PMEM_ENABLED) 
             // Call CIR complete calbacks if present
             dw1000_mac_interface_t * cbs = NULL;
             if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
@@ -1312,11 +1312,11 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
                     if(cbs->cir_complete_cb(inst,cbs)) break;
                 }   
             }  
+#endif
             dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR), sizeof(uint16_t)); 
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
         }
-
-                
+        
         // Call the corresponding ranging frame services callback if present
         dw1000_mac_interface_t * cbs = NULL;
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
