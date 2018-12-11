@@ -937,14 +937,15 @@ void dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
          */
         inst->interrupt_ev.ev_cb = dw1000_interrupt_ev_cb;
         inst->interrupt_ev.ev_arg = (void *)inst;
-
+#if 0
         os_task_init(&inst->task_str, "dw1000_irq",
                      dw1000_interrupt_task,
                      (void *) inst,
                      inst->task_prio, OS_WAIT_FOREVER,
                      inst->task_stack,
                      DW1000_DEV_TASK_STACK_SZ);
-
+#endif
+        (void)dw1000_interrupt_task;
         hal_gpio_irq_init(inst->irq_pin, dw1000_irq, inst, HAL_GPIO_TRIG_RISING, HAL_GPIO_PULL_UP);
         hal_gpio_irq_enable(inst->irq_pin);
     }    
