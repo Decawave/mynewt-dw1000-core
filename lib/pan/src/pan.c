@@ -35,6 +35,7 @@
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
 #include "bsp/bsp.h"
+#include <imgmgr/imgmgr.h>
 
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
@@ -42,6 +43,11 @@
 #include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_ftypes.h>
+
+// #define DIAGMSG(s,u) printf(s,u)
+#ifndef DIAGMSG
+#define DIAGMSG(s,u)
+#endif
 
 #if MYNEWT_VAL(PAN_ENABLED)
 #include <pan/pan.h>
@@ -85,6 +91,8 @@ static pan_frame_t g_pan_2[] = {
 STATS_SECT_START(pan_stat_section)
     STATS_SECT_ENTRY(pan_request)
     STATS_SECT_ENTRY(pan_listen)
+    STATS_SECT_ENTRY(pan_reset)
+    STATS_SECT_ENTRY(lease_expiry)
     STATS_SECT_ENTRY(tx_complete)
     STATS_SECT_ENTRY(rx_complete)
     STATS_SECT_ENTRY(rx_unsolicited)
@@ -97,6 +105,8 @@ STATS_SECT_END
 STATS_NAME_START(pan_stat_section)
     STATS_NAME(pan_stat_section, pan_request)
     STATS_NAME(pan_stat_section, pan_listen)
+    STATS_NAME(pan_stat_section, pan_reset)
+    STATS_NAME(pan_stat_section, lease_expiry)
     STATS_NAME(pan_stat_section, tx_complete)
     STATS_NAME(pan_stat_section, rx_complete)
     STATS_NAME(pan_stat_section, rx_unsolicited)
@@ -110,7 +120,8 @@ static STATS_SECT_DECL(pan_stat_section) g_stat; //!< Stats instance
 
 static dw1000_pan_config_t g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(PAN_TX_HOLDOFF),         // Send Time delay in usec.
-    .rx_timeout_period = MYNEWT_VAL(PAN_RX_TIMEOUT)         // Receive response timeout in usec.
+    .rx_timeout_period = MYNEWT_VAL(PAN_RX_TIMEOUT),        // Receive response timeout in usec.
+    .lease_time = MYNEWT_VAL(PAN_LEASE_TIME)                // Lease time in seconds
 };
 
 static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
@@ -118,6 +129,7 @@ static bool tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
 static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static void pan_postprocess(struct os_event * ev);
+static void lease_expiry_cb(struct os_event * ev);
 
 static dw1000_mac_interface_t g_cbs[] = {
         [0] = {
@@ -267,6 +279,9 @@ dw1000_pan_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * pan_postp
     dw1000_pan_instance_t * pan = inst->pan;
     os_callout_init(&pan->pan_callout_postprocess, os_eventq_dflt_get(),
                     pan_postprocess, (void *) inst);
+    os_callout_init(&pan->pan_lease_callout_expiry, os_eventq_dflt_get(),
+                    lease_expiry_cb, (void *) inst);
+
     pan->control.postprocess = true;
 }
 
@@ -294,13 +309,13 @@ pan_postprocess(struct os_event * ev){
             frame->pan_id,
             frame->slot_id
         );
-    else if (inst->frame_len == sizeof(struct _ieee_blink_frame_t))
+    else if (frame->code == DWT_PAN_REQ)
         printf("{\"utime\": %lu,\"UUID\": \"%llX\",\"seq_num\": %d}\n",
             os_cputime_ticks_to_usecs(os_cputime_get32()),
             frame->long_address,
             frame->seq_num
         );
-    else if (inst->frame_len == sizeof(struct _pan_frame_resp_t))
+    else if (frame->code == DWT_PAN_RESP)
         printf("{\"utime\": %lu,\"UUID\": \"%llX\",\"ID\": \"%X\",\"PANID\": \"%X\",\"slot\": %d}\n",
             os_cputime_ticks_to_usecs(os_cputime_get32()),
             frame->long_address,
@@ -309,6 +324,26 @@ pan_postprocess(struct os_event * ev){
             frame->slot_id
         );
 }
+
+/**
+ * Function called when our lease is about to expire
+ *
+ * @param ev  Pointer to os_events.
+ *
+ * @return void
+ */
+static void
+lease_expiry_cb(struct os_event * ev)
+{
+    assert(ev != NULL);
+    assert(ev->ev_arg != NULL);
+    dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
+    dw1000_pan_instance_t * pan = inst->pan;
+    STATS_INC(g_stat, lease_expiry);
+    pan->status.valid = false;
+    pan->status.lease_expired = true;
+}
+
 
 /**
  * This is an internal static function that executes on both the pan_master Node and the TAG/ANCHOR
@@ -350,6 +385,12 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     switch(frame->code) {
     case DWT_PAN_REQ:
         STATS_INC(g_stat, pan_request);
+        if (inst->pan->config->role == PAN_ROLE_MASTER) {
+            /* Prevent another request coming in whilst processing this one */
+            dw1000_stop_rx(inst);
+        } else {
+            return true;
+        }
         break;
     case DWT_PAN_RESP:
         if(frame->long_address == inst->my_long_address){
@@ -358,8 +399,27 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             inst->PANID = frame->pan_id;
             inst->slot_id = frame->slot_id;
             pan->status.valid = true;
+            pan->status.lease_expired = false;
+            if (frame->lease_time > 0) {
+                uint32_t exp_tics;
+                os_time_ms_to_ticks(frame->lease_time*1000 - MYNEWT_VAL(PAN_LEASE_EXP_MARGIN), &exp_tics);
+                os_callout_stop(&pan->pan_lease_callout_expiry);
+                os_callout_reset(&pan->pan_lease_callout_expiry, exp_tics);
+            }
+        } else {
+            return true;
         }
         break;
+    case DWT_PAN_RESET:
+        STATS_INC(g_stat, pan_reset);
+        if (pan->config->role == PAN_ROLE_SLAVE) {
+            pan->status.valid = false;
+            pan->status.lease_expired = true;
+            inst->slot_id = 0xffff;
+            os_callout_stop(&pan->pan_lease_callout_expiry);
+        } else {
+            return false;
+        }
     default:
         return false;
         break;
@@ -432,7 +492,7 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 }
 
 /**
- * Listen for PAN requests
+ * Listen for PAN requests / resets
  *
  * @param inst          Pointer to dw1000_dev_instance_t.
  *
@@ -445,8 +505,6 @@ dw1000_pan_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     assert(err == OS_OK);
 
     STATS_INC(g_stat, pan_listen);
-    /* We're listening for others, hence we have to have a valid pan */
-    inst->pan->status.valid = true;
 
     if(dw1000_start_rx(inst).start_rx_error){
         STATS_INC(g_stat, rx_error);
@@ -486,20 +544,25 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, uint16_t role,
     STATS_INC(g_stat, pan_request);
     dw1000_pan_instance_t * pan = inst->pan;
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
+    os_callout_stop(&pan->pan_lease_callout_expiry);
 
     frame->seq_num += inst->pan->nframes;
     frame->long_address = inst->my_long_address;
     frame->code = DWT_PAN_REQ;
     frame->role = role;
+    frame->lease_time = pan->config->lease_time;
+    imgr_my_version(&frame->fw_ver);
 
-    dw1000_write_tx(inst, frame->array, 0, sizeof(struct _pan_frame_req_t));
-    dw1000_write_tx_fctrl(inst, sizeof(struct _pan_frame_req_t), 0, true);
-    dw1000_set_wait4resp(inst, true);
     dw1000_set_delay_start(inst, delay);
+    dw1000_write_tx_fctrl(inst, sizeof(struct _pan_frame_t), 0, true);
+    dw1000_write_tx(inst, frame->array, 0, sizeof(struct _pan_frame_t));
+    dw1000_set_wait4resp(inst, true);
     dw1000_set_rx_timeout(inst, pan->config->rx_timeout_period);
     pan->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
+
     if (pan->status.start_tx_error){
         STATS_INC(g_stat, tx_error);
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"pan_blink_tx_err\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         // Half Period Delay Warning occured try for the next epoch
         // Use seq_num to detect this on receiver size
         os_sem_release(&inst->pan->sem);
@@ -509,7 +572,40 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, uint16_t role,
         os_sem_release(&inst->pan->sem);
         assert(err == OS_OK);
     }
-   return pan->status;
+    return pan->status;
+}
+
+/**
+ * A Pan reset message is a broadcast to all nodes having a pan assigned address
+ * instructing them to reset and renew their address. Normally issued by a restarted
+ * master.
+ *
+ * @param inst     Pointer to dw1000_dev_instance_t.
+ * @param delay    When to send this reset
+ *
+ * @return dw1000_pan_status_t
+ */
+dw1000_pan_status_t
+dw1000_pan_reset(dw1000_dev_instance_t * inst, uint64_t delay)
+{
+    dw1000_pan_instance_t * pan = inst->pan;
+    pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
+
+    frame->seq_num += inst->pan->nframes;
+    frame->long_address = inst->my_long_address;
+    frame->code = DWT_PAN_RESET;
+
+    dw1000_set_delay_start(inst, delay);
+    dw1000_write_tx_fctrl(inst, sizeof(struct _pan_frame_t), 0, true);
+    dw1000_write_tx(inst, frame->array, 0, sizeof(struct _pan_frame_t));
+    dw1000_set_wait4resp(inst, false);
+    pan->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
+
+    if (pan->status.start_tx_error){
+        STATS_INC(g_stat, tx_error);
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"pan_reset_tx_err\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
+    }
+    return pan->status;
 }
 
 

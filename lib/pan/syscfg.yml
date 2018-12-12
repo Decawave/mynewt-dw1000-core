@@ -8,3 +8,9 @@ syscfg.defs:
     PAN_RX_TIMEOUT:
         description: 'TOA timeout delay for PAN (usec)'
         value: ((uint16_t){0x0600})
+    PAN_LEASE_TIME:
+        description: 'PAN address requested lease time (s)'
+        value: ((uint16_t){300})
+    PAN_LEASE_EXP_MARGIN:
+        description: 'Set local pan address invalid this much earlier than the official expiry (ms)'
+        value: (500)
