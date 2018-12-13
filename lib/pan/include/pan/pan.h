@@ -126,6 +126,7 @@ void dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_pan_role_t role);
 dw1000_dev_status_t dw1000_pan_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
 dw1000_pan_status_t dw1000_pan_blink(dw1000_dev_instance_t * inst, uint16_t role, dw1000_dev_modes_t mode, uint64_t delay);
 dw1000_pan_status_t dw1000_pan_reset(dw1000_dev_instance_t * inst, uint64_t delay);
+uint32_t dw1000_pan_lease_remaining(dw1000_dev_instance_t * inst);
 
 #ifdef __cplusplus
 }

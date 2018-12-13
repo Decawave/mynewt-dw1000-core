@@ -44,6 +44,8 @@
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_ftypes.h>
 
+#include <ccp/ccp.h>
+
 // #define DIAGMSG(s,u) printf(s,u)
 #ifndef DIAGMSG
 #define DIAGMSG(s,u)
@@ -401,9 +403,12 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             pan->status.valid = true;
             pan->status.lease_expired = false;
             if (frame->lease_time > 0) {
-                uint32_t exp_tics;
-                os_time_ms_to_ticks(frame->lease_time*1000 - MYNEWT_VAL(PAN_LEASE_EXP_MARGIN), &exp_tics);
                 os_callout_stop(&pan->pan_lease_callout_expiry);
+                /* Calculate when our lease expires */
+                uint32_t exp_tics;
+                uint32_t lease_us = frame->lease_time*inst->ccp->period;
+                lease_us -= (inst->rxtimestamp>>16) - (inst->ccp->epoch>>16);
+                os_time_ms_to_ticks(lease_us/1000, &exp_tics);
                 os_callout_reset(&pan->pan_lease_callout_expiry, exp_tics);
             }
         } else {
@@ -562,7 +567,7 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, uint16_t role,
 
     if (pan->status.start_tx_error){
         STATS_INC(g_stat, tx_error);
-        DIAGMSG("{\"utime\": %lu,\"msg\": \"pan_blink_tx_err\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"pan_blnk_txerr\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         // Half Period Delay Warning occured try for the next epoch
         // Use seq_num to detect this on receiver size
         os_sem_release(&inst->pan->sem);
@@ -635,6 +640,20 @@ dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_pan_role_t role)
                "Provisioning"
             );
     }
+}
+
+/**
+ * Checks time to lease expiry
+ *
+ * @param inst    Pointer to dw1000_dev_instance_t.
+ *
+ * @return uint32_t ms to expiry, 0 if already expired
+ */
+uint32_t
+dw1000_pan_lease_remaining(dw1000_dev_instance_t * inst)
+{
+    os_time_t rt = os_callout_remaining_ticks(&inst->pan->pan_lease_callout_expiry, os_time_get());
+    return os_time_ticks_to_ms32(rt);
 }
 
 #endif // PAN_ENABLED
