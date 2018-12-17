@@ -546,10 +546,10 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         return false;
     }
     
-    if (inst->config.dblbuffon_enabled && inst->config.rxauto_enable)
-        dw1000_stop_rx(inst); //Prevent timeout event
+    /* A good ccp packet has been received, stop the receiver */
+    dw1000_stop_rx(inst); //Prevent timeout event
 
-    ccp->idx++; // confirmed frame advance  
+    ccp->idx++; // confirmed frame advance
 
     ccp->os_epoch = os_cputime_get32();
     STATS_INC(inst->ccp->stat, rx_complete);
@@ -577,7 +577,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         rx_slot < (inst->slot_id-1) && inst->slot_id != 0xffff) {
         ccp_frame_t tx_frame;
         memcpy(tx_frame.array, frame->array, sizeof(ccp_frame_t));
-        uint64_t tx_timestamp = frame->reception_timestamp + ((uint16_t)usecs_to_response(inst, rx_slot, inst->slot_id-1)<<16);
+        uint64_t tx_timestamp = frame->reception_timestamp + (((uint64_t)usecs_to_response(inst, rx_slot, inst->slot_id-1))<<16);
         tx_timestamp &= 0x0FFFFFFFFFFUL;
         dw1000_set_delay_start(inst, tx_timestamp);
 
@@ -608,7 +608,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         os_eventq_put(os_eventq_dflt_get(), &ccp->callout_postprocess.c_ev);
     
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED) 
-    if (ccp->config.fs_xtalt_autotune && ccp->status.valid){  
+    if (ccp->config.fs_xtalt_autotune && ccp->status.valid){
 //        float fs_xtalt_offset = sosfilt(ccp->xtalt_sos,  1e6 * ((float)tracking_offset) / tracking_interval, g_fs_xtalt_b, g_fs_xtalt_a);  
         float fs_xtalt_offset = sosfilt(ccp->xtalt_sos,  -1e6 * ccp->wcs->skew, g_fs_xtalt_b, g_fs_xtalt_a);
         if(ccp->xtalt_sos->clk % FS_XTALT_SETTLINGTIME == 0){ 

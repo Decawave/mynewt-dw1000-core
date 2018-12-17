@@ -249,7 +249,7 @@ tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
    tdma_instance_t * tdma = inst->tdma;
     
-    if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
+    if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64 && inst->ccp->config.role == CCP_ROLE_MASTER){
         DIAGMSG("{\"utime\": %lu,\"msg\": \"tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         if (inst->tdma != NULL && inst->tdma->status.initialized){
             tdma->os_epoch = os_cputime_get32();
