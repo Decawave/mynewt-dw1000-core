@@ -344,6 +344,10 @@ lease_expiry_cb(struct os_event * ev)
     STATS_INC(g_stat, lease_expiry);
     pan->status.valid = false;
     pan->status.lease_expired = true;
+    inst->slot_id = 0xffff;
+
+    if (pan->control.postprocess)
+        os_eventq_put(&inst->eventq, &pan->pan_callout_postprocess.c_ev);
 }
 
 
