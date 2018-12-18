@@ -66,7 +66,7 @@ dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uin
         .reg = reg,
         .subindex = subaddress != 0,
         .operation = 0, //Read
-        .extended = subaddress > 128,
+        .extended = subaddress > 0x7F,
         .subaddress = subaddress
     };
 
@@ -107,7 +107,7 @@ dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, ui
         .reg = reg,
         .subindex = subaddress != 0,
         .operation = 1, //Write
-        .extended = subaddress > 128,
+        .extended = subaddress > 0x7F,
         .subaddress = subaddress
     };
 
@@ -153,7 +153,7 @@ dw1000_read_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress,
         .reg = reg,
         .subindex = subaddress != 0,
         .operation = 0, //Read
-        .extended = subaddress > 128,
+        .extended = subaddress > 0x7F,
         .subaddress = subaddress
     };
 
@@ -196,7 +196,7 @@ dw1000_write_reg(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress
         .reg = reg,
         .subindex = subaddress != 0,
         .operation = 1, //Write
-        .extended = subaddress > 128,
+        .extended = subaddress > 0x7F,
         .subaddress = subaddress
     };
 

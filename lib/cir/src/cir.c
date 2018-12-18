@@ -97,7 +97,7 @@ static void
 cir_complete_ev_cb(struct os_event *ev) {
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
-
+    
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
     cir_t * cir  = &inst->cir->cir;
     if(inst->config.rxdiag_enable){

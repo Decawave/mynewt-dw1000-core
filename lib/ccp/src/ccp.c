@@ -551,10 +551,13 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         return false;
     }
 
+    if (inst->status.lde_error) 
+        return false;
+
     /* A good ccp packet has been received, stop the receiver */
     dw1000_stop_rx(inst); //Prevent timeout event
-
-    ccp->idx++; // confirmed frame advance
+    
+    ccp->idx++; // confirmed frame advance  
 
     ccp->os_epoch = os_cputime_get32();
     STATS_INC(inst->ccp->stat, rx_complete);
@@ -658,6 +661,8 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
     
     ccp->os_epoch = os_cputime_get32();
     ccp->epoch = frame->transmission_timestamp = dw1000_read_txrawst(inst); 
+    ccp->epoch_master = frame->transmission_timestamp;
+    ccp->period = frame->transmission_interval;
 
     if (ccp->status.timer_enabled){
         hal_timer_start_at(&ccp->timer, ccp->os_epoch 
@@ -669,7 +674,7 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
     // Postprocess for tx_complete is used to generate tdma events on the clock master node. 
     if (ccp->config.postprocess && ccp->status.valid) 
         os_eventq_put(os_eventq_dflt_get(), &ccp->callout_postprocess.c_ev);
-
+       
     if(os_sem_get_count(&inst->ccp->sem) == 0){
         os_error_t err = os_sem_release(&inst->ccp->sem);
         assert(err == OS_OK);

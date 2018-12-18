@@ -19,3 +19,6 @@ syscfg.defs:
       NRNG_NFRAMES:
         description: 'Number of frames expected'
         value: 2
+      NRNG_VERBOSE:
+        description: 'Show debug output from postprocess'
+        value: 0

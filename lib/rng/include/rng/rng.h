@@ -47,6 +47,7 @@ extern "C" {
 #include <dw1000/dw1000_ftypes.h>
 #include <dw1000/triad.h>
 #include <stats/stats.h>
+#include <rng/slots.h>
 
 STATS_SECT_START(rng_stat_section)
     STATS_SECT_ENTRY(rng_request)

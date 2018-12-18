@@ -240,7 +240,6 @@ typedef struct _dw1000_mac_interface_t {
     uint16_t id;
     bool (* tx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Transmit complete callback
     bool (* rx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive complete callback
-    bool (* pre_complete_cb)(struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Preamble Detected complete callback, prior to RXEN
     bool (* cir_complete_cb)(struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< CIR complete callback, prior to RXEN
     bool (* rx_timeout_cb)  (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive timeout callback
     bool (* rx_error_cb)    (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive error callback
@@ -288,7 +287,8 @@ typedef struct _dw1000_dev_instance_t{
     uint64_t txtimestamp;          //!< Transmit timestamp
     int32_t carrier_integrator;
     uint16_t PANID;                //!< personal network inetrface id
-    uint16_t slot_id;              //!< Slot id  
+    uint16_t slot_id;              //!< Slot id 
+    uint16_t cell_id;              //!< Cell id  
     uint32_t partID;               //!< Identifier of a particular part design
     uint32_t lotID;                //!< Identification number assigned to a particular quantity
     uint16_t otp_rev;              //!< OTP parameter revision

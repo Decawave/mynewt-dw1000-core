@@ -153,8 +153,8 @@ void wcs_update_cb(struct os_event * ev){
         timescale_instance_t * timescale = inst->timescale; 
         timescale_states_t * states = (timescale_states_t *) (inst->timescale->eke->x); 
 
-        inst->master_epoch = frame->transmission_timestamp;
-        inst->local_epoch = frame->reception_timestamp;
+        inst->master_epoch = ccp->epoch_master; //->transmission_timestamp;
+        inst->local_epoch = ccp->epoch;//frame->reception_timestamp;
         
         if (inst->status.initialized == 0 ){
             double skew = (double ) dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator);
@@ -179,9 +179,9 @@ void wcs_update_cb(struct os_event * ev){
             timescale_init(inst->timescale, x0, q, T);
         }
 */
-        inst->status.valid = fabs(1.0l - states->skew * (1e-6l/((uint64_t)1 << 16))) < 1e-5;
+        inst->status.valid = fabs(1.0l - states->skew * (1e-6l/((uint64_t)1UL << 16))) < 1e-5;
         if (inst->status.valid)
-            inst->skew = 1.0l - states->skew * (1e-6l/((uint64_t)1 << 16));
+            inst->skew = 1.0l - states->skew * (1e-6l/((uint64_t)1UL << 16));
         else {
             inst->skew = 0.0l;
         }
@@ -214,13 +214,13 @@ wcs_postprocess(struct os_event * ev){
     dw1000_ccp_instance_t * ccp = (void *)inst->ccp; 
     ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx-1)%ccp->nframes]; 
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
-    wcs_instance_t * wcs = ccp->wcs;
-    timescale_states_t * states = (timescale_states_t *) (wcs->timescale->eke->x); 
+//    wcs_instance_t * wcs = ccp->wcs;
+//    timescale_states_t * states = (timescale_states_t *) (wcs->timescale->eke->x); 
     printf("{\"utime\": %lu,\"wcs\": [%llu,%llu,%llu],\"skew\": %llu,\"nT\": [%d,%d,%d]}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),
-        (uint64_t) frame->transmission_timestamp,
-        (uint64_t) frame->reception_timestamp,
-        (uint64_t) states->time,//wcs_master_clock_reference(ccp->parent, frame->reception_timestamp),
+        (uint64_t) inst->master_epoch,
+        (uint64_t) inst->local_epoch,
+        (uint64_t) wcs_local_to_master(ccp->parent,  inst->local_epoch + frame->transmission_interval) - inst->master_epoch - frame->transmission_interval,
         *(uint64_t *)&(inst->skew),
         inst->nT,
         frame->seq_num,
@@ -261,7 +261,7 @@ inline uint64_t wcs_dtu_time_adjust(struct _dw1000_dev_instance_t * inst, uint64
     assert(wcs);
     
     if (wcs->status.valid)
-       dtu_time = (uint64_t) roundl(dtu_time / wcs_dtu_time_correction(inst));
+       dtu_time = (uint64_t) roundl(dtu_time * wcs_dtu_time_correction(inst));
 
     return dtu_time & 0x00FFFFFFFFFFUL;
 }
@@ -274,7 +274,7 @@ inline double wcs_dtu_time_correction(struct _dw1000_dev_instance_t * inst){
 
     double correction = 1.0l;
     if (wcs->status.valid)
-       correction = (double) roundl(states->skew * (1e-6l/(0x1UL << 16)));
+       correction = (double) roundl(states->skew * (1e-6l/(1UL << 16)));
 
     return correction;
 }
@@ -293,10 +293,10 @@ inline uint64_t wcs_local_to_master(struct _dw1000_dev_instance_t * inst, uint64
     wcs_instance_t * wcs = inst->ccp->wcs;
     assert(wcs);
     timescale_states_t * states = (timescale_states_t *) (wcs->timescale->eke->x); 
-    uint64_t delta = (dtu_time - wcs->local_epoch) & 0x0FFFFFFFFFFU;
-    
+    uint64_t delta = (dtu_time - wcs->local_epoch) & 0x0FFFFFFFFFFUL;
+
     if (wcs->status.valid)
-        dtu_time = wcs->master_epoch + (uint64_t) round(delta * (states->skew * (1e-6l/((uint64_t)1 << 16))));    
+        dtu_time = wcs->master_epoch + (uint64_t) round(delta / (states->skew * (1e-6l/(1UL << 16))));    
 
     return dtu_time & 0x0FFFFFFFFFFUL;
 }

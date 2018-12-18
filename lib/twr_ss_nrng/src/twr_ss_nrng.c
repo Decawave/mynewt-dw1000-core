@@ -49,6 +49,7 @@
 #include <wcs/wcs.h>
 #endif
 #include <dsp/polyval.h>
+#include <rng/slots.h>
 
 //#define DIAGMSG(s,u) printf(s,u)
 #ifndef DIAGMSG
@@ -85,6 +86,7 @@ static dw1000_rng_config_t g_config = {
     .rx_timeout_period = MYNEWT_VAL(TWR_SS_NRNG_RX_TIMEOUT),        // Receive response timeout in usec
     .tx_guard_delay = MYNEWT_VAL(TWR_SS_NRNG_TX_GUARD_DELAY)        // Guard delay to be added between each frame from node
 };
+
 /**
  * API to initialise the rng_ss package.
  *
@@ -193,6 +195,7 @@ rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     return false;
 }
 
+
 /**
  * API for receive complete callback.
  *
@@ -212,41 +215,60 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     assert(inst->nrng);
     dw1000_nrng_instance_t * nrng = inst->nrng;
     dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, DWT_SS_TWR_NRNG);
+    uint16_t slot_idx;
         
     switch(inst->nrng->code){
         case DWT_SS_TWR_NRNG:
             {
                 // This code executes on the device that is responding to a request
                 DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_SS_TWR_NRNG\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-                nrng_frame_t * frame = nrng->frames[(++nrng->idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
-                uint16_t slot_id = inst->slot_id;
-
-                if (inst->frame_len == sizeof(nrng_request_frame_t))
-                    memcpy(frame->array, inst->rxbuf, sizeof(nrng_request_frame_t));
+                if (inst->frame_len != sizeof(nrng_request_frame_t))
+                    break;
+                    
+                nrng_request_frame_t * _frame = (nrng_request_frame_t * )inst->rxbuf;
+                
+#if MYNEWT_VAL(CELL_ENABLED)
+                if (_frame->ptype != PTYPE_CELL) 
+                    break;
+                if (_frame->cell_id != inst->cell_id)
+                    break; 
+                if (_frame->slot_mask & (1UL << inst->slot_id))
+                    slot_idx = calc_nslots(_frame->slot_mask, 1UL << inst->slot_id, SLOT_POSITION);
                 else
                     break;
-
-                if(!(slot_id >= frame->start_slot_id && slot_id <= frame->end_slot_id))
+#else
+                if (_frame->bitfield & (1UL << inst->slot_id))
+                    slot_idx = calc_nslots(_frame->bitfield, 1UL << inst->slot_id, SLOT_POSITION);
+                else
                     break;
-                
+#endif
+                nrng_final_frame_t * frame = (nrng_final_frame_t *) nrng->frames[(++nrng->idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
+                memset(frame->array, 0, sizeof(nrng_final_frame_t));
+                memcpy(frame->array, inst->rxbuf, sizeof(nrng_request_frame_t));
+
                 uint64_t request_timestamp = inst->rxtimestamp;
-                uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay
-                            + (uint64_t)((slot_id-1) * ((uint64_t)config->tx_guard_delay
-                            + (dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)))))))<< 16);
+                uint64_t response_tx_delay = request_timestamp 
+                            + (((uint64_t)config->tx_holdoff_delay
+                            + (uint64_t)(slot_idx * ((uint64_t)config->tx_guard_delay
+                            + (uint64_t)(dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)))))))<< 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
+
 #if MYNEWT_VAL(WCS_ENABLED)                
-                double correction = 1.0l/wcs_dtu_time_correction(inst); 
-                frame->reception_timestamp = (uint32_t)roundl( correction * request_timestamp) & 0xFFFFFFFFUL;
-                frame->transmission_timestamp = (uint32_t)roundl( correction * response_timestamp) & 0xFFFFFFFFUL;
+               // double correction = 1.0l/wcs_dtu_time_correction(inst); 
+               // frame->reception_timestamp = (uint32_t)roundl( correction * request_timestamp) & 0xFFFFFFFFUL;
+               // frame->transmission_timestamp = (uint32_t)roundl( correction * response_timestamp) & 0xFFFFFFFFUL;
+                frame->reception_timestamp = wcs_local_to_master(inst, request_timestamp) & 0xFFFFFFFFUL;
+                frame->transmission_timestamp = wcs_local_to_master(inst, response_timestamp) & 0xFFFFFFFFUL;
 #else
                 frame->reception_timestamp = request_timestamp & 0xFFFFFFFFUL;
                 frame->transmission_timestamp = response_timestamp & 0xFFFFFFFFUL;
 #endif
-                frame->dst_address = frame->src_address;
+                frame->dst_address = _frame->src_address;
                 frame->src_address = inst->my_short_address;
                 frame->code = DWT_SS_TWR_NRNG_T1;
-                frame->slot_id = slot_id;
+                frame->slot_id = slot_idx;
+
 #if MYNEWT_VAL(WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
@@ -262,7 +284,14 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     if (cbs!=NULL && cbs->start_tx_error_cb)
                         cbs->start_tx_error_cb(inst, cbs);
                 }else{
-                    os_sem_release(&nrng->sem);  
+                    STATS_INC(g_stat, complete);
+                    os_sem_release(&nrng->sem);
+                    if(!(SLIST_EMPTY(&inst->interface_cbs))){
+                        SLIST_FOREACH(cbs, &inst->interface_cbs, next){
+                            if (cbs!=NULL && cbs->complete_cb)
+                                if(cbs->complete_cb(inst, cbs)) continue;
+                        }
+                    }
                 }
                 break; 
             }
@@ -270,24 +299,20 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             {
                 // This code executes on the device that initiated a request, and is now preparing the final timestamps
                 DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_SS_TWR_NRNG_T1\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-                uint16_t nnodes = nrng->nnodes;
-                uint16_t idx = 0;
-
                 if (inst->frame_len != sizeof(nrng_response_frame_t))
                     break;
 
-                uint16_t node_slot_id = ((nrng_frame_t *)inst->rxbuf)->slot_id;
-                uint16_t end_slot_id = ((nrng_frame_t *)inst->rxbuf)->end_slot_id;
-                nrng->idx = idx = node_slot_id - ((nrng_frame_t *)inst->rxbuf)->start_slot_id;
-                
-                if(idx < (nnodes-1)){
+                nrng_response_frame_t * _frame = (nrng_response_frame_t * )inst->rxbuf;
+                uint16_t idx = _frame->slot_id;
+
+                if(idx < (nrng->nnodes-1)){
                     // At the start the device will wait for the entire nnodes to respond as a single huge timeout.
                     // When a node respond we will recalculate the remaining time to be waited for as (total_nodes - completed_nodes)*(phy_duaration + guard_delay)
-                    uint16_t phy_duration = dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t));
-                    uint16_t timeout = ((phy_duration + dw1000_dwt_usecs_to_usecs(config->tx_guard_delay)) * (end_slot_id - node_slot_id));
+                    uint16_t duration = dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t));
+                    uint16_t timeout = (nrng->nnodes - idx) * (duration + dw1000_dwt_usecs_to_usecs(config->tx_guard_delay));
                     dw1000_set_rx_timeout(inst, timeout);
 
-                   if (inst->config.rxauto_enable == 0) 
+                    if (inst->config.rxauto_enable == 0) 
                         dw1000_start_rx(inst);
                 }else{
                     if (inst->config.dblbuffon_enabled) 
@@ -297,14 +322,14 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 nrng_frame_t * frame = nrng->frames[idx][FIRST_FRAME_IDX];
                 memcpy(frame, inst->rxbuf, sizeof(nrng_response_frame_t));
 
-                uint64_t response_timestamp = 0;
+                uint64_t response_timestamp = 0x0;
                 if (inst->status.lde_error == 0) 
                    response_timestamp = inst->rxtimestamp;
-
+          
 #if MYNEWT_VAL(WCS_ENABLED) 
                 double correction = 1.0l/wcs_dtu_time_correction(inst); 
-                frame->request_timestamp = (uint32_t)roundl( correction * dw1000_read_txtime_lo(inst)) & 0xFFFFFFFFUL;   
-                frame->response_timestamp = (uint32_t)roundl( correction * (response_timestamp & 0xFFFFFFFFUL)) & 0xFFFFFFFFUL;
+                frame->request_timestamp = (uint32_t)round( correction * dw1000_read_txtime_lo(inst)) & 0xFFFFFFFFUL;   
+                frame->response_timestamp = (uint32_t)round( correction * (response_timestamp & 0xFFFFFFFFUL)) & 0xFFFFFFFFUL;
 #else
                 frame->request_timestamp = dw1000_read_txtime_lo(inst);                     // This corresponds to when the original request was actually sent
                 frame->response_timestamp = (uint32_t) response_timestamp & 0xFFFFFFFFUL;   // This corresponds to the response just received   
@@ -317,7 +342,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 #else
                 frame->carrier_integrator  = inst->carrier_integrator;
 #endif   
-                if(idx == nnodes-1){
+                if(idx == nrng->nnodes-1){
                     STATS_INC(g_stat, complete);
                     os_sem_release(&nrng->sem);
                     if(!(SLIST_EMPTY(&inst->interface_cbs))){

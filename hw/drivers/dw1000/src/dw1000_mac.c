@@ -971,7 +971,7 @@ dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool enable)
         sys_cfg_reg |= SYS_CFG_DIS_DRXB;
     dw1000_write_reg(inst, SYS_CFG_ID, 0, sys_cfg_reg, sizeof(uint32_t));
     
-    dw1000_sync_rxbufptrs(inst);
+    //dw1000_sync_rxbufptrs(inst);
     
     err = os_mutex_release(&inst->mutex);       // Read modify write critical section exit
     assert(err == OS_OK);
@@ -1018,7 +1018,7 @@ dw1000_read_carrier_integrator(struct _dw1000_dev_instance_t * inst)
 /**
  * API for calculating the clock offset ratio from the carrior integrator value
  *
- * @param inst           Pointer to _dw1000_dev_instance_t.
+ * @param inst Pointer to _dw1000_dev_instance_t.
  * @param integrator_val carrier integrator value
  *
  * @return float   the relative clock offset ratio
