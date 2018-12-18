@@ -95,10 +95,12 @@ STATS_NAME_START(ccp_stat_section)
     STATS_NAME(ccp_stat_section, slave_cnt)
     STATS_NAME(ccp_stat_section, tx_complete)
     STATS_NAME(ccp_stat_section, rx_complete)
+    STATS_NAME(ccp_stat_section, rx_relayed)
     STATS_NAME(ccp_stat_section, rx_unsolicited)
     STATS_NAME(ccp_stat_section, rx_error)
     STATS_NAME(ccp_stat_section, tx_start_error)
     STATS_NAME(ccp_stat_section, tx_relay_error)
+    STATS_NAME(ccp_stat_section, tx_relay_ok)
     STATS_NAME(ccp_stat_section, rx_timeout)
     STATS_NAME(ccp_stat_section, reset)
 STATS_NAME_END(ccp_stat_section)
@@ -204,10 +206,13 @@ static uint32_t
 usecs_to_response(dw1000_dev_instance_t * inst, int rx_slot, int my_slot)
 {
     uint32_t ccp_duration = dw1000_phy_frame_duration(&inst->attrib, sizeof(ccp_blink_frame_t));
-    uint32_t ret = (my_slot - rx_slot - 1)*((uint32_t)inst->ccp->config.tx_guard_dly + ccp_duration);
+    uint32_t ret = ((uint32_t)inst->ccp->config.tx_guard_dly + ccp_duration);
     /* Master has slot 0 */
     if (rx_slot == 0) {
+        ret *= my_slot - 1;
         ret += inst->ccp->config.tx_holdoff_dly;
+    } else {
+        ret *= my_slot - rx_slot;
     }
     return ret;
 }
@@ -545,7 +550,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     if((inst->ccp->uuid&0xffffffffffffff00UL) != (frame->long_address&0xffffffffffffff00UL)) {
         return false;
     }
-    
+
     /* A good ccp packet has been received, stop the receiver */
     dw1000_stop_rx(inst); //Prevent timeout event
 
@@ -563,13 +568,12 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     /* Compensate if not receiving the master ccp packet directly */
     int rx_slot = (frame->long_address & 0xff);
     if (rx_slot != 0x00) {
+        STATS_INC(inst->ccp->stat, rx_relayed);
         /* Assume ccp intervals are a multiple of 0x10000 us */
         uint32_t master_interval = ((frame->transmission_interval/0x10000+1)*0x10000);
         ccp->epoch_master -= (master_interval - frame->transmission_interval) << 16;
         ccp->epoch -= (master_interval - frame->transmission_interval) << 16;
         ccp->os_epoch -= os_cputime_usecs_to_ticks(master_interval - frame->transmission_interval);
-        printf("{\"utime\": %lu,\"msg\": \"ccp:cascaded\",\"period\":[0x%lx,0x%lx]}\n",
-               os_cputime_ticks_to_usecs(os_cputime_get32()), ccp->period, master_interval);
     }
 
     /* Cascade relay of ccp packet */
@@ -598,9 +602,8 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         ccp->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
         if (ccp->status.start_tx_error){
             STATS_INC(inst->ccp->stat, tx_relay_error);
-            printf("ccprelay err, rxts:%llx txts:%llx d:%llx\n", frame->reception_timestamp, tx_timestamp,tx_timestamp - frame->reception_timestamp);
-            printf("ccprelay err, rx_slot:%d dly:%lx slot_id:%d\n", rx_slot, usecs_to_response(inst, rx_slot, inst->slot_id-1),
-                inst->slot_id);
+        } else {
+            STATS_INC(inst->ccp->stat, tx_relay_ok);
         }
     }
 
