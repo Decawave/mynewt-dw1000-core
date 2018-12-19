@@ -52,16 +52,16 @@ Ranging services binds to the MAC interface--this interface exposes callbacks to
 ### RNG profile:
 | profile       | Description          | Benchmark  |
 | ------------- |:-------------:| -----:|
-| twr_ss        | Single Sided Two Way Ranging | 1110us|
-| twr_ds      | Double Sided Two Way Ranging      |  2420us |
-| twr_ds_ext | DS-TWR /w extended data payload      |   2775us |
+| twr_ss        | Single Sided Two Way Ranging      | 1110us    |
+| twr_ds        | Double Sided Two Way Ranging      |  2420us   |
+| twr_ds_ext    | DS-TWR /w extended data payload   |   2775us  |
 
 ### NRNG profile:
 
 | profile       | Description  | Benchmark  |
 | ------------- |:-------------:| -----:|
-| nrng_ds | n twr_ds ranges with 2*n+2 messages  | 6200us for n=4|
-
+| nrng_ss | n TWR_SS ranges with 2*n+2 messages  | 1988us for n=4, 2598us for n=6|
+| nrng_ds | n TWR_DS ranges with 2*n+2 messages  | 6200us for n=4 |
 
 ### Clock Calibration Packet (CCP) Service
 The CCP service is the metronome with the system and defines the superframe events. The CCP service has a master and slave profiles. CCP is used in conjunction with Wireless Clock Synchronization (WCS) library and the TDMA library. 
@@ -70,7 +70,7 @@ The CCP service is the metronome with the system and defines the superframe even
 The TDMA library subdivides the superframe into slots. The architecture is a synchronous design with all node/tags confining their transmission to within their assigned slot. The number of slots in the resulting architecture is user defined, and as such consideration should be given to the benchmarks above. 
 
 ### Wireless Clock Synchronization (WCS) Service
-With the exception of explicitly wired synchronization, the various clock within the system drifts over time and temperature. The Double Sided Two Way Ranging (DS-TWR) scheme inherently compensates for the clock drift. The WCS service provides a mechanism for explicitly measuring the relative clock skew and compensating for same. With WCS a single-sided two way ranging (SS-TWR) achieves comparable performance to a DS-TWR scheme. 
+With the exception of explicitly wired synchronization, the various clock within the system drifts over time and temperature. The Double Sided Two Way Ranging (DS-TWR) scheme inherently compensates for the clock drift. The WCS service provides a mechanism for explicitly measuring the relative clock skew and compensating for same. With WCS a single-sided two way ranging (SS-TWR) achieves comparable performance to a DS-TWR scheme. With WCS all time measurements are referenced to the master clock. This approach simplifies the TDOA architecture by distributing the clock synchronization across nodes. 
 
 ### Light Weight IP (lwIP) Service
 
