@@ -70,7 +70,7 @@ The CCP service is the metronome with the system and defines the superframe even
 The TDMA library subdivides the superframe into slots. The architecture is a synchronous design with all node/tags confining their transmission to within their assigned slot. The number of slots in the resulting architecture is user defined, and as such consideration should be given to the benchmarks above. 
 
 ### Wireless Clock Synchronization (WCS) Service
-With the exception of explicitly wired synchronization, the various clock within the system drifts over time and temperature. The Double Sided Two Way Ranging (DS-TWR) scheme inherently compensates for the clock drift. The WCS service provides a mechanism for explicitly measuring the relative clock skew and compensating for same. With WCS a single-sided two way ranging (SS-TWR) achieves comparable performance to a DS-TWR scheme. With WCS all time measurements are referenced to the master clock. This approach simplifies the TDOA architecture by distributing the clock synchronization across nodes. 
+With the exception of explicitly wired synchronization, the various clock within the system drifts over time and temperature. The Double Sided Two Way Ranging (DS-TWR) scheme inherently compensates for the clock drift. The WCS service provides a mechanism for explicitly measuring the relative clock skew and compensating for same. With WCS a single-sided two way ranging (SS-TWR) achieves comparable performance to a DS-TWR scheme. With WCS all time measurements are referenced to the master clock, this simplifies the TDOA architecture by distributing the clock synchronization function across nodes. 
 
 ### Light Weight IP (lwIP) Service
 
