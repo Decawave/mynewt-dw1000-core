@@ -893,9 +893,13 @@ dw1000_ccp_start(struct _dw1000_dev_instance_t * inst, dw1000_ccp_role_t role){
     ccp->config.role = role;
 
     if (ccp->config.role == CCP_ROLE_MASTER)
-        frame->transmission_timestamp = dw1000_read_systime(inst);
-    else 
-        frame->reception_timestamp = dw1000_read_systime(inst);
+        ccp->epoch = frame->transmission_timestamp = dw1000_read_systime(inst);
+    else {
+        ccp->epoch = frame->reception_timestamp = dw1000_read_systime(inst);
+        /* Temporarily override period to start listening for the first
+         * ccp packet sooner */
+        ccp->period = 5000;
+    }
 
     ccp_timer_init(inst, role);
 }
