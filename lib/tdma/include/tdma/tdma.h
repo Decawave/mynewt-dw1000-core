@@ -86,6 +86,7 @@ struct _tdma_instance_t * tdma_init(struct _dw1000_dev_instance_t * inst, uint32
 void tdma_free(struct _tdma_instance_t * inst);
 void tdma_assign_slot(struct _tdma_instance_t * inst, void (* callout )(struct os_event *), uint16_t idx, void * arg);
 void tdma_release_slot(struct _tdma_instance_t * inst, uint16_t idx);
+void tdma_stop(struct _tdma_instance_t * tdma);
 
 #ifdef __cplusplus
 }

@@ -143,7 +143,9 @@ dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, dw1000
 
     dw1000_softreset(inst);
     dw1000_phy_sysclk_XTAL(inst);
+#if MYNEWT_VAL(DW1000_RXTX_LEDS)
     dw1000_gpio_config_leds(inst, DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
+#endif
 
     // Configure the CPLL lock detect
     uint8_t reg = dw1000_read_reg(inst, EXT_SYNC_ID, EC_CTRL_OFFSET, sizeof(uint8_t));
