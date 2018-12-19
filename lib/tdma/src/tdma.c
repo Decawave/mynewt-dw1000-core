@@ -381,4 +381,21 @@ slot_timer_cb(void * arg){
 #endif
 }
 
+/**
+ * API to stop tdma operation. Releases each slot and stops all cputimer callbacks
+ *
+ * @param inst       Pointer to _tdma_instance_t.
+ *
+ * @return void
+ */
+void 
+tdma_stop(struct _tdma_instance_t * tdma)
+{
+    for (uint16_t i = 0; i < tdma->nslots; i++) {
+        if (tdma->slot[i]){
+            os_cputime_timer_stop(&tdma->slot[i]->timer);
+            tdma_release_slot(tdma, i);
+        }
+    }
+}
 
