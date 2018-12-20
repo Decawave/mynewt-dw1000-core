@@ -559,7 +559,6 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, uint16_t role,
     STATS_INC(g_stat, pan_request);
     dw1000_pan_instance_t * pan = inst->pan;
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
-    os_callout_stop(&pan->pan_lease_callout_expiry);
 
     frame->seq_num += inst->pan->nframes;
     frame->long_address = inst->my_long_address;
