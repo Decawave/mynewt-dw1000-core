@@ -316,7 +316,7 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_n
     
     dw1000_set_dblrxbuff(inst, true);  
     
-    if (dw1000_start_tx(inst).start_tx_error){
+    if (dw1000_start_tx(inst).start_tx_error && inst->status.rx_timeout_error == 0){
         STATS_INC(g_stat, start_tx_error_cb);
             os_sem_release(&nrng->sem);
     }
@@ -348,9 +348,9 @@ dw1000_nrng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 
     STATS_INC(g_stat, nrng_listen);
     if(dw1000_start_rx(inst).start_rx_error){
-        STATS_INC(g_stat, rx_error);
         err = os_sem_release(&nrng->sem);
         assert(err == OS_OK);
+        STATS_INC(g_stat, rx_error);
     }
 
     if (mode == DWT_BLOCKING){
@@ -372,9 +372,9 @@ static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(os_sem_get_count(&inst->nrng->sem) == 0){
-        STATS_INC(g_stat, reset);
         os_error_t err = os_sem_release(&inst->nrng->sem);
         assert(err == OS_OK);
+        STATS_INC(g_stat, reset);
         return true;
     }
     else
@@ -391,9 +391,9 @@ static bool
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     
     if(os_sem_get_count(&inst->nrng->sem) == 0 && inst->nrng->device_type != DWT_NRNG_INITIATOR){
-        STATS_INC(g_stat, rx_timeout);
         os_error_t err = os_sem_release(&inst->nrng->sem);
         assert(err == OS_OK);
+        STATS_INC(g_stat, rx_timeout);
         return true;
     }
     else
@@ -465,13 +465,13 @@ dw1000_nrng_twr_to_tof_frames(struct _dw1000_dev_instance_t * inst, nrng_frame_t
         case DWT_SS_TWR_NRNG ... DWT_SS_TWR_NRNG_FINAL:{
             assert(first_frame != NULL);
 #if MYNEWT_VAL(WCS_ENABLED)
-            wcs_instance_t * wcs = inst->ccp->wcs;
-            float skew = wcs->skew;
+            ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
+                    -  (first_frame->transmission_timestamp - first_frame->reception_timestamp))/2.;
 #else
             float skew = dw1000_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);
-#endif
             ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
                     -  (first_frame->transmission_timestamp - first_frame->reception_timestamp) * (1 - skew))/2.;
+#endif
             break;
             }
         default: break;

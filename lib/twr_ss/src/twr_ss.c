@@ -224,17 +224,17 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
             {
                 // This code executes on the device that is responding to a request
 
-#if MYNEWT_VAL(WCS_ENABLED) 
-                double correction = 1.0l/wcs_dtu_time_correction(inst); 
-                uint64_t request_timestamp = (uint64_t)roundl( correction * inst->rxtimestamp);
-#else
                 uint64_t request_timestamp = inst->rxtimestamp;
-#endif
                 uint64_t response_tx_delay = request_timestamp + ((uint64_t) g_config.tx_holdoff_delay << 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
-                frame->reception_timestamp =  (uint32_t) (request_timestamp & 0xFFFFFFFFUL);
-                frame->transmission_timestamp =  (uint32_t) (response_timestamp & 0xFFFFFFFFUL);
+#if MYNEWT_VAL(WCS_ENABLED) 
+                frame->reception_timestamp = wcs_local_to_master(inst, request_timestamp) & 0xFFFFFFFFUL;
+                frame->transmission_timestamp = wcs_local_to_master(inst, response_timestamp) & 0xFFFFFFFFUL;
+#else
+                frame->reception_timestamp = request_timestamp & 0xFFFFFFFFUL;
+                frame->transmission_timestamp = response_timestamp & 0xFFFFFFFFUL;
+#endif
 
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
@@ -273,15 +273,13 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 if(inst->status.lde_error)
                     break;
 
-#if MYNEWT_VAL(WCS_ENABLED)
-                double correction = 1.0l/wcs_dtu_time_correction(inst); 
-                uint64_t response_timestamp = (uint64_t)roundl( correction * inst->rxtimestamp);
-                frame->request_timestamp = (uint32_t)((uint64_t)roundl( correction * dw1000_read_txtime_lo(inst))) & 0xFFFFFFFFUL;   
-                frame->response_timestamp = ((uint32_t) response_timestamp) & 0xFFFFFFFFUL;
-#else
                 uint64_t response_timestamp = inst->rxtimestamp;
-                frame->request_timestamp = dw1000_read_txtime_lo(inst);                     // This corresponds to when the original request was actually sent
-                frame->response_timestamp = (uint32_t) (response_timestamp & 0xFFFFFFFFUL);   // This corresponds to the response just received   
+#if MYNEWT_VAL(WCS_ENABLED)           
+                frame->request_timestamp = wcs_local_to_master(inst, dw1000_read_txtime(inst)) & 0xFFFFFFFFUL;
+                frame->response_timestamp = wcs_local_to_master(inst, response_timestamp) & 0xFFFFFFFFUL;
+#else
+                frame->request_timestamp = dw1000_read_txtime_lo(inst) & 0xFFFFFFFFUL;
+                frame->response_timestamp  = (uint32_t)(response_timestamp & 0xFFFFFFFFUL);
 #endif
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;

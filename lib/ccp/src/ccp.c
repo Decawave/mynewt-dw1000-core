@@ -815,7 +815,7 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     dw1000_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0, true); 
     dw1000_set_wait4resp(inst, false);    
     ccp->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
-    if (ccp->status.start_tx_error){
+    if (ccp->status.start_tx_error ){
         STATS_INC(inst->ccp->stat, tx_start_error);
         previous_frame->transmission_timestamp = (frame->transmission_timestamp + ((uint64_t)inst->ccp->period << 16)) & 0x0FFFFFFFFFFUL;
         ccp->idx++;
@@ -862,7 +862,7 @@ dw1000_ccp_listen(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     };
     ccp->status.start_rx_error = dw1000_start_rx(inst).start_rx_error;
     if (ccp->status.start_rx_error){
-        err =  os_sem_release(&ccp->sem);
+        err = os_sem_release(&ccp->sem);
         assert(err == OS_OK); 
     }else if(mode == DWT_BLOCKING){
         err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 

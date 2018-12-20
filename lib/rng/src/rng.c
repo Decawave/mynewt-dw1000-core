@@ -438,9 +438,9 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     if (rng->control.delay_start_enabled) 
         dw1000_set_delay_start(inst, rng->delay);
 
-    if (dw1000_start_tx(inst).start_tx_error){
-        STATS_INC(inst->rng->stat, tx_error);
+    if (dw1000_start_tx(inst).start_tx_error && inst->status.rx_timeout_error == 0){
         os_sem_release(&inst->rng->sem);
+        STATS_INC(inst->rng->stat, tx_error);
     }
      
     err = os_sem_pend(&inst->rng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
@@ -475,9 +475,9 @@ dw1000_rng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     
     STATS_INC(inst->rng->stat, rng_listen);
     if(dw1000_start_rx(inst).start_rx_error){
-        STATS_INC(inst->rng->stat, rx_error);
         err = os_sem_release(&inst->rng->sem);
         assert(err == OS_OK);
+        STATS_INC(inst->rng->stat, rx_error);
     }
       
     if (mode == DWT_BLOCKING){
@@ -703,9 +703,9 @@ static bool
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(os_sem_get_count(&inst->rng->sem) == 0){
-        STATS_INC(inst->rng->stat, rx_timeout);
         os_error_t err = os_sem_release(&inst->rng->sem);
         assert(err == OS_OK);
+        STATS_INC(inst->rng->stat, rx_timeout);
         return true;
     }
     else
@@ -722,9 +722,9 @@ static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(os_sem_get_count(&inst->rng->sem) == 0){
-        STATS_INC(inst->rng->stat, reset);
         os_error_t err = os_sem_release(&inst->rng->sem);  
         assert(err == OS_OK);
+        STATS_INC(inst->rng->stat, reset);
         return true;
     }
     else 

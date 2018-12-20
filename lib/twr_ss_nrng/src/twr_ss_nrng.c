@@ -255,9 +255,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
 
 #if MYNEWT_VAL(WCS_ENABLED)                
-               // double correction = 1.0l/wcs_dtu_time_correction(inst); 
-               // frame->reception_timestamp = (uint32_t)roundl( correction * request_timestamp) & 0xFFFFFFFFUL;
-               // frame->transmission_timestamp = (uint32_t)roundl( correction * response_timestamp) & 0xFFFFFFFFUL;
                 frame->reception_timestamp = wcs_local_to_master(inst, request_timestamp) & 0xFFFFFFFFUL;
                 frame->transmission_timestamp = wcs_local_to_master(inst, response_timestamp) & 0xFFFFFFFFUL;
 #else
@@ -325,15 +322,14 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 uint64_t response_timestamp = 0x0;
                 if (inst->status.lde_error == 0) 
                    response_timestamp = inst->rxtimestamp;
-          
-#if MYNEWT_VAL(WCS_ENABLED) 
-                double correction = 1.0l/wcs_dtu_time_correction(inst); 
-                frame->request_timestamp = (uint32_t)round( correction * dw1000_read_txtime_lo(inst)) & 0xFFFFFFFFUL;   
-                frame->response_timestamp = (uint32_t)round( correction * (response_timestamp & 0xFFFFFFFFUL)) & 0xFFFFFFFFUL;
+
+#if MYNEWT_VAL(WCS_ENABLED)           
+                frame->request_timestamp = wcs_local_to_master(inst, dw1000_read_txtime(inst)) & 0xFFFFFFFFUL;
+                frame->response_timestamp = wcs_local_to_master(inst, response_timestamp) & 0xFFFFFFFFUL;
 #else
-                frame->request_timestamp = dw1000_read_txtime_lo(inst);                     // This corresponds to when the original request was actually sent
-                frame->response_timestamp = (uint32_t) response_timestamp & 0xFFFFFFFFUL;   // This corresponds to the response just received   
-#endif
+                frame->request_timestamp = dw1000_read_txtime_lo(inst) & 0xFFFFFFFFUL;
+                frame->response_timestamp  = (uint32_t)(response_timestamp & 0xFFFFFFFFUL);
+#endif    
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
                 frame->code = DWT_SS_TWR_NRNG_FINAL;
