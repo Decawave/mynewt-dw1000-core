@@ -47,6 +47,7 @@ extern "C" {
 
 //! Roles available for PAN
 typedef enum _dw1000_pan_role_t{
+    PAN_ROLE_INVALID = 0,                   //!< Pan master mode
     PAN_ROLE_MASTER,                        //!< Pan master mode
     PAN_ROLE_SLAVE,                         //!< Pan slave mode
     PAN_ROLE_RELAY                          //!< Pan relay mode

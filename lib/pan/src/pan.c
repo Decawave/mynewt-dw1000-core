@@ -348,6 +348,7 @@ lease_expiry_cb(struct os_event * ev)
     pan->status.lease_expired = true;
     inst->slot_id = 0xffff;
 
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"pan_lease_expired\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     if (pan->control.postprocess)
         os_eventq_put(&inst->eventq, &pan->pan_callout_postprocess.c_ev);
 }
@@ -408,8 +409,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             inst->slot_id = frame->slot_id;
             pan->status.valid = true;
             pan->status.lease_expired = false;
+            os_callout_stop(&pan->pan_lease_callout_expiry);
             if (frame->lease_time > 0) {
-                os_callout_stop(&pan->pan_lease_callout_expiry);
                 /* Calculate when our lease expires */
                 uint32_t exp_tics;
                 uint32_t lease_us = 1000000;
