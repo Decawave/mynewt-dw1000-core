@@ -162,6 +162,26 @@ void tdma_pkg_init(void){
 }
 
 #ifdef TDMA_TASKS_ENABLE
+
+
+/**
+ * API to feed the sanity watchdog
+ *
+ * @return void
+ */
+#if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
+static void
+sanity_feeding_cb(struct os_event * ev)
+{
+    assert(ev != NULL);
+    assert(ev->ev_arg != NULL);
+
+    tdma_instance_t * tdma = (void *)ev->ev_arg;
+    os_sanity_task_checkin(0);
+    os_callout_reset(&tdma->sanity_cb, OS_TICKS_PER_SEC);
+}
+#endif
+
 /**
  * API to initialise a higher priority task for the tdma slot tasks.
  *
@@ -188,6 +208,10 @@ static void tdma_tasks_init(struct _tdma_instance_t * inst)
                      inst->task_stack,
                      DW1000_DEV_TASK_STACK_SZ);
     }       
+#if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
+    os_callout_init(&inst->sanity_cb, &inst->eventq, sanity_feeding_cb, (void *) inst);
+    os_callout_reset(&inst->sanity_cb, OS_TICKS_PER_SEC);
+#endif
 }
 
 /**
@@ -202,9 +226,6 @@ static void tdma_task(void *arg)
 {
     tdma_instance_t * inst = arg;
     while (1) {
-#if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
-        os_sanity_task_checkin(0);
-#endif
         os_eventq_run(&inst->eventq);
     }
 }

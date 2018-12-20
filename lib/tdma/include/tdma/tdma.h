@@ -78,6 +78,9 @@ typedef struct _tdma_instance_t{
     uint8_t task_prio;                       //!< Priority of tasks
     os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]   //!< Stack size of each task
         __attribute__((aligned(OS_STACK_ALIGNMENT)));
+#if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
+    struct os_callout sanity_cb;             //!< Structure of sanity_cb
+#endif
 #endif
     struct _tdma_slot_t * slot[];           //!< Dynamically allocated slot
 }tdma_instance_t; 
