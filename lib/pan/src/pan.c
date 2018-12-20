@@ -44,7 +44,9 @@
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_ftypes.h>
 
+#if MYNEWT_VAL(CCP_ENABLED)
 #include <ccp/ccp.h>
+#endif
 
 // #define DIAGMSG(s,u) printf(s,u)
 #ifndef DIAGMSG
@@ -410,8 +412,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 os_callout_stop(&pan->pan_lease_callout_expiry);
                 /* Calculate when our lease expires */
                 uint32_t exp_tics;
-                uint32_t lease_us = frame->lease_time*inst->ccp->period;
+                uint32_t lease_us = 1000000;
+#if MYNEWT_VAL(CCP_ENABLED)
+                lease_us = frame->lease_time*inst->ccp->period;
                 lease_us -= (inst->rxtimestamp>>16) - (inst->ccp->epoch>>16);
+#endif
                 os_time_ms_to_ticks(lease_us/1000, &exp_tics);
                 os_callout_reset(&pan->pan_lease_callout_expiry, exp_tics);
             }
