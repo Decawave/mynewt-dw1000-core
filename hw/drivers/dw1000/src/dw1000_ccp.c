@@ -39,7 +39,7 @@
 
 #if MYNEWT_VAL(DW1000_CCP_ENABLED)
 #include <dw1000/dw1000_ccp.h>
-
+#include <dw1000/dw1000_phy.h>
 #if MYNEWT_VAL(CLOCK_CALIBRATION_ENABLED)
 #include <clkcal/clkcal.h>
 #endif
@@ -219,7 +219,7 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
         for (uint16_t i = 0; i < ccp->nframes; i++){
             ccp->frames[i] = (ccp_frame_t *) malloc(sizeof(ccp_frame_t)); 
             memcpy(ccp->frames[i], &ccp_default, sizeof(ccp_frame_t));
-            ccp->frames[i]->seq_num = i-1;
+            ccp->frames[i]->seq_num = 0;
         }
 
         ccp->parent = inst;
@@ -257,7 +257,7 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
 
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
-
+    ccp->status.valid = true;
 #if MYNEWT_VAL(CLOCK_CALIBRATION)
     frame->transmission_timestamp = _dw1000_read_systime(inst);
 #else
@@ -337,7 +337,7 @@ ccp_postprocess(struct os_event * ev){
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)ev->ev_arg;
-    printf("rx-call-bk\n");
+    printf("ccp-rx\n");
 #if 0
     ccp_frame_t * previous_frame = ccp->frames[(ccp->idx-1)%ccp->nframes]; 
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
@@ -410,7 +410,7 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
     int32_t tracking_offset = (int32_t)(((uint32_t) dw1000_read_reg(inst, RX_TTCKO_ID, 0, sizeof(uint32_t)) & RX_TTCKO_RXTOFS_MASK) << 13) >> 13;
     frame->correction_factor = 1.0f +((float)tracking_offset) / tracking_interval;
 
-    ccp->status.valid |= ccp->idx > ccp->nframes;
+//    ccp->status.valid |= ccp->idx > ccp->nframes;
     if (ccp->config.postprocess && ccp->status.valid) 
         os_eventq_put(os_eventq_dflt_get(), &ccp->callout_postprocess.c_ev);
    else{
@@ -458,8 +458,7 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
     dw1000_ccp_instance_t * ccp = inst->ccp;
     uint64_t tx_time = dw1000_read_txtime(inst);
     memcpy(csTxtime,&tx_time,5);
-    ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
-    seq_number = frame->seq_num;
+    //ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
     ccp_tx = 1;
     printf("ccp-tx-cb\n");
 #if 0
@@ -476,10 +475,8 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
         hal_timer_start_at(&ccp->timer, cputime + os_cputime_usecs_to_ticks(dw1000_dwt_usecs_to_usecs(ccp->period - MYNEWT_VAL(OS_LATENCY))));
     }
 #endif
-
-    //os_callout_reset(&ccp_send_callout, OS_TICKS_PER_SEC/4);
-    os_callout_reset(&ccp_send_callout, OS_TICKS_PER_SEC);
-    os_sem_release(&inst->ccp->sem);  
+    os_callout_reset(&ccp_send_callout, OS_TICKS_PER_SEC/4);
+    os_sem_release(&ccp->sem);
     return true;
 }
 
@@ -544,19 +541,22 @@ dw1000_ccp_blink(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
 
     os_error_t err = os_sem_pend(&inst->ccp->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
-
     dw1000_ccp_instance_t * ccp = inst->ccp; 
+    ccp->idx = 0;
     ccp_frame_t * previous_frame = ccp->frames[(ccp->idx-1)%ccp->nframes];
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes];
 
     //frame->transmission_timestamp = previous_frame->transmission_timestamp + 2 * ((uint64_t)inst->ccp->period << 15);
-    frame->seq_num += inst->ccp->nframes;
+    seq_number = frame->seq_num;
+    previous_frame->seq_num = frame->seq_num;
     frame->long_address = inst->my_short_address;
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_blink_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(ieee_blink_frame_t), 0, true); 
-    dw1000_set_wait4resp(inst, false);    
+    dw1000_set_wait4resp(inst, true);
+    dw1000_set_rx_timeout(inst, 0);
     //dw1000_set_delay_start(inst, frame->transmission_timestamp);
+    frame->seq_num += 1;
    
     ccp->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
     if (ccp->status.start_tx_error){
@@ -585,12 +585,16 @@ void ccp_send(struct os_event *ev) {
     assert(ev->ev_arg != NULL);
 
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
-   // dw1000_ccp_instance_t * ccp = inst->ccp;
-
-   if(dw1000_ccp_blink(inst, DWT_BLOCKING).start_tx_error)
-       //os_callout_reset(&ccp_send_callout, OS_TICKS_PER_SEC/4);
-       os_callout_reset(&ccp_send_callout, OS_TICKS_PER_SEC);
+    //dw1000_ccp_instance_t * ccp = inst->ccp;
+    dw1000_phy_forcetrxoff(inst);
+    dw1000_phy_rx_reset(inst);
+    if(dw1000_ccp_blink(inst, DWT_BLOCKING).start_tx_error)
+    {
+        printf("tx-error\n");
+        os_callout_reset(&ccp_send_callout, OS_TICKS_PER_SEC/4);
+    }
 }
+
 void 
 dw1000_ccp_start(struct _dw1000_dev_instance_t * inst){
     // Initialise frame timestamp to current time
@@ -602,7 +606,7 @@ dw1000_ccp_start(struct _dw1000_dev_instance_t * inst){
     //ccp_timer_init(inst);
     (void)ccp_timer_init;
     os_callout_init(&ccp_send_callout, os_eventq_dflt_get(), ccp_send, (void *) inst);
-    os_callout_reset(&ccp_send_callout, OS_TICKS_PER_SEC/2);
+    os_callout_reset(&ccp_send_callout, OS_TICKS_PER_SEC/4);
 }
 
 /**
@@ -613,8 +617,11 @@ dw1000_ccp_start(struct _dw1000_dev_instance_t * inst){
  */
 void 
 dw1000_ccp_stop(dw1000_dev_instance_t * inst){
+    os_callout_stop(&ccp_send_callout);
+#if 0
     dw1000_ccp_instance_t * ccp = inst->ccp; 
    os_cputime_timer_stop(&ccp->timer);
+#endif
 }
 
 #endif /* MYNEWT_VAL(DW1000_CCP_ENABLED) */

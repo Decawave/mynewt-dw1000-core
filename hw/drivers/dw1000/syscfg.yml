@@ -24,6 +24,9 @@ syscfg.defs:
     DW1000_CCP_ENABLED:
         description: 'Enable wireless clock calibration'
         value: 0
+    DW1000_BLINK_ENABLED:
+        description: 'Enable wireless clock calibration'
+        value: 0
     TDMA_ENABLED:
         description: 'Enable TDMA Services'
         value: 0
@@ -90,6 +93,10 @@ syscfg.defs:
     CCP_PERIOD:
         description: >
             Clock Calibration Packets Period 
+        value: ((uint32_t){0x100000})
+    BLINK_PERIOD:
+        description: >
+            Tag Blink Period
         value: ((uint32_t){0x100000})
     PAN_PERIOD:
         description: >

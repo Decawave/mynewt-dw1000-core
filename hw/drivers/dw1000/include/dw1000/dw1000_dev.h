@@ -74,7 +74,8 @@ typedef enum _dw1000_extension_id_t{
     DW1000_PAN,                              //!< Personal area network
     DW1000_PROVISION,                        //!< Provisioning
     DW1000_RANGE,                            //!< Ranging
-    DW1000_N_RANGES                          //!< N_ranges
+    DW1000_N_RANGES,                         //!< N_ranges
+    DW1000_BLINK                             //!< Blink
 }dw1000_extension_id_t;
 
 //! Structure of DW1000 attributes.
@@ -273,6 +274,9 @@ typedef struct _dw1000_dev_instance_t{
 #endif 
 #if MYNEWT_VAL(DW1000_CCP_ENABLED)
     struct _dw1000_ccp_instance_t * ccp;           //!< DW1000 ccp instance
+#endif
+#if MYNEWT_VAL(DW1000_BLINK_ENABLED)
+    struct _dw1000_blink_instance_t * blink;           //!< DW1000 blink instance
 #endif
 #if MYNEWT_VAL(DW1000_PAN)
     struct _dw1000_pan_instance_t * pan;           //!< DW1000 pan instance
