@@ -369,12 +369,13 @@ ccp_postprocess(struct os_event * ev){
  * @param inst   Pointer to dw1000_dev_instance_t.  
  * @return void 
  */
-extern uint8_t csRxtime[5];
-extern uint8_t csTxtime[5];
-extern uint8_t seq_number;
-extern uint8_t ccp_tx;
-extern uint8_t ccp_rx;
-extern uint16_t firstPath;
+uint8_t csRxtime[5];
+uint8_t csTxtime[5];
+uint8_t seq_number;
+uint8_t ccp_tx;
+uint8_t ccp_rx;
+uint16_t firstPath;
+uint64_t ccp_master_address;
 static struct os_callout ccp_send_callout;
 void ccp_send(struct os_event *ev);
 
@@ -382,12 +383,14 @@ static bool
 ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
     if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
         // CCP Packet Received
+       #if 0
         uint64_t clock_master;
         dw1000_read_rx(inst, (uint8_t *) &clock_master, offsetof(ieee_blink_frame_t,long_address), sizeof(uint64_t));
         if(inst->clock_master != clock_master){
             dw1000_restart_rx(inst, inst->control_rx_context);
             return true;
        }
+       #endif
     }else{
         return false;
     }
@@ -404,6 +407,7 @@ ccp_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
     memcpy(csRxtime,&frame->reception_timestamp,5);
     seq_number = frame->seq_num;
     firstPath = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, 2);
+    ccp_master_address = frame->long_address;
     ccp_rx = 1;
 
     int32_t tracking_interval = (int32_t) dw1000_read_reg(inst, RX_TTCKI_ID, 0, sizeof(int32_t));
@@ -549,7 +553,7 @@ dw1000_ccp_blink(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     //frame->transmission_timestamp = previous_frame->transmission_timestamp + 2 * ((uint64_t)inst->ccp->period << 15);
     seq_number = frame->seq_num;
     previous_frame->seq_num = frame->seq_num;
-    frame->long_address = inst->my_short_address;
+    frame->long_address = inst->my_long_address;
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_blink_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(ieee_blink_frame_t), 0, true); 

@@ -366,6 +366,7 @@ uint8_t blink_time[5];
 uint8_t blink_seq_number = 0;
 uint8_t blink_rx = 0;
 uint16_t blink_firstPath = 0;
+uint64_t tag_address;
 static struct os_callout blink_send_callout;
 void blink_send(struct os_event *ev);
 
@@ -394,9 +395,10 @@ blink_rx_complete_cb(struct _dw1000_dev_instance_t * inst){
 #else
     frame->reception_timestamp = dw1000_read_rxtime(inst);
 #endif
-    memcpy(blink_time,&frame->reception_timestamp,5);
+    memcpy(blink_time, &frame->reception_timestamp, 5);
     blink_seq_number = frame->seq_num;
     blink_firstPath = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, 2);
+    tag_address = frame->long_address;
     blink_rx = 1;
 #if 0
     int32_t tracking_interval = (int32_t) dw1000_read_reg(inst, RX_TTCKI_ID, 0, sizeof(int32_t));
@@ -540,7 +542,7 @@ dw1000_blink_blink(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode
 
     //frame->transmission_timestamp = previous_frame->transmission_timestamp + 2 * ((uint64_t)inst->blink->period << 15);
     frame->seq_num += inst->blink->nframes;
-    frame->long_address = inst->my_short_address;
+    frame->long_address = inst->my_long_address;
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_blink_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(ieee_blink_frame_t), 0, true);
