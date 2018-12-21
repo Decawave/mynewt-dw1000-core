@@ -747,11 +747,11 @@ ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t *
         return false;
 
     if (os_sem_get_count(&ccp->sem) == 0){
+        os_error_t err = os_sem_release(&ccp->sem);
+        assert(err == OS_OK); 
         DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp:rx_timeout_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
         STATS_INC(inst->ccp->stat, rx_timeout);
-        os_error_t err = os_sem_release(&ccp->sem);
-        assert(err == OS_OK); 
         return true;   
     }
     return false;
@@ -768,9 +768,9 @@ static bool
 ccp_reset_cb(struct _dw1000_dev_instance_t * inst,  dw1000_mac_interface_t * cbs){
     /* Place holder */
     if(os_sem_get_count(&inst->ccp->sem) == 0){
-        STATS_INC(inst->ccp->stat, reset);
         os_error_t err = os_sem_release(&inst->ccp->sem);
         assert(err == OS_OK);   
+        STATS_INC(inst->ccp->stat, reset);
         return true;    
     }
     return false;   // CCP is an observer and should not return true
