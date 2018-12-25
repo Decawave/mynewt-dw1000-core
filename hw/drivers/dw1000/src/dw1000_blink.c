@@ -469,7 +469,7 @@ blink_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
     }
 #endif
 
-    os_callout_reset(&blink_send_callout, OS_TICKS_PER_SEC/4);
+    os_callout_reset(&blink_send_callout, OS_TICKS_PER_SEC/20);
     os_sem_release(&blink->sem);
     return true;
 }
@@ -579,7 +579,7 @@ void blink_send(struct os_event *ev) {
    // dw1000_blink_instance_t * blink = inst->blink;
 
    if(dw1000_blink_blink(inst, DWT_BLOCKING).start_tx_error)
-       os_callout_reset(&blink_send_callout, OS_TICKS_PER_SEC/4);
+       os_callout_reset(&blink_send_callout, OS_TICKS_PER_SEC/20);
 }
 
 void
