@@ -44,7 +44,10 @@ extern "C" {
 #include <os/os_mutex.h>
 #include <hal/hal_spi.h>
 #include <dw1000/dw1000_regs.h>
-
+#include <dw1000/dw1000_stats.h>
+#if MYNEWT_VAL(CIR_ENABLED)
+#include <cir/cir.h>
+#endif
 
 #define DWT_DEVICE_ID   (0xDECA0130) //!< Decawave Device ID 
 #define DWT_SUCCESS (0)              //!< DWT Success
@@ -86,6 +89,7 @@ typedef enum _dw1000_extension_id_t{
     DW1000_LWIP,
     DW1000_PAN,                              //!< Personal area network
     DW1000_PROVISION,                        //!< Provisioning
+    DW1000_CIR,                              //!< Channel impulse response 
     DW1000_APP0 = 1024, 
     DW1000_APP1, 
     DW1000_APP2
@@ -189,17 +193,29 @@ typedef struct _dw1000_dev_config_t{
     uint32_t LDO_enable:1;                  //!< Enables LDO
     uint32_t wakeup_rx_enable:1;            //!< Enables wakeup_rx_enable 
     uint32_t sleep_enable:1;                //!< Enables sleep_enable bit
+    uint32_t cir_enable:1;                  //!< Enables reading CIR as default
+    uint32_t pmem_enable:1;                 //!< Enables reading Preamble memory as default behaviour
 }dw1000_dev_config_t;
 
 //! DW1000 receiver diagnostics parameters.
 typedef struct _dw1000_dev_rxdiag_t{
-    uint16_t    fp_idx;             //!< First path index (10.6 bits fixed point integer)
-    uint16_t    fp_amp;             //!<  Amplitude at floor(index FP) + 1
-    uint16_t    rx_std;             //!<  Standard deviation of noise
-    uint16_t    fp_amp2;            //!<  Amplitude at floor(index FP) + 2
-    uint16_t    fp_amp3;            //!<  Amplitude at floor(index FP) + 3
-    uint16_t    cir_pwr;            //!<  Channel Impulse Response max growth CIR
-    uint16_t    pacc_cnt;           //!<  Count of preamble symbols accumulated
+    union {
+        struct _rx_time {
+            uint32_t    fp_idx:16;          //!< First path index (10.6 bits fixed point integer)
+            uint32_t    fp_amp:16;          //!<  Amplitude at floor(index FP) + 1
+        };
+        uint32_t rx_time;
+    };
+    union {
+        struct _rx_fqual {
+            uint64_t    rx_std:16;          //!<  Standard deviation of noise
+            uint64_t    fp_amp2:16;         //!<  Amplitude at floor(index FP) + 2
+            uint64_t    fp_amp3:16;         //!<  Amplitude at floor(index FP) + 3
+            uint64_t    cir_pwr:16;         //!<  Channel Impulse Response max growth CIR
+        };
+        uint64_t rx_fqual;
+    };
+    uint16_t    pacc_cnt;                   //!<  Count of preamble symbols accumulated
 } __attribute__((packed, aligned(1))) dw1000_dev_rxdiag_t;
 
 //! physical attributes per IEEE802.15.4-2011 standard, Table 101
@@ -224,6 +240,7 @@ typedef struct _dw1000_mac_interface_t {
     uint16_t id;
     bool (* tx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Transmit complete callback
     bool (* rx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive complete callback
+    bool (* cir_complete_cb)(struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< CIR complete callback, prior to RXEN
     bool (* rx_timeout_cb)  (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive timeout callback
     bool (* rx_error_cb)    (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive error callback
     bool (* tx_error_cb)    (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Transmit error callback  
@@ -242,6 +259,8 @@ typedef struct _dw1000_dev_instance_t{
     struct os_sem spi_nb_sem;                  //!< Semaphore for nonblocking rd/wr operations
     struct os_sem sem;                         //!< semphore for low level mac/phy functions
     struct os_mutex mutex;                     //!< os_mutex
+    uint32_t epoch; 
+    uint8_t idx;                               //!< instance number number {0, 1, 2 etc}
 
     SLIST_HEAD(,_dw1000_mac_interface_t) interface_cbs;
 
@@ -253,6 +272,8 @@ typedef struct _dw1000_dev_instance_t{
         uint16_t fctrl;                         //!< Reported frame control 
         uint8_t fctrl_array[sizeof(uint16_t)];  //!< Endianness safe interface
     };
+
+    STATS_SECT_DECL(mac_stat_section) stat;
     uint16_t frame_len;            //!< Reported frame length
     uint8_t spi_num;               //!< SPI number
     uint8_t irq_pin;               //!< Interrupt request pin
@@ -264,8 +285,10 @@ typedef struct _dw1000_dev_instance_t{
     uint64_t timestamp;            //!< Timestamp
     uint64_t rxtimestamp;          //!< Receive timestamp
     uint64_t txtimestamp;          //!< Transmit timestamp
+    int32_t carrier_integrator;
     uint16_t PANID;                //!< personal network inetrface id
-    uint16_t slot_id;              //!< Slot id  
+    uint16_t slot_id;              //!< Slot id 
+    uint16_t cell_id;              //!< Cell id  
     uint32_t partID;               //!< Identifier of a particular part design
     uint32_t lotID;                //!< Identification number assigned to a particular quantity
     uint16_t otp_rev;              //!< OTP parameter revision
@@ -276,7 +299,7 @@ typedef struct _dw1000_dev_instance_t{
     uint32_t tx_fctrl;             //!< Transmit frame control register parameter 
     uint32_t sys_status;           //!< SYS_STATUS_ID for current event
     uint16_t rx_antenna_delay;     //!< Receive antenna delay
-    uint16_t tx_antenna_delay;     //!< Transmit antenna delay   
+    uint16_t tx_antenna_delay;     //!< Transmit antenna delay  
     
     struct hal_spi_settings spi_settings;  //!< Structure of SPI settings in hal layer 
     struct os_eventq eventq;     //!< Structure of os_eventq that has event queue 
@@ -285,11 +308,11 @@ typedef struct _dw1000_dev_instance_t{
     uint8_t task_prio;           //!< Priority of the interrupt task  
     os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]  //!< Stack of the interrupt task 
         __attribute__((aligned(OS_STACK_ALIGNMENT)));
+    uint8_t rxbuf[RX_BUFFER_LEN];               //!< local rxbuf  
     struct _dw1000_rng_instance_t * rng;     //!< DW1000 rng instance 
 #if MYNEWT_VAL(LWIP_ENABLED) 
     struct _dw1000_lwip_instance_t * lwip;   //!< DW1000 lwip instance
 #endif
-
 #if MYNEWT_VAL(PROVISION_ENABLED)
     struct _dw1000_provision_instance_t * provision; //!< DW1000 provision instance
 #endif 
@@ -306,16 +329,18 @@ typedef struct _dw1000_dev_instance_t{
     struct _tdma_instance_t * tdma;               //!< DW1000 tdma instance
 #endif
 #if MYNEWT_VAL(NRNG_ENABLED)
-    struct _dw1000_nrng_instance_t* nrng;
+    struct _dw1000_nrng_instance_t * nrng;
+#endif
+#if MYNEWT_VAL(CIR_ENABLED)
+    struct _cir_instance_t * cir;                  //!< CIR instance
 #endif
     dw1000_dev_rxdiag_t rxdiag;                    //!< DW1000 receive diagnostics
     dw1000_dev_config_t config;                    //!< DW1000 device configurations  
     dw1000_dev_control_t control;                  //!< DW1000 device control parameters      
-//    dw1000_dev_control_t control_rx_context;       //!< DW1000 device control receive context 
-//    dw1000_dev_control_t control_tx_context;       //!< DW1000 device control transmit context  
     dw1000_dev_status_t status;                    //!< DW1000 device status 
     dw1000_dev_role_t dev_type;                    //!< Type of the device (tag/node)
     struct _phy_attributes_t attrib;
+    
 }dw1000_dev_instance_t;
 
 //! SPI parameters

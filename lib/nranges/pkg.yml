@@ -32,6 +32,7 @@ pkg.cflags:
 pkg.deps:
     - "@mynewt-dw1000-core/hw/drivers/dw1000"
     - "@mynewt-dw1000-core/lib/rng"
+    - "@mynewt-dw1000-core/lib/tdma"
 
 pkg.lflags:
     - "-lm"

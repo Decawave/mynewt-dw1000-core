@@ -26,6 +26,9 @@ syscfg.defs:
     DW1000_DEVICE_FREQ:  
         description: 'Center frequency Hz'
         value: ((float){6489.6f})
+    DW1000_RXTX_LEDS:
+        description: 'Enable showing rx and tx activity on gpios'
+        value: 1
     DW1000_RNG_INDICATE_LED:
         description: 'Toggle LED_1 for every range packet received'
         value: 0

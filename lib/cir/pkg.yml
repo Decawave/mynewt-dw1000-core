@@ -17,23 +17,23 @@
 # under the License.
 #
 
-pkg.name: lib/lwip
-pkg.description: lwIP library
-pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
-pkg.homepage: "http://www.decawave.com/"
+pkg.name: lib/cir
+pkg.description: Channel Impulse Response
+pkg.author: "Paul Kettle <Paul.Kettle@decawave.com>"
+pkg.homepage: "http://www.decawave.com]/"
 pkg.keywords:
     - dw1000
-    - lwIP
-
+    - uwb
+    - cir
+    - pmem
+    
 pkg.cflags:
     - "-std=gnu99"
     - "-fms-extensions"
 
-pkg.lflags:
-    - "-lm"
-
 pkg.deps:
     - "@mynewt-dw1000-core/hw/drivers/dw1000"
-
-pkg.deps.DW1000_LWIP:
-    - "@mynewt-dw1000-core/net/ip/lwip_base"
+    - "@apache-mynewt-core/encoding/json"
+        
+pkg.init:
+    cir_pkg_init: 405

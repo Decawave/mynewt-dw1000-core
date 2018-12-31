@@ -2,14 +2,15 @@ syscfg.defs:
     PAN_ENABLED:
         description: 'Private Area Network functionality'
         value: 1
-        restrictions: PAN_PERIOD
-    PAN_PERIOD:
-        description: >
-            PAN Discovery Packets Period
-        value: ((uint32_t){0x1000})
     PAN_TX_HOLDOFF:
         description: 'tx holdoff delay for PAN (usec)'
         value: ((uint32_t){0x0300})
     PAN_RX_TIMEOUT:
         description: 'TOA timeout delay for PAN (usec)'
         value: ((uint16_t){0x0600})
+    PAN_LEASE_TIME:
+        description: 'PAN address requested lease time (ccp superframe periods)'
+        value: ((uint16_t){300})
+    PAN_LEASE_EXP_MARGIN:
+        description: 'Start requesting a new pan address when less than this many ms left of lease'
+        value: (500)

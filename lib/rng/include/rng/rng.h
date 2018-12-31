@@ -47,6 +47,20 @@ extern "C" {
 #include <dw1000/dw1000_ftypes.h>
 #include <dw1000/triad.h>
 #include <stats/stats.h>
+#include <rng/slots.h>
+
+STATS_SECT_START(rng_stat_section)
+    STATS_SECT_ENTRY(rng_request)
+    STATS_SECT_ENTRY(rng_listen)
+    STATS_SECT_ENTRY(tx_complete)
+    STATS_SECT_ENTRY(rx_complete)
+    STATS_SECT_ENTRY(rx_unsolicited)
+    STATS_SECT_ENTRY(rx_error)
+    STATS_SECT_ENTRY(tx_error)
+    STATS_SECT_ENTRY(rx_timeout)
+    STATS_SECT_ENTRY(reset)
+STATS_SECT_END
+
 
 //! Range configuration parameters.
 typedef struct _dw1000_rng_config_t{
@@ -127,7 +141,9 @@ typedef union {
 //! Structure of range instance
 typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * parent; //!< Structure of DW1000_dev_instance
+    STATS_SECT_DECL(rng_stat_section) stat; //!< Stats instance
     uint16_t code;                          //!< Range profile code
+    uint16_t seq_num;                       //!< Local sequence number
     struct os_sem sem;                      //!< Structure of semaphores
     uint64_t delay;                         //!< Delay in transmission
     dw1000_rng_config_t config;             //!< Structure of range config

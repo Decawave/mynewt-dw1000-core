@@ -42,6 +42,7 @@
 #include <rng/rng.h>
 #endif
 
+
 #if MYNEWT_VAL(DW1000_CLI)
 
 static int dw1000_cli_cmd(int argc, char **argv);

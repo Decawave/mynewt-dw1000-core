@@ -93,7 +93,7 @@ tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots
         tdma->period = period; 
         tdma->parent = inst;
 #ifdef TDMA_TASKS_ENABLE
-        tdma->task_prio = inst->task_prio + 0x1;
+        tdma->task_prio = inst->task_prio + 0x4;
 #endif
         inst->tdma = tdma;
     }else{
@@ -149,11 +149,39 @@ void tdma_pkg_init(void){
 
     printf("{\"utime\": %lu,\"msg\": \"tdma_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
-    dw1000_dev_instance_t * inst = hal_dw1000_inst(0);
-    tdma_init(inst, MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS)); 
+#if MYNEWT_VAL(DW1000_DEVICE_0) 
+        tdma_init(hal_dw1000_inst(0), MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS)); 
+#endif
+#if MYNEWT_VAL(DW1000_DEVICE_1)
+        tdma_init(hal_dw1000_inst(1), MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS)); 
+#endif
+#if MYNEWT_VAL(DW1000_DEVICE_2)
+        tdma_init(hal_dw1000_inst(2), MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS));     
+#endif
+
 }
 
 #ifdef TDMA_TASKS_ENABLE
+
+
+/**
+ * API to feed the sanity watchdog
+ *
+ * @return void
+ */
+#if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
+static void
+sanity_feeding_cb(struct os_event * ev)
+{
+    assert(ev != NULL);
+    assert(ev->ev_arg != NULL);
+
+    tdma_instance_t * tdma = (void *)ev->ev_arg;
+    os_sanity_task_checkin(0);
+    os_callout_reset(&tdma->sanity_cb, OS_TICKS_PER_SEC);
+}
+#endif
+
 /**
  * API to initialise a higher priority task for the tdma slot tasks.
  *
@@ -180,6 +208,10 @@ static void tdma_tasks_init(struct _tdma_instance_t * inst)
                      inst->task_stack,
                      DW1000_DEV_TASK_STACK_SZ);
     }       
+#if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
+    os_callout_init(&inst->sanity_cb, &inst->eventq, sanity_feeding_cb, (void *) inst);
+    os_callout_reset(&inst->sanity_cb, OS_TICKS_PER_SEC);
+#endif
 }
 
 /**
@@ -194,9 +226,6 @@ static void tdma_task(void *arg)
 {
     tdma_instance_t * inst = arg;
     while (1) {
-#if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
-        os_sanity_task_checkin(0);
-#endif
         os_eventq_run(&inst->eventq);
     }
 }
@@ -241,7 +270,7 @@ tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
    tdma_instance_t * tdma = inst->tdma;
     
-    if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
+    if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64 && inst->ccp->config.role == CCP_ROLE_MASTER){
         DIAGMSG("{\"utime\": %lu,\"msg\": \"tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         if (inst->tdma != NULL && inst->tdma->status.initialized){
             tdma->os_epoch = os_cputime_get32();
@@ -307,9 +336,10 @@ tdma_assign_slot(struct _tdma_instance_t * inst, void (* callout )(struct os_eve
 void 
 tdma_release_slot(struct _tdma_instance_t * inst, uint16_t idx){
     assert(idx < inst->nslots);
-    assert(inst->slot[idx]);
-    free(inst->slot[idx]);
-    inst->slot[idx] =  NULL;
+    if (inst->slot[idx]) {
+        free(inst->slot[idx]);
+        inst->slot[idx] =  NULL;
+    }
 }
 
 /** 
@@ -337,9 +367,9 @@ tdma_superframe_event_cb(struct os_event * ev){
         if (tdma->slot[i]){
             hal_timer_start_at(&tdma->slot[i]->timer, tdma->os_epoch
                 + os_cputime_usecs_to_ticks(
-                    (uint32_t) (i * dw1000_dwt_usecs_to_usecs(tdma->period)/tdma->nslots) -
-                    (uint32_t)ceilf(dw1000_phy_SHR_duration(&tdma->parent->attrib)) -
-                    MYNEWT_VAL(OS_LATENCY))
+                    (uint32_t) (i * dw1000_dwt_usecs_to_usecs(tdma->period)/tdma->nslots) 
+                    - (uint32_t)ceilf(dw1000_phy_SHR_duration(&tdma->parent->attrib)) 
+                    - MYNEWT_VAL(OS_LATENCY))
             );
         }
     }
@@ -372,4 +402,21 @@ slot_timer_cb(void * arg){
 #endif
 }
 
+/**
+ * API to stop tdma operation. Releases each slot and stops all cputimer callbacks
+ *
+ * @param inst       Pointer to _tdma_instance_t.
+ *
+ * @return void
+ */
+void 
+tdma_stop(struct _tdma_instance_t * tdma)
+{
+    for (uint16_t i = 0; i < tdma->nslots; i++) {
+        if (tdma->slot[i]){
+            os_cputime_timer_stop(&tdma->slot[i]->timer);
+            tdma_release_slot(tdma, i);
+        }
+    }
+}
 

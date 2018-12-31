@@ -25,7 +25,7 @@
  * @date Oct 20 2018
  * @brief Wireless Clock Synchronization
  *
- * @details This is a topleval package for managing Clock Calibration using Clock Calibration Packet (CCP). 
+ * @details This is a top-level package for managing Clock Calibration using Clock Calibration Packet (CCP). 
  * In an RTLS system the Clock Master send a periodic blink which is received by the anchor nodes. The device driver model on the node
  * handles the ccp frame and schedules a callback for post-processing of the event. The Clock Calibration herein is an example 
  * of this post-processing. In TDOA-base RTLS system clock synchronization is essential, this can be either wired or wireless depending on the requirements.
@@ -153,8 +153,8 @@ void wcs_update_cb(struct os_event * ev){
         timescale_instance_t * timescale = inst->timescale; 
         timescale_states_t * states = (timescale_states_t *) (inst->timescale->eke->x); 
 
-        inst->master_epoch = frame->transmission_timestamp;
-        inst->local_epoch = frame->reception_timestamp;
+        inst->master_epoch = ccp->epoch_master; //->transmission_timestamp;
+        inst->local_epoch = ccp->epoch;//frame->reception_timestamp;
         
         if (inst->status.initialized == 0 ){
             double skew = (double ) dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator);
@@ -167,14 +167,7 @@ void wcs_update_cb(struct os_event * ev){
             double q[] = {MYNEWT_VAL(TIMESCALE_QVAR) * 1.0, MYNEWT_VAL(TIMESCALE_QVAR) * 0.1, MYNEWT_VAL(TIMESCALE_QVAR) * 0.01};
             double r[] = {MYNEWT_VAL(TIMESCALE_RVAR), MYNEWT_VAL(TIMESCALE_RVAR) * 1e10};
             double z[] = {(double)inst->local_epoch, skew};
-#ifdef TICTOC
-            uint32_t tic = os_cputime_ticks_to_usecs(os_cputime_get32());
-#endif
             inst->status.valid  = timescale_main(timescale, z, q, r, T).valid;
-#ifdef TICTOC
-            uint32_t toc = os_cputime_ticks_to_usecs(os_cputime_get32());
-            printf("{\"utime\": %lu,\"slot_timer_cb_tic_toc\": %ld}\n",toc, (toc - tic));
-#endif
         }
 /*
         if(timescale->status.illconditioned || timescale->status.NotPositiveDefinitive ){
@@ -186,9 +179,9 @@ void wcs_update_cb(struct os_event * ev){
             timescale_init(inst->timescale, x0, q, T);
         }
 */
-        inst->status.valid = fabs(1.0l - states->skew * (1e-6l/((uint64_t)1 << 16))) < 1e-5;
+        inst->status.valid = fabs(1.0l - states->skew * (1e-6l/((uint64_t)1UL << 16))) < 1e-5;
         if (inst->status.valid)
-            inst->skew = 1.0l - states->skew * (1e-6l/((uint64_t)1 << 16));
+            inst->skew = 1.0l - states->skew * (1e-6l/((uint64_t)1UL << 16));
         else {
             inst->skew = 0.0l;
         }
@@ -221,13 +214,13 @@ wcs_postprocess(struct os_event * ev){
     dw1000_ccp_instance_t * ccp = (void *)inst->ccp; 
     ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx-1)%ccp->nframes]; 
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
-    wcs_instance_t * wcs = ccp->wcs;
-    timescale_states_t * states = (timescale_states_t *) (wcs->timescale->eke->x); 
+//    wcs_instance_t * wcs = ccp->wcs;
+//    timescale_states_t * states = (timescale_states_t *) (wcs->timescale->eke->x); 
     printf("{\"utime\": %lu,\"wcs\": [%llu,%llu,%llu],\"skew\": %llu,\"nT\": [%d,%d,%d]}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),
-        (uint64_t) frame->transmission_timestamp,
-        (uint64_t) frame->reception_timestamp,
-        (uint64_t) states->time,//wcs_master_clock_reference(ccp->parent, frame->reception_timestamp),
+        (uint64_t) inst->master_epoch,
+        (uint64_t) inst->local_epoch,
+        (uint64_t) wcs_local_to_master(ccp->parent,  inst->local_epoch + frame->transmission_interval) - inst->master_epoch - frame->transmission_interval,
         *(uint64_t *)&(inst->skew),
         inst->nT,
         frame->seq_num,
@@ -266,14 +259,26 @@ wcs_set_postprocess(wcs_instance_t * inst, os_event_fn * postprocess){
 inline uint64_t wcs_dtu_time_adjust(struct _dw1000_dev_instance_t * inst, uint64_t dtu_time){
     wcs_instance_t * wcs = inst->ccp->wcs;
     assert(wcs);
-    timescale_states_t * states = (timescale_states_t *) (wcs->timescale->eke->x); 
-
+    
     if (wcs->status.valid)
-       dtu_time = (uint64_t) roundl(dtu_time * (states->skew * (1e-6l/((uint64_t)1 << 16))));
-//       dtu_time = (uint64_t) roundl(dtu_time / (states->skew * (1e-6l/((uint64_t)1 << 16))));
+       dtu_time = (uint64_t) roundl(dtu_time * wcs_dtu_time_correction(inst));
 
     return dtu_time & 0x00FFFFFFFFFFUL;
 }
+
+inline double wcs_dtu_time_correction(struct _dw1000_dev_instance_t * inst){
+    wcs_instance_t * wcs = inst->ccp->wcs;
+    assert(wcs);
+    
+    timescale_states_t * states = (timescale_states_t *) (wcs->timescale->eke->x); 
+
+    double correction = 1.0l;
+    if (wcs->status.valid)
+       correction = (double) roundl(states->skew * (1e-6l/(1UL << 16)));
+
+    return correction;
+}
+
 
 /**
  * API compensate for clock skew and offset relative to master clock
@@ -288,10 +293,10 @@ inline uint64_t wcs_local_to_master(struct _dw1000_dev_instance_t * inst, uint64
     wcs_instance_t * wcs = inst->ccp->wcs;
     assert(wcs);
     timescale_states_t * states = (timescale_states_t *) (wcs->timescale->eke->x); 
-    uint64_t delta = (dtu_time - wcs->local_epoch) & 0x0FFFFFFFFFFU;
-    
+    uint64_t delta = (dtu_time - wcs->local_epoch) & 0x0FFFFFFFFFFUL;
+
     if (wcs->status.valid)
-        dtu_time = wcs->master_epoch + (uint64_t) round(delta * (states->skew * (1e-6l/((uint64_t)1 << 16))));    
+        dtu_time = wcs->master_epoch + (uint64_t) round(delta / (states->skew * (1e-6l/(1UL << 16))));    
 
     return dtu_time & 0x0FFFFFFFFFFUL;
 }

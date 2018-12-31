@@ -20,7 +20,7 @@
  */
 
 /**
- * @file twr_ss.c
+ * @file twr_ds_ext.c
  * @author paul kettle
  * @date 2018
  * @brief Range 
@@ -264,26 +264,26 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                 
-                if(inst->status.lde_error)
-                    break;
-                uint64_t request_timestamp = dw1000_read_rxtime(inst);  
+                uint64_t request_timestamp = inst->rxtimestamp;
                 uint64_t response_tx_delay = request_timestamp + ((uint64_t) g_config.tx_holdoff_delay << 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
-            
-                frame->reception_timestamp = request_timestamp;
-                frame->transmission_timestamp = response_timestamp;
+
+                frame->reception_timestamp =  (uint32_t) (request_timestamp & 0xFFFFFFFFUL);
+                frame->transmission_timestamp =  (uint32_t) (response_timestamp & 0xFFFFFFFFUL);
+
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
 #if MYNEWT_VAL(WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
-                frame->carrier_integrator  = -dw1000_read_carrier_integrator(inst);
+                frame->carrier_integrator  = - inst->carrier_integrator;
 #endif
                 frame->code = DWT_DS_TWR_EXT_T1;
 
                 dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_rng_response_frame_t));
                 dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true); 
                 dw1000_set_wait4resp(inst, true);    
+
                 dw1000_set_delay_start(inst, response_tx_delay);   
                 uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_rng_response_frame_t)) 
                                 + g_config.rx_timeout_period        
@@ -302,30 +302,25 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 // This code executes on the device that initiated the original request, and is now preparing the next series of timestamps
                 // The 1st frame now contains a local copy of the initial first side of the double sided scheme. 
          
-                if(inst->status.lde_error)
+
+                if (inst->frame_len != sizeof(ieee_rng_response_frame_t)) 
                     break;
 
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                 twr_frame_t * next_frame = rng->frames[(rng->idx+1)%rng->nframes];
    
-                if (inst->frame_len == sizeof(ieee_rng_response_frame_t))
-                    dw1000_read_rx(inst, frame->array + sizeof(ieee_rng_request_frame_t),  
-                                        sizeof(ieee_rng_request_frame_t), 
-                                        sizeof(ieee_rng_response_frame_t) - sizeof(ieee_rng_request_frame_t)
-                    );
-                else 
-                    break;
-                
-                frame->request_timestamp = next_frame->request_timestamp = dw1000_read_txtime_lo(inst);    // This corresponds to when the original request was actually sent
-                frame->response_timestamp = next_frame->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received      
-                        
+                uint64_t request_timestamp = inst->rxtimestamp;
+                frame->request_timestamp = next_frame->request_timestamp = dw1000_read_txtime_lo(inst); // This corresponds to when the original request was actually sent
+                frame->response_timestamp = next_frame->response_timestamp = (uint32_t)(request_timestamp & 0xFFFFFFFFUL); // This corresponds to the response just received
+                     
                 uint16_t src_address = frame->src_address; 
                 uint8_t seq_num = frame->seq_num; 
+
 #if MYNEWT_VAL(WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
-                frame->carrier_integrator  = dw1000_read_carrier_integrator(inst);
+                frame->carrier_integrator  = inst->carrier_integrator;
 #endif
                 // Note:: Advance to next frame 
                 frame = next_frame;                            
@@ -337,12 +332,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 if(inst->status.lde_error)
                     break;
 
-                uint64_t request_timestamp = dw1000_read_rxtime(inst);  
                 uint64_t response_tx_delay = request_timestamp + ((uint64_t)g_config.tx_holdoff_delay << 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
-                            
-                frame->reception_timestamp = request_timestamp;
-                frame->transmission_timestamp = response_timestamp;
+                   
+                frame->reception_timestamp =  (uint32_t) (request_timestamp & 0xFFFFFFFFUL);
+                frame->transmission_timestamp =  (uint32_t) (response_timestamp & 0xFFFFFFFFUL);
 
                 // Final callback, prior to transmission, use this callback to populate the EXTENDED_FRAME fields.
                 if (cbs!=NULL && cbs->final_cb) 
@@ -368,33 +362,25 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
         case DWT_DS_TWR_EXT_T2:
             {
-                 // This code executes on the device that responded to the original request, and is now preparing the final timestamps
-
-                if(inst->status.lde_error)
-                    break;
-                    
+                // This code executes on the device that responded to the original request, and is now preparing the final timestamps
+        
                 dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * previous_frame = rng->frames[(uint16_t)(rng->idx-1)%rng->nframes];
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
 
-                if (inst->frame_len >= sizeof(twr_frame_t))
-                    dw1000_read_rx(inst, frame->array + sizeof(ieee_rng_request_frame_t),  
-                                        sizeof(ieee_rng_request_frame_t), 
-                                        sizeof(twr_frame_t) - sizeof(ieee_rng_request_frame_t)
-                    );
-                else 
-                    break;
-
                 previous_frame->request_timestamp = frame->request_timestamp;
                 previous_frame->response_timestamp = frame->response_timestamp;
+
+                uint64_t request_timestamp = inst->rxtimestamp;
                 frame->request_timestamp = dw1000_read_txtime_lo(inst);   // This corresponds to when the original request was actually sent
-                frame->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received            
+                frame->response_timestamp = (uint32_t) (request_timestamp & 0xFFFFFFFFUL);  // This corresponds to the response just received       
+                
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
 #if MYNEWT_VAL(WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
-                frame->carrier_integrator  = - dw1000_read_carrier_integrator(inst);
+                frame->carrier_integrator  = - inst->carrier_integrator;
 #endif
                 frame->code = DWT_DS_TWR_EXT_FINAL;
 
@@ -428,13 +414,10 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 // This code executes on the device that initialed the original request, and has now receive the final response timestamp. 
                 // This marks the completion of the double-single-two-way request. 
            
+                if (inst->config.dblbuffon_enabled && inst->config.rxauto_enable)  
+                    dw1000_stop_rx(inst); // Need to prevent timeout event 
+                
                 dw1000_rng_instance_t * rng = inst->rng; 
-                twr_frame_t * frame = inst->rng->frames[(rng->idx)%rng->nframes];
-                if (inst->frame_len >= sizeof(twr_frame_t))
-                    dw1000_read_rx(inst, frame->array + sizeof(ieee_rng_request_frame_t),  
-                                        sizeof(ieee_rng_request_frame_t), 
-                                        sizeof(twr_frame_t) - sizeof(ieee_rng_request_frame_t)
-                    );   
                 STATS_INC(g_stat, complete);          
                 os_sem_release(&rng->sem);
                 dw1000_mac_interface_t * cbs = NULL;

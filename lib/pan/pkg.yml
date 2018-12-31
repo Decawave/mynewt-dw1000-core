@@ -25,6 +25,10 @@ pkg.keywords:
     - dw1000
     - uwb
 
+pkg.deps:
+    - "@apache-mynewt-core/mgmt/imgmgr"
+    - "@apache-mynewt-core/boot/bootutil"
+
 pkg.cflags:
     - "-std=gnu99"
     - "-fms-extensions"

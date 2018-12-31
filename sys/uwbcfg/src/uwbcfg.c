@@ -47,6 +47,10 @@ static struct uwbcfg_cbs_head uwbcfg_callbacks;
             .tx_antenna_dly = "0x4050",         \
     }
 
+/** Differing from dw1000_power_value in that fine is interpreted as integer steps
+ *  Thus to get 15.5dB from fine, set FINE to 31 */
+#define power_value(COARSE,FINE) ((COARSE<<5) + FINE)
+
 static char *uwbcfg_get(int argc, char **argv, char *val, int val_len_max);
 static int uwbcfg_set(int argc, char **argv, char *val);
 static int uwbcfg_commit(void);
@@ -196,13 +200,13 @@ uwbcfg_commit(void)
 
     txpwr = inst->config.txrf.BOOSTNORM;
     switch (coarse) {
-    case(18): txpwr = dw1000_power_value(DW1000_txrf_config_18db, fine);break;
-    case(15): txpwr = dw1000_power_value(DW1000_txrf_config_15db, fine);break;
-    case(12): txpwr = dw1000_power_value(DW1000_txrf_config_12db, fine);break;
-    case(9):  txpwr = dw1000_power_value(DW1000_txrf_config_9db, fine);break;
-    case(6):  txpwr = dw1000_power_value(DW1000_txrf_config_6db, fine);break;
-    case(3):  txpwr = dw1000_power_value(DW1000_txrf_config_3db, fine);break;
-    case(0):  txpwr = dw1000_power_value(DW1000_txrf_config_0db, fine);break;
+    case(18): txpwr = power_value(DW1000_txrf_config_18db, fine);break;
+    case(15): txpwr = power_value(DW1000_txrf_config_15db, fine);break;
+    case(12): txpwr = power_value(DW1000_txrf_config_12db, fine);break;
+    case(9):  txpwr = power_value(DW1000_txrf_config_9db, fine);break;
+    case(6):  txpwr = power_value(DW1000_txrf_config_6db, fine);break;
+    case(3):  txpwr = power_value(DW1000_txrf_config_3db, fine);break;
+    case(0):  txpwr = power_value(DW1000_txrf_config_0db, fine);break;
     default:
         printf("Warning, invalid coarse txpower config\n");
     }

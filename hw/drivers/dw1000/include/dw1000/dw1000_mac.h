@@ -40,6 +40,7 @@ extern "C" {
 #endif
 
 #include <hal/hal_spi.h>
+#include <stats/stats.h>
 #include <dw1000/dw1000_dev.h>
 
 #define DWT_DEVICE_ID   (0xDECA0130)        //!< DW1000 MP device ID
@@ -188,7 +189,8 @@ float dw1000_calc_rssi(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_
 float dw1000_get_rssi(struct _dw1000_dev_instance_t * inst);
 float dw1000_calc_fppl(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag);
 float dw1000_get_fppl(struct _dw1000_dev_instance_t * inst);
-
+float dw1000_estimate_los(float rssi, float fppl);
+    
 int32_t dw1000_read_carrier_integrator(struct _dw1000_dev_instance_t * inst);
 float dw1000_calc_clock_offset_ratio(struct _dw1000_dev_instance_t * inst, int32_t integrator_val);
 

@@ -9,7 +9,7 @@ syscfg.defs:
         description: 'TOA timeout delay for TWR (usec)'
         value: ((uint16_t){0x10})
       NRNG_TX_GUARD_DELAY:
-        value: ((uint16_t){0x200})
+        value: ((uint16_t){0x10})
       NRNG_DEVICE_TYPE:
         description: 'Initiator(tag = 0) or Responder(node = 1)'
         value: 1
@@ -19,3 +19,6 @@ syscfg.defs:
       NRNG_NFRAMES:
         description: 'Number of frames expected'
         value: 2
+      NRNG_VERBOSE:
+        description: 'Show debug output from postprocess'
+        value: 0

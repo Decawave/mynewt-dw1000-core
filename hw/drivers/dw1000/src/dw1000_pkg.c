@@ -52,17 +52,15 @@
  */
 void dw1000_pkg_init(void){
 
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_pkg_init_0\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_dev_config(hal_dw1000_inst(0));
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_pkg_init_1\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_dev_config(hal_dw1000_inst(1));
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_pkg_init_2\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_dev_config(hal_dw1000_inst(2));
 #endif
 

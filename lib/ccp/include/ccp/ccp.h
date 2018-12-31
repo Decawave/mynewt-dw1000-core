@@ -48,7 +48,22 @@ extern "C" {
 #include <dsp/polyval.h>
 #endif
 
-
+STATS_SECT_START(ccp_stat_section)
+    STATS_SECT_ENTRY(master_cnt)
+    STATS_SECT_ENTRY(slave_cnt)
+    STATS_SECT_ENTRY(send)
+    STATS_SECT_ENTRY(listen)
+    STATS_SECT_ENTRY(tx_complete)
+    STATS_SECT_ENTRY(rx_complete)
+    STATS_SECT_ENTRY(rx_relayed)
+    STATS_SECT_ENTRY(rx_unsolicited)
+    STATS_SECT_ENTRY(rx_error)
+    STATS_SECT_ENTRY(tx_start_error)
+    STATS_SECT_ENTRY(tx_relay_error)
+    STATS_SECT_ENTRY(tx_relay_ok)
+    STATS_SECT_ENTRY(rx_timeout)
+    STATS_SECT_ENTRY(reset)
+STATS_SECT_END
 
 //! Timestamps and blink frame format  of ccp frame.
 typedef union {
@@ -95,11 +110,15 @@ typedef struct _dw1000_ccp_config_t{
     uint16_t postprocess:1;           //!< CCP postprocess
     uint16_t fs_xtalt_autotune:1;     //!< Autotune XTALT to Clock Master
     uint16_t role:4;                  //!< dw1000_ccp_role_t
+    uint32_t tx_holdoff_dly;          //!< Relay nodes first holdoff
+    uint32_t tx_guard_dly;            //!< Relay nodes guard delay
+    uint32_t tof_compensation;        //!< TOF relative master TODO: generalise to cascading nodes
 }dw1000_ccp_config_t;
 
 //! ccp instance parameters.
 typedef struct _dw1000_ccp_instance_t{
     struct _dw1000_dev_instance_t * parent;     //!< Pointer to _dw1000_dev_instance_t
+    STATS_SECT_DECL(ccp_stat_section) stat;     //!< Stats instance
 #if MYNEWT_VAL(WCS_ENABLED)
     struct _wcs_instance_t * wcs;               //!< Wireless clock calibration 
 #endif

@@ -47,6 +47,7 @@ static const uint8_t tx_buffer[MYNEWT_VAL(DW1000_HAL_SPI_BUFFER_SIZE)] __attribu
 static dw1000_dev_instance_t hal_dw1000_instances[]= {
     #if  MYNEWT_VAL(DW1000_DEVICE_0)
     [0] = {
+            .idx = 0, 
             .rst_pin  = MYNEWT_VAL(DW1000_DEVICE_0_RST),
             .ss_pin = MYNEWT_VAL(DW1000_DEVICE_0_SS),
             .irq_pin  = MYNEWT_VAL(DW1000_DEVICE_0_IRQ),
@@ -103,13 +104,16 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .LDO_enable = 0,
                 .sleep_enable = 1,
                 .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
-                .rxauto_enable = 1        //!< On error re-enable
+                .rxauto_enable = 1,        //!< On error re-enable
+                .cir_enable = 0,            //!< Default behavior for CIR interface
+                .pmem_enable = 0            //!< Default behavior for Preamble detection memory
             },
             .spi_sem = 0,
             .task_prio = 0x10
     },
     #if  MYNEWT_VAL(DW1000_DEVICE_1)
     [1] = {
+            .idx = 1, 
             .rst_pin  = MYNEWT_VAL(DW1000_DEVICE_1_RST),
             .ss_pin = MYNEWT_VAL(DW1000_DEVICE_1_SS),
             .irq_pin  = MYNEWT_VAL(DW1000_DEVICE_1_IRQ),
@@ -162,13 +166,16 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .LDO_enable = 0,
                 .sleep_enable = 1,
                 .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
-                .rxauto_enable = 1         //!< On error re-enable
+                .rxauto_enable = 1,        //!< On error re-enabl
+                .cir_enable = 0,            //!< Default behavior for CIR interface
+                .pmem_enable = 0            //!< Default behavior for Preamble detection memory
             },
             .spi_sem = 0,
             .task_prio = 0x11
     },
     #if  MYNEWT_VAL(DW1000_DEVICE_2)
     [2] = {
+            .idx = 2, 
             .rst_pin  = MYNEWT_VAL(DW1000_DEVICE_2_RST),
             .ss_pin = MYNEWT_VAL(DW1000_DEVICE_2_SS),
             .irq_pin  = MYNEWT_VAL(DW1000_DEVICE_2_IRQ),
@@ -221,7 +228,9 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .LDO_enable = 0,
                 .sleep_enable = 1,
                 .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
-                .rxauto_enable = 1
+                .rxauto_enable = 1,
+                .cir_enable = 0,            //!< Default behavior for CIR interface
+                .pmem_enable = 0            //!< Default behavior for Preamble detection memory
             },
             .spi_sem = 0
             .task_prio = 0x12

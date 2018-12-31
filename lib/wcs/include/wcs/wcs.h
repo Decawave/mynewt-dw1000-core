@@ -78,6 +78,7 @@ uint32_t wcs_read_rxtime_lo_master(struct _dw1000_dev_instance_t * inst);
 uint64_t wcs_read_txtime_master(struct _dw1000_dev_instance_t * inst);
 uint32_t wcs_read_txtime_lo_master(struct _dw1000_dev_instance_t * inst);
 
+double wcs_dtu_time_correction(struct _dw1000_dev_instance_t * inst);
 uint64_t wcs_dtu_time_adjust(struct _dw1000_dev_instance_t * inst, uint64_t dtu_time);
 uint64_t wcs_local_to_master(struct _dw1000_dev_instance_t * inst, uint64_t dtu_time);
 
