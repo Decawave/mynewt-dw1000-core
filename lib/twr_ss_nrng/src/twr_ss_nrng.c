@@ -338,7 +338,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 #else
                 frame->carrier_integrator  = inst->carrier_integrator;
 #endif   
-                if(idx == nrng->nnodes-1){
+                if(idx == nrng->nnodes){
                     STATS_INC(g_stat, complete);
                     os_sem_release(&nrng->sem);
                     if(!(SLIST_EMPTY(&inst->interface_cbs))){
