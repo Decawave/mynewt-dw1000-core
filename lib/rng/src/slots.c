@@ -41,7 +41,7 @@
  * @param n bitfield to count bits within
  * @return number of set bits
  */
-uint32_t calc_nbits(uint32_t n) {
+uint32_t NumberOfSlots(uint32_t n) {
     uint32_t count = 0;
     while (n) {
         n &= (n-1);
@@ -56,17 +56,18 @@ uint32_t calc_nbits(uint32_t n) {
  * @param n bitfield to count bits within
  * @return number of set bits
  */
-uint32_t calc_slot_idx(uint32_t n) {
+static uint32_t BitPosition(uint32_t n) {
     
     uint32_t count = 0;
     assert(n && (! (n & (n-1)) )); // single bit set
 
     while (n){
         n = n >> 1;
-        ++count; // position of slot of interest
+        ++count; // position of bit within bitfield
     }
     return count;
 }
+
 
 
 /**
@@ -76,19 +77,19 @@ uint32_t calc_slot_idx(uint32_t n) {
  * @param mask
  * @return numerical ordering of bit witin bitfield occurance of bit within bitfield
  */
-uint32_t calc_nslots(uint32_t nslots_mask, uint32_t n, uint8_t mode) {
+uint32_t SlotIndex(uint32_t nslots_mask, uint32_t n, uint8_t mode) {
 
     assert(n && (! (n & (n-1)) )); // single bit set
     assert(n & nslots_mask); // bit set is within ROI
     
-    uint32_t idx = calc_slot_idx(n);
+    uint32_t idx = BitPosition(n);
     uint32_t slot_mask =  (((uint32_t)~0UL >> (sizeof(uint32_t) * 8 - idx)));
     uint32_t remaining_mask = ((uint32_t)~0UL << idx);
         
     if (mode == SLOT_POSITION)
-        return calc_nbits(nslots_mask & slot_mask); // slot position
+        return NumberOfSlots(nslots_mask & slot_mask) - 1; // slot position
     else
-        return calc_nbits(nslots_mask & remaining_mask); // no. of slots remaining
+        return NumberOfSlots(nslots_mask & remaining_mask) - 1; // no. of slots remaining
 }
 
 

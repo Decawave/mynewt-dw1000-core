@@ -34,3 +34,4 @@ pkg.lflags:
     
 pkg.init:
     rng_pkg_init: 404
+    nrng_pkg_init: 411

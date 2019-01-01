@@ -64,9 +64,8 @@ typedef struct _slot_payload_t{
 }slot_payload_t;
 
 
-uint32_t calc_nbits(uint32_t bitfield);
-uint32_t calc_slot_idx(uint32_t bitfield);
-uint32_t calc_nslots(uint32_t nslots_mask, uint32_t slot, slot_mode_t mode);
+uint32_t NumberOfSlots(uint32_t bitfield);
+uint32_t SlotIndex(uint32_t nslots_mask, uint32_t slot, slot_mode_t mode);
 
 #ifdef __cplusplus
 }
