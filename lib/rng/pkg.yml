@@ -31,6 +31,9 @@ pkg.cflags:
 
 pkg.lflags:
     - "-lm"
+
+pkg.deps:
+    - "@apache-mynewt-core/encoding/json"
     
 pkg.init:
     rng_pkg_init: 404

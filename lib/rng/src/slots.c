@@ -23,7 +23,7 @@
  * @file slots.c
  * @author paul.kettle@decawave.com
  * @date 12/2018
- * @brief Slots 
+ * @brief node-slot utils 
  *
  * @details Help function to calculate the numerical ordering of a bit within a bitmask
  * addresses.
@@ -41,7 +41,7 @@
  * @param n bitfield to count bits within
  * @return number of set bits
  */
-uint32_t NumberOfSlots(uint32_t n) {
+uint32_t NumberOfBits(uint32_t n) {
     uint32_t count = 0;
     while (n) {
         n &= (n-1);
@@ -69,15 +69,14 @@ static uint32_t BitPosition(uint32_t n) {
 }
 
 
-
 /**
  * Help function to calculate the numerical ordering of a bit within a bitmask
  *
  * @param n bitfield
  * @param mask
- * @return numerical ordering of bit witin bitfield occurance of bit within bitfield
+ * @return numerical ordering of a bit witin bitmask.
  */
-uint32_t SlotIndex(uint32_t nslots_mask, uint32_t n, uint8_t mode) {
+uint32_t BitIndex(uint32_t nslots_mask, uint32_t n, uint8_t mode) {
 
     assert(n && (! (n & (n-1)) )); // single bit set
     assert(n & nslots_mask); // bit set is within ROI
@@ -87,9 +86,9 @@ uint32_t SlotIndex(uint32_t nslots_mask, uint32_t n, uint8_t mode) {
     uint32_t remaining_mask = ((uint32_t)~0UL << idx);
         
     if (mode == SLOT_POSITION)
-        return NumberOfSlots(nslots_mask & slot_mask) - 1; // slot position
+        return NumberOfBits(nslots_mask & slot_mask) - 1; // slot position
     else
-        return NumberOfSlots(nslots_mask & remaining_mask) - 1; // no. of slots remaining
+        return NumberOfBits(nslots_mask & remaining_mask) - 1; // no. of slots remaining
 }
 
 

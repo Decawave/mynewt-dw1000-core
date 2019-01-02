@@ -178,7 +178,7 @@ dw1000_nrng_set_frames(dw1000_dev_instance_t * inst, uint16_t nframes){
         };
         for (uint16_t i = 0; i < nframes/FRAMES_PER_RANGE; i++)
             for(uint16_t j =0; j < FRAMES_PER_RANGE; j++){
-                nrng->frames[i][j] = (nrng_frame_t*)malloc(sizeof(nrng_frame_t));
+                nrng->frames[i][j] = (nrng_frame_t * ) malloc(sizeof(nrng_frame_t));
                 memcpy(nrng->frames[i][j], &default_frame, sizeof(nrng_frame_t));
             }
 }
@@ -301,7 +301,9 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_r
     STATS_INC(nrng->stat, nrng_request);
 
     dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, code);
-    nrng_request_frame_t * frame = (nrng_request_frame_t *) nrng->frames[0][FIRST_FRAME_IDX];
+    nrng->nnodes = NumberOfBits(slot_mask); // Number of nodes involved in request
+    nrng->idx += nrng->nnodes;
+    nrng_request_frame_t * frame = (nrng_request_frame_t *) nrng->frames[nrng->idx%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
 
     frame->seq_num = ++nrng->seq_num;
     inst->rng->code = frame->code = code;
@@ -317,8 +319,7 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_r
     frame->end_slot_id = cell_id;
     frame->start_slot_id = slot_mask;
 #endif
-    nrng->nnodes = NumberOfSlots(slot_mask); // Number of nodes involved in request
-
+   
     dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0, true);
     dw1000_set_wait4resp(inst, true);
@@ -328,12 +329,13 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_r
                             nrng->nnodes,               // no. of expected frames
                             config,                    
                             dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)) // in usec
-                        );
+                        ) 
+                        + config->rx_timeout_delay * 2;     // TOF allowance.
    
     dw1000_set_rx_timeout(inst, timeout);
 
     if (nrng->control.delay_start_enabled)
-       dw1000_set_delay_start(inst, nrng->delay); 
+        dw1000_set_delay_start(inst, nrng->delay); 
     
     dw1000_set_dblrxbuff(inst, true);  
     

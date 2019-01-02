@@ -42,11 +42,11 @@ typedef enum _slot_mode_t{
     SLOT_POSITION        //!< slot position
 }slot_mode_t;
 
-typedef enum _spot_ptype_t{     
+typedef enum _slot_ptype_t{     
     PTYPE_CELL=0,           //!< Cell network
     PTYPE_BITFIELD,       //!< single cell network
     PTYPE_RANGE           //!< specify slots as a range
-}spot_ptype_t;
+}slot_ptype_t;
 
 typedef struct _slot_payload_t{
     uint32_t ptype:2;           //!< payload type
@@ -64,8 +64,8 @@ typedef struct _slot_payload_t{
 }slot_payload_t;
 
 
-uint32_t NumberOfSlots(uint32_t bitfield);
-uint32_t SlotIndex(uint32_t nslots_mask, uint32_t slot, slot_mode_t mode);
+uint32_t NumberOfBits(uint32_t bitfield);
+uint32_t BitIndex(uint32_t nslots_mask, uint32_t slot, slot_mode_t mode);
 
 #ifdef __cplusplus
 }

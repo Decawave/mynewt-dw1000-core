@@ -23,6 +23,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <rng/rng.h>
+#include <json/json.h>
 #include <dw1000/dw1000_mac.h>
 #include <rng/nrng_encode.h>
 
@@ -70,11 +71,11 @@ nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num){
     uint32_t valid_mask = 0;
 
     // Workout which slots responded with a valid frames
-    for (uint16_t i=0; i< 16; i++){
+    for (uint16_t i=0; i < 16; i++){
         if (nrng->slot_mask & 1UL << i){
-            uint16_t idx = SlotIndex(nrng->slot_mask, 1UL << i, SLOT_POSITION); 
-            nrng_frame_t * frame = nrng->frames[idx][FIRST_FRAME_IDX];
-            if (frame->seq_num == seq_num){
+            uint16_t idx = BitIndex(nrng->slot_mask, 1UL << i, SLOT_POSITION); 
+            nrng_frame_t * frame = nrng->frames[(nrng->idx + idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
+            if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == seq_num){
                 valid_mask |= 1UL << i;
             }
         }
@@ -99,38 +100,35 @@ nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num){
 
     JSON_VALUE_UINT(&value, valid_mask);
     rc |= json_encode_object_entry(&encoder, "mask", &value);
-    
     rc |= json_encode_array_name(&encoder, "rng");
     rc |= json_encode_array_start(&encoder);
-    for (uint16_t i=0; i< 16; i++){
+    for (uint16_t i=0; i < 16; i++){
         if (valid_mask & 1UL << i){
-            uint16_t idx = SlotIndex(nrng->slot_mask, 1UL << i, SLOT_POSITION); 
-            nrng_frame_t * frame = nrng->frames[idx][FIRST_FRAME_IDX];
+            uint16_t idx = BitIndex(nrng->slot_mask, 1UL << i, SLOT_POSITION); 
+            nrng_frame_t * frame = nrng->frames[(nrng->idx + idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
             if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == seq_num){
                 float range = dw1000_rng_tof_to_meters(dw1000_nrng_twr_to_tof_frames(nrng->parent, frame, frame));
                 JSON_VALUE_UINT(&value, *(uint32_t *)&range);
                 rc |= json_encode_array_value(&encoder, &value); 
-                if (i%32==0) _json_fflush();
+                if (i%16==0) _json_fflush();
             }
         }
     }
     rc |= json_encode_array_finish(&encoder);  
-
     rc |= json_encode_array_name(&encoder, "toa");
     rc |= json_encode_array_start(&encoder);
-    for (uint16_t i=0; i< 16; i++){
+    for (uint16_t i=0; i < 16; i++){
         if (valid_mask & 1UL << i){
-            uint16_t idx = SlotIndex(nrng->slot_mask , 1UL << i, SLOT_POSITION); 
-            nrng_frame_t * frame = nrng->frames[idx][FIRST_FRAME_IDX];
+            uint16_t idx = BitIndex(nrng->slot_mask , 1UL << i, SLOT_POSITION); 
+            nrng_frame_t * frame = nrng->frames[(nrng->idx + idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
             if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == seq_num){
                 JSON_VALUE_UINT(&value, frame->reception_timestamp);
                 rc |= json_encode_array_value(&encoder, &value); 
-                if (i%32==0) _json_fflush();
+                if (i%16==0) _json_fflush();
             }
         }
     }
     rc |= json_encode_array_finish(&encoder);    
-
     rc |= json_encode_object_finish(&encoder);
     rc |= json_encode_object_finish(&encoder);
     assert(rc == 0);

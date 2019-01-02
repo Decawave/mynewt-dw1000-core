@@ -194,12 +194,12 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 if (_frame->cell_id != inst->cell_id)
                     break; 
                 if (_frame->slot_mask & (1UL << inst->slot_id))
-                    slot_idx = SlotIndex(_frame->slot_mask, 1UL << inst->slot_id, SLOT_POSITION);
+                    slot_idx = BitIndex(_frame->slot_mask, 1UL << inst->slot_id, SLOT_POSITION);
                 else
                     break;
 #else
                 if (_frame->bitfield & (1UL << inst->slot_id))
-                    slot_idx = SlotIndex(_frame->bitfield, 1UL << inst->slot_id, SLOT_POSITION);
+                    slot_idx = BitIndex(_frame->bitfield, 1UL << inst->slot_id, SLOT_POSITION);
                 else
                     break;
 #endif         
@@ -263,7 +263,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 if(idx < nrng->nnodes && inst->config.rxauto_enable == 0)
                     dw1000_start_rx(inst);
                
-                nrng_frame_t * frame = nrng->frames[idx][FIRST_FRAME_IDX];
+                nrng_frame_t * frame = nrng->frames[(nrng->idx + idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
                 memcpy(frame, inst->rxbuf, sizeof(nrng_response_frame_t));
 
                 uint64_t response_timestamp = 0x0;

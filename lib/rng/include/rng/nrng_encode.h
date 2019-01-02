@@ -27,7 +27,6 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <json/json.h>
 #include <rng/nrng.h>
 
 void nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num);
