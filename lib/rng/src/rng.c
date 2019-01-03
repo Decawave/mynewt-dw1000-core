@@ -466,6 +466,9 @@ dw1000_rng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     os_error_t err = os_sem_pend(&inst->rng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
+    // Set fcntl in the event of a timeout
+    inst->fctrl = FCNTL_IEEE_RANGE_16;
+
     // Download the CIR on the response    
 #if MYNEWT_VAL(CIR_ENABLED)   
     cir_enable(inst->cir, true);

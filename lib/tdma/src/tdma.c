@@ -195,7 +195,7 @@ void tdma_pkg_init(void){
  *
  * @return void
  */
-#if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
+#if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0 
 static void
 sanity_feeding_cb(struct os_event * ev)
 {
@@ -299,7 +299,7 @@ tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     
     if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64 && inst->ccp->config.role == CCP_ROLE_MASTER){
         STATS_INC(inst->tdma->stat, tx_complete);
-        DIAGMSG("{\"utime\": %lu,\"msg\": \"tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma:tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         if (inst->tdma != NULL && inst->tdma->status.initialized){
             tdma->os_epoch = os_cputime_get32();
 #ifdef TDMA_TASKS_ENABLE
@@ -403,6 +403,10 @@ tdma_superframe_event_cb(struct os_event * ev){
             );
         }
     }
+#if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0 
+    struct os_task * t = os_sched_get_current_task();
+    os_sanity_task_checkin(t);
+#endif
 }
 
 

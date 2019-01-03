@@ -350,7 +350,7 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_r
     err = os_sem_release(&rng->sem);
     assert(err == OS_OK);
 
-//    dw1000_set_dblrxbuff(inst, false);
+    // dw1000_set_dblrxbuff(inst, false);
     
     return inst->status;
 }
