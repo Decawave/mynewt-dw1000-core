@@ -337,7 +337,8 @@ ccp_postprocess(struct os_event * ev){
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)ev->ev_arg;
-    printf("ccp-rx\n");
+    //printf("ccp-rx\n");
+    hal_gpio_toggle(LED_2);
 #if 0
     ccp_frame_t * previous_frame = ccp->frames[(ccp->idx-1)%ccp->nframes]; 
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
@@ -464,7 +465,8 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst){
     memcpy(csTxtime,&tx_time,5);
     //ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
     ccp_tx = 1;
-    printf("ccp-tx-cb\n");
+    //printf("ccp-tx-cb\n");
+    hal_gpio_toggle(LED_3);
 #if 0
     ccp_frame_t * previous_frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
     ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];

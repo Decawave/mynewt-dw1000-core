@@ -119,6 +119,7 @@ struct stm32_hal_spi_cfg os_bsp_spi0m_cfg = {
     .mosi_pin = MCU_GPIO_PORTB(5),
     .irq_prio = 2,
 };
+struct os_mutex g_spi0_mutex;
 #endif
 
 #if MYNEWT_VAL(ETH_0)
@@ -193,7 +194,6 @@ hal_bsp_core_dump(int *area_cnt)
 /*
  * dw1000 device structure defined in dw1000_hal.c
  */
-struct os_mutex g_spi0_mutex;
 static struct _dw1000_dev_instance_t * dw1000_0 = 0;
 static const struct dw1000_dev_cfg dw1000_0_cfg = {
     .spi_mutex = &g_spi0_mutex,
@@ -231,10 +231,9 @@ hal_bsp_init(void)
 #if MYNEWT_VAL(SPI_0_MASTER)
     rc = hal_spi_init(0, &os_bsp_spi0m_cfg, HAL_SPI_TYPE_MASTER);
     assert(rc == 0);
-/*
+
     rc = os_mutex_init(&g_spi0_mutex);
     assert(rc == 0);
-    */
 #endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)

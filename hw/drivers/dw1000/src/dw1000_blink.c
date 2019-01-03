@@ -331,7 +331,8 @@ blink_postprocess(struct os_event * ev){
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
     dw1000_blink_instance_t * blink = (dw1000_blink_instance_t *)ev->ev_arg;
-    printf("blink-rx\n");
+//    printf("blink-rx\n");
+      hal_gpio_toggle(LED_1);
 #if 0
     blink_frame_t * previous_frame = blink->frames[(blink->idx-1)%blink->nframes];
     blink_frame_t * frame = blink->frames[(blink->idx)%blink->nframes];

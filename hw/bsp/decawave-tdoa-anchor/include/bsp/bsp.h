@@ -41,10 +41,10 @@ extern uint8_t _ccram_start;
 #define CCRAM_SIZE      (64 * 1024)
 
 /* LED pins */
-#define LED_1           MCU_GPIO_PORTB(14)
-#define LED_2           MCU_GPIO_PORTD(5)
-#define LED_3           MCU_GPIO_PORTB(7)
-#define LED_BLINK_PIN  LED_2
+#define LED_1           MCU_GPIO_PORTB(14) // RED
+#define LED_2           MCU_GPIO_PORTD(5)  // GREEN
+#define LED_3           MCU_GPIO_PORTB(7)  // BLUE
+#define LED_BLINK_PIN   LED_2
 
 /* UART */
 #define UART_CNT 1
