@@ -29,6 +29,6 @@
 #include <unistd.h>
 #include <rng/nrng.h>
 
-void nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num);
+void nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base);
 
 #endif

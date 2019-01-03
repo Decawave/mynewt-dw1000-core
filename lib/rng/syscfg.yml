@@ -5,10 +5,10 @@ syscfg.defs:
         value: 1
       RNG_TX_HOLDOFF:
         description: 'worstcase tx holdoff delay for all TWR modes (usec)'
-        value: ((uint32_t){0x0320})
+        value: ((uint32_t)0x0320)
       RNG_RX_TIMEOUT:
         description: 'TOA timeout delay for TWR (usec)'
-        value: ((uint16_t){0x2})
+        value: ((uint16_t)0x2)
       RNG_VERBOSE:
         description: 'Show debug output from postprocess'
         value: 0

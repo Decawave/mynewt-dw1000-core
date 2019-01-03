@@ -62,7 +62,7 @@ json_write(void *buf, char* data, int len) {
 
 
 void 
-nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num){
+nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base){
  
     struct json_encoder encoder;
     struct json_value value;
@@ -74,7 +74,7 @@ nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num){
     for (uint16_t i=0; i < 16; i++){
         if (nrng->slot_mask & 1UL << i){
             uint16_t idx = BitIndex(nrng->slot_mask, 1UL << i, SLOT_POSITION); 
-            nrng_frame_t * frame = nrng->frames[(nrng->idx + idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
+            nrng_frame_t * frame = nrng->frames[(base + idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
             if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == seq_num){
                 valid_mask |= 1UL << i;
             }
@@ -105,26 +105,26 @@ nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num){
     for (uint16_t i=0; i < 16; i++){
         if (valid_mask & 1UL << i){
             uint16_t idx = BitIndex(nrng->slot_mask, 1UL << i, SLOT_POSITION); 
-            nrng_frame_t * frame = nrng->frames[(nrng->idx + idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
+            nrng_frame_t * frame = nrng->frames[(base + idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
             if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == seq_num){
                 float range = dw1000_rng_tof_to_meters(dw1000_nrng_twr_to_tof_frames(nrng->parent, frame, frame));
                 JSON_VALUE_UINT(&value, *(uint32_t *)&range);
                 rc |= json_encode_array_value(&encoder, &value); 
-                if (i%16==0) _json_fflush();
+                if (i%64==0) _json_fflush();
             }
         }
     }
     rc |= json_encode_array_finish(&encoder);  
-    rc |= json_encode_array_name(&encoder, "toa");
+    rc |= json_encode_array_name(&encoder, "tdoa");
     rc |= json_encode_array_start(&encoder);
     for (uint16_t i=0; i < 16; i++){
         if (valid_mask & 1UL << i){
             uint16_t idx = BitIndex(nrng->slot_mask , 1UL << i, SLOT_POSITION); 
-            nrng_frame_t * frame = nrng->frames[(nrng->idx + idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
+            nrng_frame_t * frame = nrng->frames[(base + idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
             if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == seq_num){
-                JSON_VALUE_UINT(&value, frame->reception_timestamp);
+                JSON_VALUE_UINT(&value, (frame->reception_timestamp - frame->request_timestamp) & 0xFFFFFFFFUL);
                 rc |= json_encode_array_value(&encoder, &value); 
-                if (i%16==0) _json_fflush();
+                if (i%64==0) _json_fflush();
             }
         }
     }

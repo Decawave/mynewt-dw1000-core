@@ -330,7 +330,7 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_r
                             config,                    
                             dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)) // in usec
                         ) 
-                        + config->rx_timeout_delay * 2;     // TOF allowance.
+                        + config->rx_timeout_delay;     // TOF allowance.
    
     dw1000_set_rx_timeout(inst, timeout);
 
@@ -401,7 +401,7 @@ complete_ev_cb(struct os_event *ev) {
     assert(ev->ev_arg != NULL);
 
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
-    nrng_encode(inst->nrng, inst->nrng->seq_num);
+    nrng_encode(inst->nrng, inst->nrng->seq_num, inst->nrng->idx);
 }
 
 struct os_callout nrng_callout;
