@@ -113,6 +113,7 @@ dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1
     }
 
     dw1000_nrng_instance_t *nrng = inst->nrng; // Updating the Global Instance of nrng
+    nrng->parent = inst;
     nrng->nframes = nframes;
     nrng->nnodes = nnodes;
     nrng->device_type = type;
