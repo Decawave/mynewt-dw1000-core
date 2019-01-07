@@ -4,15 +4,15 @@ syscfg.defs:
         value: 1
     PROVISION_TX_HOLDOFF:
         description: 'tx holdoff delay for PROVISION (usec)'
-        value: ((uint32_t){0x0C00})
+        value: ((uint32_t)0x0C00)
     PROVISION_RX_TIMEOUT:
         description: 'TOA timeout delay for PROVISION (usec)'
-        value: ((uint16_t){0x8000})
+        value: ((uint16_t)0x8000)
     PROVISION_PERIOD:
         description: >
             Provision packet period (ms)
-        value: ((uint32_t){100})
+        value: ((uint32_t)100)
     NUM_NODES:
         description: >
             Number of Nodes to provision with
-        value: ((uint16_t){32})
+        value: ((uint16_t)32)

@@ -12,7 +12,7 @@ syscfg.defs:
     CCP_PERIOD:
         description: >
             Clock Calibration Packets Period (dwt usec)
-        value: ((uint32_t){0x100000})
+        value: ((uint32_t)0x100000)
     FS_XTALT_AUTOTUNE_ENABLED: 
         description: >
             Autotune XTALT to Clock Master
@@ -21,7 +21,7 @@ syscfg.defs:
     XTALT_GUARD:
         description: >
             Guardband for xtal drift (dwt units)
-        value: ((uint32_t){0x100})
+        value: ((uint32_t)0x100)
     CCP_NUM_RELAYING_ANCHORS:
         description: >
             If using relaying anchors, adjust ccp rxtimeout for this many

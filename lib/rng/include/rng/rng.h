@@ -67,7 +67,7 @@ typedef struct _dw1000_rng_config_t{
    uint32_t rx_holdoff_delay;        //!< Delay between frames, in UWB usec.
    uint32_t tx_holdoff_delay;        //!< Delay between frames, in UWB usec.
    uint32_t tx_guard_delay;          //!< Delay between frames from subsequent nodes, in UWB sec.
-   uint16_t rx_timeout_period;       //!< Receive response timeout, in UWB usec.
+   uint16_t rx_timeout_delay;        //!< Receive response timeout, in UWB usec.
    uint16_t bias_correction:1;       //!< Enable range bias correction polynomial
 }dw1000_rng_config_t;
 
@@ -95,6 +95,20 @@ typedef enum _dw1000_rng_modes_t{
     DWT_DS_TWR_EXT_END,              //!< End of double sided TWR in extended mode 
     DWT_PROVISION_START,             //!< Start of provision
     DWT_PROVISION_RESP,              //!< End of provision
+    DWT_SS_TWR_NRNG,
+    DWT_SS_TWR_NRNG_T1,
+    DWT_SS_TWR_NRNG_FINAL,
+    DWT_DS_TWR_NRNG,
+    DWT_DS_TWR_NRNG_T1,
+    DWT_DS_TWR_NRNG_T2,
+    DWT_DS_TWR_NRNG_FINAL,
+    DWT_DS_TWR_NRNG_END,
+    DWT_DS_TWR_NRNG_EXT,
+    DWT_DS_TWR_NRNG_EXT_T1,
+    DWT_DS_TWR_NRNG_EXT_T2,
+    DWT_DS_TWR_NRNG_EXT_FINAL,
+    DWT_DS_TWR_NRNG_EXT_END,
+    DWT_DS_TWR_NRNG_INVALID = 0xFFFF
 }dw1000_rng_modes_t;
 
 //! Range status parameters

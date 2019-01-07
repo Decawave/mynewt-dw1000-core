@@ -5,11 +5,34 @@ syscfg.defs:
         value: 1
       RNG_TX_HOLDOFF:
         description: 'worstcase tx holdoff delay for all TWR modes (usec)'
-        value: ((uint32_t){0x0320})
+        value: ((uint32_t)0x0320)
       RNG_RX_TIMEOUT:
         description: 'TOA timeout delay for TWR (usec)'
-        value: ((uint16_t){0x10})
+        value: ((uint16_t)0x2)
       RNG_VERBOSE:
+        description: 'Show debug output from postprocess'
+        value: 0
+      NRNG_ENABLED:
+        description: 'Enable toplevel ranging services'
+        value: 1
+      NRNG_TX_HOLDOFF:
+        description: 'tx holdoff delay for TWR (usec)'
+        value: ((uint32_t)0x300)
+      NRNG_RX_TIMEOUT:
+        description: 'TOA timeout delay for TWR (usec)'
+        value: ((uint16_t)0x10)
+      NRNG_TX_GUARD_DELAY:
+        value: ((uint16_t)0x80)
+      NRNG_DEVICE_TYPE:
+        description: 'Initiator(tag = 0) or Responder(node = 1)'
+        value: 1
+      NRNG_NNODES:
+        description: 'Number of nodes to be ranged with'
+        value: 1
+      NRNG_NFRAMES:
+        description: 'Number of frames expected'
+        value: 2
+      NRNG_VERBOSE:
         description: 'Show debug output from postprocess'
         value: 0
   

@@ -179,7 +179,7 @@ void wcs_update_cb(struct os_event * ev){
             timescale_init(inst->timescale, x0, q, T);
         }
 */
-        inst->status.valid = fabs(1.0l - states->skew * (1e-6l/((uint64_t)1UL << 16))) < 1e-5;
+        inst->status.valid |= fabs(1.0l - states->skew * (1e-6l/((uint64_t)1UL << 16))) < 1e-5;
         if (inst->status.valid)
             inst->skew = 1.0l - states->skew * (1e-6l/((uint64_t)1UL << 16));
         else {
