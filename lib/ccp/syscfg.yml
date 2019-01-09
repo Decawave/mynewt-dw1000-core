@@ -22,10 +22,11 @@ syscfg.defs:
         description: >
             Guardband for xtal drift (dwt units)
         value: ((uint32_t)0x100)
-    CCP_NUM_RELAYING_ANCHORS:
+    CCP_MAX_CASCADE_RPTS:
         description: >
-            If using relaying anchors, adjust ccp rxtimeout for this many
-            anchor slots. Set to 0 
-        value: 8
+            Max number of cascade levels allowed in repeating CCP packet.
+            Set to 0 to disable cascading. Relates to tx_holdoff_dly and tdma slot size.
+        value: 4
+
 
        

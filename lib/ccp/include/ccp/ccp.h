@@ -69,7 +69,8 @@ STATS_SECT_END
 typedef union {
     //! Frame format of ccp blink frame.
     struct _ccp_blink_frame_t{
-        struct _ieee_blink_frame_t;          
+        struct _ieee_blink_frame_t;
+        uint8_t rpt_count;                  //!< Repeat level
         uint32_t transmission_interval;     //!< Transmission interval
         uint64_t transmission_timestamp;    //!< Transmission timestamp
     }__attribute__((__packed__, aligned(1)));
