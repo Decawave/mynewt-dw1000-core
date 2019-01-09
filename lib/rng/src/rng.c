@@ -702,13 +702,13 @@ dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code){
  */
 
 static bool 
-rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-
-    if(inst->fctrl != FCNTL_IEEE_RANGE_16){
+rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    dw1000_rng_instance_t * rng = inst->rng;
+    if(inst->fctrl != FCNTL_IEEE_RANGE_16 && os_sem_get_count(&rng->sem) == 1){
         return false;
     }
 
-    dw1000_rng_instance_t * rng = inst->rng;
     if(os_sem_get_count(&rng->sem) == 0){
         os_error_t err = os_sem_release(&rng->sem);
         assert(err == OS_OK);
