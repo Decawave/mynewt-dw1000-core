@@ -70,9 +70,11 @@ typedef union {
     //! Frame format of ccp blink frame.
     struct _ccp_blink_frame_t{
         struct _ieee_blink_frame_t;
-        uint8_t rpt_count;                  //!< Repeat level
         uint32_t transmission_interval;     //!< Transmission interval
-        uint64_t transmission_timestamp;    //!< Transmission timestamp
+        uint64_t transmission_timestamp:40; //!< Transmission timestamp
+        uint64_t rpt_count:8;               //!< Repeat level
+        uint64_t rpt_max:8;                 //!< Repeat max level
+        uint64_t superframe_mode:8;         //!< UNUSED
     }__attribute__((__packed__, aligned(1)));
     uint8_t array[sizeof(struct _ccp_blink_frame_t)];
 }ccp_blink_frame_t;
@@ -106,14 +108,15 @@ typedef enum _dw1000_ccp_role_t{
     CCP_ROLE_RELAY                          //!< Clock calibration packet master replay mode
 }dw1000_ccp_role_t;
 
+//! Callback for fetching clock source tof compensation
+typedef uint32_t (*dw1000_ccp_tof_compensation_cb_t)(uint64_t euid);
+
 //! ccp config parameters.  
 typedef struct _dw1000_ccp_config_t{
     uint16_t postprocess:1;           //!< CCP postprocess
     uint16_t fs_xtalt_autotune:1;     //!< Autotune XTALT to Clock Master
     uint16_t role:4;                  //!< dw1000_ccp_role_t
-    uint32_t tx_holdoff_dly;          //!< Relay nodes first holdoff
-    uint32_t tx_guard_dly;            //!< Relay nodes guard delay
-    uint32_t tof_compensation;        //!< TOF relative master TODO: generalise to cascading nodes
+    uint32_t tx_holdoff_dly;          //!< Relay nodes holdoff
 }dw1000_ccp_config_t;
 
 //! ccp instance parameters.
@@ -128,11 +131,11 @@ typedef struct _dw1000_ccp_instance_t{
     struct _sos_instance_t * xtalt_sos;         //!< Sturcture of xtalt_sos 
 #endif
     dw1000_mac_interface_t cbs;                     //!< MAC Layer Callbacks
-    uint64_t uuid;                                  //!< Clock Master UUID
     struct os_sem sem;                              //!< Structure containing os semaphores
     struct os_callout callout_postprocess;          //!< Structure of callout_postprocess
     dw1000_ccp_status_t status;                     //!< DW1000 ccp status parameters
     dw1000_ccp_config_t config;                     //!< DW1000 ccp config parameters
+    dw1000_ccp_tof_compensation_cb_t tof_comp_cb;   //!< tof compensation callback 
     uint64_t epoch_master;
     uint64_t epoch;
     uint32_t os_epoch;
@@ -150,9 +153,10 @@ typedef struct _dw1000_ccp_instance_t{
 }dw1000_ccp_instance_t; 
 
 uint64_t ccp_local_to_master(dw1000_dev_instance_t *inst, uint32_t timestamp_local);
-dw1000_ccp_instance_t * dw1000_ccp_init(dw1000_dev_instance_t * inst,  uint16_t nframes, uint64_t clock_master);
+dw1000_ccp_instance_t * dw1000_ccp_init(dw1000_dev_instance_t * inst,  uint16_t nframes);
 void dw1000_ccp_free(dw1000_ccp_instance_t * inst);
 void dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, os_event_fn * ccp_postprocess); 
+void dw1000_ccp_set_tof_comp_cb(dw1000_ccp_instance_t * inst, dw1000_ccp_tof_compensation_cb_t tof_comp_cb);
 void dw1000_ccp_start(dw1000_dev_instance_t * inst, dw1000_ccp_role_t role);
 void dw1000_ccp_stop(dw1000_dev_instance_t * inst);
 

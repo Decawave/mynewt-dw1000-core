@@ -281,7 +281,10 @@ typedef struct _dw1000_dev_instance_t{
     uint8_t rst_pin;               //!< Reset pin
     uint32_t device_id;            //!< Device id  
     uint16_t my_short_address;     //!< Short address of tag/node
-    uint64_t my_long_address;      //!< Long address of tag/node
+    union {
+        uint64_t my_long_address;  //!< Long address of tag/node
+        uint64_t euid;             //!< Extended Unique Identifier
+    };
     uint64_t timestamp;            //!< Timestamp
     uint64_t rxtimestamp;          //!< Receive timestamp
     uint64_t txtimestamp;          //!< Transmit timestamp
