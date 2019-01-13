@@ -14,3 +14,6 @@ syscfg.defs:
     PAN_LEASE_EXP_MARGIN:
         description: 'Start requesting a new pan address when less than this many ms left of lease'
         value: (500)
+    PAN_RPT_MAX:
+        description: 'Max number of relay-repeats to allow (<=15), set to 0 to disable'
+        value: (2)
