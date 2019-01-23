@@ -1,3 +1,4 @@
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,13 +17,30 @@
 # under the License.
 #
 
-# Package: hw/bsp/lps2mini
-
 syscfg.defs:
-    BSP_NRF52:
-        description: 'Set to indicate that BSP has NRF52'
-        value: 1
+    STM32_FLASH_SIZE_KB:
+        description: 'Total flash size in KB.'
+        value: 2048
 
+    STM32_FLASH_NUM_AREAS:
+        description: 'Amount of flash sectors for a non-linear STM32 MCU.'
+        value: 25
+
+    UART_0:
+        description: 'UART 0'
+        value: 1
+    TIMER_0:
+        description: 'Timer 0'
+        value: 1
+    TIMER_1:
+        description: 'Timer 1'
+        value: 0
+    TIMER_2:
+        description: 'Timer 2'
+        value: 0
+    ETH_0:
+        description: 'Ethernet driver for LwIP'
+        value: 0
     DW1000_DEVICE_0:
         description: 'DW1000 Device Enable'
         value:  0
@@ -31,61 +49,28 @@ syscfg.defs:
         value:  0
     DW1000_DEVICE_0_SS:
         description: 'Slave Select Pin'
-        value:  15
+        value:  62
     DW1000_DEVICE_0_RST:
         description: 'Reset Pin'
-        value:  14
+        value:  93
     DW1000_DEVICE_0_IRQ:
         description: 'Interrupt Request Pin'
-        value:  26
+        value:  92
     DW1000_DEVICE_BAUDRATE_LOW:
         description: 'BAUDRATE_LOW 2000kHz'
         value: 2000
     DW1000_DEVICE_BAUDRATE_HIGH:
-        description: 'BAUDRATE_HIGH 8000kHz'
+        description: 'BAUDRATE_HIGH 4000kHz'
         value: 8000
     DW1000_DEVICE_0_TX_ANT_DLY:
         description: 'TX_ANT_DLY'
-        value: 0x4050
+        value: 0x4042
     DW1000_DEVICE_0_RX_ANT_DLY:
         description: 'RX_ANT_DLY'
-        value: 0x4050
-
-    MPU6500_ONB:
-        description: 'mpu6500 as part of mpu9250'
-        value:  0
-
-
-syscfg.vals.DW1000_DEVICE_0:
-    SPI_0_MASTER: 1
-
+        value: 0x4042
 syscfg.vals:
-    MCU_NRF52832: 1
-    XTAL_32768: 1
-
-    SPI_0_MASTER_PIN_SCK: 6
-    SPI_0_MASTER_PIN_MOSI: 8
-    SPI_0_MASTER_PIN_MISO: 7
-
-    I2C_1_PIN_SCL: 12
-    I2C_1_PIN_SDA: 11
-    I2C_1_FREQ_KHZ: 400
-
-    UART_0_PIN_TX: 19
-    UART_0_PIN_RX: 20
-    UART_0_PIN_RTS: -1
-    UART_0_PIN_CTS: -1
-    CONFIG_FCB_FLASH_AREA: FLASH_AREA_NFFS
     REBOOT_LOG_FLASH_AREA: FLASH_AREA_REBOOT_LOG
+    CONFIG_FCB_FLASH_AREA: FLASH_AREA_NFFS
     NFFS_FLASH_AREA: FLASH_AREA_NFFS
     COREDUMP_FLASH_AREA: FLASH_AREA_IMAGE_1
-    MCU_DCDC_ENABLED: 1
-    BOOT_SERIAL_DETECT_PIN: 2  # Button 1
-    SENSOR_OIC : 0
-    
-syscfg.vals.BLE_LP_CLOCK:
-    TIMER_0: 0
-    TIMER_5: 1
-    OS_CPUTIME_FREQ: 32768
-    OS_CPUTIME_TIMER_NUM: 5
-    BLE_XTAL_SETTLE_TIME: 1500
+    SPI_0_MASTER: 1

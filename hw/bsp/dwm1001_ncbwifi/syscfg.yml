@@ -16,7 +16,7 @@
 # under the License.
 #
 
-# Package: hw/bsp/lps2mini
+# Package: hw/bsp/lps2nano
 
 syscfg.defs:
     BSP_NRF52:
@@ -31,13 +31,13 @@ syscfg.defs:
         value:  0
     DW1000_DEVICE_0_SS:
         description: 'Slave Select Pin'
-        value:  15
+        value:  17
     DW1000_DEVICE_0_RST:
         description: 'Reset Pin'
-        value:  14
+        value:  24
     DW1000_DEVICE_0_IRQ:
         description: 'Interrupt Request Pin'
-        value:  26
+        value:  19
     DW1000_DEVICE_BAUDRATE_LOW:
         description: 'BAUDRATE_LOW 2000kHz'
         value: 2000
@@ -51,37 +51,50 @@ syscfg.defs:
         description: 'RX_ANT_DLY'
         value: 0x4050
 
-    MPU6500_ONB:
-        description: 'mpu6500 as part of mpu9250'
-        value:  0
-
+    NCBWIFI_ESP_PASSTHROUGH:
+        description: 'Enable api for passing usb connection to esp8266'
+        value: 0
+    ESP12F_ENABLED:
+        description: 'Enable ESP12F at boot'
+        value: 0
 
 syscfg.vals.DW1000_DEVICE_0:
     SPI_0_MASTER: 1
+    DW1000_RXTX_LEDS: 0
+
+syscfg.vals.CONSOLE_UART:
+    UART_0: 1
 
 syscfg.vals:
+    # Enable nRF52832 MCU
     MCU_NRF52832: 1
     XTAL_32768: 1
 
-    SPI_0_MASTER_PIN_SCK: 6
-    SPI_0_MASTER_PIN_MOSI: 8
-    SPI_0_MASTER_PIN_MISO: 7
+    SPI_0_MASTER_PIN_SCK: 16
+    SPI_0_MASTER_PIN_MOSI: 20
+    SPI_0_MASTER_PIN_MISO: 18
 
-    I2C_1_PIN_SCL: 12
-    I2C_1_PIN_SDA: 11
+    I2C_1_PIN_SCL: 27
+    I2C_1_PIN_SDA: 26
     I2C_1_FREQ_KHZ: 400
 
-    UART_0_PIN_TX: 19
-    UART_0_PIN_RX: 20
-    UART_0_PIN_RTS: -1
-    UART_0_PIN_CTS: -1
+    UART_0_PIN_TX: 5
+    UART_0_PIN_RX: 11
+    UART_0_PIN_RTS: 12
+    UART_0_PIN_CTS: 8
+    TIMER_5: 1
+    ADC_0: 1
+
     CONFIG_FCB_FLASH_AREA: FLASH_AREA_NFFS
     REBOOT_LOG_FLASH_AREA: FLASH_AREA_REBOOT_LOG
     NFFS_FLASH_AREA: FLASH_AREA_NFFS
     COREDUMP_FLASH_AREA: FLASH_AREA_IMAGE_1
     MCU_DCDC_ENABLED: 1
+    XTAL_32768: 1
     BOOT_SERIAL_DETECT_PIN: 2  # Button 1
-    SENSOR_OIC : 0
+    # Enable the shell task.
+    SHELL_TASK: 1
+    SHELL_PROMPT_MODULE: 1
     
 syscfg.vals.BLE_LP_CLOCK:
     TIMER_0: 0

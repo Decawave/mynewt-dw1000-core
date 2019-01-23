@@ -155,7 +155,7 @@ ccp_timer_init(struct _dw1000_dev_instance_t * inst, dw1000_ccp_role_t role) {
  */
 static void 
 ccp_timer_irq(void * arg){
-   assert(arg);
+    assert(arg);
  
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *) arg;
     dw1000_ccp_instance_t * ccp = inst->ccp; 
@@ -195,30 +195,6 @@ ccp_master_timer_ev_cb(struct os_event *ev) {
 }
 
 /** 
- * Help function to calculate the delay between cascading ccp relays
- * 
- * @param inst Pointer to dw1000_dev_instance_t * 
- * @param rx_slot 0 for master, and increasing
- * @param my_slot my_slot should be inst->slot_id - 1, master having slot_id=1 usually
- * @return void
- */
-static uint32_t
-usecs_to_response(dw1000_dev_instance_t * inst, int rx_slot, int my_slot)
-{
-    uint32_t ccp_duration = dw1000_phy_frame_duration(&inst->attrib, sizeof(ccp_blink_frame_t));
-    uint32_t ret = ((uint32_t)inst->ccp->config.tx_guard_dly + ccp_duration);
-    /* Master has slot 0 */
-    if (rx_slot == 0) {
-        ret *= my_slot - 1;
-        ret += inst->ccp->config.tx_holdoff_dly;
-    } else {
-        ret *= my_slot - rx_slot;
-    }
-    return ret;
-}
-
-
-/** 
  * The OS scheduler is not accurate enough for the timing requirement of an RTLS system.  
  * Instead, the OS is used to schedule events in advance of the actual event.  
  * The DW1000 delay start mechanism then takes care of the actual event. This removes the non-deterministic 
@@ -247,9 +223,9 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
     uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ccp_blink_frame_t)) 
                         + MYNEWT_VAL(XTALT_GUARD);
                         
-#if MYNEWT_VAL(CCP_NUM_RELAYING_ANCHORS) != 0
+#if MYNEWT_VAL(CCP_MAX_CASCADE_RPTS) != 0
     /* Adjust timeout if we're using cascading ccp in anchors */
-    timeout += usecs_to_response(inst, 0, MYNEWT_VAL(CCP_NUM_RELAYING_ANCHORS));
+    timeout += (ccp->config.tx_holdoff_dly) * MYNEWT_VAL(CCP_MAX_CASCADE_RPTS);
 #endif
     dw1000_set_rx_timeout(inst, timeout); 
     dw1000_set_delay_start(inst, dx_time);
@@ -302,6 +278,19 @@ ccp_tasks_init(struct _dw1000_ccp_instance_t * inst)
     }       
 }
 
+/**
+ * Sets the CB that estimate the tof in dw units to the node with euid provided as 
+ * paramater. Used to compensate for the tof from the clock source.
+ * 
+ * @param euid     Euid of node we want the tof to
+ *
+ * @return time of flight in dwt units (usec << 16)
+ */
+void 
+dw1000_ccp_set_tof_comp_cb(dw1000_ccp_instance_t * inst, dw1000_ccp_tof_compensation_cb_t tof_comp_cb)
+{
+    inst->tof_comp_cb = tof_comp_cb;
+}
 
 /**
  * Precise timing is achieved by adding a fixed period to the transmission time of the previous frame. 
@@ -313,12 +302,11 @@ ccp_tasks_init(struct _dw1000_ccp_instance_t * inst)
  * @param inst     Pointer to dw1000_dev_instance_t
  * @param nframes  Nominally set to 2 frames for the simple use case. But depending on the interpolation 
  * algorithm this should be set accordingly. For example, four frames are required or bicubic interpolation. 
- * @param clock_master  UUID address of the system clock_master all other masters are rejected.  
  *
  * @return dw1000_ccp_instance_t * 
  */
 dw1000_ccp_instance_t * 
-dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t uuid){
+dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes){
     assert(inst);
     assert(nframes > 1);
     
@@ -330,7 +318,9 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
         ccp->nframes = nframes; 
         ccp_frame_t ccp_default = {
             .fctrl = FCNTL_IEEE_BLINK_CCP_64,    // frame control (FCNTL_IEEE_BLINK_64 to indicate a data frame using 16-bit addressing).
-            .seq_num = 0xFF
+            .seq_num = 0xFF,
+            .rpt_count = 0,
+            .rpt_max = MYNEWT_VAL(CCP_MAX_CASCADE_RPTS)
         };
         
         for (uint16_t i = 0; i < ccp->nframes; i++){
@@ -343,7 +333,6 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
         ccp->parent = inst;
         inst->ccp = ccp;
         ccp->task_prio = inst->task_prio - 0x4;
-
     }else{
         assert(inst->ccp->nframes == nframes);
     }
@@ -354,9 +343,7 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
         .fs_xtalt_autotune = true,
 #endif
         .tx_holdoff_dly = 0x300,
-        .tx_guard_dly = 0x10,
     };
-    inst->ccp->uuid = uuid;
 
     os_error_t err = os_sem_init(&inst->ccp->sem, 0x1); 
     assert(err == OS_OK);
@@ -444,13 +431,13 @@ void ccp_pkg_init(void){
     printf("{\"utime\": %lu,\"msg\": \"ccp_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    dw1000_ccp_init(hal_dw1000_inst(0), 2, MYNEWT_VAL(UUID_CCP_MASTER));
+    dw1000_ccp_init(hal_dw1000_inst(0), 2);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
-    dw1000_ccp_init(hal_dw1000_inst(1), 2, MYNEWT_VAL(UUID_CCP_MASTER));
+    dw1000_ccp_init(hal_dw1000_inst(1), 2);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-    dw1000_ccp_init(hal_dw1000_inst(2), 2, MYNEWT_VAL(UUID_CCP_MASTER));
+    dw1000_ccp_init(hal_dw1000_inst(2), 2);
 #endif
 
 }
@@ -549,11 +536,6 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     else 
         return false;
 
-    /* Mask off the last 8 bits and compare to our ccp->uuid master id */
-    if((inst->ccp->uuid & 0xffffffffffffff00UL) != (frame->long_address & 0xffffffffffffff00UL)) {
-        return false;
-    }
-
     if (inst->status.lde_error) 
         return false;
 
@@ -571,7 +553,14 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     frame->carrier_integrator = inst->carrier_integrator;
     ccp->status.valid |= ccp->idx > 1;
 
+    /* Compensate for time of flight */
+    if (inst->ccp->tof_comp_cb) {
+        ccp->epoch -= inst->ccp->tof_comp_cb(frame->long_address);
+        frame->reception_timestamp = ccp->epoch;
+    }
+
     /* Compensate if not receiving the master ccp packet directly */
+<<<<<<< HEAD
     int rx_slot = (frame->euid & 0xff);
     if (rx_slot != 0x00) {
         STATS_INC(inst->ccp->stat, rx_relayed);
@@ -579,20 +568,32 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         uint32_t master_interval = ((frame->transmission_interval/0x10000+1)*0x10000);
         ccp->master_epoch -= (master_interval - frame->transmission_interval) << 16;
         ccp->local_epoch -= (master_interval - frame->transmission_interval) << 16;
+=======
+    if (frame->rpt_count != 0) {
+        STATS_INC(inst->ccp->stat, rx_relayed);
+        /* Assume ccp intervals are a multiple of 0x10000 us */
+        uint32_t master_interval = ((frame->transmission_interval/0x10000+1)*0x10000);
+        uint32_t repeat_dly = master_interval - frame->transmission_interval;
+        ccp->epoch_master = (ccp->epoch_master - (repeat_dly << 16)) & 0xffffffffffUL;
+        /* TODO: Probably compensate for skew relative master when correcting local ts */
+        ccp->epoch = (ccp->epoch - (repeat_dly << 16)) & 0xffffffffffUL;
+        frame->reception_timestamp = ccp->epoch;
+>>>>>>> 84e40e387bca1e2a08f2863f27994df8815ce391
         ccp->os_epoch -= os_cputime_usecs_to_ticks(master_interval - frame->transmission_interval);
     }
 
     /* Cascade relay of ccp packet */
-    if (ccp->config.role == CCP_ROLE_RELAY && ccp->status.valid &&
-        rx_slot < (inst->slot_id-1) && inst->slot_id != 0xffff) {
+    if (ccp->config.role == CCP_ROLE_RELAY && ccp->status.valid && frame->rpt_count < frame->rpt_max) {
         ccp_frame_t tx_frame;
         memcpy(tx_frame.array, frame->array, sizeof(ccp_frame_t));
-        uint64_t tx_timestamp = frame->reception_timestamp + (((uint64_t)usecs_to_response(inst, rx_slot, inst->slot_id-1))<<16);
+
+        tx_frame.rpt_count++;
+        uint64_t tx_timestamp = frame->reception_timestamp + (inst->ccp->config.tx_holdoff_dly<<16);
         tx_timestamp &= 0x0FFFFFFFFFFUL;
         dw1000_set_delay_start(inst, tx_timestamp);
 
-        /* Need to add antenna delay and tof compensation */
-        tx_timestamp += inst->tx_antenna_delay + inst->ccp->config.tof_compensation;
+        /* Need to add antenna delay */
+        tx_timestamp += inst->tx_antenna_delay;
 
 #if MYNEWT_VAL(WCS_ENABLED)
         tx_frame.transmission_timestamp = wcs_local_to_master(inst->ccp->wcs, tx_timestamp);
@@ -600,11 +601,15 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         tx_frame.transmission_timestamp = frame->transmission_timestamp + tx_timestamp - frame->reception_timestamp;
 #endif
 
+<<<<<<< HEAD
         tx_frame.euid = inst->ccp->euid | (inst->slot_id-1);
+=======
+        tx_frame.long_address = inst->euid;
+>>>>>>> 84e40e387bca1e2a08f2863f27994df8815ce391
         tx_frame.transmission_interval = frame->transmission_interval - ((tx_frame.transmission_timestamp - frame->transmission_timestamp)>>16);
 
         dw1000_write_tx(inst, tx_frame.array, 0, sizeof(ccp_blink_frame_t));
-        dw1000_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0, true); 
+        dw1000_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0, true);
         ccp->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
         if (ccp->status.start_tx_error){
             STATS_INC(inst->ccp->stat, tx_relay_error);
@@ -805,7 +810,9 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     
     ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx)%ccp->nframes];
     ccp_frame_t * frame = ccp->frames[(ccp->idx+1)%ccp->nframes];
-    
+    frame->rpt_count = 0;
+    frame->rpt_max = MYNEWT_VAL(CCP_MAX_CASCADE_RPTS);
+
     frame->transmission_timestamp = (previous_frame->transmission_timestamp
                                     + ((uint64_t)inst->ccp->period << 16)
                                     ) & 0x0FFFFFFFFFFUL;
@@ -814,6 +821,7 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
 
     frame->seq_num = previous_frame->seq_num + 1;
     frame->euid = inst->ccp->euid;
+    frame->euid = inst->euid;
     frame->transmission_interval = inst->ccp->period;
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(ccp_blink_frame_t));
@@ -871,9 +879,9 @@ dw1000_ccp_listen(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
         assert(err == OS_OK); 
     }else if(mode == DWT_BLOCKING){
         err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
-        assert(err == OS_OK); 
+        assert(err == OS_OK);
         err = os_sem_release(&ccp->sem);
-        assert(err == OS_OK); 
+        assert(err == OS_OK);
     }
     return ccp->status;
 }

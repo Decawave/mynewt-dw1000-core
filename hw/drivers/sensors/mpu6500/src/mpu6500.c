@@ -48,7 +48,7 @@ STATS_NAME_END(mpu6500_stat_section)
 /* Global variable used to hold stats data */
 STATS_SECT_DECL(mpu6500_stat_section) g_mpu6500stats;
 
-#define LOG_MODULE_MPU6500    (6500)
+#define LOG_MODULE_MPU6500    (65)
 #define MPU6500_INFO(...)     LOG_INFO(&_log, LOG_MODULE_MPU6500, __VA_ARGS__)
 #define MPU6500_ERR(...)      LOG_ERROR(&_log, LOG_MODULE_MPU6500, __VA_ARGS__)
 static struct log _log;

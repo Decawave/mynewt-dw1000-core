@@ -67,6 +67,8 @@ typedef union{
     struct _pan_frame_t{
         //! Structure of IEEE blink frame
         struct _ieee_blink_frame_t;
+        uint8_t rpt_count:4;                 //!< Repeat level
+        uint8_t rpt_max:4;                   //!< Repeat max level
         uint16_t code;                       //!< Package type code
         uint16_t role;                       //!< Requested role in network
         uint16_t lease_time;                 //!< Requested lease time in seconds

@@ -32,15 +32,11 @@
 #include "hal/hal_i2c.h"
 #include "hal/hal_gpio.h"
 #include "mcu/nrf52_hal.h"
+#include "mcu/nrf52_periph.h"
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
 #include "dw1000/dw1000_dev.h"
 #include "dw1000/dw1000_hal.h"
-#endif
-
-#if MYNEWT_VAL(UART_0)
-#include "uart/uart.h"
-#include "uart_hal/uart_hal.h"
 #endif
 
 #include "os/os_dev.h"
@@ -55,37 +51,8 @@
 static struct mpu6500 mpu6500;
 #endif
 
-#if MYNEWT_VAL(UART_0)
-static struct uart_dev os_bsp_uart0;
-static const struct nrf52_uart_cfg os_bsp_uart0_cfg = {
-    .suc_pin_tx = MYNEWT_VAL(UART_0_PIN_TX),
-    .suc_pin_rx = MYNEWT_VAL(UART_0_PIN_RX),
-    .suc_pin_rts = MYNEWT_VAL(UART_0_PIN_RTS),
-    .suc_pin_cts = MYNEWT_VAL(UART_0_PIN_CTS),
-};
-#endif
-
-#if MYNEWT_VAL(ADC_0)
-static struct adc_dev os_bsp_adc0;
-static struct nrf52_adc_dev_cfg os_bsp_adc0_config = {
-    .nadc_refmv     = MYNEWT_VAL(ADC_0_REFMV_0),
-};
-static nrfx_saadc_config_t os_bsp_adc0_nrf_config =
-    NRFX_SAADC_DEFAULT_CONFIG;
-#endif
-
-
 #if MYNEWT_VAL(SPI_0_MASTER)
 struct os_sem g_spi0_sem;
-/*
- * NOTE: Our HAL expects that the SS pin, if used, is treated as a gpio line
- * and is handled outside the SPI routines.
- */
-static const struct nrf52_hal_spi_cfg os_bsp_spi0m_cfg = {
-    .sck_pin      =  6,
-    .mosi_pin     =  8,
-    .miso_pin     =  7,
-};
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
 /* 
@@ -102,11 +69,6 @@ static const struct dw1000_dev_cfg dw1000_0_cfg = {
 
 
 #if MYNEWT_VAL(I2C_1)
-static const struct nrf52_hal_i2c_cfg hal_i2c_cfg = {
-    .scl_pin = 12,
-    .sda_pin = 11,
-    .i2c_frequency = 400    /* 400 kHz */
-};
 
 #if MYNEWT_VAL(MPU6500_ONB)
 static struct sensor_itf i2c_1_itf_mpu = {
@@ -229,60 +191,17 @@ void hal_bsp_init(void)
 {
     int rc;
 
-    (void)rc;
-
     /* Make sure system clocks have started */
     hal_system_clock_start();
 
-#if MYNEWT_VAL(TIMER_0)
-    rc = hal_timer_init(0, NULL);
-    assert(rc == 0);
-#endif
-#if MYNEWT_VAL(TIMER_1)
-    rc = hal_timer_init(1, NULL);
-    assert(rc == 0);
-#endif
-#if MYNEWT_VAL(TIMER_2)
-    rc = hal_timer_init(2, NULL);
-    assert(rc == 0);
-#endif
-#if MYNEWT_VAL(TIMER_3)
-    rc = hal_timer_init(3, NULL);
-    assert(rc == 0);
-#endif
-#if MYNEWT_VAL(TIMER_4)
-    rc = hal_timer_init(4, NULL);
-    assert(rc == 0);
-#endif
-#if MYNEWT_VAL(TIMER_5)
-    rc = hal_timer_init(5, NULL);
-    assert(rc == 0);
-#endif
+    /* Create all available nRF52832 peripherals */
+    nrf52_periph_create();
 
 #if MYNEWT_VAL(ADC_0)
-    rc = os_dev_create((struct os_dev *) &os_bsp_adc0,
-                       "adc0",
-                       OS_DEV_INIT_KERNEL,
-                       OS_DEV_INIT_PRIO_DEFAULT,
-                       nrf52_adc_dev_init,
-                       &os_bsp_adc0_config);
-    assert(rc == 0);
     hal_gpio_init_out(EXTON_PIN, 0);
 #endif
     
-#if (MYNEWT_VAL(OS_CPUTIME_TIMER_NUM) >= 0)
-    rc = os_cputime_init(MYNEWT_VAL(OS_CPUTIME_FREQ));
-    assert(rc == 0);
-#endif
-
-#if MYNEWT_VAL(I2C_1)
-    rc = hal_i2c_init(1, (void *)&hal_i2c_cfg);
-    assert(rc == 0);
-#endif
-
 #if MYNEWT_VAL(SPI_0_MASTER)
-    rc = hal_spi_init(0, (void *)&os_bsp_spi0m_cfg, HAL_SPI_TYPE_MASTER);
-    assert(rc == 0);
     rc = os_sem_init(&g_spi0_sem, 0x1);
     assert(rc == 0);
 #endif
@@ -299,12 +218,6 @@ void hal_bsp_init(void)
     hal_gpio_init_out(DW1000_ENABLE_N_PIN, 1);
 #endif
 
-#if MYNEWT_VAL(UART_0)
-    rc = os_dev_create((struct os_dev *) &os_bsp_uart0, "uart0",
-      OS_DEV_INIT_PRIMARY, 0, uart_hal_init, (void *)&os_bsp_uart0_cfg);
-    assert(rc == 0);
-#endif
-
     sensor_dev_create();
 }
 
@@ -315,6 +228,8 @@ hal_bsp_read_battery_voltage()
 #if MYNEWT_VAL(ADC_0)
     int rc = 0;
     int result;
+    nrfx_saadc_config_t os_bsp_adc0_nrf_config =
+        NRFX_SAADC_DEFAULT_CONFIG;
     nrf_saadc_channel_config_t channel_config =
         NRFX_SAADC_DEFAULT_CHANNEL_CONFIG_SE(BATT_V_PIN);
 
