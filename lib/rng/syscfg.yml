@@ -22,7 +22,7 @@ syscfg.defs:
         description: 'TOA timeout delay for TWR (usec)'
         value: ((uint16_t)0x10)
       NRNG_TX_GUARD_DELAY:
-        value: ((uint16_t)0x80)
+        value: ((uint16_t)0x90)
       NRNG_DEVICE_TYPE:
         description: 'Initiator(tag = 0) or Responder(node = 1)'
         value: 1

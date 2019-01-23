@@ -51,6 +51,8 @@
 #include <dsp/polyval.h>
 #include <rng/slots.h>
 
+#define WCS_DTU MYNEWT_VAL(WCS_DTU)
+
 //#define DIAGMSG(s,u) printf(s,u)
 #ifndef DIAGMSG
 #define DIAGMSG(s,u)
@@ -213,12 +215,13 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                             + (uint64_t)(dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)))))))<< 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
-#if MYNEWT_VAL(WCS_ENABLED)                
-                frame->reception_timestamp = wcs_local_to_master(inst, request_timestamp) & 0xFFFFFFFFUL;
-                frame->transmission_timestamp = wcs_local_to_master(inst, response_timestamp) & 0xFFFFFFFFUL;
+#if MYNEWT_VAL(WCS_ENABLED)       
+                wcs_instance_t * wcs = inst->ccp->wcs;  
+                frame->reception_timestamp = (uint32_t)(wcs_local_to_master(wcs, request_timestamp)) & 0xFFFFFFFFULL;
+                frame->transmission_timestamp = (uint32_t)(wcs_local_to_master(wcs, response_timestamp)) & 0xFFFFFFFFULL; 
 #else
-                frame->reception_timestamp = request_timestamp & 0xFFFFFFFFUL;
-                frame->transmission_timestamp = response_timestamp & 0xFFFFFFFFUL;
+                frame->reception_timestamp = request_timestamp & 0xFFFFFFFFULL;
+                frame->transmission_timestamp = response_timestamp & 0xFFFFFFFFULL;
 #endif
                 frame->dst_address = _frame->src_address;
                 frame->src_address = inst->my_short_address;
@@ -270,12 +273,13 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 if (inst->status.lde_error == 0) 
                    response_timestamp = inst->rxtimestamp;
 
-#if MYNEWT_VAL(WCS_ENABLED)           
-                frame->request_timestamp = wcs_local_to_master(inst, dw1000_read_txtime(inst)) & 0xFFFFFFFFUL;
-                frame->response_timestamp = wcs_local_to_master(inst, response_timestamp) & 0xFFFFFFFFUL;
+#if MYNEWT_VAL(WCS_ENABLED)     
+                wcs_instance_t * wcs = inst->ccp->wcs;
+                frame->request_timestamp = wcs_local_to_master(wcs, dw1000_read_txtime(inst)) & 0xFFFFFFFFULL;
+                frame->response_timestamp = wcs_local_to_master(wcs, response_timestamp) & 0xFFFFFFFFULL;
 #else
                 frame->request_timestamp = dw1000_read_txtime_lo(inst) & 0xFFFFFFFFUL;
-                frame->response_timestamp  = (uint32_t)(response_timestamp & 0xFFFFFFFFUL);
+                frame->response_timestamp  = (uint32_t)(response_timestamp & 0xFFFFFFFFULL);
 #endif    
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;

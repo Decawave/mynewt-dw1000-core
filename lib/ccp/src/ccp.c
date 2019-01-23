@@ -240,7 +240,7 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
 
     STATS_INC(inst->ccp->stat, slave_cnt);
 
-    uint64_t dx_time = ccp->epoch 
+    uint64_t dx_time = ccp->local_epoch 
             + ((uint64_t)inst->ccp->period << 16) 
             - ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&inst->attrib))) << 16);
 
@@ -565,20 +565,20 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     ccp->os_epoch = os_cputime_get32();
     STATS_INC(inst->ccp->stat, rx_complete);
 
-    ccp->epoch_master = frame->transmission_timestamp;
-    ccp->epoch = frame->reception_timestamp = inst->rxtimestamp;
+    ccp->master_epoch = frame->transmission_timestamp;
+    ccp->local_epoch = frame->reception_timestamp = inst->rxtimestamp;
     ccp->period = frame->transmission_interval;
     frame->carrier_integrator = inst->carrier_integrator;
     ccp->status.valid |= ccp->idx > 1;
 
     /* Compensate if not receiving the master ccp packet directly */
-    int rx_slot = (frame->long_address & 0xff);
+    int rx_slot = (frame->euid & 0xff);
     if (rx_slot != 0x00) {
         STATS_INC(inst->ccp->stat, rx_relayed);
         /* Assume ccp intervals are a multiple of 0x10000 us */
         uint32_t master_interval = ((frame->transmission_interval/0x10000+1)*0x10000);
-        ccp->epoch_master -= (master_interval - frame->transmission_interval) << 16;
-        ccp->epoch -= (master_interval - frame->transmission_interval) << 16;
+        ccp->master_epoch -= (master_interval - frame->transmission_interval) << 16;
+        ccp->local_epoch -= (master_interval - frame->transmission_interval) << 16;
         ccp->os_epoch -= os_cputime_usecs_to_ticks(master_interval - frame->transmission_interval);
     }
 
@@ -595,12 +595,12 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         tx_timestamp += inst->tx_antenna_delay + inst->ccp->config.tof_compensation;
 
 #if MYNEWT_VAL(WCS_ENABLED)
-        tx_frame.transmission_timestamp = wcs_local_to_master(inst, tx_timestamp);
+        tx_frame.transmission_timestamp = wcs_local_to_master(inst->ccp->wcs, tx_timestamp);
 #else
         tx_frame.transmission_timestamp = frame->transmission_timestamp + tx_timestamp - frame->reception_timestamp;
 #endif
 
-        tx_frame.long_address = inst->ccp->uuid | (inst->slot_id-1);
+        tx_frame.euid = inst->ccp->euid | (inst->slot_id-1);
         tx_frame.transmission_interval = frame->transmission_interval - ((tx_frame.transmission_timestamp - frame->transmission_timestamp)>>16);
 
         dw1000_write_tx(inst, tx_frame.array, 0, sizeof(ccp_blink_frame_t));
@@ -664,8 +664,8 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
     ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
     
     ccp->os_epoch = os_cputime_get32();
-    ccp->epoch = frame->transmission_timestamp = dw1000_read_txrawst(inst); 
-    ccp->epoch_master = frame->transmission_timestamp;
+    ccp->local_epoch = frame->transmission_timestamp = dw1000_read_txrawst(inst); 
+    ccp->master_epoch = frame->transmission_timestamp;
     ccp->period = frame->transmission_interval;
 
     if (ccp->status.timer_enabled){
@@ -813,7 +813,7 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     frame->transmission_timestamp += inst->tx_antenna_delay;
 
     frame->seq_num = previous_frame->seq_num + 1;
-    frame->long_address = inst->ccp->uuid;
+    frame->euid = inst->ccp->euid;
     frame->transmission_interval = inst->ccp->period;
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(ccp_blink_frame_t));
@@ -898,9 +898,9 @@ dw1000_ccp_start(struct _dw1000_dev_instance_t * inst, dw1000_ccp_role_t role){
     ccp->config.role = role;
 
     if (ccp->config.role == CCP_ROLE_MASTER)
-        ccp->epoch = frame->transmission_timestamp = dw1000_read_systime(inst);
+        ccp->local_epoch = frame->transmission_timestamp = dw1000_read_systime(inst);
     else {
-        ccp->epoch = frame->reception_timestamp = dw1000_read_systime(inst);
+        ccp->local_epoch = frame->reception_timestamp = dw1000_read_systime(inst);
         /* Temporarily override period to start listening for the first
          * ccp packet sooner */
         ccp->period = 5000;

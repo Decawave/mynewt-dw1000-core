@@ -24,6 +24,12 @@ syscfg.defs:
         value: 1
         restrictions: CCP_ENABLED
         restrictions: TIMESCALE_ENABLED
+    WCS_DTU:
+        description: 'Decawave Time units'
+        value: ((double)128e6*512)    
+    WCS_DTU_SI:
+        description: 'Decawave Time units in sec'
+        value: ((double)128*499.2e6)    
     WCS_VERBOSE:
         description: 'Enable json debug output'
         value: 0

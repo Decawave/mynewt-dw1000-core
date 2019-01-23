@@ -33,6 +33,7 @@
 extern "C" {
 #endif
 
+
 typedef struct _wcs_status_t{
     uint16_t selfmalloc:1;
     uint16_t initialized:1;
@@ -51,7 +52,7 @@ typedef struct _wcs_instance_t{
     wcs_status_t status;
     wcs_control_t control;
     wcs_config_t config;
-    int16_t nT;
+    uint64_t observed_interval;
     uint64_t master_epoch;
     uint64_t local_epoch;
     double skew;
@@ -78,9 +79,10 @@ uint32_t wcs_read_rxtime_lo_master(struct _dw1000_dev_instance_t * inst);
 uint64_t wcs_read_txtime_master(struct _dw1000_dev_instance_t * inst);
 uint32_t wcs_read_txtime_lo_master(struct _dw1000_dev_instance_t * inst);
 
-double wcs_dtu_time_correction(struct _dw1000_dev_instance_t * inst);
-uint64_t wcs_dtu_time_adjust(struct _dw1000_dev_instance_t * inst, uint64_t dtu_time);
-uint64_t wcs_local_to_master(struct _dw1000_dev_instance_t * inst, uint64_t dtu_time);
+double wcs_dtu_time_correction(struct _wcs_instance_t * wcs);
+uint64_t wcs_dtu_time_adjust(struct _wcs_instance_t * wcs, uint64_t dtu_time);
+uint64_t wcs_local_to_master(struct _wcs_instance_t * wcs, uint64_t dtu_time);
+
 
 #ifdef __cplusplus
 }

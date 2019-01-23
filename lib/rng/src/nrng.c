@@ -380,11 +380,11 @@ dw1000_nrng_twr_to_tof_frames(struct _dw1000_dev_instance_t * inst, nrng_frame_t
             assert(first_frame != NULL);
 #if MYNEWT_VAL(WCS_ENABLED)
             ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
-                    -  (first_frame->transmission_timestamp - first_frame->reception_timestamp))/2.;
+                    -  (first_frame->transmission_timestamp - first_frame->reception_timestamp))/2.0f;
 #else
             float skew = dw1000_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);
             ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
-                    -  (first_frame->transmission_timestamp - first_frame->reception_timestamp) * (1 - skew))/2.;
+                    -  (first_frame->transmission_timestamp - first_frame->reception_timestamp) * (1 - skew))/2.0f;
 #endif
             break;
             }
@@ -410,7 +410,7 @@ static bool
 complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
         if (inst->fctrl != FCNTL_IEEE_RANGE_16)
-        return false;
+            return false;
 
         os_callout_init(&nrng_callout, os_eventq_dflt_get(), complete_ev_cb, inst);
         os_eventq_put(os_eventq_dflt_get(), &nrng_callout.c_ev);

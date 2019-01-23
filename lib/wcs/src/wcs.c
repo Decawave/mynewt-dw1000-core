@@ -42,6 +42,7 @@
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
 #include "bsp/bsp.h"
+#include <os/os_dev.h>
 
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
@@ -54,6 +55,8 @@
 #include <timescale/timescale.h>
 
 //#define DIAGMSG(s,u) printf(s,u)
+#define WCS_DTU MYNEWT_VAL(WCS_DTU)
+
 #ifndef DIAGMSG
 #define DIAGMSG(s,u)
 #endif
@@ -88,7 +91,7 @@ wcs_init(wcs_instance_t * inst, dw1000_ccp_instance_t * ccp){
     }
     inst->ccp = ccp;    
     double x0[TIMESCALE_N] = {0};
-    double q[] = {MYNEWT_VAL(TIMESCALE_QVAR) * 1.0, MYNEWT_VAL(TIMESCALE_QVAR) * 0.1, MYNEWT_VAL(TIMESCALE_QVAR) * 0.01};
+    double q[] = { MYNEWT_VAL(TIMESCALE_QVAR) * 1.0l, MYNEWT_VAL(TIMESCALE_QVAR) * 0.1l, MYNEWT_VAL(TIMESCALE_QVAR) * 0.01l};
     double T = 1e-6l * MYNEWT_VAL(CCP_PERIOD);  // peroid in sec
 
     inst->timescale = timescale_init(NULL, x0, q, T); 
@@ -140,54 +143,42 @@ void wcs_update_cb(struct os_event * ev){
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)ev->ev_arg;
-    wcs_instance_t * inst = ccp->wcs;
+    wcs_instance_t * wcs = ccp->wcs;
+    timescale_instance_t * timescale = wcs->timescale; 
+    timescale_states_t * states = (timescale_states_t *) (timescale->eke->x); 
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"wcs_update_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
     if(ccp->status.valid){ 
-        ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx-1)%ccp->nframes]; 
         ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
-        inst->nT = (int16_t)frame->seq_num - (int16_t)previous_frame->seq_num;
-        inst->nT = (inst->nT < 0)?0x100+inst->nT:inst->nT;
-       
-        timescale_instance_t * timescale = inst->timescale; 
-        timescale_states_t * states = (timescale_states_t *) (inst->timescale->eke->x); 
 
-        inst->master_epoch = ccp->epoch_master; //->transmission_timestamp;
-        inst->local_epoch = ccp->epoch;//frame->reception_timestamp;
-        
-        if (inst->status.initialized == 0 ){
-            double skew = (double ) dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator);
-            states->time = (double)inst->local_epoch;
-            states->skew = (1.0l - skew) * ((uint64_t)1 << 16)/1e-6l; 
-            inst->status.initialized = 1;
+        wcs->observed_interval = (ccp->local_epoch - wcs->local_epoch) & 0x0FFFFFFFFFFUL; // Observed ccp interval        
+        wcs->master_epoch = ccp->master_epoch; 
+        wcs->local_epoch = ccp->local_epoch;  
+
+        if (wcs->status.initialized == 0){
+            states->time = (double) wcs->master_epoch;
+            states->skew = (1.0l + (double ) dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator)) * MYNEWT_VAL(WCS_DTU);
+            wcs->status.initialized = 1;
         }else{
-            double skew = 1.0l + (double ) dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator);
-            double T = 1e-6l * frame->transmission_interval * inst->nT;   // peroid in seconds referenced to master
+            double skew = (1.0l + (double ) dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator)) * MYNEWT_VAL(WCS_DTU);
+            double T = wcs->observed_interval / WCS_DTU ; // observed interval in seconds, master reference
+            //previous_frame->transmission_timestamp = (frame->transmission_timestamp + ((uint64_t)inst->ccp->period << 16)) & 0x0FFFFFFFFFFUL;
+            //double T = 1e-6l * frame->transmission_interval * wcs->nT;   // interval in seconds referenced to master
             double q[] = {MYNEWT_VAL(TIMESCALE_QVAR) * 1.0, MYNEWT_VAL(TIMESCALE_QVAR) * 0.1, MYNEWT_VAL(TIMESCALE_QVAR) * 0.01};
-            double r[] = {MYNEWT_VAL(TIMESCALE_RVAR), MYNEWT_VAL(TIMESCALE_RVAR) * 1e10};
-            double z[] = {(double)inst->local_epoch, skew};
-            inst->status.valid  = timescale_main(timescale, z, q, r, T).valid;
-        }
-/*
-        if(timescale->status.illconditioned || timescale->status.NotPositiveDefinitive ){
-            inst->status.valid = 0;
-            inst->status.initialized = 0;
-            double x0[TIMESCALE_N] = {0};
-            double q[] = {MYNEWT_VAL(TIMESCALE_QVAR) * 1.0, MYNEWT_VAL(TIMESCALE_QVAR) * 0.1, MYNEWT_VAL(TIMESCALE_QVAR) * 0.01};
-            double T = 1e-6l * MYNEWT_VAL(CCP_PERIOD);  // peroid in sec
-            timescale_init(inst->timescale, x0, q, T);
-        }
-*/
-        inst->status.valid |= fabs(1.0l - states->skew * (1e-6l/((uint64_t)1UL << 16))) < 1e-5;
-        if (inst->status.valid)
-            inst->skew = 1.0l - states->skew * (1e-6l/((uint64_t)1UL << 16));
-        else {
-            inst->skew = 0.0l;
+            double r[] = {MYNEWT_VAL(TIMESCALE_RVAR),  MYNEWT_VAL(WCS_DTU) * 1e-6};
+            double z[] = {(double) wcs->master_epoch, skew};
+            wcs->status.valid = timescale_main(timescale, z, q, r, T).valid;
         }
 
-    if(inst->config.postprocess == true)
-        os_eventq_put(os_eventq_dflt_get(), &inst->postprocess_ev);
+        wcs->status.valid |= fabs(1.0l - states->skew / WCS_DTU) < 1e-5;
+        if (wcs->status.valid)
+            wcs->skew = 1.0l - states->skew / WCS_DTU;
+        else 
+            wcs->skew = 0.0l;
+        
+        if(wcs->config.postprocess == true)
+            os_eventq_put(os_eventq_dflt_get(), &wcs->postprocess_ev);
     }
 }
 
@@ -212,19 +203,16 @@ wcs_postprocess(struct os_event * ev){
 #if MYNEWT_VAL(WCS_VERBOSE)
     wcs_instance_t * inst = (wcs_instance_t *)ev->ev_arg;
     dw1000_ccp_instance_t * ccp = (void *)inst->ccp; 
-    ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx-1)%ccp->nframes]; 
-    ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
-//    wcs_instance_t * wcs = ccp->wcs;
-//    timescale_states_t * states = (timescale_states_t *) (wcs->timescale->eke->x); 
-    printf("{\"utime\": %lu,\"wcs\": [%llu,%llu,%llu],\"skew\": %llu,\"nT\": [%d,%d,%d]}\n", 
+    wcs_instance_t * wcs = ccp->wcs;
+    timescale_instance_t * timescale = wcs->timescale; 
+    timescale_states_t * x = (timescale_states_t *) (timescale->eke->x); 
+
+    printf("{\"utime\": %lu,\"wcs\": [%llu,%llu,%llu],\"skew\": %llu}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),
         (uint64_t) inst->master_epoch,
+        (uint64_t) x->time,
         (uint64_t) inst->local_epoch,
-        (uint64_t) wcs_local_to_master(ccp->parent,  inst->local_epoch + frame->transmission_interval) - inst->master_epoch - frame->transmission_interval,
-        *(uint64_t *)&(inst->skew),
-        inst->nT,
-        frame->seq_num,
-        previous_frame->seq_num
+       *(uint64_t *)&(inst->skew)
     );
 #endif
 }
@@ -256,25 +244,23 @@ wcs_set_postprocess(wcs_instance_t * inst, os_event_fn * postprocess){
  * @return time
  * 
  */
-inline uint64_t wcs_dtu_time_adjust(struct _dw1000_dev_instance_t * inst, uint64_t dtu_time){
-    wcs_instance_t * wcs = inst->ccp->wcs;
-    assert(wcs);
+inline uint64_t wcs_dtu_time_adjust(struct _wcs_instance_t * wcs, uint64_t dtu_time){
     
     if (wcs->status.valid)
-       dtu_time = (uint64_t) roundl(dtu_time * wcs_dtu_time_correction(inst));
+       dtu_time = (uint64_t) roundl(dtu_time * wcs_dtu_time_correction(wcs));
 
     return dtu_time & 0x00FFFFFFFFFFUL;
 }
 
-inline double wcs_dtu_time_correction(struct _dw1000_dev_instance_t * inst){
-    wcs_instance_t * wcs = inst->ccp->wcs;
+
+inline double wcs_dtu_time_correction(struct _wcs_instance_t * wcs){
     assert(wcs);
-    
-    timescale_states_t * states = (timescale_states_t *) (wcs->timescale->eke->x); 
+
+    timescale_states_t * x = (timescale_states_t *) (wcs->timescale->eke->x); 
 
     double correction = 1.0l;
     if (wcs->status.valid)
-       correction = (double) roundl(states->skew * (1e-6l/(1UL << 16)));
+       correction = (double) x->skew / WCS_DTU;
 
     return correction;
 }
@@ -283,28 +269,26 @@ inline double wcs_dtu_time_correction(struct _dw1000_dev_instance_t * inst){
 /**
  * API compensate for clock skew and offset relative to master clock
  *
- * @param inst  Pointer to _dw1000_dev_instance_t. 
- *
+ * @param wcs pointer to wcs_instance_t
+ * @param dtu_time local observed timestamp  
  * @return time
  * 
  */
+ 
+uint64_t wcs_local_to_master(wcs_instance_t * wcs, uint64_t dtu_time){
+    timescale_instance_t * timescale = wcs->timescale; 
 
-inline uint64_t wcs_local_to_master(struct _dw1000_dev_instance_t * inst, uint64_t dtu_time){
-    wcs_instance_t * wcs = inst->ccp->wcs;
-    assert(wcs);
-    timescale_states_t * states = (timescale_states_t *) (wcs->timescale->eke->x); 
-    uint64_t delta = (dtu_time - wcs->local_epoch) & 0x0FFFFFFFFFFUL;
+    double delta = (dtu_time - wcs->local_epoch) & 0x0FFFFFFFFFFUL; 
 
     if (wcs->status.valid)
-        dtu_time = wcs->master_epoch + (uint64_t) round(delta / (states->skew * (1e-6l/(1UL << 16))));    
-
+        dtu_time = (uint64_t) round(timescale_forward(timescale, delta / WCS_DTU)); 
     return dtu_time & 0x0FFFFFFFFFFUL;
 }
 
 
 /**
  * 
- * With WCS_ENABLED the adj_ timer API compensates all local timestamps values for local local drift. 
+ * With WCS_ENABLED the adjust_timer API compensates all local timestamps values for local local drift. 
  * This simplifies the TWR problem by mitigiating the need for double sided exchanges.  
  *
  * @param inst  Pointer to _dw1000_dev_instance_t. 
@@ -312,7 +296,8 @@ inline uint64_t wcs_local_to_master(struct _dw1000_dev_instance_t * inst, uint64
  */
 
 inline uint64_t wcs_read_systime(struct _dw1000_dev_instance_t * inst){
-    return wcs_dtu_time_adjust(inst, dw1000_read_systime(inst));
+    wcs_instance_t * wcs = inst->ccp->wcs;
+    return wcs_dtu_time_adjust(wcs, dw1000_read_systime(inst));
 }
 
 /**
@@ -324,7 +309,8 @@ inline uint64_t wcs_read_systime(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint32_t wcs_read_systime_lo(struct _dw1000_dev_instance_t * inst){
-    return (uint32_t) (wcs_dtu_time_adjust(inst, dw1000_read_systime_lo(inst)) & 0xFFFFFFFFUL);
+    wcs_instance_t * wcs = inst->ccp->wcs;
+    return (uint32_t) (wcs_dtu_time_adjust(wcs, dw1000_read_systime_lo(inst)) & 0xFFFFFFFFUL);
 }
 
 /**
@@ -337,7 +323,8 @@ inline uint32_t wcs_read_systime_lo(struct _dw1000_dev_instance_t * inst){
 
 
 inline uint64_t wcs_read_rxtime(struct _dw1000_dev_instance_t * inst){
-    return wcs_dtu_time_adjust(inst, dw1000_read_rxtime(inst));
+    wcs_instance_t * wcs = inst->ccp->wcs;
+    return wcs_dtu_time_adjust(wcs, dw1000_read_rxtime(inst));
 }
 
 
@@ -350,7 +337,8 @@ inline uint64_t wcs_read_rxtime(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint32_t wcs_read_rxtime_lo(struct _dw1000_dev_instance_t * inst){
-    return (uint32_t) (wcs_dtu_time_adjust(inst, dw1000_read_rxtime_lo(inst)) & 0xFFFFFFFFUL);
+    wcs_instance_t * wcs = inst->ccp->wcs;
+    return (uint32_t) wcs_dtu_time_adjust(wcs, dw1000_read_rxtime_lo(inst)) & 0xFFFFFFFFUL;
 }
 
 /**
@@ -363,7 +351,8 @@ inline uint32_t wcs_read_rxtime_lo(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint64_t wcs_read_txtime(struct _dw1000_dev_instance_t * inst){
-    return wcs_dtu_time_adjust(inst, dw1000_read_txtime(inst));
+    wcs_instance_t * wcs = inst->ccp->wcs;
+    return wcs_dtu_time_adjust(wcs, dw1000_read_txtime(inst));
 }
 
 /**
@@ -375,7 +364,8 @@ inline uint64_t wcs_read_txtime(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint32_t wcs_read_txtime_lo(struct _dw1000_dev_instance_t * inst){
-    return (uint32_t) (wcs_dtu_time_adjust(inst, dw1000_read_txtime_lo(inst)) & 0xFFFFFFFFUL);
+    wcs_instance_t * wcs = inst->ccp->wcs;
+    return (uint32_t) (wcs_dtu_time_adjust(wcs, dw1000_read_txtime_lo(inst)) & 0xFFFFFFFFUL);
 }
 
 /**
@@ -389,7 +379,8 @@ inline uint32_t wcs_read_txtime_lo(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint64_t wcs_read_systime_master(struct _dw1000_dev_instance_t * inst){
-    return wcs_local_to_master(inst, dw1000_read_systime(inst));
+    wcs_instance_t * wcs = inst->ccp->wcs;
+    return wcs_local_to_master(wcs, dw1000_read_systime(inst));
 }
 
 
@@ -402,7 +393,8 @@ inline uint64_t wcs_read_systime_master(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint32_t wcs_read_systime_lo_master(struct _dw1000_dev_instance_t * inst){
-       return (uint32_t) (wcs_local_to_master(inst, dw1000_read_systime_lo(inst)) & 0xFFFFFFFFUL);
+    wcs_instance_t * wcs = inst->ccp->wcs;
+    return (uint32_t) (wcs_local_to_master(wcs, dw1000_read_systime_lo(inst)) & 0xFFFFFFFFUL);
 }
 
 /**
@@ -415,7 +407,8 @@ inline uint32_t wcs_read_systime_lo_master(struct _dw1000_dev_instance_t * inst)
 
 
 inline uint64_t wcs_read_rxtime_master(struct _dw1000_dev_instance_t * inst){
-    return wcs_local_to_master(inst, dw1000_read_rxtime(inst));
+    wcs_instance_t * wcs = inst->ccp->wcs;
+    return wcs_local_to_master(wcs, dw1000_read_rxtime(inst));
 }
 
 
@@ -428,7 +421,8 @@ inline uint64_t wcs_read_rxtime_master(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint32_t wcs_read_rxtime_lo_master(struct _dw1000_dev_instance_t * inst){
-    return (uint32_t) (wcs_local_to_master(inst, dw1000_read_rxtime_lo(inst)) & 0xFFFFFFFFUL);
+    wcs_instance_t * wcs = inst->ccp->wcs;
+    return (uint32_t) (wcs_local_to_master(wcs, dw1000_read_rxtime_lo(inst)) & 0xFFFFFFFFUL);
 }
 
 /**
@@ -441,7 +435,8 @@ inline uint32_t wcs_read_rxtime_lo_master(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint64_t wcs_read_txtime_master(struct _dw1000_dev_instance_t * inst){
-    return wcs_local_to_master(inst, dw1000_read_txtime(inst));
+    wcs_instance_t * wcs = inst->ccp->wcs;
+    return wcs_local_to_master(wcs, dw1000_read_txtime(inst));
 }
 
 /**
@@ -453,7 +448,8 @@ inline uint64_t wcs_read_txtime_master(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint32_t wcs_read_txtime_lo_master(struct _dw1000_dev_instance_t * inst){
-    return (uint32_t) (wcs_local_to_master(inst, dw1000_read_txtime_lo(inst))& 0xFFFFFFFFUL);
+    wcs_instance_t * wcs = inst->ccp->wcs;
+    return (uint32_t) (wcs_local_to_master(wcs, dw1000_read_txtime_lo(inst))& 0xFFFFFFFFUL);
 }
 
 

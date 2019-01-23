@@ -127,14 +127,17 @@ typedef struct _dw1000_ccp_instance_t{
     struct _sos_instance_t * xtalt_sos;         //!< Sturcture of xtalt_sos 
 #endif
     dw1000_mac_interface_t cbs;                     //!< MAC Layer Callbacks
-    uint64_t uuid;                                  //!< Clock Master UUID
+    union _uuid{
+        uint64_t uuid;                                  //!< Clock Master UUID TODOs::depreciated nomenclature
+        uint64_t euid;                                  //!< Clock Master EUID
+    };
     struct os_sem sem;                              //!< Structure containing os semaphores
     struct os_callout callout_postprocess;          //!< Structure of callout_postprocess
     dw1000_ccp_status_t status;                     //!< DW1000 ccp status parameters
     dw1000_ccp_config_t config;                     //!< DW1000 ccp config parameters
-    uint64_t epoch_master;
-    uint64_t epoch;
-    uint32_t os_epoch;
+    uint64_t master_epoch;                          //!< ccp event referenced to master systime
+    uint64_t local_epoch;                           //!< ccp event referenced to local systime
+    uint32_t os_epoch;                              //!< ccp event referenced to ostime
     uint32_t period;                                //!< Pulse repetition period
     uint16_t nframes;                               //!< Number of buffers defined to store the data 
     uint16_t idx;                                   //!< Indicates number of DW1000 instances 
