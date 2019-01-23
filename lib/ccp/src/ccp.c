@@ -555,30 +555,20 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
     /* Compensate for time of flight */
     if (inst->ccp->tof_comp_cb) {
-        ccp->epoch -= inst->ccp->tof_comp_cb(frame->long_address);
-        frame->reception_timestamp = ccp->epoch;
+        ccp->local_epoch -= inst->ccp->tof_comp_cb(frame->long_address);
+        frame->reception_timestamp = ccp->local_epoch;
     }
 
     /* Compensate if not receiving the master ccp packet directly */
-<<<<<<< HEAD
-    int rx_slot = (frame->euid & 0xff);
-    if (rx_slot != 0x00) {
-        STATS_INC(inst->ccp->stat, rx_relayed);
-        /* Assume ccp intervals are a multiple of 0x10000 us */
-        uint32_t master_interval = ((frame->transmission_interval/0x10000+1)*0x10000);
-        ccp->master_epoch -= (master_interval - frame->transmission_interval) << 16;
-        ccp->local_epoch -= (master_interval - frame->transmission_interval) << 16;
-=======
     if (frame->rpt_count != 0) {
         STATS_INC(inst->ccp->stat, rx_relayed);
         /* Assume ccp intervals are a multiple of 0x10000 us */
         uint32_t master_interval = ((frame->transmission_interval/0x10000+1)*0x10000);
         uint32_t repeat_dly = master_interval - frame->transmission_interval;
-        ccp->epoch_master = (ccp->epoch_master - (repeat_dly << 16)) & 0xffffffffffUL;
+        ccp->master_epoch = (ccp->master_epoch - (repeat_dly << 16)) & 0xffffffffffUL;
         /* TODO: Probably compensate for skew relative master when correcting local ts */
-        ccp->epoch = (ccp->epoch - (repeat_dly << 16)) & 0xffffffffffUL;
-        frame->reception_timestamp = ccp->epoch;
->>>>>>> 84e40e387bca1e2a08f2863f27994df8815ce391
+        ccp->local_epoch = (ccp->local_epoch - (repeat_dly << 16)) & 0xffffffffffUL;
+        frame->reception_timestamp = ccp->local_epoch;
         ccp->os_epoch -= os_cputime_usecs_to_ticks(master_interval - frame->transmission_interval);
     }
 
@@ -601,11 +591,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         tx_frame.transmission_timestamp = frame->transmission_timestamp + tx_timestamp - frame->reception_timestamp;
 #endif
 
-<<<<<<< HEAD
-        tx_frame.euid = inst->ccp->euid | (inst->slot_id-1);
-=======
         tx_frame.long_address = inst->euid;
->>>>>>> 84e40e387bca1e2a08f2863f27994df8815ce391
         tx_frame.transmission_interval = frame->transmission_interval - ((tx_frame.transmission_timestamp - frame->transmission_timestamp)>>16);
 
         dw1000_write_tx(inst, tx_frame.array, 0, sizeof(ccp_blink_frame_t));
@@ -820,7 +806,7 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     frame->transmission_timestamp += inst->tx_antenna_delay;
 
     frame->seq_num = previous_frame->seq_num + 1;
-    frame->euid = inst->ccp->euid;
+    frame->euid = inst->ccp->euid; // @niklas which one of these are we using?
     frame->euid = inst->euid;
     frame->transmission_interval = inst->ccp->period;
 
