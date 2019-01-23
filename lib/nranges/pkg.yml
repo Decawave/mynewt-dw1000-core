@@ -17,8 +17,8 @@
 # under the License.
 #
 
-pkg.name: lib/twr_ss_nrng
-pkg.description: Double Sided TWR library
+pkg.name: lib/nranges
+pkg.description: TWR ranging using 2n+2 messages.
 pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
@@ -29,11 +29,14 @@ pkg.cflags:
     - "-std=gnu99"
     - "-fms-extensions"
 
+pkg.deps:
+    - "@mynewt-dw1000-core/hw/drivers/dw1000"
+    - "@mynewt-dw1000-core/lib/rng"
+    - "@mynewt-dw1000-core/lib/tdma"
+
 pkg.lflags:
     - "-lm"
 
-pkg.deps:
-    - "@mynewt-dw1000-core/lib/nranges"
-
 pkg.init:
-    twr_ss_nrng_pkg_init: 414
+    dw1000_nrng_pkg_init: 411
+

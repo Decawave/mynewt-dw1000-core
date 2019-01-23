@@ -644,7 +644,7 @@ dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_pan_role_t role)
         pan->idx = 0x1;
         pan->status.valid = false;
 
-        printf("{\"utime\": %lu,\"PAN\": \"%s\"}\n",
+        printf("{\"utime\":%lu,\"PAN\":\"%s\"}\n",
                os_cputime_ticks_to_usecs(os_cputime_get32()),
                "Provisioning"
             );

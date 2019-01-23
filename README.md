@@ -60,8 +60,8 @@ Ranging services binds to the MAC interface--this interface exposes callbacks to
 
 | profile       | Description  | Benchmark  |
 | ------------- |:-------------:| -----:|
-| nrng_ss | n TWR_SS ranges with 2*n+2 messages  | 1860us for n=4, 2133us for n=6|
-| nrng_ds | n TWR_DS ranges with 2*n+2 messages  | TBD us for n=4 |
+| nrng_ss | n TWR_SS ranges with 2*n+2 messages  | 1988us for n=4, 2598us for n=6|
+| nrng_ds | n TWR_DS ranges with 2*n+2 messages  | 6200us for n=4 |
 
 ### Clock Calibration Packet (CCP) Service
 The CCP service is the metronome with the system and defines the superframe events. The CCP service has a master and slave profiles. CCP is used in conjunction with Wireless Clock Synchronization (WCS) library and the TDMA library. 

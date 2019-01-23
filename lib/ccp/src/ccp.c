@@ -246,7 +246,6 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
 
     uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ccp_blink_frame_t)) 
                         + MYNEWT_VAL(XTALT_GUARD);
-                        
 #if MYNEWT_VAL(CCP_NUM_RELAYING_ANCHORS) != 0
     /* Adjust timeout if we're using cascading ccp in anchors */
     timeout += usecs_to_response(inst, 0, MYNEWT_VAL(CCP_NUM_RELAYING_ANCHORS));
@@ -388,10 +387,9 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes, uint64_t
     inst->ccp->status.initialized = 1;
 
     int rc = stats_init(
-                STATS_HDR(inst->ccp->stat),
-                STATS_SIZE_INIT_PARMS(inst->ccp->stat, STATS_SIZE_32),
-                STATS_NAME_INIT_PARMS(ccp_stat_section)
-            );
+    STATS_HDR(inst->ccp->stat),
+    STATS_SIZE_INIT_PARMS(inst->ccp->stat, STATS_SIZE_32),
+    STATS_NAME_INIT_PARMS(ccp_stat_section));
     assert(rc == 0);
 
 #if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
@@ -466,7 +464,6 @@ void ccp_pkg_init(void){
 void 
 dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, os_event_fn * postprocess){
     os_callout_init(&inst->callout_postprocess, os_eventq_dflt_get(), postprocess, (void *) inst);
-//    os_callout_init(&inst->callout_postprocess, &inst->eventq,  postprocess, (void *) inst);
     inst->config.postprocess = true;
 }
 
@@ -550,7 +547,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         return false;
 
     /* Mask off the last 8 bits and compare to our ccp->uuid master id */
-    if((inst->ccp->uuid & 0xffffffffffffff00UL) != (frame->long_address & 0xffffffffffffff00UL)) {
+    if((inst->ccp->uuid&0xffffffffffffff00UL) != (frame->long_address&0xffffffffffffff00UL)) {
         return false;
     }
 
@@ -614,7 +611,6 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     }
 
     if (ccp->config.postprocess && ccp->status.valid) 
-        // os_eventq_put(&ccp->eventq, &ccp->callout_postprocess.c_ev);
         os_eventq_put(os_eventq_dflt_get(), &ccp->callout_postprocess.c_ev);
     
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED) 
@@ -677,7 +673,6 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
     ccp->status.valid |= ccp->idx > 1;
     // Postprocess for tx_complete is used to generate tdma events on the clock master node. 
     if (ccp->config.postprocess && ccp->status.valid) 
-        //os_eventq_put(&ccp->eventq, &ccp->callout_postprocess.c_ev);
         os_eventq_put(os_eventq_dflt_get(), &ccp->callout_postprocess.c_ev);
        
     if(os_sem_get_count(&inst->ccp->sem) == 0){

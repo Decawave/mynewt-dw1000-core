@@ -19,13 +19,13 @@ syscfg.defs:
         value: 0
     DW1000_DEVICE_TX_PWR:
         description: 'Tx Power dBm'
-        value: ((float)-14.3f)
+        value: ((float){-14.3f})
     DW1000_DEVICE_ANT_GAIN:
         description: 'Antenna Gain dB'
-        value: ((float)1.0f)
+        value: ((float){1.0f})
     DW1000_DEVICE_FREQ:  
         description: 'Center frequency Hz'
-        value: ((float)6489.6f)
+        value: ((float){6489.6f})
     DW1000_RXTX_LEDS:
         description: 'Enable showing rx and tx activity on gpios'
         value: 1
@@ -38,36 +38,36 @@ syscfg.defs:
     LOCAL_COORDINATE_X:
         description: >
             Default Anchor X Coordinate  
-        value: ((float)0.0f)
+        value: ((float){0.0f})
     LOCAL_COORDINATE_Y:
         description: >
             Default Anchor Y Coordinate  
-        value: ((float)0.0f)
+        value: ((float){0.0f})
     LOCAL_COORDINATE_Z:
         description: >
             Default Anchor Z Coordinate  
-        value: ((float)0.0f)
+        value: ((float){0.0f})
     RANGE_VARIANCE:
         description: >
             Range Measurement Variance 
-        value: ((float)5.4444e-04)
+        value: ((float){5.4444e-04})
     AZIMUTH_VARIANCE:
         description: >
             Azimuth Measurement Variance 
-        value: ((float)2.91e-2)
+        value: ((float){2.91e-2})
     RANGE_PERIOD:
         description: >
             Ranging period
-        value: ((uint32_t)0x3000)
+        value: ((uint32_t){0x3000})
     OS_LATENCY:
         description: >
             OS Latency Guardband (usec)
-        value: ((uint32_t)1000)
+        value: ((uint32_t){1000})
     PANID:
         description: >
           Default Pan ID
-        value: ((const uint16_t)0xdeca)
+        value: ((const uint16_t){0xdeca})
     DEVICE_ID:
         description: >
           Default Device ID
-        value: ((const uint16_t)0x1234)
+        value: ((const uint16_t){0x1234})

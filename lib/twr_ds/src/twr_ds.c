@@ -103,7 +103,7 @@ static STATS_SECT_DECL(twr_ds_stat_section) g_stat;
 
 static dw1000_rng_config_t g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(TWR_DS_TX_HOLDOFF),         // Send Time delay in usec.
-    .rx_timeout_delay = MYNEWT_VAL(TWR_DS_RX_TIMEOUT)       // Receive response timeout in usec
+    .rx_timeout_period = MYNEWT_VAL(TWR_DS_RX_TIMEOUT)       // Receive response timeout in usec
 };
 
 
@@ -252,7 +252,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
                 dw1000_set_delay_start(inst, response_tx_delay); 
                 uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_rng_response_frame_t)) 
-                                    + g_config.rx_timeout_delay        
+                                    + g_config.rx_timeout_period        
                                     + g_config.tx_holdoff_delay;         // Remote side turn arroud time. 
                 dw1000_set_rx_timeout(inst, timeout); 
 
@@ -310,7 +310,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 dw1000_set_wait4resp(inst, true);
                 dw1000_set_delay_start(inst, response_tx_delay);
                 uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(twr_frame_final_t)) 
-                                + g_config.rx_timeout_delay        
+                                + g_config.rx_timeout_period        
                                 + g_config.tx_holdoff_delay;         // Remote side turn around time. 
                 dw1000_set_rx_timeout(inst, timeout); 
                      
