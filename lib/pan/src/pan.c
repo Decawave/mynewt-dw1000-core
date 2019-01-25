@@ -427,7 +427,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 uint32_t lease_us = 1000000;
 #if MYNEWT_VAL(CCP_ENABLED)
                 lease_us = frame->lease_time*inst->ccp->period;
-                lease_us -= (inst->rxtimestamp>>16) - (inst->ccp->epoch>>16);
+                lease_us -= (inst->rxtimestamp>>16) - (inst->ccp->local_epoch>>16);
 #endif
                 os_time_ms_to_ticks(lease_us/1000, &exp_tics);
                 os_callout_reset(&pan->pan_lease_callout_expiry, exp_tics);
