@@ -74,8 +74,8 @@ syscfg.vals:
     SPI_0_MASTER_PIN_MOSI: 20
     SPI_0_MASTER_PIN_MISO: 18
 
-    I2C_1_PIN_SCL: 27
-    I2C_1_PIN_SDA: 26
+    I2C_1_PIN_SCL: 28
+    I2C_1_PIN_SDA: 29
     I2C_1_FREQ_KHZ: 400
 
     UART_0_PIN_TX: 5
