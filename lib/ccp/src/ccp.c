@@ -611,7 +611,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED) 
     if (ccp->config.fs_xtalt_autotune && ccp->status.valid){
 //        float fs_xtalt_offset = sosfilt(ccp->xtalt_sos,  1e6 * ((float)tracking_offset) / tracking_interval, g_fs_xtalt_b, g_fs_xtalt_a);  
-        float fs_xtalt_offset = sosfilt(ccp->xtalt_sos,  -1e6 * ccp->wcs->skew, g_fs_xtalt_b, g_fs_xtalt_a);
+        float fs_xtalt_offset = sosfilt(ccp->xtalt_sos,  1e6 * ccp->wcs->skew, g_fs_xtalt_b, g_fs_xtalt_a);
         if(ccp->xtalt_sos->clk % FS_XTALT_SETTLINGTIME == 0){ 
             int8_t reg = dw1000_read_reg(inst, FS_CTRL_ID, FS_XTALT_OFFSET, sizeof(uint8_t)) & FS_XTALT_MASK;
             int8_t trim_code = (int8_t) roundf(polyval(g_fs_xtalt_poly, fs_xtalt_offset, sizeof(g_fs_xtalt_poly)/sizeof(float)) 
@@ -806,7 +806,6 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     frame->transmission_timestamp += inst->tx_antenna_delay;
 
     frame->seq_num = previous_frame->seq_num + 1;
-    frame->euid = inst->ccp->euid; // @niklas which one of these are we using?
     frame->euid = inst->euid;
     frame->transmission_interval = inst->ccp->period;
 
