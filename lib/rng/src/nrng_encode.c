@@ -120,9 +120,10 @@ nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base){
     for (uint16_t i=0; i < 16; i++){
         if (valid_mask & 1UL << i){
             uint16_t idx = BitIndex(nrng->slot_mask , 1UL << i, SLOT_POSITION); 
+            nrng_frame_t * master = nrng->frames[(base)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
             nrng_frame_t * frame = nrng->frames[(base + idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
             if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == seq_num){
-                JSON_VALUE_INT(&value, (int32_t)(frame->reception_timestamp - frame->request_timestamp));
+                JSON_VALUE_INT(&value, (int32_t)(master->reception_timestamp - frame->reception_timestamp));
                 rc |= json_encode_array_value(&encoder, &value); 
                 if (i%64==0) _json_fflush();
             }

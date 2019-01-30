@@ -67,8 +67,8 @@ pkg.deps.LIS2MDL_ONB:
 pkg.deps.LPS22HB_ONB:
     - '@mynewt-dw1000-core/hw/drivers/sensors/lps22hb'
     
-pkg.deps.ESP12F_ENABLED:
-    - "@loligo-mynewt-lps/sys/espwifi"
+#pkg.deps.ESP12F_ENABLED:
+#    - "@loligo-mynewt-lps/sys/espwifi"
 
 pkg.init:
   config_lsm6dsl_sensor: 400
