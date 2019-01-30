@@ -225,7 +225,7 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
                         
 #if MYNEWT_VAL(CCP_MAX_CASCADE_RPTS) != 0
     /* Adjust timeout if we're using cascading ccp in anchors */
-    timeout += (ccp->config.tx_holdoff_dly) * MYNEWT_VAL(CCP_MAX_CASCADE_RPTS);
+    timeout += (ccp->config.tx_holdoff_dly + dw1000_phy_frame_duration(&inst->attrib, sizeof(ccp_blink_frame_t))) * MYNEWT_VAL(CCP_MAX_CASCADE_RPTS);
 #endif
     dw1000_set_rx_timeout(inst, timeout); 
     dw1000_set_delay_start(inst, dx_time);
@@ -578,7 +578,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         memcpy(tx_frame.array, frame->array, sizeof(ccp_frame_t));
 
         tx_frame.rpt_count++;
-        uint64_t tx_timestamp = frame->reception_timestamp + (inst->ccp->config.tx_holdoff_dly<<16);
+        uint64_t tx_timestamp = inst->rxtimestamp + ((uint64_t)inst->ccp->config.tx_holdoff_dly<<16);
         tx_timestamp &= 0x0FFFFFFFFFFUL;
         dw1000_set_delay_start(inst, tx_timestamp);
 
