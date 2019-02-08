@@ -43,6 +43,9 @@
 #if MYNEWT_VAL(TWR_DS_EXT_NRNG_ENABLED)
 #include <twr_ds_ext_nrng/twr_ds_ext_nrng.h>
 #endif
+#if MYNEWT_VAL(TWR_SS_EXT_NRNG_ENABLED)
+#include <twr_ss_ext_nrng/twr_ss_ext_nrng.h>
+#endif
 #if MYNEWT_VAL(WCS_ENABLED)
 #include <wcs/wcs.h>
 #endif
@@ -211,9 +214,14 @@ dw1000_nrng_get_config(dw1000_dev_instance_t * inst, dw1000_rng_modes_t code){
             config = twr_ds_ext_nrng_config(inst);
             break;
 #endif
-#if MYNEWT_VAL(TWR_SS_NRNG_ENABLED) 
+#if MYNEWT_VAL(TWR_SS_NRNG_ENABLED)
         case  DWT_SS_TWR_NRNG:                     //!< Single sided TWR
             config = twr_ss_nrng_config(inst);
+            break;
+#endif
+#if MYNEWT_VAL(TWR_SS_EXT_NRNG_ENABLED)
+        case  DWT_SS_TWR_NRNG_EXT:                     //!< Single sided TWR
+            config = twr_ss_ext_nrng_config(inst);
             break;
 #endif
         default:
@@ -362,33 +370,51 @@ dw1000_nrng_twr_to_tof_frames(struct _dw1000_dev_instance_t * inst, nrng_frame_t
     float ToF = 0;
     uint64_t T1R, T1r, T2R, T2r;
     int64_t nom,denom;
-
-    switch(final_frame->code){
-        case DWT_DS_TWR_NRNG ... DWT_DS_TWR_NRNG_END:
-        case DWT_DS_TWR_NRNG_EXT ... DWT_DS_TWR_NRNG_EXT_END:
-            assert(first_frame != NULL);
-            assert(final_frame != NULL);
-            T1R = (first_frame->response_timestamp - first_frame->request_timestamp);
-            T1r = (first_frame->transmission_timestamp  - first_frame->reception_timestamp);
-            T2R = (final_frame->response_timestamp - final_frame->request_timestamp);
-            T2r = (final_frame->transmission_timestamp - final_frame->reception_timestamp);
-            nom = T1R * T2R  - T1r * T2r;
-            denom = T1R + T2R  + T1r + T2r;
-            ToF = (float) (nom) / denom;
-            break;
-        case DWT_SS_TWR_NRNG ... DWT_SS_TWR_NRNG_FINAL:{
-            assert(first_frame != NULL);
+    if(final_frame != NULL){
+        switch(final_frame->code){
+            case DWT_DS_TWR_NRNG ... DWT_DS_TWR_NRNG_END:
+            case DWT_DS_TWR_NRNG_EXT ... DWT_DS_TWR_NRNG_EXT_END:
+                assert(first_frame != NULL);
+                assert(final_frame != NULL);
+                T1R = (first_frame->response_timestamp - first_frame->request_timestamp);
+                T1r = (first_frame->transmission_timestamp  - first_frame->reception_timestamp);
+                T2R = (final_frame->response_timestamp - final_frame->request_timestamp);
+                T2r = (final_frame->transmission_timestamp - final_frame->reception_timestamp);
+                nom = T1R * T2R  - T1r * T2r;
+                denom = T1R + T2R  + T1r + T2r;
+                ToF = (float) (nom) / denom;
+                break;
+            case DWT_SS_TWR_NRNG ... DWT_SS_TWR_NRNG_EXT_FINAL:{
+                assert(first_frame != NULL);
 #if MYNEWT_VAL(WCS_ENABLED)
-            ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
+                ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
                     -  (first_frame->transmission_timestamp - first_frame->reception_timestamp))/2.0f;
 #else
-            float skew = dw1000_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);
-            ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
+                float skew = dw1000_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);
+                ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
                     -  (first_frame->transmission_timestamp - first_frame->reception_timestamp) * (1 - skew))/2.0f;
 #endif
-            break;
+                break;
             }
-        default: break;
+            default: break;
+        }
+    }
+    else{
+        switch(first_frame->code){
+            case DWT_SS_TWR_NRNG ... DWT_SS_TWR_NRNG_EXT_FINAL:{
+                 assert(first_frame != NULL);
+#if MYNEWT_VAL(WCS_ENABLED)
+                 ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
+                     -  (first_frame->transmission_timestamp - first_frame->reception_timestamp))/2.0f;
+#else
+                 float skew = dw1000_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);
+                 ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
+                     -  (first_frame->transmission_timestamp - first_frame->reception_timestamp) * (1 - skew))/2.0f;
+#endif
+                 break;
+            }
+            default: break;
+        }
     }
     return ToF;
 }

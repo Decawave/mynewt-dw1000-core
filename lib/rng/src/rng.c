@@ -53,6 +53,9 @@
 #include <rng/rng_encode.h>
 #include <rng/nrng.h>
 #endif
+#if MYNEWT_VAL(TWR_SS_EXT_ENABLED)
+#include <twr_ss_ext/twr_ss_ext.h>
+#endif
 #if MYNEWT_VAL(TWR_DS_EXT_ENABLED)
 #include <twr_ds_ext/twr_ds_ext.h>
 #endif
@@ -371,7 +374,12 @@ dw1000_rng_get_config(dw1000_dev_instance_t * inst, dw1000_rng_modes_t code){
 #if MYNEWT_VAL(TWR_SS_ENABLED) 
         case  DWT_SS_TWR:                     //!< Single sided TWR 
             config = twr_ss_config(inst);
-            break;  
+            break;
+#endif
+#if MYNEWT_VAL(TWR_SS_EXT_ENABLED)
+        case DWT_SS_TWR_EXT:
+            config = twr_ss_ext_config(inst);  //!< Single side TWR in extended mode
+            break;
 #endif
 #if MYNEWT_VAL(TWR_DS_ENABLED) 
         case  DWT_DS_TWR:                     //!< Double sided TWR 
@@ -582,6 +590,7 @@ dw1000_rng_twr_to_tof(twr_frame_t *fframe, twr_frame_t *nframe){
 
     switch(frame->code){
         case DWT_SS_TWR ... DWT_SS_TWR_END:
+        case DWT_SS_TWR_EXT ... DWT_SS_TWR_EXT_END:
             ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
                     -  (first_frame->transmission_timestamp - first_frame->reception_timestamp))/2.;
         break;
@@ -621,7 +630,8 @@ dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng, uint16_t idx){
     twr_frame_t * frame = rng->frames[(idx)%rng->nframes];
 
     switch(frame->code){
-        case DWT_SS_TWR ... DWT_SS_TWR_END:{
+        case DWT_SS_TWR ... DWT_SS_TWR_END:
+        case DWT_SS_TWR_EXT ... DWT_SS_TWR_EXT_END:{
 #if MYNEWT_VAL(WCS_ENABLED)
             wcs_instance_t * wcs = inst->ccp->wcs;
             float skew = wcs->skew;
@@ -631,7 +641,7 @@ dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng, uint16_t idx){
             ToF = ((frame->response_timestamp - frame->request_timestamp) 
                     -  (frame->transmission_timestamp - frame->reception_timestamp) * (1.0f - skew))/2.;
             }
-        break;
+            break;
         case DWT_DS_TWR ... DWT_DS_TWR_END:
         case DWT_DS_TWR_EXT ... DWT_DS_TWR_EXT_END:
             T1R = (first_frame->response_timestamp - first_frame->request_timestamp); 

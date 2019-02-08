@@ -79,11 +79,13 @@ typedef enum _dw1000_extension_id_t{
     DW1000_TDMA,                             //!< TDMA services
     DW1000_RNG,                              //!< Ranging
     DW1000_RNG_SS,                           //!< Ranging
+    DW1000_RNG_SS_EXT,                       //!< Ranging
     DW1000_RNG_DS,                           //!< Ranging
     DW1000_RNG_DS_EXT,                       //!< Ranging
     DW1000_RANGE,                            //!< Ranging
     DW1000_NRNG,                             //!< Nrng
     DW1000_NRNG_SS,                          //!< Nrng
+    DW1000_NRNG_SS_EXT,                      //!< Nrng
     DW1000_NRNG_DS,                          //!< Nrng
     DW1000_NRNG_DS_EXT,                      //!< Nrng
     DW1000_LWIP,

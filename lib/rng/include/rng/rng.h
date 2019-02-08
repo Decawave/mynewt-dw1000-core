@@ -83,6 +83,10 @@ typedef enum _dw1000_rng_modes_t{
     DWT_SS_TWR_T1,                   //!< Response for single sided TWR 
     DWT_SS_TWR_FINAL,                //!< Final response of single sided TWR 
     DWT_SS_TWR_END,                  //!< End of single sided TWR 
+    DWT_SS_TWR_EXT,                  //!< Single sided TWR in extended mode
+    DWT_SS_TWR_EXT_T1,               //!< Response for single sided TWR in extended mode
+    DWT_SS_TWR_EXT_FINAL,            //!< Final response of single sided TWR in extended mode
+    DWT_SS_TWR_EXT_END,              //!< End of single sided TWR in extended mode
     DWT_DS_TWR,                      //!< Double sided TWR 
     DWT_DS_TWR_T1,                   //!< Response for double sided TWR 
     DWT_DS_TWR_T2,                   //!< Response for double sided TWR 
@@ -98,6 +102,10 @@ typedef enum _dw1000_rng_modes_t{
     DWT_SS_TWR_NRNG,
     DWT_SS_TWR_NRNG_T1,
     DWT_SS_TWR_NRNG_FINAL,
+    DWT_SS_TWR_NRNG_EXT,
+    DWT_SS_TWR_NRNG_EXT_T1,
+    DWT_SS_TWR_NRNG_EXT_FINAL,
+    DWT_SS_TWR_NRNG_EXT_END,
     DWT_DS_TWR_NRNG,
     DWT_DS_TWR_NRNG_T1,
     DWT_DS_TWR_NRNG_T2,

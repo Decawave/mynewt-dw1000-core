@@ -93,7 +93,7 @@ typedef union {
 typedef union {
     struct _nrng_frame_t{
         struct _nrng_final_frame_t;
-#if MYNEWT_VAL(TWR_DS_EXT_NRNG_ENABLED)
+#if (MYNEWT_VAL(TWR_SS_EXT_NRNG_ENABLED) || MYNEWT_VAL(TWR_DS_EXT_NRNG_ENABLED))
         union {
             struct _twr_data_t;                            //!< Structure of twr_data
             uint8_t payload[sizeof(struct _twr_data_t)];   //!< Payload of size twr_data 
