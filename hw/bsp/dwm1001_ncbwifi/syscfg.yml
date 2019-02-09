@@ -54,6 +54,9 @@ syscfg.defs:
     NCBWIFI_ESP_PASSTHROUGH:
         description: 'Enable api for passing usb connection to esp8266'
         value: 0
+    NCBWIFI_ESP_ENTER_BL:
+        description: 'When starting ESP at boot, also enter bootloader'
+        value: 0
     ESP12F_ENABLED:
         description: 'Enable ESP12F at boot'
         value: 0
@@ -62,6 +65,13 @@ syscfg.vals.DW1000_DEVICE_0:
     SPI_0_MASTER: 1
     DW1000_RXTX_LEDS: 0
 
+syscfg.vals.ESP12F_ENABLED:
+    UART_0: 1
+    UART_0_PIN_TX: 14
+    UART_0_PIN_RX: 22
+    UART_0_PIN_RTS: -1
+    UART_0_PIN_CTS: -1
+    
 syscfg.vals.CONSOLE_UART:
     UART_0: 1
 
@@ -91,7 +101,6 @@ syscfg.vals:
     COREDUMP_FLASH_AREA: FLASH_AREA_IMAGE_1
     MCU_DCDC_ENABLED: 1
     XTAL_32768: 1
-    BOOT_SERIAL_DETECT_PIN: 2  # Button 1
     # Enable the shell task.
     SHELL_TASK: 1
     SHELL_PROMPT_MODULE: 1

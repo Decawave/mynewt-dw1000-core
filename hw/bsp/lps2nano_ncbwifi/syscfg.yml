@@ -64,6 +64,9 @@ syscfg.defs:
     NCBWIFI_ESP_PASSTHROUGH:
         description: 'Enable api for passing usb connection to esp8266'
         value: 0
+    NCBWIFI_ESP_ENTER_BL:
+        description: 'When starting ESP at boot, also enter bootloader'
+        value: 0
     ESP12F_ENABLED:
         description: 'Enable ESP12F at boot'
         value: 0
@@ -78,6 +81,8 @@ syscfg.vals.ESP12F_ENABLED:
     UART_0_PIN_RX: 22
     UART_0_PIN_RTS: -1
     UART_0_PIN_CTS: -1
+    SHELL_NEWTMGR: 1
+    CONFIG_NEWTMGR: 1
 
 syscfg.vals.CONSOLE_UART:
     UART_0: 1
@@ -86,6 +91,7 @@ syscfg.vals:
     # Enable nRF52832 MCU
     MCU_NRF52832: 1
     XTAL_32768: 1
+    ID_TARGET_PRESENT: 1
 
     SPI_0_MASTER_PIN_SCK: 16
     SPI_0_MASTER_PIN_MOSI: 20

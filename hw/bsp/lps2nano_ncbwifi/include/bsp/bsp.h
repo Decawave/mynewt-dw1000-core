@@ -57,6 +57,9 @@ extern uint8_t _ram_start;
 #define ESP_PGM_PIN  27
 #define ESP_RST_PIN  13
 
+#define USB_UART_0_PIN_TX 5
+#define USB_UART_0_PIN_RX 11
+    
 #define USB_V_PIN           NRF_SAADC_INPUT_AIN6
 #define BATT_V_PIN          NRF_SAADC_INPUT_AIN7
 #define MEAS_BATT_EN_PIN    30

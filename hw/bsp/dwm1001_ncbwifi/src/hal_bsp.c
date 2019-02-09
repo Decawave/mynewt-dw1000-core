@@ -275,23 +275,25 @@ void
 hal_bsp_esp_bypass(int enable)
 {
 #if MYNEWT_VAL(NCBWIFI_ESP_PASSTHROUGH)
-    int g_esp_bypass_i[] = {ESP_TXD0_PIN, MYNEWT_VAL(UART_0_PIN_RX)}; //MYNEWT_VAL(UART_0_PIN_RTS)
-    int g_esp_bypass_o[] = {MYNEWT_VAL(UART_0_PIN_TX), ESP_RXD0_PIN, ESP_RST_PIN};
+    int bypass_i[] = {ESP_TXD0_PIN, USB_UART_0_PIN_RX}; //MYNEWT_VAL(UART_0_PIN_RTS)
+    int bypass_o[] = {USB_UART_0_PIN_TX, ESP_RXD0_PIN, ESP_RST_PIN};
 #if MYNEWT_VAL(UART_0)
     hal_uart_close(0);
 #endif
     hal_gpio_init_out(ESP_RST_PIN, 1);
     hal_gpio_init_in(ESP_PGM_PIN, HAL_GPIO_PULL_UP);
     hal_gpio_init_out(ESP_PWR_PIN, 0);
+#if MYNEWT_VAL(NCBWIFI_ESP_ENTER_BL)
     hal_bsp_esp_enter_bootloader();
+#endif
 
     if (!nrfx_gpiote_is_init()) {
         nrfx_gpiote_init();
     }
 
-    for (int i=0;i<sizeof(g_esp_bypass_i)/sizeof(g_esp_bypass_i[0]);i++) {
-        uint32_t inpin = g_esp_bypass_i[i];
-        uint32_t outpin = g_esp_bypass_o[i];
+    for (int i=0;i<sizeof(bypass_i)/sizeof(bypass_i[0]);i++) {
+        uint32_t inpin = bypass_i[i];
+        uint32_t outpin = bypass_o[i];
         hal_gpio_init_in(inpin, HAL_GPIO_PULL_NONE);
         int initial_value = hal_gpio_read(inpin);
 

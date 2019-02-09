@@ -30,6 +30,7 @@ pkg.keywords:
 pkg.cflags:
     # Nordic SDK files require these defines.
     - '-DNRF52'
+    - '-DNRFX_GPIOTE_ENABLED=1 -DNRFX_GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS=1 -DNRFX_GPIOTE_CONFIG_IRQ_PRIORITY=7'
     - '-DNRFX_PPI_ENABLED=1'
    
 pkg.cflags.HARDFLOAT:
@@ -67,8 +68,9 @@ pkg.deps.LIS2MDL_ONB:
 pkg.deps.LPS22HB_ONB:
     - '@mynewt-dw1000-core/hw/drivers/sensors/lps22hb'
     
-#pkg.deps.ESP12F_ENABLED:
-#    - "@loligo-mynewt-lps/sys/espwifi"
+pkg.deps.ESP12F_ENABLED:
+    - "@apache-mynewt-core/sys/id"
+    - "@loligo-mynewt-lps/sys/espwifi"
 
 pkg.init:
   config_lsm6dsl_sensor: 400
