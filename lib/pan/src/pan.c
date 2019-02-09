@@ -303,10 +303,11 @@ static void
 pan_postprocess(struct os_event * ev){
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
+
+#if MYNEWT_VAL(PAN_VERBOSE)
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
     dw1000_pan_instance_t * pan = inst->pan;
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
-
     if(pan->status.valid && frame->long_address == inst->my_long_address)
         printf("{\"utime\": %lu,\"UUID\": \"%llX\",\"ID\": \"%X\",\"PANID\": \"%X\",\"slot\": %d}\n",
             os_cputime_ticks_to_usecs(os_cputime_get32()),
@@ -329,6 +330,7 @@ pan_postprocess(struct os_event * ev){
             frame->pan_id,
             frame->slot_id
         );
+#endif
 }
 
 /**
@@ -658,10 +660,12 @@ dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_pan_role_t role)
         pan->idx = 0x1;
         pan->status.valid = false;
 
+#if MYNEWT_VAL(PAN_VERBOSE)
         printf("{\"utime\": %lu,\"PAN\": \"%s\"}\n",
                os_cputime_ticks_to_usecs(os_cputime_get32()),
                "Provisioning"
             );
+#endif
     }
 }
 

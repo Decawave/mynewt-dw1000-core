@@ -2,6 +2,9 @@ syscfg.defs:
     PAN_ENABLED:
         description: 'Private Area Network functionality'
         value: 1
+    PAN_VERBOSE:
+        description: 'Print verbose messages'
+        value: 0
     PAN_TX_HOLDOFF:
         description: 'tx holdoff delay for PAN (usec)'
         value: ((uint32_t)0x0300)
