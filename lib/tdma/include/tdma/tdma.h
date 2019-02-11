@@ -37,6 +37,7 @@
 extern "C" {
 #endif
 
+#include <stats/stats.h>
 #include <dw1000/dw1000_ftypes.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_phy.h>
@@ -44,6 +45,13 @@ extern "C" {
 
 
 #define TDMA_TASKS_ENABLE
+
+STATS_SECT_START(tdma_stat_section)
+    STATS_SECT_ENTRY(slot_timer_cnt)
+    STATS_SECT_ENTRY(superframe_cnt)
+    STATS_SECT_ENTRY(rx_complete)
+    STATS_SECT_ENTRY(tx_complete)
+STATS_SECT_END
 
 //! Structure of TDMA
 typedef struct _tdma_status_t{
@@ -64,6 +72,7 @@ typedef struct _tdma_slot_t{
 //! Structure of tdma instance
 typedef struct _tdma_instance_t{
     struct _dw1000_dev_instance_t * parent;  //!< Pointer to _dw1000_dev_instance_t
+    STATS_SECT_DECL(tdma_stat_section) stat;  //!< Stats instance
     tdma_status_t status;                    //!< Status of tdma 
     dw1000_mac_interface_t cbs;              //!< MAC Layer Callbacks
     struct os_mutex mutex;                   //!< Structure of os_mutex  

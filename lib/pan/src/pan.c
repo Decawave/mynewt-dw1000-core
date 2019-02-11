@@ -96,6 +96,7 @@ STATS_SECT_START(pan_stat_section)
     STATS_SECT_ENTRY(pan_request)
     STATS_SECT_ENTRY(pan_listen)
     STATS_SECT_ENTRY(pan_reset)
+    STATS_SECT_ENTRY(relay_tx)
     STATS_SECT_ENTRY(lease_expiry)
     STATS_SECT_ENTRY(tx_complete)
     STATS_SECT_ENTRY(rx_complete)
@@ -110,6 +111,7 @@ STATS_NAME_START(pan_stat_section)
     STATS_NAME(pan_stat_section, pan_request)
     STATS_NAME(pan_stat_section, pan_listen)
     STATS_NAME(pan_stat_section, pan_reset)
+    STATS_NAME(pan_stat_section, relay_tx)
     STATS_NAME(pan_stat_section, lease_expiry)
     STATS_NAME(pan_stat_section, tx_complete)
     STATS_NAME(pan_stat_section, rx_complete)
@@ -301,10 +303,11 @@ static void
 pan_postprocess(struct os_event * ev){
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
+
+#if MYNEWT_VAL(PAN_VERBOSE)
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
     dw1000_pan_instance_t * pan = inst->pan;
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
-
     if(pan->status.valid && frame->long_address == inst->my_long_address)
         printf("{\"utime\": %lu,\"UUID\": \"%llX\",\"ID\": \"%X\",\"PANID\": \"%X\",\"slot\": %d}\n",
             os_cputime_ticks_to_usecs(os_cputime_get32()),
@@ -327,6 +330,7 @@ pan_postprocess(struct os_event * ev){
             frame->pan_id,
             frame->slot_id
         );
+#endif
 }
 
 /**
@@ -391,6 +395,16 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     }
     memcpy(frame->array, inst->rxbuf, inst->frame_len);
 
+    if (inst->pan->config->role == PAN_ROLE_RELAY && frame->rpt_count < frame->rpt_max &&
+        !(frame->code == DWT_PAN_RESP && frame->long_address == inst->my_long_address)) {
+        frame->rpt_count++;
+        dw1000_set_wait4resp(inst, true);
+        dw1000_write_tx_fctrl(inst, inst->frame_len, 0, true);
+        pan->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
+        dw1000_write_tx(inst, frame->array, 0, inst->frame_len);
+        STATS_INC(g_stat, relay_tx);
+    }
+
     switch(frame->code) {
     case DWT_PAN_REQ:
         STATS_INC(g_stat, pan_request);
@@ -416,7 +430,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 uint32_t lease_us = 1000000;
 #if MYNEWT_VAL(CCP_ENABLED)
                 lease_us = frame->lease_time*inst->ccp->period;
-                lease_us -= (inst->rxtimestamp>>16) - (inst->ccp->epoch>>16);
+                lease_us -= (inst->rxtimestamp>>16) - (inst->ccp->local_epoch>>16);
 #endif
                 os_time_ms_to_ticks(lease_us/1000, &exp_tics);
                 os_callout_reset(&pan->pan_lease_callout_expiry, exp_tics);
@@ -427,7 +441,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         break;
     case DWT_PAN_RESET:
         STATS_INC(g_stat, pan_reset);
-        if (pan->config->role == PAN_ROLE_SLAVE) {
+        if (pan->config->role != PAN_ROLE_MASTER) {
             pan->status.valid = false;
             pan->status.lease_expired = true;
             inst->slot_id = 0xffff;
@@ -563,6 +577,8 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, uint16_t role,
     frame->seq_num += inst->pan->nframes;
     frame->long_address = inst->my_long_address;
     frame->code = DWT_PAN_REQ;
+    frame->rpt_count = 0;
+    frame->rpt_max = MYNEWT_VAL(PAN_RPT_MAX);
     frame->role = role;
     frame->lease_time = pan->config->lease_time;
     imgr_my_version(&frame->fw_ver);
@@ -644,10 +660,12 @@ dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_pan_role_t role)
         pan->idx = 0x1;
         pan->status.valid = false;
 
-        printf("{\"utime\":%lu,\"PAN\":\"%s\"}\n",
+#if MYNEWT_VAL(PAN_VERBOSE)
+        printf("{\"utime\": %lu,\"PAN\": \"%s\"}\n",
                os_cputime_ticks_to_usecs(os_cputime_get32()),
                "Provisioning"
             );
+#endif
     }
 }
 

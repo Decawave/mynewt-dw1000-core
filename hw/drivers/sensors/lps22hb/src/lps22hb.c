@@ -58,7 +58,7 @@ STATS_NAME_START(lps22hb_stats)
 STATS_NAME_END(lps22hb_stats)
 
 
-#define LOG_MODULE_LPS22HB    (2200)
+#define LOG_MODULE_LPS22HB    (82)
 #define LPS22HB_INFO(...)     LOG_INFO(&_log, LOG_MODULE_LPS22HB, __VA_ARGS__)
 #define LPS22HB_ERR(...)      LOG_ERROR(&_log, LOG_MODULE_LPS22HB, __VA_ARGS__)
 static struct log _log;

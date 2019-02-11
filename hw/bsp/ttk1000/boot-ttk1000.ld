@@ -1,6 +1,4 @@
-/**
- * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
- * 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -8,7 +6,7 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
@@ -19,17 +17,13 @@
  * under the License.
  */
 
+/* Linker script to configure memory regions. */
+MEMORY
+{
+  FLASH (rx) : ORIGIN = 0x08000000, LENGTH = 32K
+  CCM (rwx) : ORIGIN = 0x10000000, LENGTH = 64K
+  RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
+}
 
-#ifndef _RNG_ENCODE_H_
-#define _RNG_ENCODE_H_
-
-#include <stdlib.h>
-#include <stdint.h>
-#include <fcntl.h>
-#include <unistd.h>
-
-#include <nranges/nranges.h>
-
-void nrng_encode(dw1000_nrng_instance_t * nrng);
-
-#endif
+/* The bootloader does not contain an image header */
+_imghdr_size = 0x0;

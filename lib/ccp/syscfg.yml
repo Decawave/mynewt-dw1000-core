@@ -11,8 +11,9 @@ syscfg.defs:
         value: 0
     CCP_PERIOD:
         description: >
-            Clock Calibration Packets Period (dwt usec)
-        value: ((uint32_t){0x100000})
+            Clock Calibration Packets Period (dwt usec). Should be a multiple of 0x10000
+            or else cascading will not work properly.
+        value: ((uint32_t)0x100000)
     FS_XTALT_AUTOTUNE_ENABLED: 
         description: >
             Autotune XTALT to Clock Master
@@ -21,11 +22,12 @@ syscfg.defs:
     XTALT_GUARD:
         description: >
             Guardband for xtal drift (dwt units)
-        value: ((uint32_t){0x100})
-    CCP_NUM_RELAYING_ANCHORS:
+        value: ((uint32_t)0x100)
+    CCP_MAX_CASCADE_RPTS:
         description: >
-            If using relaying anchors, adjust ccp rxtimeout for this many
-            anchor slots. Set to 0 
-        value: 8
+            Max number of cascade levels allowed in repeating CCP packet.
+            Set to 0 to disable cascading. Relates to tx_holdoff_dly and tdma slot size.
+        value: 4
+
 
        

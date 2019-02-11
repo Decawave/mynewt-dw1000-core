@@ -23,41 +23,6 @@ syscfg.defs:
         description: 'Set to indicate that BSP has NRF52'
         value: 1
 
-    UART_0:
-        description: 'Whether to enable UART0'
-        value:  1
-    UART_0_PIN_TX:
-        description: 'TX pin for UART0'
-        value:  19
-    UART_0_PIN_RX:
-        description: 'RX pin for UART0'
-        value:  20
-    UART_0_PIN_RTS:
-        description: 'RTS pin for UART0'
-        value: -1
-    UART_0_PIN_CTS:
-        description: 'CTS pin for UART0'
-        value: -1
-
-    TIMER_0:
-        description: 'NRF52 Timer 0'
-        value:  1
-    TIMER_1:
-        description: 'NRF52 Timer 1'
-        value:  0
-    TIMER_2:
-        description: 'NRF52 Timer 2'
-        value:  0
-    TIMER_3:
-        description: 'NRF52 Timer 3'
-        value:  0
-    TIMER_4:
-        description: 'NRF52 Timer 4'
-        value:  0
-    TIMER_5:
-        description: 'NRF52 RTC 0'
-        value:  1
-
     DW1000_DEVICE_0:
         description: 'DW1000 Device Enable'
         value:  0
@@ -90,27 +55,37 @@ syscfg.defs:
         description: 'mpu6500 as part of mpu9250'
         value:  0
 
-        
-syscfg.defs.BLE_LP_CLOCK:
-    TIMER_0:
-        value: 0
-    TIMER_5:
-        value: 1
 
 syscfg.vals.DW1000_DEVICE_0:
     SPI_0_MASTER: 1
 
 syscfg.vals:
+    MCU_NRF52832: 1
+    XTAL_32768: 1
+
+    SPI_0_MASTER_PIN_SCK: 6
+    SPI_0_MASTER_PIN_MOSI: 8
+    SPI_0_MASTER_PIN_MISO: 7
+
+    I2C_1_PIN_SCL: 12
+    I2C_1_PIN_SDA: 11
+    I2C_1_FREQ_KHZ: 400
+
+    UART_0_PIN_TX: 19
+    UART_0_PIN_RX: 20
+    UART_0_PIN_RTS: -1
+    UART_0_PIN_CTS: -1
     CONFIG_FCB_FLASH_AREA: FLASH_AREA_NFFS
     REBOOT_LOG_FLASH_AREA: FLASH_AREA_REBOOT_LOG
     NFFS_FLASH_AREA: FLASH_AREA_NFFS
     COREDUMP_FLASH_AREA: FLASH_AREA_IMAGE_1
     MCU_DCDC_ENABLED: 1
-    XTAL_32768: 1
     BOOT_SERIAL_DETECT_PIN: 2  # Button 1
     SENSOR_OIC : 0
     
 syscfg.vals.BLE_LP_CLOCK:
+    TIMER_0: 0
+    TIMER_5: 1
     OS_CPUTIME_FREQ: 32768
     OS_CPUTIME_TIMER_NUM: 5
     BLE_XTAL_SETTLE_TIME: 1500

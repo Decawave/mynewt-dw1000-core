@@ -58,7 +58,7 @@ STATS_NAME_START(lsm6dsl_stats)
     STATS_NAME(lsm6dsl_stats, mutex_errors)
 STATS_NAME_END(lsm6dsl_stats)
 
-#define LOG_MODULE_LSM6DSL    (6000)
+#define LOG_MODULE_LSM6DSL    (80)
 #define LSM6DSL_INFO(...)     LOG_INFO(&_log, LOG_MODULE_LSM6DSL, __VA_ARGS__)
 #define LSM6DSL_ERR(...)      LOG_ERROR(&_log, LOG_MODULE_LSM6DSL, __VA_ARGS__)
 static struct log _log;

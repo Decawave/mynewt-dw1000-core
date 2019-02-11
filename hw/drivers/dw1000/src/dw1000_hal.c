@@ -240,6 +240,9 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
     #endif
 };
 #endif
+
+#if MYNEWT_VAL(DW1000_DEVICE_0) || MYNEWT_VAL(DW1000_DEVICE_1) || MYNEWT_VAL(DW1000_DEVICE_2)
+
 /**
  * API to choose DW1000 instances based on parameters.
  *
@@ -547,3 +550,5 @@ hal_dw1000_get_rst(struct _dw1000_dev_instance_t * inst)
 {
     return hal_gpio_read(inst->rst_pin);
 }
+
+#endif

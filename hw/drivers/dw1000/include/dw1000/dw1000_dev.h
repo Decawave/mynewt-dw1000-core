@@ -79,11 +79,13 @@ typedef enum _dw1000_extension_id_t{
     DW1000_TDMA,                             //!< TDMA services
     DW1000_RNG,                              //!< Ranging
     DW1000_RNG_SS,                           //!< Ranging
+    DW1000_RNG_SS_EXT,                       //!< Ranging
     DW1000_RNG_DS,                           //!< Ranging
     DW1000_RNG_DS_EXT,                       //!< Ranging
     DW1000_RANGE,                            //!< Ranging
     DW1000_NRNG,                             //!< Nrng
     DW1000_NRNG_SS,                          //!< Nrng
+    DW1000_NRNG_SS_EXT,                      //!< Nrng
     DW1000_NRNG_DS,                          //!< Nrng
     DW1000_NRNG_DS_EXT,                      //!< Nrng
     DW1000_LWIP,
@@ -281,7 +283,10 @@ typedef struct _dw1000_dev_instance_t{
     uint8_t rst_pin;               //!< Reset pin
     uint32_t device_id;            //!< Device id  
     uint16_t my_short_address;     //!< Short address of tag/node
-    uint64_t my_long_address;      //!< Long address of tag/node
+    union {
+        uint64_t my_long_address;  //!< Long address of tag/node
+        uint64_t euid;             //!< Extended Unique Identifier
+    };
     uint64_t timestamp;            //!< Timestamp
     uint64_t rxtimestamp;          //!< Receive timestamp
     uint64_t txtimestamp;          //!< Transmit timestamp

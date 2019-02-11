@@ -50,7 +50,10 @@ typedef union{
     struct _ieee_blink_frame_t{
         uint8_t fctrl;              //!< Frame type (0xC5 for a blink) using 64-bit addressing
         uint8_t seq_num;            //!< Sequence number, incremented for each new frame
-        uint64_t long_address;      //!< Device ID
+        union {
+            uint64_t long_address;  //!< Device ID TODOs::depreciated nomenclature
+            uint64_t euid;          //!< extended unique identifier 
+        };
     }__attribute__((__packed__,aligned(1)));
     uint8_t array[sizeof(struct _ieee_blink_frame_t)]; //!< Array of size blink frame
 }ieee_blink_frame_t;
@@ -61,7 +64,10 @@ typedef union {
     struct _ieee_blink_frame_ext_t{
         uint8_t fctrl;              //!< Frame type (0xC5 for a blink) using 64-bit addressing
         uint8_t seq_num;            //!< Sequence number, incremented for each new frame
-        uint64_t address;           //!< Device ID
+        union {
+            uint64_t address;       //!< Device ID TODOs::depreciated nomenclature
+            uint64_t euid;          //!< extended unique identifier 
+        };
         uint8_t encoding;           //!< 0x43 to indicate no extended ID
         uint8_t EXT_header ;        //!< 0x02 to indicate tag is listening for a response immediately
     }__attribute__((__packed__,aligned(1)));
