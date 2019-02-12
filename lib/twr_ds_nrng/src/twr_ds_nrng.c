@@ -225,7 +225,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         case DWT_DS_TWR_NRNG:
             {
                 // This code executes on the device that is responding to a original request
-                 printf("nrng\n");
+                
                 nrng_frame_t * frame = nrng->frames[(++nrng->idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
                 uint16_t slot_id = inst->slot_id;
                 if (inst->frame_len >= sizeof(nrng_request_frame_t))

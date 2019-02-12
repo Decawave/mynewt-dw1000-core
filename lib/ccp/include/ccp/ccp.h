@@ -20,7 +20,7 @@
  */
 
 /**
- * @file dw1000_ccp.h
+ * @file ccp.h
  * @author paul kettle
  * @date 2018
  * 
@@ -57,7 +57,7 @@ STATS_SECT_START(ccp_stat_section)
     STATS_SECT_ENTRY(rx_complete)
     STATS_SECT_ENTRY(rx_relayed)
     STATS_SECT_ENTRY(rx_unsolicited)
-    STATS_SECT_ENTRY(rx_error)
+    STATS_SECT_ENTRY(txrx_error)
     STATS_SECT_ENTRY(tx_start_error)
     STATS_SECT_ENTRY(tx_relay_error)
     STATS_SECT_ENTRY(tx_relay_ok)
@@ -145,7 +145,8 @@ typedef struct _dw1000_ccp_instance_t{
     dw1000_ccp_tof_compensation_cb_t tof_comp_cb;   //!< tof compensation callback 
     uint32_t period;                                //!< Pulse repetition period
     uint16_t nframes;                               //!< Number of buffers defined to store the data 
-    uint16_t idx;                                   //!< Indicates number of DW1000 instances 
+    uint16_t idx;                                   //!< Circular buffer index pointer  
+    uint8_t seq_num;                                //!< Clock Master reported sequence number
     struct hal_timer timer;                         //!< Timer structure
     struct os_eventq eventq;                        //!< Event queues
     struct os_callout event_cb;                     //!< Event callback

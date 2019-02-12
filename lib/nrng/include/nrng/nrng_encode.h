@@ -20,14 +20,14 @@
  */
 
 
-#ifndef _RNG_ENCODE_H_
-#define _RNG_ENCODE_H_
+#ifndef _NRNG_ENCODE_H_
+#define _NRNG_ENCODE_H_
 
 #include <stdlib.h>
 #include <stdint.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <rng/nrng.h>
+#include <nrng/nrng.h>
 
 void nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base);
 

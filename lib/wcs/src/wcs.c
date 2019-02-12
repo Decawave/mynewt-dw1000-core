@@ -166,7 +166,7 @@ void wcs_update_cb(struct os_event * ev){
             //previous_frame->transmission_timestamp = (frame->transmission_timestamp + ((uint64_t)inst->ccp->period << 16)) & 0x0FFFFFFFFFFUL;
             //double T = 1e-6l * frame->transmission_interval * wcs->nT;   // interval in seconds referenced to master
             double q[] = {MYNEWT_VAL(TIMESCALE_QVAR) * 1.0, MYNEWT_VAL(TIMESCALE_QVAR) * 0.1, MYNEWT_VAL(TIMESCALE_QVAR) * 0.01};
-            double r[] = {MYNEWT_VAL(TIMESCALE_RVAR),  MYNEWT_VAL(TIMESCALE_RVAR) * 10.0};
+            double r[] = {MYNEWT_VAL(TIMESCALE_RVAR),  WCS_DTU * 1e20};
             double z[] = {(double) wcs->master_epoch, skew};
             wcs->status.valid = timescale_main(timescale, z, q, r, T).valid;
         }

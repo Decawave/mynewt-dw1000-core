@@ -17,13 +17,13 @@
 # under the License.
 #
 
-pkg.name: lib/rng
-pkg.description: TWR library superset 
+pkg.name: lib/survey
+pkg.description: Auto site survey packets
 pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
     - dw1000
-    - CCP
+    - auto site survey
 
 pkg.cflags:
     - "-std=gnu99"
@@ -33,8 +33,10 @@ pkg.lflags:
     - "-lm"
 
 pkg.deps:
-    - "@apache-mynewt-core/encoding/json"
-    
-pkg.init:
-    rng_pkg_init: 404
+    - "@mynewt-dw1000-core/lib/rng"
+    - "@mynewt-dw1000-core/lib/twr_ss_nrng"
+    - "@mynewt-dw1000-core/lib/ccp"
+    - "@mynewt-dw1000-core/lib/tdma"
 
+pkg.init:
+    survey_pkg_init: 420

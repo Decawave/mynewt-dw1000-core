@@ -92,6 +92,7 @@ typedef enum _dw1000_extension_id_t{
     DW1000_PAN,                              //!< Personal area network
     DW1000_PROVISION,                        //!< Provisioning
     DW1000_CIR,                              //!< Channel impulse response 
+    DW1000_SURVEY,
     DW1000_APP0 = 1024, 
     DW1000_APP1, 
     DW1000_APP2
@@ -113,6 +114,7 @@ typedef struct _dw1000_dev_status_t{
     uint32_t start_tx_error:1;        //!< Start transmit error 
     uint32_t start_rx_error:1;        //!< Start receive error
     uint32_t tx_frame_error:1;        //!< Transmit frame error
+    uint32_t txbuf_error:1;           //!< Tx buffer error
     uint32_t rx_error:1;              //!< Receive error
     uint32_t rx_timeout_error:1;      //!< Receive timeout error
     uint32_t lde_error:1;             //!< LDE error
@@ -259,7 +261,7 @@ typedef struct _dw1000_dev_instance_t{
     struct os_dev uwb_dev;                     //!< Has to be here for cast in create_dev to work 
     struct os_sem *spi_sem;                    //!< Pointer to global spi bus semaphore
     struct os_sem spi_nb_sem;                  //!< Semaphore for nonblocking rd/wr operations
-    struct os_sem sem;                         //!< semphore for low level mac/phy functions
+    struct os_sem tx_sem;                         //!< semphore for low level mac/phy functions
     struct os_mutex mutex;                     //!< os_mutex
     uint32_t epoch; 
     uint8_t idx;                               //!< instance number number {0, 1, 2 etc}
@@ -313,7 +315,7 @@ typedef struct _dw1000_dev_instance_t{
     uint8_t task_prio;           //!< Priority of the interrupt task  
     os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]  //!< Stack of the interrupt task 
         __attribute__((aligned(OS_STACK_ALIGNMENT)));
-    uint8_t rxbuf[RX_BUFFER_LEN];               //!< local rxbuf  
+    uint8_t rxbuf[RX_BUFFER_LEN];            //!< local rxbuf  
     struct _dw1000_rng_instance_t * rng;     //!< DW1000 rng instance 
 #if MYNEWT_VAL(LWIP_ENABLED) 
     struct _dw1000_lwip_instance_t * lwip;   //!< DW1000 lwip instance
@@ -338,6 +340,9 @@ typedef struct _dw1000_dev_instance_t{
 #endif
 #if MYNEWT_VAL(CIR_ENABLED)
     struct _cir_instance_t * cir;                  //!< CIR instance
+#endif
+#if MYNEWT_VAL(SURVEY_ENABLED)
+    struct _survey_instance_t * survey;            //!< AutoSite Survey instance
 #endif
     dw1000_dev_rxdiag_t rxdiag;                    //!< DW1000 receive diagnostics
     dw1000_dev_config_t config;                    //!< DW1000 device configurations  

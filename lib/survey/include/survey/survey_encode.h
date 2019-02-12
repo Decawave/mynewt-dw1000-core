@@ -1,5 +1,5 @@
-/*
- * Copyright 2018, Decawave Limited, All Rights Reserved
+/**
+ * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -19,39 +19,17 @@
  * under the License.
  */
 
-/**
- * @file twr_ds.h
- * @author paul kettle
- * @date 2018
- * @brief Range 
- *
- * @details This is the rng base class which utilises the functions to enable/disable the configurations related to rng.
- *
- */
 
-#ifndef _DW1000_TWR_SS_NRNG_H_
-#define _DW1000_TWR_SS_NRNG_H_
-
-#if MYNEWT_VAL(TWR_SS_NRNG_ENABLED)
+#ifndef _SURVEY_ENCODE_H_
+#define _SURVEY_ENCODE_H_
 
 #include <stdlib.h>
 #include <stdint.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <nrng/nrng.h>
+#include <survey/survey.h>
 
-void twr_ss_nrng_pkg_init(void);
-void twr_ss_nrng_free(dw1000_dev_instance_t * inst);
-dw1000_rng_config_t * twr_ss_nrng_config(dw1000_dev_instance_t * inst);
+void survey_encode(survey_instance_t * survey, uint16_t seq);
 
-#ifdef __cplusplus
-}
 #endif
-
-#endif // TWR_SS_ENABLED
-#endif //_DW1000_TWR_SS_NRNG_H_

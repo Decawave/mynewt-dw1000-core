@@ -43,7 +43,7 @@ typedef enum _slot_mode_t{
 }slot_mode_t;
 
 typedef enum _slot_ptype_t{     
-    PTYPE_CELL=0,           //!< Cell network
+    PTYPE_CELL=0,         //!< Cell network
     PTYPE_BITFIELD,       //!< single cell network
     PTYPE_RANGE           //!< specify slots as a range
 }slot_ptype_t;

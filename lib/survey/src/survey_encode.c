@@ -25,9 +25,10 @@
 #include <rng/rng.h>
 #include <json/json.h>
 #include <dw1000/dw1000_mac.h>
-#include <rng/nrng_encode.h>
+#include <nrng/nrng_encode.h>
+#include <survey/survey_encode.h>
 
-#if MYNEWT_VAL(NRNG_VERBOSE)
+#if MYNEWT_VAL(SURVEY_VERBOSE)
 
 #define JSON_BUF_SIZE (1024)
 static char _buf[JSON_BUF_SIZE];
@@ -62,27 +63,25 @@ json_write(void *buf, char* data, int len) {
 
 
 void 
-nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base){
+survey_encode(survey_instance_t * survey, uint16_t seq_num){
  
     struct json_encoder encoder;
     struct json_value value;
     int rc;
     uint32_t utime = os_cputime_ticks_to_usecs(os_cputime_get32());
-    uint32_t valid_mask = 0;
 
-    // Workout which slots responded with a valid frames
-    for (uint16_t i=0; i < 16; i++){
-        if (nrng->slot_mask & 1UL << i){
-            uint16_t idx = BitIndex(nrng->slot_mask, 1UL << i, SLOT_POSITION); 
-            nrng_frame_t * frame = nrng->frames[(base + idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
-            if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == seq_num){
-                valid_mask |= 1UL << i;
-            }
+    uint32_t mask = 0;
+    // Workout which node responded to the request
+    for (uint16_t i=0; i < survey->nnodes; i++){
+        if (survey->ranges[i]->mask){
+                mask |= 1UL << i;
         }
     }
+    
+    survey->status.empty = NumberOfBits(mask) == 0;
+    if (survey->status.empty)
+       return;
 
-    if (valid_mask == 0) 
-        return;
 
     /* reset the state of the internal test */
     memset(&encoder, 0, sizeof(encoder));
@@ -92,52 +91,38 @@ nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base){
     rc = json_encode_object_start(&encoder); 
     JSON_VALUE_INT(&value,  utime);
     rc |= json_encode_object_entry(&encoder, "utime", &value);   
-    rc |= json_encode_object_key(&encoder, "nrng");
+    rc |= json_encode_object_key(&encoder, "survey");
     rc |= json_encode_object_start(&encoder);    
   
     JSON_VALUE_UINT(&value, seq_num);
     rc |= json_encode_object_entry(&encoder, "seq", &value);
-
-    JSON_VALUE_UINT(&value, valid_mask);
+    
+    JSON_VALUE_UINT(&value, mask);
     rc |= json_encode_object_entry(&encoder, "mask", &value);
-    rc |= json_encode_array_name(&encoder, "rng");
+    rc |= json_encode_object_key(&encoder, "ranges");
     rc |= json_encode_array_start(&encoder);
-    for (uint16_t i=0; i < 16; i++){
-        if (valid_mask & 1UL << i){
-            uint16_t idx = BitIndex(nrng->slot_mask, 1UL << i, SLOT_POSITION); 
-            nrng_frame_t * frame = nrng->frames[(base + idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
-            if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == seq_num){
-                float range = dw1000_rng_tof_to_meters(dw1000_nrng_twr_to_tof_frames(nrng->parent, frame, frame));
-                JSON_VALUE_UINT(&value, *(uint32_t *)&range);
+    rc |= json_encode_object_start(&encoder); 
+    for (uint16_t i=0; i < survey->nnodes; i++){
+        if (survey->ranges[i]->mask){
+            JSON_VALUE_UINT(&value, survey->ranges[i]->mask);
+            rc |= json_encode_object_entry(&encoder, "mask", &value);
+            rc |= json_encode_array_name(&encoder, "nrng");
+            rc |= json_encode_array_start(&encoder);
+
+            for (uint16_t j=0; j < NumberOfBits(survey->ranges[i]->mask); j++){
+                JSON_VALUE_UINT(&value, *(uint32_t *)&survey->ranges[i]->ranges[j]);
                 rc |= json_encode_array_value(&encoder, &value); 
-                if (i%64==0) _json_fflush();
             }
+            rc |= json_encode_array_finish(&encoder); 
         }
     }
+    rc |= json_encode_object_finish(&encoder);
     rc |= json_encode_array_finish(&encoder);  
-    rc |= json_encode_array_name(&encoder, "tdoa");
-    rc |= json_encode_array_start(&encoder);
-    for (uint16_t i=0; i < 16; i++){
-        if (valid_mask & 1UL << i){
-            uint16_t idx = BitIndex(nrng->slot_mask , 1UL << i, SLOT_POSITION); 
-            nrng_frame_t * master = nrng->frames[(base)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
-            nrng_frame_t * frame = nrng->frames[(base + idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
-            if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == seq_num){
-                JSON_VALUE_INT(&value, (int32_t)(master->reception_timestamp - frame->reception_timestamp));
-                rc |= json_encode_array_value(&encoder, &value); 
-                if (i%64==0) _json_fflush();
-            }
-        }
-    }
-    rc |= json_encode_array_finish(&encoder);    
     rc |= json_encode_object_finish(&encoder);
     rc |= json_encode_object_finish(&encoder);
     assert(rc == 0);
     json_fflush();
 }
-
-
-
 
 #endif
 

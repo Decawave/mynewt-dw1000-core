@@ -29,8 +29,8 @@
  *
  */
 
-#ifndef _DW1000_RNG_H_
-#define _DW1000_RNG_H_
+#ifndef __RNG_H_
+#define __RNG_H_
 
 
 #include <stdlib.h>
@@ -102,6 +102,7 @@ typedef enum _dw1000_rng_modes_t{
     DWT_SS_TWR_NRNG,
     DWT_SS_TWR_NRNG_T1,
     DWT_SS_TWR_NRNG_FINAL,
+    DWT_SS_TWR_NRNG_END,
     DWT_SS_TWR_NRNG_EXT,
     DWT_SS_TWR_NRNG_EXT_T1,
     DWT_SS_TWR_NRNG_EXT_FINAL,
@@ -116,6 +117,8 @@ typedef enum _dw1000_rng_modes_t{
     DWT_DS_TWR_NRNG_EXT_T2,
     DWT_DS_TWR_NRNG_EXT_FINAL,
     DWT_DS_TWR_NRNG_EXT_END,
+    DWT_SURVEY_REQUEST,
+    DWT_SURVEY_BROADCAST,
     DWT_DS_TWR_NRNG_INVALID = 0xFFFF
 }dw1000_rng_modes_t;
 

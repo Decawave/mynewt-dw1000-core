@@ -80,6 +80,7 @@ static dw1000_mac_interface_t g_cbs[] = {
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
         [2] = {
+            .id = DW1000_RNG_SS,
             .rx_complete_cb = rx_complete_cb,
             .start_tx_error_cb = start_tx_error_cb,
             .reset_cb = reset_cb

@@ -20,7 +20,7 @@
  */
 
 /**
- * @file dw1000_provision.c
+ * @file provision.c
  * @author paul kettle
  * @date 2018
  * @brief provisioning

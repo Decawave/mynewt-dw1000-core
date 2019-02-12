@@ -48,6 +48,7 @@ STATS_SECT_START(mac_stat_section)
     STATS_SECT_ENTRY(TFG_cnt)
     STATS_SECT_ENTRY(LDE_err)
     STATS_SECT_ENTRY(RX_err)
+    STATS_SECT_ENTRY(TXBUF_err)
 STATS_SECT_END
 
 #ifdef __cplusplus

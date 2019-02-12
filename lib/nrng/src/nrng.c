@@ -32,7 +32,7 @@
 #include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_ftypes.h>
-#include <rng/nrng.h>
+#include <nrng/nrng.h>
 #include <rng/rng.h>
 #if MYNEWT_VAL(TWR_DS_NRNG_ENABLED)
 #include <twr_ds_nrng/twr_ds_nrng.h>
@@ -43,9 +43,6 @@
 #if MYNEWT_VAL(TWR_DS_EXT_NRNG_ENABLED)
 #include <twr_ds_ext_nrng/twr_ds_ext_nrng.h>
 #endif
-#if MYNEWT_VAL(TWR_SS_EXT_NRNG_ENABLED)
-#include <twr_ss_ext_nrng/twr_ss_ext_nrng.h>
-#endif
 #if MYNEWT_VAL(WCS_ENABLED)
 #include <wcs/wcs.h>
 #endif
@@ -54,39 +51,9 @@
 #endif
 #include <rng/slots.h>
 #if MYNEWT_VAL(NRNG_VERBOSE)
-#include <rng/nrng_encode.h>
-#endif
-
-#if MYNEWT_VAL(NRNG_VERBOSE)
+#include <nrng/nrng_encode.h>
 static bool complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 #endif
-
-#if MYNEWT_VAL(NRNG_ENABLED)
-static dw1000_mac_interface_t g_cbs[] = {
-        [0] = {
-            .id = DW1000_NRNG,
-#if MYNEWT_VAL(NRNG_VERBOSE)
-            .complete_cb  = complete_cb,
-#endif
-        },
-#if MYNEWT_VAL(DW1000_DEVICE_1)
-        [1] = {
-            .id = DW1000_NRNG,
-#if MYNEWT_VAL(NRNG_VERBOSE)
-            .complete_cb  = complete_cb,
-#endif
-        },
-#endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
-        [2] = {
-            .id = DW1000_NRNG,
-#if MYNEWT_VAL(NRNG_VERBOSE)
-            .complete_cb  = complete_cb,
-#endif
-        }
-#endif
-};
-
 
 static dw1000_rng_config_t g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(NRNG_TX_HOLDOFF),         // Send Time delay in usec.
@@ -96,29 +63,33 @@ static dw1000_rng_config_t g_config = {
 
 STATS_NAME_START(nrng_stat_section)
     STATS_NAME(nrng_stat_section, nrng_request)
+    STATS_NAME(nrng_stat_section, nrng_listen)
+    STATS_NAME(nrng_stat_section, rx_complete)
     STATS_NAME(nrng_stat_section, rx_error)
     STATS_NAME(nrng_stat_section, rx_timeout)
-    STATS_NAME(nrng_stat_section, tx_error)
-    STATS_NAME(nrng_stat_section, start_tx_error_cb)
+    STATS_NAME(nrng_stat_section, complete)
+    STATS_NAME(nrng_stat_section, start_rx_error)
     STATS_NAME(nrng_stat_section, rx_unsolicited)
+    STATS_NAME(nrng_stat_section, tx_error)
+    STATS_NAME(nrng_stat_section, start_tx_error)
     STATS_NAME(nrng_stat_section, reset)
 STATS_NAME_END(nrng_stat_section)
-#endif
 
 
 dw1000_nrng_instance_t *
 dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1000_nrng_device_type_t type, uint16_t nframes, uint16_t nnodes){
-#if MYNEWT_VAL(NRNG_ENABLED)
     assert(inst);
 
     if (inst->nrng == NULL ) {
-        inst->nrng = (dw1000_nrng_instance_t*) malloc(sizeof(dw1000_nrng_instance_t) + nframes * sizeof(nrng_frame_t * )); // struct + flexible array member
+        inst->nrng = (dw1000_nrng_instance_t*) malloc(sizeof(dw1000_nrng_instance_t) + nframes * sizeof(nrng_frame_t * )); 
         assert(inst->nrng);
         memset(inst->nrng, 0, sizeof(dw1000_nrng_instance_t));
         inst->nrng->status.selfmalloc = 1;
     }
+    os_error_t err = os_sem_init(&inst->nrng->sem, 0x1); 
+    assert(err == OS_OK);
 
-    dw1000_nrng_instance_t *nrng = inst->nrng; // Updating the Global Instance of nrng
+    dw1000_nrng_instance_t * nrng = inst->nrng; // Updating the Global Instance of nrng
     nrng->parent = inst;
     nrng->nframes = nframes;
     nrng->nnodes = nnodes;
@@ -126,11 +97,17 @@ dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1
     nrng->idx = 0xFFFF;
     nrng->resp_count = nrng->t1_final_flag = 0;
     nrng->seq_num = 0;
- 
+    
     if (config != NULL ){
         dw1000_nrng_config(inst, config);
     }
- 
+#if MYNEWT_VAL(NRNG_VERBOSE)
+    nrng->cbs = (dw1000_mac_interface_t){
+        .id = DW1000_NRNG,
+        .complete_cb  = complete_cb,
+    };
+    dw1000_mac_append_interface(inst, &inst->nrng->cbs);
+#endif
     int rc = stats_init(
                     STATS_HDR(inst->nrng->stat),
                     STATS_SIZE_INIT_PARMS(inst->nrng->stat, STATS_SIZE_32),
@@ -148,9 +125,6 @@ dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1
     assert(rc == 0);
 
     return nrng;
-#else
-    return 0;
-#endif
 }
 
 /**
@@ -165,11 +139,10 @@ dw1000_nrng_free(dw1000_nrng_instance_t * inst){
 
     assert(inst);
     if (inst->status.selfmalloc){
-        for(int i =0; i< inst->nframes/FRAMES_PER_RANGE; i++)
-            for(int j = 0; j< FRAMES_PER_RANGE; j++){
-                free(inst->frames[i][j]);
-                inst->frames[i][j] = NULL;
-            }
+        for(int i =0; i< inst->nframes; i++){
+            free(inst->frames[i]);
+            inst->frames[i] = NULL;
+        }
         free(inst);
     }
     else
@@ -178,7 +151,6 @@ dw1000_nrng_free(dw1000_nrng_instance_t * inst){
 
 inline void
 dw1000_nrng_set_frames(dw1000_dev_instance_t * inst, uint16_t nframes){
-#if MYNEWT_VAL(NRNG_ENABLED)
         assert(inst);
         dw1000_nrng_instance_t * nrng = inst->nrng;
         assert(nframes <= nrng->nframes);
@@ -187,12 +159,51 @@ dw1000_nrng_set_frames(dw1000_dev_instance_t * inst, uint16_t nframes){
             .fctrl = FCNTL_IEEE_RANGE_16,
             .code = DWT_DS_TWR_NRNG_INVALID
         };
-        for (uint16_t i = 0; i < nframes/FRAMES_PER_RANGE; i++)
-            for(uint16_t j =0; j < FRAMES_PER_RANGE; j++){
-                nrng->frames[i][j] = (nrng_frame_t * ) malloc(sizeof(nrng_frame_t));
-                memcpy(nrng->frames[i][j], &default_frame, sizeof(nrng_frame_t));
+        for (uint16_t i = 0; i < nframes; i++){
+            nrng->frames[i] = (nrng_frame_t * ) malloc(sizeof(nrng_frame_t));
+            assert(nrng->frames[i]);
+            memcpy(nrng->frames[i], &default_frame, sizeof(nrng_frame_t));
+        }
+}
+
+/**
+ * API to configure dw1000 to start transmission after certain delay.
+ *
+ * @param inst          Pointer to dw1000_dev_instance_t. 
+ * @param ranges        []] to return results  
+ * @param nranges       side of  ranges[]
+ * @param code          base address of curcular buffer
+ *
+ * @return valid mask
+ */
+uint32_t
+dw1000_nrng_get_ranges(dw1000_dev_instance_t * inst, float ranges[], uint16_t nranges, uint16_t base){
+
+    dw1000_nrng_instance_t * nrng = inst->nrng;
+    uint32_t valid_mask = 0;
+    // Workout which slots responded with a valid frames
+    for (uint16_t i=0; i < nranges; i++){
+        if (nrng->slot_mask & 1UL << i){
+            uint16_t idx = BitIndex(nrng->slot_mask, 1UL << i, SLOT_POSITION); 
+            nrng_frame_t * frame = nrng->frames[(base + idx)%nrng->nframes];
+            if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == nrng->seq_num){
+                valid_mask |= 1UL << i;
             }
-#endif
+        }
+    }
+
+    for (uint16_t i=0; i < nranges; i++){
+        if (valid_mask & 1UL << i){
+            uint16_t idx = BitIndex(nrng->slot_mask, 1UL << i, SLOT_POSITION); 
+            nrng_frame_t * frame = nrng->frames[(base + idx)%nrng->nframes];
+            if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == nrng->seq_num){
+                ranges[i] = dw1000_rng_tof_to_meters(dw1000_nrng_twr_to_tof_frames(nrng->parent, frame, frame));
+            }else{
+                ranges[i] = 0.0l/0.0l; // NAN
+            }
+        }
+    }
+    return valid_mask;
 }
 
 /**
@@ -222,14 +233,9 @@ dw1000_nrng_get_config(dw1000_dev_instance_t * inst, dw1000_rng_modes_t code){
             config = twr_ds_ext_nrng_config(inst);
             break;
 #endif
-#if MYNEWT_VAL(TWR_SS_NRNG_ENABLED)
+#if MYNEWT_VAL(TWR_SS_NRNG_ENABLED) 
         case  DWT_SS_TWR_NRNG:                     //!< Single sided TWR
             config = twr_ss_nrng_config(inst);
-            break;
-#endif
-#if MYNEWT_VAL(TWR_SS_EXT_NRNG_ENABLED)
-        case  DWT_SS_TWR_NRNG_EXT:                     //!< Single sided TWR
-            config = twr_ss_ext_nrng_config(inst);
             break;
 #endif
         default:
@@ -250,47 +256,41 @@ dw1000_nrng_get_config(dw1000_dev_instance_t * inst, dw1000_rng_modes_t code){
  */
 dw1000_dev_status_t
 dw1000_nrng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config){
-#if MYNEWT_VAL(NRNG_ENABLED)
     assert(inst);
     assert(config);
 
     memcpy(&inst->nrng->config, config, sizeof(dw1000_rng_config_t));
-#endif
     return inst->status;
 }
 
 void nrng_pkg_init(void){
-#if MYNEWT_VAL(NRNG_ENABLED)
+
     printf("{\"utime\": %lu,\"msg\": \"nrng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
     dw1000_nrng_init(hal_dw1000_inst(0), &g_config, (dw1000_nrng_device_type_t) MYNEWT_VAL(NRNG_DEVICE_TYPE), MYNEWT_VAL(NRNG_NFRAMES), MYNEWT_VAL(NRNG_NNODES));
     dw1000_nrng_set_frames(hal_dw1000_inst(0), MYNEWT_VAL(NRNG_NFRAMES));
-    dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs[0]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
     dw1000_nrng_init(hal_dw1000_inst(1), &g_config, (dw1000_nrng_device_type_t) MYNEWT_VAL(NRNG_DEVICE_TYPE), MYNEWT_VAL(NRNG_NFRAMES), MYNEWT_VAL(NRNG_NNODES));
     dw1000_nrng_set_frames(hal_dw1000_inst(1), MYNEWT_VAL(NRNG_NFRAMES));
-    dw1000_mac_append_interface(hal_dw1000_inst(1), &g_cbs[1]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
     dw1000_nrng_init(hal_dw1000_inst(2), &g_config, (dw1000_nrng_device_type_t) MYNEWT_VAL(NRNG_DEVICE_TYPE), MYNEWT_VAL(NRNG_NFRAMES), MYNEWT_VAL(NRNG_NNODES));
     dw1000_nrng_set_frames(hal_dw1000_inst(2), MYNEWT_VAL(NRNG_NFRAMES));
-    dw1000_mac_append_interface(hal_dw1000_inst(2), &g_cbs[2]);
 #endif
-#endif
+
 }
 
 dw1000_dev_status_t 
 dw1000_nrng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t code, uint16_t slot_mask, uint16_t cell_id){
-#if MYNEWT_VAL(NRNG_ENABLED)
     dw1000_nrng_instance_t * nrng = inst->nrng;   
    
     nrng->control.delay_start_enabled = 1;
     nrng->delay = delay;
     dw1000_nrng_request(inst, dst_address, code, slot_mask, cell_id);
     nrng->control.delay_start_enabled = 0;
-#endif
+
     return inst->status;
 }
 
@@ -301,7 +301,7 @@ dw1000_nrng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_addre
  * @param slot_id 0 for master, and increasing
  * @return void
  */
-static inline uint32_t
+uint32_t
 usecs_to_response(dw1000_dev_instance_t * inst, uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration){
     uint32_t ret = nslots * ( duration + (uint32_t) dw1000_dwt_usecs_to_usecs(config->tx_guard_delay));
     return ret;
@@ -309,24 +309,22 @@ usecs_to_response(dw1000_dev_instance_t * inst, uint16_t nslots, dw1000_rng_conf
 
 dw1000_dev_status_t
 dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t code, uint16_t slot_mask, uint16_t cell_id){
-#if MYNEWT_VAL(NRNG_ENABLED)
+
     // This function executes on the device that initiates a request
     assert(inst->nrng);
-    
-    dw1000_rng_instance_t * rng = inst->rng;
     dw1000_nrng_instance_t * nrng = inst->nrng;
 
-    os_error_t err = os_sem_pend(&rng->sem,  OS_TIMEOUT_NEVER);
+    os_error_t err = os_sem_pend(&nrng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
     STATS_INC(nrng->stat, nrng_request);
 
     dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, code);
     nrng->nnodes = NumberOfBits(slot_mask); // Number of nodes involved in request
     nrng->idx += nrng->nnodes;
-    nrng_request_frame_t * frame = (nrng_request_frame_t *) nrng->frames[nrng->idx%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
+    nrng_request_frame_t * frame = (nrng_request_frame_t *) nrng->frames[nrng->idx%nrng->nframes];
 
     frame->seq_num = ++nrng->seq_num;
-    inst->rng->code = frame->code = code;
+    frame->code = code;
     frame->src_address = inst->my_short_address;
     frame->dst_address = dst_address;
    
@@ -345,34 +343,73 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_r
     dw1000_set_wait4resp(inst, true);
 
     uint16_t timeout = config->tx_holdoff_delay         // Remote side turn arround time.
-                        + usecs_to_response(inst,       // Aggregated timeout of all responses
+                        + usecs_to_response(inst,       // Remaining timeout
                             nrng->nnodes,               // no. of expected frames
                             config,                    
                             dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)) // in usec
-                        ) 
-                        + config->rx_timeout_delay;     // TOF allowance.
-   
+                        ) + config->rx_timeout_delay;     // TOF allowance.
     dw1000_set_rx_timeout(inst, timeout);
 
     if (nrng->control.delay_start_enabled)
         dw1000_set_delay_start(inst, nrng->delay); 
-    
-    dw1000_set_dblrxbuff(inst, true);  
+
+    // The DW1000 has a bug that render the hardware auto_enable feature useless when used in conjunction with the double buffering. 
+    // Consequently, we inhibit this use-case in the PHY-Layer and instead manually perform reenable in the MAC-layer. 
+    // This does impact the guard delay time as we need to allow time for the MAC-layer to respond.
+
+    //if(inst->config.dblbuffon_enabled) 
+    //    assert(inst->config.rxauto_enable == 0);
+    //dw1000_set_dblrxbuff(inst, true);  
     
     if (dw1000_start_tx(inst).start_tx_error){
-        STATS_INC(nrng->stat, start_tx_error_cb);
-        if (os_sem_get_count(&rng->sem) == 0) 
-            os_sem_release(&rng->sem);
+        STATS_INC(nrng->stat, start_tx_error);
+        if (os_sem_get_count(&nrng->sem) == 0) 
+            err = os_sem_release(&nrng->sem);
+            assert(err == OS_OK);
+    }else{
+        err = os_sem_pend(&nrng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
+        assert(err == OS_OK);
+        err = os_sem_release(&nrng->sem);
+        assert(err == OS_OK);
     }
-
-    err = os_sem_pend(&rng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
-    assert(err == OS_OK);
-    err = os_sem_release(&rng->sem);
-    assert(err == OS_OK);
-
     // dw1000_set_dblrxbuff(inst, false);
-#endif
     return inst->status;
+}
+
+
+/**
+ * API to initialise range request.
+ *
+ * @param inst          Pointer to dw1000_dev_instance_t.
+ *
+ * @return dw1000_dev_status_t 
+ */
+dw1000_dev_status_t 
+dw1000_nrng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
+    assert(inst->nrng);
+    dw1000_nrng_instance_t * nrng = inst->nrng;
+
+    os_error_t err = os_sem_pend(&nrng->sem,  OS_TIMEOUT_NEVER);
+    assert(err == OS_OK);
+
+    // Download the CIR on the response    
+#if MYNEWT_VAL(CIR_ENABLED)   
+    cir_enable(inst->cir, true);
+#endif 
+    
+    STATS_INC(inst->nrng->stat, nrng_listen);
+    if(dw1000_start_rx(inst).start_rx_error){
+        err = os_sem_release(&nrng->sem);
+        assert(err == OS_OK);
+        STATS_INC(inst->nrng->stat, start_rx_error);
+    }
+    if (mode == DWT_BLOCKING){
+        err = os_sem_pend(&nrng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
+        assert(err == OS_OK);
+        err = os_sem_release(&nrng->sem);
+        assert(err == OS_OK);
+    }
+   return inst->status;
 }
 
 
@@ -381,51 +418,33 @@ dw1000_nrng_twr_to_tof_frames(struct _dw1000_dev_instance_t * inst, nrng_frame_t
     float ToF = 0;
     uint64_t T1R, T1r, T2R, T2r;
     int64_t nom,denom;
-    if(final_frame != NULL){
-        switch(final_frame->code){
-            case DWT_DS_TWR_NRNG ... DWT_DS_TWR_NRNG_END:
-            case DWT_DS_TWR_NRNG_EXT ... DWT_DS_TWR_NRNG_EXT_END:
-                assert(first_frame != NULL);
-                assert(final_frame != NULL);
-                T1R = (first_frame->response_timestamp - first_frame->request_timestamp);
-                T1r = (first_frame->transmission_timestamp  - first_frame->reception_timestamp);
-                T2R = (final_frame->response_timestamp - final_frame->request_timestamp);
-                T2r = (final_frame->transmission_timestamp - final_frame->reception_timestamp);
-                nom = T1R * T2R  - T1r * T2r;
-                denom = T1R + T2R  + T1r + T2r;
-                ToF = (float) (nom) / denom;
-                break;
-            case DWT_SS_TWR_NRNG ... DWT_SS_TWR_NRNG_EXT_FINAL:{
-                assert(first_frame != NULL);
+
+    switch(final_frame->code){
+        case DWT_DS_TWR_NRNG ... DWT_DS_TWR_NRNG_END:
+        case DWT_DS_TWR_NRNG_EXT ... DWT_DS_TWR_NRNG_EXT_END:
+            assert(first_frame != NULL);
+            assert(final_frame != NULL);
+            T1R = (first_frame->response_timestamp - first_frame->request_timestamp);
+            T1r = (first_frame->transmission_timestamp  - first_frame->reception_timestamp);
+            T2R = (final_frame->response_timestamp - final_frame->request_timestamp);
+            T2r = (final_frame->transmission_timestamp - final_frame->reception_timestamp);
+            nom = T1R * T2R  - T1r * T2r;
+            denom = T1R + T2R  + T1r + T2r;
+            ToF = (float) (nom) / denom;
+            break;
+        case DWT_SS_TWR_NRNG ... DWT_SS_TWR_NRNG_FINAL:{
+            assert(first_frame != NULL);
 #if MYNEWT_VAL(WCS_ENABLED)
-                ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
+            ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
                     -  (first_frame->transmission_timestamp - first_frame->reception_timestamp))/2.0f;
 #else
-                float skew = dw1000_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);
-                ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
+            float skew = dw1000_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);
+            ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
                     -  (first_frame->transmission_timestamp - first_frame->reception_timestamp) * (1 - skew))/2.0f;
 #endif
-                break;
+            break;
             }
-            default: break;
-        }
-    }
-    else{
-        switch(first_frame->code){
-            case DWT_SS_TWR_NRNG ... DWT_SS_TWR_NRNG_EXT_FINAL:{
-                 assert(first_frame != NULL);
-#if MYNEWT_VAL(WCS_ENABLED)
-                 ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
-                     -  (first_frame->transmission_timestamp - first_frame->reception_timestamp))/2.0f;
-#else
-                 float skew = dw1000_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);
-                 ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
-                     -  (first_frame->transmission_timestamp - first_frame->reception_timestamp) * (1 - skew))/2.0f;
-#endif
-                 break;
-            }
-            default: break;
-        }
+        default: break;
     }
     return ToF;
 }
@@ -440,6 +459,7 @@ complete_ev_cb(struct os_event *ev) {
 
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
     nrng_encode(inst->nrng, inst->nrng->seq_num, inst->nrng->idx);
+    inst->nrng->slot_mask = 0; 
 }
 
 struct os_callout nrng_callout;
@@ -448,9 +468,10 @@ complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
         if (inst->fctrl != FCNTL_IEEE_RANGE_16)
             return false;
-
-        os_callout_init(&nrng_callout, os_eventq_dflt_get(), complete_ev_cb, inst);
-        os_eventq_put(os_eventq_dflt_get(), &nrng_callout.c_ev);
+        if(os_sem_get_count(&inst->nrng->sem) == 0){
+                os_callout_init(&nrng_callout, os_eventq_dflt_get(), complete_ev_cb, inst);
+                os_eventq_put(os_eventq_dflt_get(), &nrng_callout.c_ev);
+         }
         return false;
 }
 

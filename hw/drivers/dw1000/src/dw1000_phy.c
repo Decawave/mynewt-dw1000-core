@@ -329,7 +329,7 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
     dw1000_write_reg(inst, SYS_MASK_ID, 0, 0, sizeof(uint32_t)) ; // Clear interrupt mask - so we don't get any unwanted events
     dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t)SYS_CTRL_TRXOFF, sizeof(uint16_t)) ; // Disable the radio
     // Forcing Transceiver off - so we do not want to see any new events that may have happened
-    dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_ALL_TX | SYS_STATUS_ALL_RX_ERR | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_GOOD), sizeof(uint32_t));
+    dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_ALL_TX | SYS_STATUS_ALL_RX_ERR | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_GOOD| SYS_STATUS_TXBERR), sizeof(uint32_t));
     
     if (inst->config.dblbuffon_enabled) 
         dw1000_sync_rxbufptrs(inst);
@@ -350,8 +350,8 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
     inst->control.wait4resp_enabled = 0;
 
         /* Reset semaphore if needed */
-    if (inst->sem.sem_tokens == 0) {
-        os_error_t err = os_sem_release(&inst->sem);
+    if (inst->tx_sem.sem_tokens == 0) {
+        os_error_t err = os_sem_release(&inst->tx_sem);
         assert(err == OS_OK);
         inst->status.sem_force_released = 1;
     }

@@ -102,7 +102,7 @@ tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots
         tdma->period = period; 
         tdma->parent = inst;
 #ifdef TDMA_TASKS_ENABLE
-        tdma->task_prio = inst->task_prio + 0x4;
+        tdma->task_prio = inst->task_prio + 0x6;
 #endif
         inst->tdma = tdma;
     }else{
@@ -301,7 +301,7 @@ tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         STATS_INC(inst->tdma->stat, tx_complete);
         DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma:tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         if (inst->tdma != NULL && inst->tdma->status.initialized){
-            tdma->os_epoch = os_cputime_get32();
+            tdma->os_epoch = inst->ccp->os_epoch;//os_cputime_get32();
 #ifdef TDMA_TASKS_ENABLE
             os_eventq_put(&inst->tdma->eventq, &inst->tdma->event_cb.c_ev);
 #else

@@ -20,7 +20,7 @@
  */
 
 /**
- * @file dw1000_ccp.c
+ * @file ccp.c
  * @author paul kettle
  * @date 2018
  * @brief clock calibration packets
@@ -97,7 +97,7 @@ STATS_NAME_START(ccp_stat_section)
     STATS_NAME(ccp_stat_section, rx_complete)
     STATS_NAME(ccp_stat_section, rx_relayed)
     STATS_NAME(ccp_stat_section, rx_unsolicited)
-    STATS_NAME(ccp_stat_section, rx_error)
+    STATS_NAME(ccp_stat_section, txrx_error)
     STATS_NAME(ccp_stat_section, tx_start_error)
     STATS_NAME(ccp_stat_section, tx_relay_error)
     STATS_NAME(ccp_stat_section, tx_relay_ok)
@@ -108,9 +108,8 @@ STATS_NAME_END(ccp_stat_section)
 
 static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool ccp_tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool ccp_rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool ccp_rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool ccp_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool ccp_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool ccp_reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 
 static struct _dw1000_ccp_status_t dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
@@ -205,9 +204,6 @@ ccp_master_timer_ev_cb(struct os_event *ev) {
  */
 static void 
 ccp_slave_timer_ev_cb(struct os_event *ev) {
-
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp_slave_timer_ev_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
 
@@ -360,8 +356,8 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes){
         .tx_complete_cb = ccp_tx_complete_cb,
         .rx_complete_cb = rx_complete_cb,
         .rx_timeout_cb = ccp_rx_timeout_cb,
-        .rx_error_cb = ccp_rx_error_cb,
-        .tx_error_cb = ccp_tx_error_cb,
+        .rx_error_cb = ccp_error_cb,
+        .tx_error_cb = ccp_error_cb,
         .reset_cb = ccp_reset_cb
     };
     dw1000_mac_append_interface(inst, &inst->ccp->cbs);
@@ -543,7 +539,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     dw1000_stop_rx(inst); //Prevent timeout event
     
     ccp->idx++; // confirmed frame advance  
-
+    ccp->seq_num = frame->seq_num;
     ccp->os_epoch = os_cputime_get32();
     STATS_INC(inst->ccp->stat, rx_complete);
 
@@ -644,7 +640,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 static bool 
 ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
-    if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64)
+    if(os_sem_get_count(&inst->ccp->sem) == 1)
         return false;
 
     STATS_INC(inst->ccp->stat, tx_complete);
@@ -670,11 +666,12 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
     if (ccp->config.postprocess && ccp->status.valid) 
         //os_eventq_put(&ccp->eventq, &ccp->callout_postprocess.c_ev);
         os_eventq_put(os_eventq_dflt_get(), &ccp->callout_postprocess.c_ev);
-       
+    
     if(os_sem_get_count(&inst->ccp->sem) == 0){
         os_error_t err = os_sem_release(&inst->ccp->sem);
         assert(err == OS_OK);
     }
+   
     return false;
 }
 
@@ -685,48 +682,18 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
  * @return void
  */
 static bool
-ccp_rx_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+ccp_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
-    dw1000_ccp_instance_t * ccp = inst->ccp; 
-    STATS_INC(inst->ccp->stat, rx_error);
 
-    if (ccp->config.role == CCP_ROLE_MASTER) 
-        return false;
+    if(os_sem_get_count(&inst->ccp->sem) == 1)
+        return false;  
 
-    // Release semaphore if rxauto enable is not set. 
-    if(inst->config.rxauto_enable)
-        return false;
-        
-    else if(os_sem_get_count(&inst->ccp->sem) == 0){
+    STATS_INC(inst->ccp->stat, txrx_error);        
+    if(os_sem_get_count(&inst->ccp->sem) == 0){
         os_error_t err = os_sem_release(&inst->ccp->sem); 
         assert(err == OS_OK); 
-	    return true;
     }
-    return false;
-}
-
-/** 
- * API for tx_error_cb of ccp.
- *
- * @param inst   Pointer to dw1000_dev_instance_t. 
- * @return bool 
- */
-static bool
-ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    
-    dw1000_ccp_instance_t * ccp = inst->ccp; 
-    if (ccp->config.role == CCP_ROLE_SLAVE) 
-        return false;
-
-    if(inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
-        STATS_INC(inst->ccp->stat, tx_start_error);
-        if(os_sem_get_count(&inst->ccp->sem) == 0){
-            os_error_t err = os_sem_release(&inst->ccp->sem);  
-            assert(err == OS_OK);
-        return true;    
-        }
-    }
-    return false;
+    return true;
 }
 
 /** 
@@ -738,19 +705,16 @@ ccp_tx_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * c
 static bool
 ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
-    dw1000_ccp_instance_t * ccp = inst->ccp; 
-    if (ccp->config.role == CCP_ROLE_MASTER) 
+    if(os_sem_get_count(&inst->ccp->sem) == 1)
         return false;
 
-    if (os_sem_get_count(&ccp->sem) == 0){
-        os_error_t err = os_sem_release(&ccp->sem);
+    if (os_sem_get_count(&inst->ccp->sem) == 0){
+        os_error_t err = os_sem_release(&inst->ccp->sem);
         assert(err == OS_OK); 
         DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp:rx_timeout_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-
         STATS_INC(inst->ccp->stat, rx_timeout);
-        return true;   
     }
-    return false;
+    return true;
 }
 
 
@@ -804,8 +768,8 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
                                     ) & 0x0FFFFFFFFFFUL;
     dw1000_set_delay_start(inst, frame->transmission_timestamp);
     frame->transmission_timestamp += inst->tx_antenna_delay;
-
-    frame->seq_num = previous_frame->seq_num + 1;
+    
+    frame->seq_num = ++ccp->seq_num;
     frame->euid = inst->euid;
     frame->transmission_interval = inst->ccp->period;
 
@@ -847,7 +811,7 @@ static dw1000_ccp_status_t
 dw1000_ccp_listen(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
 {
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_listen\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-
+    dw1000_phy_forcetrxoff(inst);
     dw1000_ccp_instance_t * ccp = inst->ccp; 
     os_error_t err = os_sem_pend(&ccp->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);

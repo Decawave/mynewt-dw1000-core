@@ -17,8 +17,8 @@
 # under the License.
 #
 
-pkg.name: lib/rng
-pkg.description: TWR library superset 
+pkg.name: lib/nrng
+pkg.description: TWR nrng library superset 
 pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
@@ -34,7 +34,7 @@ pkg.lflags:
 
 pkg.deps:
     - "@apache-mynewt-core/encoding/json"
-    
-pkg.init:
-    rng_pkg_init: 404
+    - "@mynewt-dw1000-core/lib/rng"
 
+pkg.init:
+    nrng_pkg_init: 411
