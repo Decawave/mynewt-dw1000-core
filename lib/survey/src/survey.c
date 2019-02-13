@@ -106,7 +106,7 @@ survey_init(struct _dw1000_dev_instance_t * inst, uint16_t nnodes){
         assert(survey);
         memset(survey, 0, sizeof(survey_instance_t));
 
-        for (uint16_t i = 0; i < nnodes; i++){
+        for (uint16_t i = 0; i < nnodes + 1; i++){
             survey->ranges[i] = (survey_ranges_t * ) malloc(sizeof(survey_ranges_t) + nnodes * sizeof(float)); 
             assert(survey->ranges[i]);
             memset(survey->ranges[i], 0, sizeof(survey_ranges_t));
@@ -209,7 +209,6 @@ survey_slot_range_cb(struct os_event *ev){
     dw1000_ccp_instance_t * ccp = inst->ccp;
     survey_instance_t * survey = inst->survey;
     survey->seq_num = (ccp->idx & ((uint32_t)~0UL << MYNEWT_VAL(SURVEY_MASK))) >> MYNEWT_VAL(SURVEY_MASK);
-
    
 #if MYNEWT_VAL(WCS_ENABLED)
     wcs_instance_t * wcs = ccp->wcs;
@@ -252,7 +251,7 @@ survey_slot_broadcast_cb(struct os_event *ev){
     dw1000_ccp_instance_t * ccp = inst->ccp;
     survey_instance_t * survey = inst->survey;
     survey->seq_num = (ccp->idx & ((uint32_t)~0UL << MYNEWT_VAL(SURVEY_MASK))) >> MYNEWT_VAL(SURVEY_MASK);
-    
+
 #if MYNEWT_VAL(WCS_ENABLED)
     wcs_instance_t * wcs = ccp->wcs;
     uint64_t dx_time = (ccp->local_epoch + (uint64_t) wcs_dtu_time_adjust(wcs, ((slot->idx * (uint64_t)tdma->period << 16)/tdma->nslots)));
@@ -286,7 +285,7 @@ survey_request(survey_instance_t * survey, uint64_t dx_time){
     uint32_t slot_mask = ~(~0UL << (survey->nnodes));
     dw1000_nrng_request_delay_start(inst, 0xffff, dx_time, DWT_SS_TWR_NRNG, slot_mask, 0);
     survey->ranges[inst->slot_id]->mask = dw1000_nrng_get_ranges(inst, survey->ranges[inst->slot_id]->ranges, survey->nnodes, inst->nrng->idx);
-    
+
     return survey->status;
 }
 
@@ -402,7 +401,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
        return false;
   
     survey_broadcast_frame_t * frame = ((survey_broadcast_frame_t * ) inst->rxbuf);
-    printf("rx_complete_cb\n");
+  
 
     if (frame->dst_address != 0xffff)
         return false;
@@ -412,21 +411,33 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
             {   
                 if (frame->cell_id != inst->cell_id)
                     return false;
-                if (frame->seq_num != survey->seq_num)
+                if (frame->seq_num != survey->seq_num) 
                     return false;
                 uint16_t n = sizeof(survey_broadcast_frame_t) + survey->nnodes * sizeof(float);
-                if (inst->frame_len <= n && frame->slot_id < survey->nnodes) {
-                    memcpy(survey->ranges[frame->slot_id], inst->rxbuf, inst->frame_len);
+                if (inst->frame_len > n || frame->slot_id > survey->nnodes - 1) {
+                    os_error_t err = os_sem_release(&survey->sem);
+                    assert(err == OS_OK);
+                    return false;
+                }
+                uint16_t nnodes = NumberOfBits(frame->mask);
+                survey->status.empty = nnodes == 0;
+                if(survey->status.empty){
+                    survey->ranges[frame->slot_id]->mask = frame->mask;
+                    memcpy(survey->ranges[frame->slot_id]->ranges, frame->ranges, nnodes * sizeof(float));
+                    os_error_t err = os_sem_release(&survey->sem);
+                    assert(err == OS_OK);
+                    break;
+                }else{      
+                    survey->ranges[frame->slot_id]->mask = 0;              
+                    os_error_t err = os_sem_release(&survey->sem);
+                    assert(err == OS_OK);
+                    break;
                 }
             }
             break;
         default: 
             return false;
     }
-
-    os_error_t err = os_sem_release(&survey->sem);
-    assert(err == OS_OK);
-
     return true;
 }
 
@@ -441,11 +452,12 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 static bool
 tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
-    if(os_sem_get_count(&inst->survey->sem) == 1){ 
-        // unsolicited inbound
+    survey_instance_t * survey = inst->survey; 
+
+    if(os_sem_get_count(&survey->sem) == 1)
         return false;
-    }
-    os_error_t err = os_sem_release(&inst->survey->sem);
+   
+    os_error_t err = os_sem_release(&survey->sem);
     assert(err == OS_OK);
     
     return false;
@@ -461,15 +473,17 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  */
 static bool
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
- 
-    if(os_sem_get_count(&inst->survey->sem) == 0){ 
-        os_error_t err = os_sem_release(&inst->survey->sem);  
-        assert(err == OS_OK);
-        STATS_INC(inst->survey->stat, rx_timeout);
-        return true;
-    }
-    else
+    
+    survey_instance_t * survey = inst->survey; 
+    
+    if(os_sem_get_count(&survey->sem) == 1)
         return false;
+    
+    os_error_t err = os_sem_release(&survey->sem);  
+    assert(err == OS_OK);
+    STATS_INC(survey->stat, rx_timeout);
+    
+    return true;
 }
 
 
@@ -481,15 +495,16 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  */
 static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+    
+    survey_instance_t * survey = inst->survey; 
 
-   if(os_sem_get_count(&inst->survey->sem) == 0){ 
-        os_error_t err = os_sem_release(&inst->survey->sem);  
-        assert(err == OS_OK);
-        STATS_INC(inst->survey->stat, reset);
-        return false;
-    }
-    else 
+    if(os_sem_get_count(&survey->sem) == 1)
         return false;
 
+    os_error_t err = os_sem_release(&survey->sem);  
+    assert(err == OS_OK);
+    STATS_INC(survey->stat, reset);
+
+    return true;    
 }
 

@@ -79,7 +79,7 @@ typedef struct _dw1000_rng_control_t{
 //! Ranging modes. 
 typedef enum _dw1000_rng_modes_t{
     DWT_TWR_INVALID = 0,             //!< Invalid TWR
-    DWT_SS_TWR,                      //!< Single sided TWR 
+    DWT_SS_TWR = 0x10,               //!< Single sided TWR 
     DWT_SS_TWR_T1,                   //!< Response for single sided TWR 
     DWT_SS_TWR_FINAL,                //!< Final response of single sided TWR 
     DWT_SS_TWR_END,                  //!< End of single sided TWR 
@@ -87,7 +87,7 @@ typedef enum _dw1000_rng_modes_t{
     DWT_SS_TWR_EXT_T1,               //!< Response for single sided TWR in extended mode
     DWT_SS_TWR_EXT_FINAL,            //!< Final response of single sided TWR in extended mode
     DWT_SS_TWR_EXT_END,              //!< End of single sided TWR in extended mode
-    DWT_DS_TWR,                      //!< Double sided TWR 
+    DWT_DS_TWR = 0x20,                      //!< Double sided TWR 
     DWT_DS_TWR_T1,                   //!< Response for double sided TWR 
     DWT_DS_TWR_T2,                   //!< Response for double sided TWR 
     DWT_DS_TWR_FINAL,                //!< Final response of double sided TWR 
@@ -97,9 +97,9 @@ typedef enum _dw1000_rng_modes_t{
     DWT_DS_TWR_EXT_T2,               //!< Response for double sided TWR in extended mode 
     DWT_DS_TWR_EXT_FINAL,            //!< Final response of double sided TWR in extended mode 
     DWT_DS_TWR_EXT_END,              //!< End of double sided TWR in extended mode 
-    DWT_PROVISION_START,             //!< Start of provision
+    DWT_PROVISION_START = 0x30,      //!< Start of provision
     DWT_PROVISION_RESP,              //!< End of provision
-    DWT_SS_TWR_NRNG,
+    DWT_SS_TWR_NRNG = 0x40,
     DWT_SS_TWR_NRNG_T1,
     DWT_SS_TWR_NRNG_FINAL,
     DWT_SS_TWR_NRNG_END,
@@ -107,7 +107,7 @@ typedef enum _dw1000_rng_modes_t{
     DWT_SS_TWR_NRNG_EXT_T1,
     DWT_SS_TWR_NRNG_EXT_FINAL,
     DWT_SS_TWR_NRNG_EXT_END,
-    DWT_DS_TWR_NRNG,
+    DWT_DS_TWR_NRNG = 0x50,
     DWT_DS_TWR_NRNG_T1,
     DWT_DS_TWR_NRNG_T2,
     DWT_DS_TWR_NRNG_FINAL,
@@ -117,9 +117,9 @@ typedef enum _dw1000_rng_modes_t{
     DWT_DS_TWR_NRNG_EXT_T2,
     DWT_DS_TWR_NRNG_EXT_FINAL,
     DWT_DS_TWR_NRNG_EXT_END,
-    DWT_SURVEY_REQUEST,
-    DWT_SURVEY_BROADCAST,
-    DWT_DS_TWR_NRNG_INVALID = 0xFFFF
+    DWT_DS_TWR_NRNG_INVALID,
+    DWT_SURVEY_REQUEST = 0x60,
+    DWT_SURVEY_BROADCAST
 }dw1000_rng_modes_t;
 
 //! Range status parameters

@@ -201,17 +201,17 @@ static bool
 rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     assert(inst->nrng);
+    dw1000_nrng_instance_t * nrng = inst->nrng;
 
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
     
-    if(os_sem_get_count(&inst->nrng->sem) == 1){ 
+    if(os_sem_get_count(&nrng->sem) == 1){ 
         // unsolicited inbound
-        STATS_INC(inst->nrng->stat, rx_unsolicited);
+        STATS_INC(nrng->stat, rx_unsolicited);
         return false;
     }
 
-    dw1000_nrng_instance_t * nrng = inst->nrng;
     dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, DWT_SS_TWR_NRNG);
     nrng_request_frame_t * _frame = (nrng_request_frame_t * )inst->rxbuf;
 
@@ -265,6 +265,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->src_address = inst->my_short_address;
                 frame->code = DWT_SS_TWR_NRNG_T1;
                 frame->slot_id = slot_idx;
+                frame->seq_num = _frame->seq_num;
 
 #if MYNEWT_VAL(WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
@@ -322,17 +323,20 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 #else
                 frame->carrier_integrator  = inst->carrier_integrator;
 #endif   
-
-                // Incrementally reduce the remaining timeout calculation in accordance with what is still to come.
-                uint16_t timeout = config->tx_holdoff_delay    // Remote side turn arround time.
-                        +usecs_to_response(inst,     
-                            nrng->nnodes - idx,                // no. of remaining frames
-                            config,                            // Guard delay 
-                            dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)) // frame duration in usec
-                        ) + config->rx_timeout_delay;          // TOF allowance.
-                dw1000_set_rx_timeout(inst, timeout);
-                
                 if(idx == nrng->nnodes-1){
+                     dw1000_set_rx_timeout(inst, 1); // Triger timeout event
+                }else{
+                    // Incrementally reduce the remaining timeout calculation in accordance with what is still to come.
+                    uint16_t timeout = usecs_to_response(inst,     
+                                nrng->nnodes - idx,                // no. of remaining frames
+                                config,                            // Guard delay 
+                                dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)) // frame duration in usec
+                            ) + config->rx_timeout_delay;          // TOF allowance.
+                    dw1000_set_rx_timeout(inst, timeout);
+                }
+            #if 0
+                if(idx == nrng->nnodes-1){
+                    dw1000_set_rx_timeout(inst, 1);
                     if (inst->config.dblbuffon_enabled)  
                         dw1000_stop_rx(inst);
                     
@@ -347,9 +351,10 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                                 continue;
                         }
                     }
+             
                  
                 }
-                
+                   #endif
             break;
             }
         default:

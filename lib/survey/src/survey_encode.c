@@ -81,8 +81,7 @@ survey_encode(survey_instance_t * survey, uint16_t seq_num){
     survey->status.empty = NumberOfBits(mask) == 0;
     if (survey->status.empty)
        return;
-
-
+       
     /* reset the state of the internal test */
     memset(&encoder, 0, sizeof(encoder));
     encoder.je_write = json_write;
