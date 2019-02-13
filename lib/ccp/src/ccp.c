@@ -483,8 +483,9 @@ ccp_postprocess(struct os_event * ev){
 
 #if MYNEWT_VAL(CCP_VERBOSE)
     float clock_offset = dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator);
+    printf("{\"utime\": %lu,\"ccp\":[\"%llX\",\"%llX\"],\"clock_offset\": %lu,\"seq_num\" :%d}\n",
         os_cputime_ticks_to_usecs(os_cputime_get32()),   
-        frame->transmission_timestamp,
+        (uint64_t)frame->transmission_timestamp,
         delta,
         *(uint32_t *)&clock_offset,
         frame->seq_num
