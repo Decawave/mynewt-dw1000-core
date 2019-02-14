@@ -276,17 +276,10 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                     break;
 
                 uint64_t response_timestamp = inst->rxtimestamp;
-<<<<<<< Updated upstream
-#if MYNEWT_VAL(WCS_ENABLED)           
+#if MYNEWT_VAL(WCS_ENABLED)
                 wcs_instance_t * wcs = inst->ccp->wcs;
                 frame->request_timestamp = wcs_local_to_master(wcs, dw1000_read_txtime(inst)) & 0xFFFFFFFFULL;
                 frame->response_timestamp = wcs_local_to_master(wcs, response_timestamp) & 0xFFFFFFFFULL;
-=======
-#if MYNEWT_VAL(WCS_ENABLED)          
-                wcs_instance_t * wcs = inst->ccp->wcs;  
-                frame->request_timestamp = wcs_local_to_master(wcs, dw1000_read_txtime(inst)) & 0xFFFFFFFFUL;
-                frame->response_timestamp = wcs_local_to_master(wcs, response_timestamp) & 0xFFFFFFFFUL;
->>>>>>> Stashed changes
 #else
                 frame->request_timestamp = dw1000_read_txtime_lo(inst) & 0xFFFFFFFFUL;
                 frame->response_timestamp  = (uint32_t)(response_timestamp & 0xFFFFFFFFULL);
