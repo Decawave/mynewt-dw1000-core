@@ -275,14 +275,27 @@ inline double wcs_dtu_time_correction(struct _wcs_instance_t * wcs){
  * 
  */
  
-uint64_t wcs_local_to_master(wcs_instance_t * wcs, uint64_t dtu_time){
+uint64_t wcs_local_to_master64(wcs_instance_t * wcs, uint64_t dtu_time){
     timescale_instance_t * timescale = wcs->timescale; 
 
-    double delta = (dtu_time - wcs->local_epoch.lo) & 0x0FFFFFFFFFFUL; 
+    double delta = ((dtu_time & 0x0FFFFFFFFFFUL) - wcs->local_epoch.lo) & 0x0FFFFFFFFFFUL;
 
     if (wcs->status.valid)
         dtu_time = (uint64_t) round(timescale_forward(timescale, delta / WCS_DTU)); 
-    return dtu_time & 0x0FFFFFFFFFFUL;
+    return dtu_time;
+}
+
+/**
+ * API compensate for clock skew and offset relative to master clock
+ *
+ * @param wcs pointer to wcs_instance_t
+ * @param dtu_time local observed timestamp
+ * @return time
+ *
+ */
+
+uint64_t wcs_local_to_master(wcs_instance_t * wcs, uint64_t dtu_time){
+    return wcs_local_to_master(wcs, dtu_time) & 0x0FFFFFFFFFFUL;
 }
 
 

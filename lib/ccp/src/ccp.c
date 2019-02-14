@@ -471,7 +471,7 @@ ccp_postprocess(struct os_event * ev){
     uint64_t delta = 0;
 
     if (ccp->config.role == CCP_ROLE_MASTER){
-        delta = (frame->transmission_timestamp - previous_frame->transmission_timestamp);
+        delta = (frame->transmission_timestamp.timestamp - previous_frame->transmission_timestamp.timestamp);
     } else {
         delta = (frame->reception_timestamp - previous_frame->reception_timestamp);
     }
@@ -563,7 +563,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         uint32_t repeat_dly = master_interval - frame->transmission_interval;
         ccp->master_epoch.timestamp = (ccp->master_epoch.timestamp - (repeat_dly << 16)) & 0xffffffffffUL;
         /* TODO: Probably compensate for skew relative master when correcting local ts */
-        ccp->local_epoch = (ccp->local_epoch - (repeat_dly << 16)) & 0xffffffffffUL;
+        ccp->local_epoch = (ccp->local_epoch - (repeat_dly << 16)) & 0x0FFFFFFFFFFUL;
         frame->reception_timestamp = ccp->local_epoch;
         ccp->os_epoch -= os_cputime_usecs_to_ticks(master_interval - frame->transmission_interval);
     }
@@ -582,7 +582,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         tx_timestamp += inst->tx_antenna_delay;
 
 #if MYNEWT_VAL(WCS_ENABLED)
-        tx_frame.transmission_timestamp.timestamp = wcs_local_to_master(inst->ccp->wcs, tx_timestamp);
+        tx_frame.transmission_timestamp.timestamp = wcs_local_to_master64(inst->ccp->wcs, tx_timestamp);
 #else
         tx_frame.transmission_timestamp.timestamp = frame->transmission_timestamp.timestamp + tx_timestamp - frame->reception_timestamp;
 #endif
