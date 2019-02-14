@@ -379,8 +379,8 @@ dw1000_dev_status_t dw1000_dev_wakeup(dw1000_dev_instance_t * inst);
 dw1000_dev_status_t dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, uint8_t enable);
 dw1000_dev_status_t dw1000_dev_enter_sleep_after_rx(dw1000_dev_instance_t * inst, uint8_t enable);
     
-#define dw1000_dwt_usecs_to_usecs(_t) (float)( (_t) * (0x10000UL/(128*499.2f)))
-#define dw1000_usecs_to_dwt_usecs(_t) (float)( (_t) / dw1000_dwt_usecs_to_usecs(1.0f))
+#define dw1000_dwt_usecs_to_usecs(_t) (double)( (_t) * (0x10000UL/(128*499.2)))
+#define dw1000_usecs_to_dwt_usecs(_t) (double)( (_t) / dw1000_dwt_usecs_to_usecs(1.0))
 
 #ifdef __cplusplus
 }
