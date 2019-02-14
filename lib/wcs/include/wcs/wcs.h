@@ -53,8 +53,8 @@ typedef struct _wcs_instance_t{
     wcs_control_t control;
     wcs_config_t config;
     uint64_t observed_interval;
-    uint64_t master_epoch;
-    uint64_t local_epoch;
+    ccp_timestamp_t master_epoch;
+    ccp_timestamp_t local_epoch;
     double skew;
     struct os_event postprocess_ev;
     struct _dw1000_ccp_instance_t * ccp;

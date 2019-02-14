@@ -402,7 +402,6 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
   
     survey_broadcast_frame_t * frame = ((survey_broadcast_frame_t * ) inst->rxbuf);
   
-
     if (frame->dst_address != 0xffff)
         return false;
 
@@ -415,22 +414,16 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                     return false;
                 uint16_t n = sizeof(survey_broadcast_frame_t) + survey->nnodes * sizeof(float);
                 if (inst->frame_len > n || frame->slot_id > survey->nnodes - 1) {
-                    os_error_t err = os_sem_release(&survey->sem);
-                    assert(err == OS_OK);
                     return false;
                 }
                 uint16_t nnodes = NumberOfBits(frame->mask);
                 survey->status.empty = nnodes == 0;
-                if(survey->status.empty){
+                if(nnodes){
                     survey->ranges[frame->slot_id]->mask = frame->mask;
                     memcpy(survey->ranges[frame->slot_id]->ranges, frame->ranges, nnodes * sizeof(float));
-                    os_error_t err = os_sem_release(&survey->sem);
-                    assert(err == OS_OK);
                     break;
                 }else{      
                     survey->ranges[frame->slot_id]->mask = 0;              
-                    os_error_t err = os_sem_release(&survey->sem);
-                    assert(err == OS_OK);
                     break;
                 }
             }
@@ -438,6 +431,9 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         default: 
             return false;
     }
+    
+    os_error_t err = os_sem_release(&survey->sem);
+    assert(err == OS_OK);
     return true;
 }
 

@@ -65,16 +65,25 @@ STATS_SECT_START(ccp_stat_section)
     STATS_SECT_ENTRY(reset)
 STATS_SECT_END
 
+typedef union _ccp_timestamp_t{
+    struct {
+        uint64_t lo:40;
+        uint64_t hi:23;
+        uint64_t halfperiod:1;
+    };
+    uint64_t timestamp;
+}ccp_timestamp_t;
+
 //! Timestamps and blink frame format  of ccp frame.
 typedef union {
     //! Frame format of ccp blink frame.
     struct _ccp_blink_frame_t{
         struct _ieee_blink_frame_t;
-        uint32_t transmission_interval;     //!< Transmission interval
-        uint64_t transmission_timestamp:40; //!< Transmission timestamp
-        uint64_t rpt_count:8;               //!< Repeat level
-        uint64_t rpt_max:8;                 //!< Repeat max level
-        uint64_t superframe_mode:8;         //!< UNUSED
+        uint32_t transmission_interval;         //!< Transmission interval
+        ccp_timestamp_t transmission_timestamp; //!< Transmission timestamp
+        uint8_t rpt_count;                      //!< Repeat level
+        uint8_t rpt_max;                        //!< Repeat max level
+        uint8_t superframe_mode;                //!< UNUSED
     }__attribute__((__packed__, aligned(1)));
     uint8_t array[sizeof(struct _ccp_blink_frame_t)];
 }ccp_blink_frame_t;
@@ -139,7 +148,7 @@ typedef struct _dw1000_ccp_instance_t{
     struct os_callout callout_postprocess;          //!< Structure of callout_postprocess
     dw1000_ccp_status_t status;                     //!< DW1000 ccp status parameters
     dw1000_ccp_config_t config;                     //!< DW1000 ccp config parameters
-    uint64_t master_epoch;                          //!< ccp event referenced to master systime
+    ccp_timestamp_t master_epoch;                   //!< ccp event referenced to master systime
     uint64_t local_epoch;                           //!< ccp event referenced to local systime
     uint32_t os_epoch;                              //!< ccp event referenced to ostime
     dw1000_ccp_tof_compensation_cb_t tof_comp_cb;   //!< tof compensation callback 

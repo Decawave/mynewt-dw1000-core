@@ -152,12 +152,13 @@ void wcs_update_cb(struct os_event * ev){
     if(ccp->status.valid){ 
         ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
 
-        wcs->observed_interval = (ccp->local_epoch - wcs->local_epoch) & 0x0FFFFFFFFFFUL; // Observed ccp interval        
-        wcs->master_epoch = ccp->master_epoch; 
-        wcs->local_epoch = ccp->local_epoch;  
+        wcs->observed_interval = (ccp->local_epoch - wcs->local_epoch.lo) & 0x0FFFFFFFFFFUL; // Observed ccp interval        
+        wcs->master_epoch.timestamp = ccp->master_epoch.timestamp; 
+        wcs->local_epoch.lo = ccp->local_epoch & 0x0FFFFFFFFFFUL;  
 
         if (wcs->status.initialized == 0){
-            states->time = (double) wcs->master_epoch;
+            states->time = (double) wcs->master_epoch.lo;
+            wcs->local_epoch.hi = wcs->master_epoch.hi;
             states->skew = (1.0l + (double ) dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator)) * MYNEWT_VAL(WCS_DTU);
             wcs->status.initialized = 1;
         }else{
@@ -167,8 +168,9 @@ void wcs_update_cb(struct os_event * ev){
             //double T = 1e-6l * frame->transmission_interval * wcs->nT;   // interval in seconds referenced to master
             double q[] = {MYNEWT_VAL(TIMESCALE_QVAR) * 1.0, MYNEWT_VAL(TIMESCALE_QVAR) * 0.1, MYNEWT_VAL(TIMESCALE_QVAR) * 0.01};
             double r[] = {MYNEWT_VAL(TIMESCALE_RVAR),  WCS_DTU * 1e20};
-            double z[] = {(double) wcs->master_epoch, skew};
+            double z[] = {(double) wcs->master_epoch.lo, skew};
             wcs->status.valid = timescale_main(timescale, z, q, r, T).valid;
+            wcs->local_epoch.hi += timescale->status.rollover;
         }
 
         wcs->status.valid |= fabs(1.0l - states->skew / WCS_DTU) < 1e-5;
@@ -201,18 +203,19 @@ wcs_postprocess(struct os_event * ev){
     assert(ev->ev_arg != NULL);
 
 #if MYNEWT_VAL(WCS_VERBOSE)
-    wcs_instance_t * inst = (wcs_instance_t *)ev->ev_arg;
-    dw1000_ccp_instance_t * ccp = (void *)inst->ccp; 
-    wcs_instance_t * wcs = ccp->wcs;
+    wcs_instance_t * wcs = (wcs_instance_t *) ev->ev_arg;
+    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *) wcs->ccp;
     timescale_instance_t * timescale = wcs->timescale; 
     timescale_states_t * x = (timescale_states_t *) (timescale->eke->x); 
 
-    printf("{\"utime\": %lu,\"wcs\": [%llu,%llu,%llu],\"skew\": %llu}\n", 
+    printf("{\"utime\": %lu,\"wcs\": [%llu,%llu,%llu],\"skew\": %llu, \"roleover\":, [%lu,%lu]}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),
-        (uint64_t) inst->master_epoch,
+        (uint64_t) wcs->master_epoch.timestamp,
         (uint64_t) x->time,
-        (uint64_t) inst->local_epoch,
-       *(uint64_t *)&(inst->skew)
+        (uint64_t) wcs->local_epoch.timestamp,
+       *(uint64_t *)&(wcs->skew),
+        (uint32_t) wcs->local_epoch.hi,
+        (uint32_t) ccp->master_epoch.hi
     );
 #endif
 }
@@ -278,7 +281,7 @@ inline double wcs_dtu_time_correction(struct _wcs_instance_t * wcs){
 uint64_t wcs_local_to_master(wcs_instance_t * wcs, uint64_t dtu_time){
     timescale_instance_t * timescale = wcs->timescale; 
 
-    double delta = (dtu_time - wcs->local_epoch) & 0x0FFFFFFFFFFUL; 
+    double delta = (dtu_time - wcs->local_epoch.lo) & 0x0FFFFFFFFFFUL; 
 
     if (wcs->status.valid)
         dtu_time = (uint64_t) round(timescale_forward(timescale, delta / WCS_DTU)); 

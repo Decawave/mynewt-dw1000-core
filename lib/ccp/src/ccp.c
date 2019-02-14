@@ -543,7 +543,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     ccp->os_epoch = os_cputime_get32();
     STATS_INC(inst->ccp->stat, rx_complete);
 
-    ccp->master_epoch = frame->transmission_timestamp;
+    ccp->master_epoch.timestamp = frame->transmission_timestamp.timestamp;
     ccp->local_epoch = frame->reception_timestamp = inst->rxtimestamp;
     ccp->period = frame->transmission_interval;
     frame->carrier_integrator = inst->carrier_integrator;
@@ -561,7 +561,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         /* Assume ccp intervals are a multiple of 0x10000 us */
         uint32_t master_interval = ((frame->transmission_interval/0x10000+1)*0x10000);
         uint32_t repeat_dly = master_interval - frame->transmission_interval;
-        ccp->master_epoch = (ccp->master_epoch - (repeat_dly << 16)) & 0xffffffffffUL;
+        ccp->master_epoch.timestamp = (ccp->master_epoch.timestamp - (repeat_dly << 16)) & 0xffffffffffUL;
         /* TODO: Probably compensate for skew relative master when correcting local ts */
         ccp->local_epoch = (ccp->local_epoch - (repeat_dly << 16)) & 0xffffffffffUL;
         frame->reception_timestamp = ccp->local_epoch;
@@ -582,13 +582,13 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         tx_timestamp += inst->tx_antenna_delay;
 
 #if MYNEWT_VAL(WCS_ENABLED)
-        tx_frame.transmission_timestamp = wcs_local_to_master(inst->ccp->wcs, tx_timestamp);
+        tx_frame.transmission_timestamp.timestamp = wcs_local_to_master(inst->ccp->wcs, tx_timestamp);
 #else
-        tx_frame.transmission_timestamp = frame->transmission_timestamp + tx_timestamp - frame->reception_timestamp;
+        tx_frame.transmission_timestamp.timestamp = frame->transmission_timestamp.timestamp + tx_timestamp - frame->reception_timestamp;
 #endif
 
         tx_frame.long_address = inst->euid;
-        tx_frame.transmission_interval = frame->transmission_interval - ((tx_frame.transmission_timestamp - frame->transmission_timestamp)>>16);
+        tx_frame.transmission_interval = frame->transmission_interval - ((tx_frame.transmission_timestamp.lo - frame->transmission_timestamp.lo)>>16);
 
         dw1000_write_tx(inst, tx_frame.array, 0, sizeof(ccp_blink_frame_t));
         dw1000_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0, true);
@@ -651,7 +651,7 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
     ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
     
     ccp->os_epoch = os_cputime_get32();
-    ccp->local_epoch = frame->transmission_timestamp = dw1000_read_txrawst(inst); 
+    ccp->local_epoch = frame->transmission_timestamp.lo; // = dw1000_read_txrawst(inst); 
     ccp->master_epoch = frame->transmission_timestamp;
     ccp->period = frame->transmission_interval;
 
@@ -763,11 +763,12 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     frame->rpt_count = 0;
     frame->rpt_max = MYNEWT_VAL(CCP_MAX_CASCADE_RPTS);
 
-    frame->transmission_timestamp = (previous_frame->transmission_timestamp
-                                    + ((uint64_t)inst->ccp->period << 16)
-                                    ) & 0x0FFFFFFFFFFUL;
-    dw1000_set_delay_start(inst, frame->transmission_timestamp);
-    frame->transmission_timestamp += inst->tx_antenna_delay;
+    uint64_t timestamp = previous_frame->transmission_timestamp.timestamp
+                        + ((uint64_t)inst->ccp->period << 16);
+
+    dw1000_set_delay_start(inst, timestamp & 0x0FFFFFFFFFFUL);
+    timestamp += inst->tx_antenna_delay;
+    frame->transmission_timestamp.timestamp = timestamp;
     
     frame->seq_num = ++ccp->seq_num;
     frame->euid = inst->euid;
@@ -779,7 +780,8 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     ccp->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
     if (ccp->status.start_tx_error ){
         STATS_INC(inst->ccp->stat, tx_start_error);
-        previous_frame->transmission_timestamp = (frame->transmission_timestamp + ((uint64_t)inst->ccp->period << 16)) & 0x0FFFFFFFFFFUL;
+        previous_frame->transmission_timestamp.timestamp = (frame->transmission_timestamp.timestamp 
+                        + ((uint64_t)inst->ccp->period << 16));
         ccp->idx++;
         err =  os_sem_release(&ccp->sem);
         assert(err == OS_OK); 
@@ -854,8 +856,10 @@ dw1000_ccp_start(struct _dw1000_dev_instance_t * inst, dw1000_ccp_role_t role){
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
     ccp->config.role = role;
 
-    if (ccp->config.role == CCP_ROLE_MASTER)
-        ccp->local_epoch = frame->transmission_timestamp = dw1000_read_systime(inst);
+    if (ccp->config.role == CCP_ROLE_MASTER){
+        ccp->local_epoch = frame->transmission_timestamp.lo = dw1000_read_systime(inst);
+        frame->transmission_timestamp.hi = 0;
+    }
     else {
         ccp->local_epoch = frame->reception_timestamp = dw1000_read_systime(inst);
         /* Temporarily override period to start listening for the first
