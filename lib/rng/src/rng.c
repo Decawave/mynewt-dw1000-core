@@ -420,7 +420,7 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
     dw1000_rng_instance_t * rng = inst->rng;                            
     twr_frame_t * frame  = inst->rng->frames[(rng->idx+1)%rng->nframes];    
 
-    if (code == DWT_SS_TWR)
+    if (code == DWT_SS_TWR || code == DWT_SS_TWR_EXT)
         rng->seq_num+=1;
     else
         rng->seq_num+=2;
@@ -718,7 +718,6 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if(inst->fctrl != FCNTL_IEEE_RANGE_16 && os_sem_get_count(&rng->sem) == 1){
         return false;
     }
-
     if(os_sem_get_count(&rng->sem) == 0){
         os_error_t err = os_sem_release(&rng->sem);
         assert(err == OS_OK);
@@ -795,7 +794,6 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 #if MYNEWT_VAL(NRNG_ENABLED)
     dw1000_nrng_instance_t * nrng = inst->nrng;
 #endif
-
     if (inst->frame_len < sizeof(ieee_rng_request_frame_t))
        return false;
 
