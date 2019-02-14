@@ -91,6 +91,8 @@ typedef enum _dw1000_extension_id_t{
     DW1000_LWIP,
     DW1000_PAN,                              //!< Personal area network
     DW1000_PROVISION,                        //!< Provisioning
+    DW1000_NMGR_UWB,                         //!< UWB transport layer
+    DW1000_NMGR_CMD,                         //!< UWB command support
     DW1000_CIR,                              //!< Channel impulse response 
     DW1000_SURVEY,
     DW1000_APP0 = 1024, 
@@ -343,6 +345,9 @@ typedef struct _dw1000_dev_instance_t{
 #endif
 #if MYNEWT_VAL(SURVEY_ENABLED)
     struct _survey_instance_t * survey;            //!< AutoSite Survey instance
+#endif
+#if MYNEWT_VAL(NMGR_UWB_ENABLED)
+    struct _dw1000_nmgr_uwb_instance_t* nmgruwb;
 #endif
     dw1000_dev_rxdiag_t rxdiag;                    //!< DW1000 receive diagnostics
     dw1000_dev_config_t config;                    //!< DW1000 device configurations  

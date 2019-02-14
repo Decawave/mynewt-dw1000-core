@@ -1,0 +1,6 @@
+
+syscfg.defs:
+      NMGR_UWB_ENABLED:
+        description: 'Enable toplevel ranging services'
+        value: 1
+
