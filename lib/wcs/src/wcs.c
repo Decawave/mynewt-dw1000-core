@@ -54,6 +54,8 @@
 #include <wcs/wcs.h>
 #include <timescale/timescale.h>
 
+#if MYNEWT_VAL(WCS_ENABLED)
+
 //#define DIAGMSG(s,u) printf(s,u)
 #define WCS_DTU MYNEWT_VAL(WCS_DTU)
 
@@ -469,7 +471,4 @@ inline uint32_t wcs_read_txtime_lo_master(struct _dw1000_dev_instance_t * inst){
     return (uint32_t) (wcs_local_to_master(wcs, dw1000_read_txtime_lo(inst))& 0xFFFFFFFFUL);
 }
 
-
-
-
-
+#endif  /* MYNEWT_VAL(WCS_ENABLED) */
