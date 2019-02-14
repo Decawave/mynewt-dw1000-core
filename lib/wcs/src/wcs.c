@@ -154,11 +154,10 @@ void wcs_update_cb(struct os_event * ev){
 
         wcs->observed_interval = (ccp->local_epoch - wcs->local_epoch.lo) & 0x0FFFFFFFFFFUL; // Observed ccp interval        
         wcs->master_epoch.timestamp = ccp->master_epoch.timestamp; 
-        wcs->local_epoch.lo = ccp->local_epoch & 0x0FFFFFFFFFFUL;  
+        wcs->local_epoch.timestamp += wcs->observed_interval;
 
         if (wcs->status.initialized == 0){
             states->time = (double) wcs->master_epoch.lo;
-            wcs->local_epoch.hi = wcs->master_epoch.hi;
             states->skew = (1.0l + (double ) dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator)) * MYNEWT_VAL(WCS_DTU);
             wcs->status.initialized = 1;
         }else{
@@ -170,7 +169,6 @@ void wcs_update_cb(struct os_event * ev){
             double r[] = {MYNEWT_VAL(TIMESCALE_RVAR),  WCS_DTU * 1e20};
             double z[] = {(double) wcs->master_epoch.lo, skew};
             wcs->status.valid = timescale_main(timescale, z, q, r, T).valid;
-            wcs->local_epoch.hi += timescale->status.rollover;
         }
 
         wcs->status.valid |= fabs(1.0l - states->skew / WCS_DTU) < 1e-5;
@@ -208,14 +206,13 @@ wcs_postprocess(struct os_event * ev){
     timescale_instance_t * timescale = wcs->timescale; 
     timescale_states_t * x = (timescale_states_t *) (timescale->eke->x); 
 
-    printf("{\"utime\": %lu,\"wcs\": [%llu,%llu,%llu],\"skew\": %llu, \"roleover\":, [%lu,%lu]}\n", 
+    printf("{\"utime\": %lu,\"wcs\": [\"%llX,%llX,%llX,%llX\"],\"skew\": %llu}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),
         (uint64_t) wcs->master_epoch.timestamp,
-        (uint64_t) x->time,
+        (uint64_t) wcs_local_to_master(wcs, wcs->local_epoch.lo),
         (uint64_t) wcs->local_epoch.timestamp,
-       *(uint64_t *)&(wcs->skew),
-        (uint32_t) wcs->local_epoch.hi,
-        (uint32_t) ccp->master_epoch.hi
+        (uint64_t) x->time,
+       *(uint64_t *)&(wcs->skew)
     );
 #endif
 }

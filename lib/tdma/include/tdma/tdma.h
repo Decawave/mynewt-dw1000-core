@@ -66,7 +66,7 @@ typedef struct _tdma_slot_t{
     struct hal_timer timer;            //!< Timer
     struct os_callout event_cb;        //!< Sturcture of event_cb
     uint16_t idx;                      //!< Slot number
-    void * arg;                      //!< Optional argument
+    void * arg;                        //!< Optional argument
 }tdma_slot_t; 
 
 //! Structure of tdma instance
