@@ -278,10 +278,15 @@ uint64_t wcs_local_to_master64(wcs_instance_t * wcs, uint64_t dtu_time){
     timescale_instance_t * timescale = wcs->timescale; 
 
     double delta = ((dtu_time & 0x0FFFFFFFFFFUL) - wcs->local_epoch.lo) & 0x0FFFFFFFFFFUL;
+    uint64_t master_lo40;
+    if (wcs->status.valid) {
+        master_lo40 = (uint64_t) round(timescale_forward(timescale, delta / WCS_DTU));
+        master_lo40 += (timescale->status.rollover * 0x100000000UL);
+    } else {
+        master_lo40 = wcs->master_epoch.lo + delta;
+    }
 
-    if (wcs->status.valid)
-        dtu_time = (uint64_t) round(timescale_forward(timescale, delta / WCS_DTU)); 
-    return dtu_time;
+    return (wcs->master_epoch.timestamp & 0xFFFFFF0000000000UL) + master_lo40;
 }
 
 /**
