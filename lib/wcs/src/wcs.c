@@ -202,7 +202,6 @@ wcs_postprocess(struct os_event * ev){
 
 #if MYNEWT_VAL(WCS_VERBOSE)
     wcs_instance_t * wcs = (wcs_instance_t *) ev->ev_arg;
-    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *) wcs->ccp;
     timescale_instance_t * timescale = wcs->timescale; 
     timescale_states_t * x = (timescale_states_t *) (timescale->eke->x); 
 
