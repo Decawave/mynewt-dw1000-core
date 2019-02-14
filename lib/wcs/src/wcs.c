@@ -294,7 +294,7 @@ uint64_t wcs_local_to_master64(wcs_instance_t * wcs, uint64_t dtu_time){
  */
 
 uint64_t wcs_local_to_master(wcs_instance_t * wcs, uint64_t dtu_time){
-    return wcs_local_to_master(wcs, dtu_time) & 0x0FFFFFFFFFFUL;
+    return wcs_local_to_master64(wcs, dtu_time) & 0x0FFFFFFFFFFUL;
 }
 
 
