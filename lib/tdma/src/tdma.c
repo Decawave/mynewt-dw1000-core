@@ -51,6 +51,10 @@
 #include <ccp/ccp.h>
 #endif
 
+#if MYNEWT_VAL(WCS_ENABLED)
+#include <wcs/wcs.h>
+#endif
+
 #include <stats/stats.h>
 
 STATS_NAME_START(tdma_stat_section)
@@ -456,3 +460,45 @@ tdma_stop(struct _tdma_instance_t * tdma)
     }
 }
 
+
+/**
+ * Function for calculating the start of the slot for a tx operation
+ *
+ * @param inst       Pointer to struct _dw1000_dev_instance_t
+ * @param idx        Slot index
+ *
+ * @return dx_time   The time for a tx operation to start
+ */
+uint64_t
+tdma_tx_slot_start(struct _dw1000_dev_instance_t * inst, uint16_t idx)
+{
+    uint64_t dx_time;
+    tdma_instance_t * tdma = inst->tdma;
+    dw1000_ccp_instance_t * ccp = inst->ccp;
+
+#if MYNEWT_VAL(WCS_ENABLED)
+    wcs_instance_t * wcs = ccp->wcs;
+    dx_time = (ccp->local_epoch + (uint64_t) roundf((1.0l + wcs->skew) * (double)((idx * (uint64_t)tdma->period << 16)/tdma->nslots)));
+#else
+    dx_time = (ccp->local_epoch + (uint64_t) ((idx * ((uint64_t)tdma->period << 16)/tdma->nslots)));
+#endif
+    return dx_time;
+}
+
+/**
+ * Function for calculating the start of the slot for a rx operation.
+ * taking into account that the preamble needs to be sent before the
+ * RMARKER, which marks the time of the frame, is sent.
+ *
+ * @param inst       Pointer to struct _dw1000_dev_instance_t
+ * @param idx        Slot index
+ *
+ * @return dx_time   The time for a rx operation to start
+ */
+uint64_t
+tdma_rx_slot_start(struct _dw1000_dev_instance_t * inst, uint16_t idx)
+{
+    uint64_t dx_time = tdma_tx_slot_start(inst, idx);
+    dx_time = (dx_time - ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&inst->attrib))) << 16));
+    return dx_time;
+}
