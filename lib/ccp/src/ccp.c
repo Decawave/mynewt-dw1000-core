@@ -765,7 +765,8 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     uint64_t timestamp = previous_frame->transmission_timestamp.timestamp
                         + ((uint64_t)inst->ccp->period << 16);
 
-    dw1000_set_delay_start(inst, timestamp & 0x0FFFFFFFFFFUL);
+    timestamp = timestamp & 0xFFFFFFFFFFFFFE00ULL; /* Mask off the last 9 bits */
+    dw1000_set_delay_start(inst, timestamp);
     timestamp += inst->tx_antenna_delay;
     frame->transmission_timestamp.timestamp = timestamp;
     
