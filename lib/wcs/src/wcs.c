@@ -282,8 +282,9 @@ uint64_t wcs_local_to_master64(wcs_instance_t * wcs, uint64_t dtu_time){
     double delta = ((dtu_time & 0x0FFFFFFFFFFUL) - wcs->local_epoch.lo) & 0x0FFFFFFFFFFUL;
     uint64_t master_lo40;
     if (wcs->status.valid) {
+        /* No need to take special care of 40bit overflow as the timescale forward returns 
+         * a double value that can exceed the 40bit. */
         master_lo40 = (uint64_t) round(timescale_forward(timescale, delta / WCS_DTU));
-        master_lo40 += (timescale->status.rollover * 0x100000000UL);
     } else {
         master_lo40 = wcs->master_epoch.lo + delta;
     }
