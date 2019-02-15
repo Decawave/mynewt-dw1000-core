@@ -23,13 +23,12 @@
 /**
  * @file survey.c
  * @author paul kettle
- * @date 2019
+ * @date 02/2019
  * 
  * @brief automatic site survey 
  * @details The site survey process involves constructing a matrix of (n * n -1) ranges between n node. 
- * For this, we designate a slot in the superframe that performs a nrng_requst to all other nodes. 
- * We use the ccp->seq number to determine what node make use of this slot.
- *
+ * For this we designate a slot in the superframe that performs a nrng_requst to all other nodes, a slot for broadcasting
+ * the result between nodes. The a JSON encoder sentense of the survey is available with SURVEY_VERBOSE enabled.  
  */
 
 #include <stdio.h>
@@ -104,16 +103,17 @@ survey_init(struct _dw1000_dev_instance_t * inst, uint16_t nnodes){
     if (inst->survey == NULL ) {
         survey_instance_t * survey = (survey_instance_t *) malloc(sizeof(survey_instance_t) + nnodes * sizeof(survey_ranges_t * )); 
         assert(survey);
-        memset(survey, 0, sizeof(survey_instance_t));
+        memset(survey, 0, sizeof(survey_instance_t) + nnodes * sizeof(survey_ranges_t * ));
 
-        for (uint16_t i = 0; i < nnodes + 1; i++){
+        for (uint16_t i = 0; i < nnodes; i++){
             survey->ranges[i] = (survey_ranges_t * ) malloc(sizeof(survey_ranges_t) + nnodes * sizeof(float)); 
             assert(survey->ranges[i]);
-            memset(survey->ranges[i], 0, sizeof(survey_ranges_t));
+            memset(survey->ranges[i], 0, sizeof(survey_ranges_t) + nnodes * sizeof(float));
         }
 
         survey->frame = (survey_broadcast_frame_t *) malloc(sizeof(survey_broadcast_frame_t) + nnodes * sizeof(float)); 
         assert(survey->frame);
+        memset(survey->frame, 0, sizeof(survey_broadcast_frame_t) + nnodes * sizeof(float));
         survey_broadcast_frame_t frame = {
             .PANID = 0xDECA,
             .fctrl = FCNTL_IEEE_RANGE_16,
@@ -128,12 +128,10 @@ survey_init(struct _dw1000_dev_instance_t * inst, uint16_t nnodes){
         inst->survey = survey;
         os_error_t err = os_sem_init(&inst->survey->sem, 0x1); 
         assert(err == OS_OK);
-
     }else{
         assert(inst->survey->nnodes == nnodes);
     }
     inst->survey->status.initialized = 1;
-
     inst->survey->config = (survey_config_t){
         .rx_timeout_delay = MYNEWT_VAL(SURVEY_RX_TIMEOUT)
     };
@@ -192,12 +190,38 @@ survey_pkg_init(void){
     printf("{\"utime\": %lu,\"msg\": \"survey_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    survey_init(hal_dw1000_inst(0), MYNEWT_VAL(SURVEY_NODES));
+    survey_init(hal_dw1000_inst(0), MYNEWT_VAL(SURVEY_NNODES));
 #endif
 }
 
+#if MYNEWT_VAL(SURVEY_VERBOSE)
+/**
+ * API for verbose logging of survey results.
+ * 
+ * @param struct os_event
+ * @return none
+ */
+static struct os_callout survey_complete_callout;
+static void survey_complete_cb(struct os_event *ev) {
+    assert(ev != NULL);
+    assert(ev->ev_arg != NULL);
 
+    survey_instance_t * survey = (survey_instance_t *) ev->ev_arg;
+    survey_encode(survey, survey->seq_num);
+    
+    for (uint16_t i=0; i < survey->nnodes; i++)
+        survey->ranges[i]->mask = 0;
+}
+#endif
 
+/**
+ * Callback to schedule nrng request survey
+ * 
+ * @param struct os_event
+ * @return none
+ * @brief This callback is call from a TDMA slot (SURVEY_BROADCAST_SLOT) assigned in the toplevel main. 
+ * The variable SURVEY_MASK is used to derive the sequencing of the node.
+ */
 void 
 survey_slot_range_cb(struct os_event *ev){
     assert(ev);
@@ -208,38 +232,27 @@ survey_slot_range_cb(struct os_event *ev){
     dw1000_dev_instance_t * inst = tdma->parent;
     dw1000_ccp_instance_t * ccp = inst->ccp;
     survey_instance_t * survey = inst->survey;
-    survey->seq_num = (ccp->idx & ((uint32_t)~0UL << MYNEWT_VAL(SURVEY_MASK))) >> MYNEWT_VAL(SURVEY_MASK);
-   
-#if MYNEWT_VAL(WCS_ENABLED)
-    wcs_instance_t * wcs = ccp->wcs;
-    uint64_t dx_time = (ccp->local_epoch + (uint64_t) wcs_dtu_time_adjust(wcs, ((slot->idx * (uint64_t)tdma->period << 16)/tdma->nslots)));
-#else
-    uint64_t dx_time = (ccp->local_epoch + (uint64_t) (slot->idx * ((uint64_t)tdma->period << 16)/tdma->nslots));
-#endif
-
-    if(ccp->idx % survey->nnodes == inst->slot_id){
-        dx_time = dx_time & 0xFFFFFFFFFE00UL;
+    survey->seq_num = (ccp->seq_num & ((uint32_t)~0UL << MYNEWT_VAL(SURVEY_MASK))) >> MYNEWT_VAL(SURVEY_MASK);
+    
+    if(ccp->seq_num % survey->nnodes == inst->slot_id){
+        uint64_t dx_time = tdma_tx_slot_start(inst, slot->idx) & 0xFFFFFFFE00UL;
         survey_request(survey, dx_time);
     }
     else{
-        dx_time = (dx_time - ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&inst->attrib))) << 16) ) & 0xFFFFFFFE00UL;
+        uint64_t dx_time = tdma_rx_slot_start(inst, slot->idx) & 0xFFFFFFFE00UL;
         survey_listen(survey, dx_time); 
     }
 }
 
 
-#if MYNEWT_VAL(SURVEY_VERBOSE)
-static struct os_callout survey_complete_callout;
-static void survey_complete_cb(struct os_event *ev) {
-    assert(ev != NULL);
-    assert(ev->ev_arg != NULL);
-
-    survey_instance_t * survey = (survey_instance_t *) ev->ev_arg;
-    survey_encode(survey, survey->seq_num);
-}
-#endif
-
-
+/**
+ * Callback to schedule survey broadcasts
+ * 
+ * @param struct os_event
+ * @return none
+ * @brief This callback is call from a TDMA slot (SURVEY_BROADCAST_SLOT) assigned in the toplevel main. 
+ * The variable SURVEY_MASK is used to derive the sequencing of the node.
+ */
 void 
 survey_slot_broadcast_cb(struct os_event *ev){
     assert(ev);
@@ -250,31 +263,32 @@ survey_slot_broadcast_cb(struct os_event *ev){
     dw1000_dev_instance_t * inst = tdma->parent;
     dw1000_ccp_instance_t * ccp = inst->ccp;
     survey_instance_t * survey = inst->survey;
-    survey->seq_num = (ccp->idx & ((uint32_t)~0UL << MYNEWT_VAL(SURVEY_MASK))) >> MYNEWT_VAL(SURVEY_MASK);
+    survey->seq_num = (ccp->seq_num & ((uint32_t)~0UL << MYNEWT_VAL(SURVEY_MASK))) >> MYNEWT_VAL(SURVEY_MASK);
 
-#if MYNEWT_VAL(WCS_ENABLED)
-    wcs_instance_t * wcs = ccp->wcs;
-    uint64_t dx_time = (ccp->local_epoch + (uint64_t) wcs_dtu_time_adjust(wcs, ((slot->idx * (uint64_t)tdma->period << 16)/tdma->nslots)));
-#else
-    uint64_t dx_time = (ccp->local_epoch + (uint64_t) (slot->idx * ((uint64_t)tdma->period << 16)/tdma->nslots));
-#endif
-    if(ccp->idx % survey->nnodes == inst->slot_id){
-        dx_time = dx_time & 0xFFFFFFFFFE00UL;
+    if(ccp->seq_num % survey->nnodes == inst->slot_id){
+        uint64_t dx_time = tdma_tx_slot_start(inst, slot->idx) & 0xFFFFFFFE00UL;
         survey_broadcaster(survey, dx_time);
     }
     else{
-        dx_time = (dx_time - ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&inst->attrib))) << 16) ) & 0xFFFFFFFE00UL;
+        uint64_t dx_time = tdma_rx_slot_start(inst, slot->idx) & 0xFFFFFFFE00UL;
         survey_receiver(survey, dx_time);  
     }
 #if MYNEWT_VAL(SURVEY_VERBOSE)
-    if(ccp->idx % survey->nnodes == survey->nnodes - 1 ){
+    if(ccp->seq_num % survey->nnodes == survey->nnodes - 1 ){
         os_callout_init(&survey_complete_callout, os_eventq_dflt_get(), survey_complete_cb, survey);
         os_eventq_put(os_eventq_dflt_get(), &survey_complete_callout.c_ev);
     }
 #endif
 }
 
-
+/**
+ * API to initiaate a nrng request from a node to node survey
+ *
+ * @param inst pointer to _dw1000_dev_instance_t.
+ * @param dx_time time to start suevey
+ * @return survey_status_t
+ * 
+ */
 survey_status_t 
 survey_request(survey_instance_t * survey, uint64_t dx_time){
     assert(survey);
@@ -285,7 +299,6 @@ survey_request(survey_instance_t * survey, uint64_t dx_time){
     uint32_t slot_mask = ~(~0UL << (survey->nnodes));
     dw1000_nrng_request_delay_start(inst, 0xffff, dx_time, DWT_SS_TWR_NRNG, slot_mask, 0);
     survey->ranges[inst->slot_id]->mask = dw1000_nrng_get_ranges(inst, survey->ranges[inst->slot_id]->ranges, survey->nnodes, inst->nrng->idx);
-
     return survey->status;
 }
 
@@ -300,13 +313,21 @@ survey_listen(survey_instance_t * survey, uint64_t dx_time){
     dw1000_set_delay_start(inst, dx_time);
     uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_request_frame_t))
                         + inst->nrng->config.rx_timeout_delay;         
-    dw1000_set_rx_timeout(inst, timeout);
+    dw1000_set_rx_timeout(inst, timeout + 0x1000);
     dw1000_nrng_listen(inst, DWT_BLOCKING);
 
     return survey->status;
 }
 
 
+/**
+ * API to broadcasts survey results
+ *
+ * @param inst pointer to _dw1000_dev_instance_t.
+ * @param dx_time time to start broadcast
+ * @return survey_status_t
+ * 
+ */
 survey_status_t  
 survey_broadcaster(survey_instance_t * survey, uint64_t dx_time){
     assert(survey);
@@ -349,6 +370,14 @@ survey_broadcaster(survey_instance_t * survey, uint64_t dx_time){
     return survey->status;
 }
 
+/**
+ * API to receive survey broadcasts
+ *
+ * @param inst pointer to _dw1000_dev_instance_t.
+ * @param dx_time time to start received
+ * @return survey_status_t
+ * 
+ */
 survey_status_t  
 survey_receiver(survey_instance_t * survey, uint64_t dx_time){
     assert(survey);
@@ -378,8 +407,10 @@ survey_receiver(survey_instance_t * survey, uint64_t dx_time){
 }
 
 /**
- * API for receive survey broadcasts information.
- * @param inst Pointer to dw1000_dev_instance_t.
+ * API for receive survey broadcasts.
+ * 
+ * @param inst pointer to dw1000_dev_instance_t
+ * @param cbs pointer todw1000_mac_interface_t
  * @return true on sucess
  */
 static bool 
@@ -396,12 +427,12 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         STATS_INC(survey->stat, rx_unsolicited);
         return false;
     }
-    
+  
     if (inst->frame_len < sizeof(survey_broadcast_frame_t))
        return false;
-  
+    
     survey_broadcast_frame_t * frame = ((survey_broadcast_frame_t * ) inst->rxbuf);
-  
+
     if (frame->dst_address != 0xffff)
         return false;
 
@@ -410,15 +441,16 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
             {   
                 if (frame->cell_id != inst->cell_id)
                     return false;
-                if (frame->seq_num != survey->seq_num) 
-                    return false;
+//                if (frame->seq_num != survey->seq_num) 
+//                    break
                 uint16_t n = sizeof(survey_broadcast_frame_t) + survey->nnodes * sizeof(float);
                 if (inst->frame_len > n || frame->slot_id > survey->nnodes - 1) {
                     return false;
                 }
+
                 uint16_t nnodes = NumberOfBits(frame->mask);
                 survey->status.empty = nnodes == 0;
-                if(nnodes){
+                if(!survey->status.empty){
                     survey->ranges[frame->slot_id]->mask = frame->mask;
                     memcpy(survey->ranges[frame->slot_id]->ranges, frame->ranges, nnodes * sizeof(float));
                     break;

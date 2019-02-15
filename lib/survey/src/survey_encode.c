@@ -61,7 +61,13 @@ json_write(void *buf, char* data, int len) {
     return len;
 }
 
-
+/**
+ * API for verbose JSON logging of survey resultss
+ * 
+ * @param survey survey_instance_t point
+ * @param seq_num survey
+ * @return none.
+ */
 void 
 survey_encode(survey_instance_t * survey, uint16_t seq_num){
  
@@ -77,7 +83,7 @@ survey_encode(survey_instance_t * survey, uint16_t seq_num){
                 mask |= 1UL << i;
         }
     }
-    
+
     survey->status.empty = NumberOfBits(mask) == 0;
     if (survey->status.empty)
        return;
@@ -98,24 +104,24 @@ survey_encode(survey_instance_t * survey, uint16_t seq_num){
     
     JSON_VALUE_UINT(&value, mask);
     rc |= json_encode_object_entry(&encoder, "mask", &value);
-    rc |= json_encode_object_key(&encoder, "ranges");
+    rc |= json_encode_object_key(&encoder, "node");
     rc |= json_encode_array_start(&encoder);
-    rc |= json_encode_object_start(&encoder); 
+   
     for (uint16_t i=0; i < survey->nnodes; i++){
         if (survey->ranges[i]->mask){
             JSON_VALUE_UINT(&value, survey->ranges[i]->mask);
+             rc |= json_encode_object_start(&encoder); 
             rc |= json_encode_object_entry(&encoder, "mask", &value);
             rc |= json_encode_array_name(&encoder, "nrng");
             rc |= json_encode_array_start(&encoder);
-
             for (uint16_t j=0; j < NumberOfBits(survey->ranges[i]->mask); j++){
                 JSON_VALUE_UINT(&value, *(uint32_t *)&survey->ranges[i]->ranges[j]);
                 rc |= json_encode_array_value(&encoder, &value); 
             }
             rc |= json_encode_array_finish(&encoder); 
+            rc |= json_encode_object_finish(&encoder);
         }
     }
-    rc |= json_encode_object_finish(&encoder);
     rc |= json_encode_array_finish(&encoder);  
     rc |= json_encode_object_finish(&encoder);
     rc |= json_encode_object_finish(&encoder);

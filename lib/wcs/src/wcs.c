@@ -207,7 +207,7 @@ wcs_postprocess(struct os_event * ev){
     timescale_instance_t * timescale = wcs->timescale; 
     timescale_states_t * x = (timescale_states_t *) (timescale->eke->x); 
 
-    printf("{\"utime\": %lu,\"wcs\": [\"%llX,%llX,%llX,%llX\"],\"skew\": %llu}\n", 
+    printf("{\"utime\": %lu,\"wcs\": [%llu,%llu,%llu,%llu],\"skew\": %llu}\n", 
         os_cputime_ticks_to_usecs(os_cputime_get32()),
         (uint64_t) wcs->master_epoch.timestamp,
         (uint64_t) wcs_local_to_master(wcs, wcs->local_epoch.lo),

@@ -180,30 +180,30 @@ uint32_t
 dw1000_nrng_get_ranges(dw1000_dev_instance_t * inst, float ranges[], uint16_t nranges, uint16_t base){
 
     dw1000_nrng_instance_t * nrng = inst->nrng;
-    uint32_t valid_mask = 0;
-    // Workout which slots responded with a valid frames
+    uint32_t mask = 0;
+
+    // Which slots responded with a valid frames
     for (uint16_t i=0; i < nranges; i++){
         if (nrng->slot_mask & 1UL << i){
+            // the set of all requested slots
             uint16_t idx = BitIndex(nrng->slot_mask, 1UL << i, SLOT_POSITION); 
             nrng_frame_t * frame = nrng->frames[(base + idx)%nrng->nframes];
             if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == nrng->seq_num){
-                valid_mask |= 1UL << i;
+                // the set of all positive responses
+                mask |= 1UL << i;
             }
         }
     }
-
+    // Construct output vector 
+    uint16_t j = 0;
     for (uint16_t i=0; i < nranges; i++){
-        if (valid_mask & 1UL << i){
+        if (mask & 1UL << i){
             uint16_t idx = BitIndex(nrng->slot_mask, 1UL << i, SLOT_POSITION); 
             nrng_frame_t * frame = nrng->frames[(base + idx)%nrng->nframes];
-            if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == nrng->seq_num){
-                ranges[i] = dw1000_rng_tof_to_meters(dw1000_nrng_twr_to_tof_frames(nrng->parent, frame, frame));
-            }else{
-                ranges[i] = 0.0l/0.0l; // NAN
-            }
+            ranges[j++] = dw1000_rng_tof_to_meters(dw1000_nrng_twr_to_tof_frames(nrng->parent, frame, frame));
         }
     }
-    return valid_mask;
+    return mask;
 }
 
 /**
@@ -357,8 +357,8 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_r
     // Consequently, we inhibit this use-case in the PHY-Layer and instead manually perform reenable in the MAC-layer. 
     // This does impact the guard delay time as we need to allow time for the MAC-layer to respond.
 
-    //if(inst->config.dblbuffon_enabled) 
-    //    assert(inst->config.rxauto_enable == 0);
+    if(inst->config.dblbuffon_enabled) 
+        assert(inst->config.rxauto_enable == 0);
     //dw1000_set_dblrxbuff(inst, true);  
     
     if (dw1000_start_tx(inst).start_tx_error){

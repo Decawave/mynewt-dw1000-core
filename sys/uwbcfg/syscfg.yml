@@ -1,4 +1,7 @@
 syscfg.defs:
+    UWBCFG_ENABLED:
+        description: 'UWB Configuration manager enabled'
+        value: 1
     UWBCFG_APPLY_AT_INIT:
         description: 'Apply stored uwbcfg at package init'
         value: 0

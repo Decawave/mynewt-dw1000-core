@@ -281,7 +281,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 frame->request_timestamp = wcs_local_to_master(wcs, dw1000_read_txtime(inst)) & 0xFFFFFFFFULL;
                 frame->response_timestamp = wcs_local_to_master(wcs, response_timestamp) & 0xFFFFFFFFULL;
 #else
-                frame->request_timestamp = dw1000_read_txtime_lo(inst) & 0xFFFFFFFFUL;
+                frame->request_timestamp = dw1000_read_txtime_lo(inst) & 0xFFFFFFFFULL;
                 frame->response_timestamp  = (uint32_t)(response_timestamp & 0xFFFFFFFFULL);
 #endif
                 frame->dst_address = frame->src_address;

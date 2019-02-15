@@ -7,7 +7,7 @@ syscfg.defs:
     SURVEY_VERBOSE:
         description: 'Show debug output from postprocess'
         value: 0
-    SURVEY_NODES:
+    SURVEY_NNODES:
         description: 'Maximum number of node within survey'
         value: 8
     SURVEY_MASK:
