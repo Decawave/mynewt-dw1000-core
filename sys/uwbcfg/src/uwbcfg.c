@@ -142,10 +142,9 @@ check_preamble_code(dw1000_dev_instance_t * inst, uint8_t *arg_code)
 }
 
 static int
-uwbcfg_commit(void)
+uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst)
 {
     uint8_t coarse, fine, txpwr, paclen;
-    dw1000_dev_instance_t * inst = hal_dw1000_inst(0);
 
     conf_value_from_str(uwb_config[CFGSTR_CH], CONF_INT8, (void*)&(inst->config.channel), 0);
     switch (inst->config.channel) {
@@ -253,6 +252,25 @@ uwbcfg_commit(void)
             cb->uc_update();
         }
     }
+    return 0;
+}
+
+static int
+uwbcfg_commit(void)
+{
+    dw1000_dev_instance_t * inst;
+#if  MYNEWT_VAL(DW1000_DEVICE_0)
+    inst = hal_dw1000_inst(0);
+    uwbcfg_commit_to_inst(inst);
+#endif
+#if  MYNEWT_VAL(DW1000_DEVICE_1)
+    inst = hal_dw1000_inst(1);
+    uwbcfg_commit_to_inst(inst);
+#endif
+#if  MYNEWT_VAL(DW1000_DEVICE_2)
+    inst = hal_dw1000_inst(2);
+    uwbcfg_commit_to_inst(inst);
+#endif
     return 0;
 }
 
