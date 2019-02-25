@@ -51,6 +51,7 @@ extern "C" {
 STATS_SECT_START(ccp_stat_section)
     STATS_SECT_ENTRY(master_cnt)
     STATS_SECT_ENTRY(slave_cnt)
+    STATS_SECT_ENTRY(wcs_resets)
     STATS_SECT_ENTRY(send)
     STATS_SECT_ENTRY(listen)
     STATS_SECT_ENTRY(tx_complete)

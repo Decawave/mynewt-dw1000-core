@@ -67,6 +67,10 @@
 
 static void wcs_postprocess(struct os_event * ev);
 
+static const double g_x0[TIMESCALE_N] = {0};
+static const double g_q[] = { MYNEWT_VAL(TIMESCALE_QVAR) * 1.0l, MYNEWT_VAL(TIMESCALE_QVAR) * 0.1l, MYNEWT_VAL(TIMESCALE_QVAR) * 0.01l};
+static const double g_T = 1e-6l * MYNEWT_VAL(CCP_PERIOD);  // peroid in sec
+
 /*! 
  * @fn wcs_init(wcs_instance_t * inst,  dw1000_ccp_instance_t * ccp)
  *
@@ -92,11 +96,8 @@ wcs_init(wcs_instance_t * inst, dw1000_ccp_instance_t * ccp){
         inst->status.selfmalloc = 1;
     }
     inst->ccp = ccp;    
-    double x0[TIMESCALE_N] = {0};
-    double q[] = { MYNEWT_VAL(TIMESCALE_QVAR) * 1.0l, MYNEWT_VAL(TIMESCALE_QVAR) * 0.1l, MYNEWT_VAL(TIMESCALE_QVAR) * 0.01l};
-    double T = 1e-6l * MYNEWT_VAL(CCP_PERIOD);  // peroid in sec
 
-    inst->timescale = timescale_init(NULL, x0, q, T); 
+    inst->timescale = timescale_init(NULL, g_x0, g_q, g_T);
     inst->timescale->status.initialized = 0; //Ignore X0 values, until we get first event
     inst->status.initialized = 0;
 
@@ -147,7 +148,7 @@ void wcs_update_cb(struct os_event * ev){
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)ev->ev_arg;
     wcs_instance_t * wcs = ccp->wcs;
     timescale_instance_t * timescale = wcs->timescale; 
-    timescale_states_t * states = (timescale_states_t *) (timescale->eke->x); 
+    timescale_states_t * states = (timescale_states_t *) (timescale->eke->x);
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"wcs_update_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
@@ -159,9 +160,12 @@ void wcs_update_cb(struct os_event * ev){
         wcs->local_epoch.timestamp += wcs->observed_interval;
 
         if (wcs->status.initialized == 0){
+            timescale = timescale_init(timescale, g_x0, g_q, g_T);
+            /* Update pointer in case realloc happens in timescale_init */
+            states = (timescale_states_t *) (timescale->eke->x);
             states->time = (double) wcs->master_epoch.lo;
             states->skew = (1.0l + (double ) dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator)) * MYNEWT_VAL(WCS_DTU);
-            wcs->status.initialized = 1;
+            wcs->status.valid = wcs->status.initialized = 1;
         }else{
             double skew = (1.0l + (double ) dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator)) * MYNEWT_VAL(WCS_DTU);
             double T = wcs->observed_interval / WCS_DTU ; // observed interval in seconds, master reference
@@ -173,7 +177,6 @@ void wcs_update_cb(struct os_event * ev){
             wcs->status.valid = timescale_main(timescale, z, q, r, T).valid;
         }
 
-        wcs->status.valid |= fabs(1.0l - states->skew / WCS_DTU) < 1e-5;
         if (wcs->status.valid)
             wcs->skew = 1.0l - states->skew / WCS_DTU;
         else 
