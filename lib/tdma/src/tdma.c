@@ -277,7 +277,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         STATS_INC(inst->tdma->stat, rx_complete);
         DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma:rx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         if (inst->tdma != NULL && inst->tdma->status.initialized){
-            tdma->os_epoch = inst->ccp->os_epoch;//os_cputime_get32();
+            tdma->os_epoch = inst->ccp->os_epoch;
 #ifdef TDMA_TASKS_ENABLE
             os_eventq_put(&inst->tdma->eventq, &inst->tdma->event_cb.c_ev);
 #else
@@ -305,7 +305,7 @@ tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         STATS_INC(inst->tdma->stat, tx_complete);
         DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma:tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         if (inst->tdma != NULL && inst->tdma->status.initialized){
-            tdma->os_epoch = inst->ccp->os_epoch;//os_cputime_get32();
+            tdma->os_epoch = inst->ccp->os_epoch;
 #ifdef TDMA_TASKS_ENABLE
             os_eventq_put(&inst->tdma->eventq, &inst->tdma->event_cb.c_ev);
 #else
@@ -407,10 +407,6 @@ tdma_superframe_event_cb(struct os_event * ev){
             );
         }
     }
-#if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0 
-    struct os_task * t = os_sched_get_current_task();
-    os_sanity_task_checkin(t);
-#endif
 }
 
 
@@ -470,7 +466,7 @@ tdma_stop(struct _tdma_instance_t * tdma)
  * @return dx_time   The time for a tx operation to start
  */
 uint64_t
-tdma_tx_slot_start(struct _dw1000_dev_instance_t * inst, uint16_t idx)
+tdma_tx_slot_start(struct _dw1000_dev_instance_t * inst, float idx)
 {
 
     tdma_instance_t * tdma = inst->tdma;
@@ -478,7 +474,7 @@ tdma_tx_slot_start(struct _dw1000_dev_instance_t * inst, uint16_t idx)
 
 #if MYNEWT_VAL(WCS_ENABLED)
     wcs_instance_t * wcs = ccp->wcs;
-    uint64_t dx_time = (ccp->local_epoch + (uint64_t) wcs_dtu_time_adjust(wcs, ((idx * (uint64_t)tdma->period << 16)/tdma->nslots)));
+    uint64_t dx_time = (ccp->local_epoch + (uint64_t) wcs_dtu_time_adjust(wcs, ((idx * ((uint64_t)tdma->period << 16))/tdma->nslots)));
     //uint64_t dx_time = (ccp->local_epoch + (uint64_t) roundf((1.0l + wcs->skew) * (double)((idx * (uint64_t)tdma->period << 16)/tdma->nslots)));
 #else
     uint64_t dx_time = (ccp->local_epoch + (uint64_t) ((idx * ((uint64_t)tdma->period << 16)/tdma->nslots)));
@@ -497,7 +493,7 @@ tdma_tx_slot_start(struct _dw1000_dev_instance_t * inst, uint16_t idx)
  * @return dx_time   The time for a rx operation to start
  */
 uint64_t
-tdma_rx_slot_start(struct _dw1000_dev_instance_t * inst, uint16_t idx)
+tdma_rx_slot_start(struct _dw1000_dev_instance_t * inst, float idx)
 {
     uint64_t dx_time = tdma_tx_slot_start(inst, idx);
     dx_time = (dx_time - ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&inst->attrib))) << 16));

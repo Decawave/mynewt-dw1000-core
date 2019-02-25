@@ -100,8 +100,8 @@ void tdma_assign_slot(struct _tdma_instance_t * inst, void (* callout )(struct o
 void tdma_release_slot(struct _tdma_instance_t * inst, uint16_t idx);
 void tdma_stop(struct _tdma_instance_t * tdma);
 
-uint64_t tdma_tx_slot_start(struct _dw1000_dev_instance_t * inst, uint16_t idx);
-uint64_t tdma_rx_slot_start(struct _dw1000_dev_instance_t * inst, uint16_t idx);
+uint64_t tdma_tx_slot_start(struct _dw1000_dev_instance_t * inst, float idx);
+uint64_t tdma_rx_slot_start(struct _dw1000_dev_instance_t * inst, float idx);
 
 #ifdef __cplusplus
 }
