@@ -44,7 +44,7 @@ extern "C" {
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
-#include <dw1000/triad.h>
+#include <euclid/triad.h>
 #include <stats/stats.h>
 #include <rng/slots.h>
 
