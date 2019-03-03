@@ -56,7 +56,7 @@ uint32_t NumberOfBits(uint32_t n) {
  * @param n bitfield to count bits within
  * @return number of set bits
  */
-static uint32_t BitPosition(uint32_t n) {
+uint32_t BitPosition(uint32_t n) {
     
     uint32_t count = 0;
     assert(n && (! (n & (n-1)) )); // single bit set

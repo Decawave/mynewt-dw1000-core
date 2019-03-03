@@ -41,27 +41,36 @@ extern "C" {
  * @brief triad definition
  */
 
-#ifdef TRIAD_INT16
-typedef union __triad_t{
-    struct _int16_axis{
+
+typedef union __triad16_t{
+    struct _axis16{
         int16_t x,y,z;
     };
     struct _int16_spherical{
         int16_t range, azimuth, zenith;
     };
-    int16_t array[sizeof(struct _int16_axis)/sizeof(int16_t)];
-}int16_triad_t; 
-#else
+    int16_t array[sizeof(struct _axis16)/sizeof(int16_t)];
+}triad16_t; 
+
 typedef union _triad_t{
     struct _axis{
-        float  x,y,z;
+        double  x,y,z;
     };
     struct _spherical{
-       float range, azimuth, zenith;
+        double range, azimuth, zenith;
     };
-    float array[sizeof(struct _axis)/sizeof(float)];
+    double array[sizeof(struct _axis)/sizeof(double)];
 }triad_t; 
-#endif
+
+typedef union _triadf_t{
+    struct _axisf{
+        float  x,y,z;
+    };
+    struct _sphericalf{
+        float range, azimuth, zenith;
+    };
+    float array[sizeof(struct _axisf)/sizeof(float)];
+}triadf_t;
 
 #ifdef __cplusplus
 }

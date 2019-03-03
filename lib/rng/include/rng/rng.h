@@ -32,10 +32,9 @@
 #ifndef __RNG_H_
 #define __RNG_H_
 
-
 #include <stdlib.h>
 #include <stdint.h>
-#include "dw1000/triad.h"
+#include "euclid/triad.h"
 
 #ifdef __cplusplus
 extern "C" {
