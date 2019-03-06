@@ -165,12 +165,13 @@ static dw1000_mac_interface_t g_cbs[] = {
 #endif
 };
 
-
 /**
- * API to initialise pan parameters.
+ * @fn dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config, uint16_t nframes)
+ * @brief API to initialise pan parameters.
  *
  * @param inst     Pointer to dw1000_dev_instance_t.
  * @param config   Pointer to dw1000_pan_config_t.
+ * @param nrfames  number of frames defined to store pan frames.
  *
  * @return dw1000_pan_instance_t
  */
@@ -212,11 +213,12 @@ dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config, uin
 }
 
 /**
- * API to set the pointer to the frame buffers.
+ * @fn dw1000_pan_set_frames(dw1000_dev_instance_t * inst, pan_frame_t pan[], uint16_t nframes)
+ * @brief API to set the pointer to the frame buffers.
  *
  * @param inst      Pointer to dw1000_dev_instance_t.
  * @param twr[]     Pointer to frame buffers.
- * @param nframes   Number of buffers defined to store the ranging data.
+ * @param nframes   Number of buffers defined to store the discovery data.
  *
  * @return void
  */
@@ -228,13 +230,14 @@ dw1000_pan_set_frames(dw1000_dev_instance_t * inst, pan_frame_t pan[], uint16_t 
         inst->pan->frames[i] = &pan[i];
 }
 
-
 /**
- * API to initialise the pan package.
+ * @fn pan_pkg_init(void)
+ * @brief API to initialise the pan package.
  *
  * @return void
  */
-void pan_pkg_init(void){
+void
+pan_pkg_init(void){
 
     printf("{\"utime\": %lu,\"msg\": \"pan_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
@@ -255,9 +258,9 @@ void pan_pkg_init(void){
 #endif
 }
 
-
 /**
- * API to free pan resources.
+ * @fn dw1000_pan_free(dw1000_dev_instance_t * inst)
+ * @brief API to free pan resources.
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
  *
@@ -273,7 +276,8 @@ dw1000_pan_free(dw1000_dev_instance_t * inst){
 }
 
 /**
- * API to set pan_postprocess.
+ * @fn dw1000_pan_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * pan_postprocess)
+ * @brief API to set pan_postprocess.
  *
  * @param inst              Pointer to dw1000_dev_instance_t.
  * @param pan_postprocess   Pointer to os_event_fn.
@@ -292,7 +296,8 @@ dw1000_pan_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * pan_postp
 }
 
 /**
- * This a template which should be replaced by the pan_master by a event that tracks UUIDs
+ * @fn pan_postprocess(struct os_event * ev)
+ * @brief This a template which should be replaced by the pan_master by a event that tracks UUIDs
  * and allocated PANIDs and SLOTIDs.
  *
  * @param ev  Pointer to os_events.
@@ -334,7 +339,8 @@ pan_postprocess(struct os_event * ev){
 }
 
 /**
- * Function called when our lease is about to expire
+ * @fn lease_expiry_cb(struct os_event * ev)
+ * @brief Function called when our lease is about to expire
  *
  * @param ev  Pointer to os_events.
  *
@@ -357,14 +363,15 @@ lease_expiry_cb(struct os_event * ev)
         os_eventq_put(&inst->eventq, &pan->pan_callout_postprocess.c_ev);
 }
 
-
 /**
- * This is an internal static function that executes on both the pan_master Node and the TAG/ANCHOR
+ * @fn rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @brief This is an internal static function that executes on both the pan_master Node and the TAG/ANCHOR
  * that initiated the blink. On the pan_master the postprocess function should allocate a PANID and a SLOTID,
  * while on the TAG/ANCHOR the returned allocations are assigned and the PAN discover event is stopped. The pan
  * discovery resources can be released.
  *
  * @param inst    Pointer to dw1000_dev_instance_t.
+ * @param cbs     Pointer to dw1000_mac_interface_t.
  *
  * @return bool
  */
@@ -465,9 +472,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 }
 
 /**
- * API for transmit complete callback.
+ * @fn tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @brief API for transmit complete callback.
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param cbs   Pointer to dw1000_mac_interface_t.
  *
  * @return bool
  */
@@ -484,9 +493,11 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 }
 
 /**
- * API for reset callback.
+ * @fn reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @brief API for reset callback.
  *
  * @param inst   Pointer to dw1000_dev_instance_t.
+ * @param cbs    Pointer to dw1000_mac_interface_t.
  *
  * @return bool
  */
@@ -502,9 +513,11 @@ reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 }
 
 /**
- * API for receive timeout callback.
+ * @fn rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @brief API for receive timeout callback.
  *
  * @param inst    Pointer to dw1000_dev_instance_t.
+ * @param cbs     Pointer to dw1000_mac_interface_t.
  *
  * @return bool
  */
@@ -521,13 +534,15 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 }
 
 /**
- * Listen for PAN requests / resets
+ * @fn dw1000_pan_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
+ * @brief Listen for PAN requests / resets
  *
  * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param mode          dw1000_dev_modes_t of DWT_BLOCKING and DWT_NONBLOCKING.
  *
- * @return dw1000_dev_status_t 
+ * @return dw1000_dev_status_t
  */
-dw1000_dev_status_t 
+dw1000_dev_status_t
 dw1000_pan_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
 {
     os_error_t err = os_sem_pend(&inst->pan->sem,  OS_TIMEOUT_NEVER);
@@ -551,14 +566,14 @@ dw1000_pan_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     return inst->status;
 }
 
-
 /**
- * A Personal Area Network blink request is a discovery phase in which a TAG/ANCHOR seeks to discover
+ * @fn dw1000_pan_blink(dw1000_dev_instance_t * inst, uint16_t role, dw1000_dev_modes_t mode, uint64_t delay)
+ * @brief A Personal Area Network blink request is a discovery phase in which a TAG/ANCHOR seeks to discover
  * an available PAN Master. The outcome of this process is a PANID and SLOTID assignment.
  *
  * @param inst     Pointer to dw1000_dev_instance_t.
  * @param role     Requested role in the network
- * @param mode     BLOCKING and NONBLOCKING modes.
+ * @param mode     BLOCKING and NONBLOCKING modes of dw1000_dev_modes_t.
  * @param delay    When to send this blink
  *
  * @return dw1000_pan_status_t
@@ -606,7 +621,8 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, uint16_t role,
 }
 
 /**
- * A Pan reset message is a broadcast to all nodes having a pan assigned address
+ * @fn dw1000_pan_reset(dw1000_dev_instance_t * inst, uint64_t delay)
+ * @brief A Pan reset message is a broadcast to all nodes having a pan assigned address
  * instructing them to reset and renew their address. Normally issued by a restarted
  * master.
  *
@@ -638,13 +654,14 @@ dw1000_pan_reset(dw1000_dev_instance_t * inst, uint64_t delay)
     return pan->status;
 }
 
-
 /**
- * A Personal Area Network blink is a discovery phase in which a TAG/ANCHOR seeks to discover
+ * @fn dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_pan_role_t role)
+ * @brief A Personal Area Network blink is a discovery phase in which a TAG/ANCHOR seeks to discover
  * an available PAN Master. The pan_master does not
  * need to call this function.
  *
  * @param inst    Pointer to dw1000_dev_instance_t.
+ * @param role    dw1000_pan_role_t of PAN_ROLE_MASTER, PAN_ROLE_SLAVE ,PAN_ROLE_RELAY.
  *
  * @return void
  */
@@ -670,7 +687,8 @@ dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_pan_role_t role)
 }
 
 /**
- * Checks time to lease expiry
+ * @fn dw1000_pan_lease_remaining(dw1000_dev_instance_t * inst)
+ * @brief Checks time to lease expiry
  *
  * @param inst    Pointer to dw1000_dev_instance_t.
  *
