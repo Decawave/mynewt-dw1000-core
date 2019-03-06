@@ -41,6 +41,7 @@
 #if MYNEWT_VAL(DW1000_DEVICE_0) || MYNEWT_VAL(DW1000_DEVICE_1)
 #include "dw1000/dw1000_dev.h"
 #include "dw1000/dw1000_hal.h"
+#include "dw1000/dw1000_phy.h"
 #endif
 
 #if MYNEWT_VAL(UART_0) || MYNEWT_VAL(UART_1)
@@ -556,3 +557,27 @@ void hal_bsp_init(void)
     
     sensor_dev_create();
 }
+
+#if MYNEWT_VAL(DW1000_DEVICE_0) || MYNEWT_VAL(DW1000_DEVICE_1)
+void
+hal_bsp_dw_clk_sync(dw1000_dev_instance_t * inst[], uint8_t n)
+{
+    for (uint8_t i = 0; i < n; i++ ) {
+        dw1000_phy_external_sync(inst[i],33, true);
+    }
+
+    hal_gpio_init_out(MYNEWT_VAL(DW1000_PDOA_SYNC_EN), 1);
+    hal_gpio_init_out(MYNEWT_VAL(DW1000_PDOA_SYNC_CLR), 1);
+
+    hal_gpio_init_out(MYNEWT_VAL(DW1000_PDOA_SYNC), 1);
+    os_cputime_delay_usecs(1000);
+    hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC), 0);
+
+    hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC_CLR), 0);
+    hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC_EN), 0);
+
+    for (uint8_t i = 0; i < n; i++ ) {
+        dw1000_phy_external_sync(inst[i],0, false);
+    }
+}
+#endif
