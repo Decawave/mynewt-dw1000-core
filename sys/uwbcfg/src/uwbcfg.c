@@ -70,7 +70,7 @@ static char uwb_config[CFGSTR_MAX][7] = {
     "8",                        /* rx_paclen */
     "9",                        /* rx_pream_cidx */
     "0",                        /* rx_sfdType */
-    "s",                        /* rx_phrMode */
+    "e",                        /* rx_phrMode */
     "9",                        /* tx_pream_cidx */
     "128",                      /* tx_pream_len */
     "15",                       /* txrf_power_coarse */
