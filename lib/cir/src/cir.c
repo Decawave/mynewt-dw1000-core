@@ -135,12 +135,8 @@ cir_complete_ev_cb(struct os_event *ev) {
 
 
 static bool
-cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-
-    if(inst->fctrl != FCNTL_IEEE_RANGE_16){
-        return false;
-    }
-
+cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
     bool status = false;
     cir_instance_t * cir = inst->cir;
 
