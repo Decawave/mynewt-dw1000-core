@@ -64,7 +64,7 @@ typedef enum _dw1000_nrng_device_type_t{
 typedef union {
     struct _nrng_request_frame_t{
         struct _ieee_rng_request_frame_t;
-        struct _slot_payload_t; //!< slot bitfields for request 
+        struct _slot_payload_t; //!< slot bitfields for request
     }__attribute__((__packed__,aligned(1)));
     uint8_t array[sizeof(struct _nrng_request_frame_t)]; //!< Array of size nrng request frame
 } nrng_request_frame_t;
@@ -96,13 +96,12 @@ typedef union {
 #if (MYNEWT_VAL(TWR_SS_EXT_NRNG_ENABLED) || MYNEWT_VAL(TWR_DS_EXT_NRNG_ENABLED))
         union {
             struct _twr_data_t;                            //!< Structure of twr_data
-            uint8_t payload[sizeof(struct _twr_data_t)];   //!< Payload of size twr_data 
+            uint8_t payload[sizeof(struct _twr_data_t)];   //!< Payload of size twr_data
         };
 #endif
     } __attribute__((__packed__, aligned(1)));
     uint8_t array[sizeof(struct _nrng_frame_t)];        //!< Array of size twr_frame
 } nrng_frame_t;
-
 
 typedef struct _dw1000_nrng_instance_t{
     struct _dw1000_dev_instance_t * parent;

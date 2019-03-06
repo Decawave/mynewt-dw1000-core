@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
- * 
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -8,7 +8,7 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
@@ -36,12 +36,15 @@
 #include <rng/slots.h>
 
 /**
- * Help function to calculate the number of active slots within a bitmask
+ * @fn NumberOfBits(uint32_t n)
+ * @brief Help function to calculate the number of active slots within a bitmask
  *
  * @param n bitfield to count bits within
+ *
  * @return number of set bits
  */
-uint32_t NumberOfBits(uint32_t n) {
+uint32_t
+NumberOfBits(uint32_t n) {
     uint32_t count = 0;
     while (n) {
         n &= (n-1);
@@ -51,13 +54,16 @@ uint32_t NumberOfBits(uint32_t n) {
 }
 
 /**
- * Help function to calculate the position of active slots within a bitmask
+ * @fn BitPosition(uint32_t n)
+ * @brief Help function to calculate the position of active slots within a bitmask
  *
  * @param n bitfield to count bits within
+ *
  * @return number of set bits
  */
-static uint32_t BitPosition(uint32_t n) {
-    
+static uint32_t
+BitPosition(uint32_t n) {
+
     uint32_t count = 0;
     assert(n && (! (n & (n-1)) )); // single bit set
 
@@ -68,28 +74,28 @@ static uint32_t BitPosition(uint32_t n) {
     return count;
 }
 
-
 /**
- * Help function to calculate the numerical ordering of a bit within a bitmask
+ * @fn BitIndex(uint32_t nslots_mask, uint32_t n, uint8_t mode)
+ * @brief Help function to calculate the numerical ordering of a bit within a bitmask
  *
- * @param n bitfield
- * @param mask
+ * @param nslots_mask     number of slots mask parameter
+ * @param n               bitfield
+ * @param mode            compare with SLOT_POSITION
+ *
  * @return numerical ordering of a bit witin bitmask.
  */
-uint32_t BitIndex(uint32_t nslots_mask, uint32_t n, uint8_t mode) {
+uint32_t
+BitIndex(uint32_t nslots_mask, uint32_t n, uint8_t mode) {
 
     assert(n && (! (n & (n-1)) )); // single bit set
     assert(n & nslots_mask); // bit set is within ROI
-    
+
     uint32_t idx = BitPosition(n);
     uint32_t slot_mask =  (((uint32_t)~0UL >> (sizeof(uint32_t) * 8 - idx)));
     uint32_t remaining_mask = ((uint32_t)~0UL << idx);
-        
+
     if (mode == SLOT_POSITION)
         return NumberOfBits(nslots_mask & slot_mask) - 1; // slot position
     else
         return NumberOfBits(nslots_mask & remaining_mask) - 1; // no. of slots remaining
 }
-
-
-

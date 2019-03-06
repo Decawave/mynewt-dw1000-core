@@ -87,7 +87,6 @@ static dw1000_mac_interface_t g_cbs[] = {
 #endif
 };
 
-
 static dw1000_rng_config_t g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(NRNG_TX_HOLDOFF),         // Send Time delay in usec.
     .rx_timeout_delay = MYNEWT_VAL(NRNG_RX_TIMEOUT),       // Receive response timeout in usec
@@ -105,7 +104,18 @@ STATS_NAME_START(nrng_stat_section)
 STATS_NAME_END(nrng_stat_section)
 #endif
 
-
+/**
+ * @fn dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1000_nrng_device_type_t type, uint16_t nframes, uint16_t nnodes)
+ * @brief API to initialize nrng parameters and configuration.
+ *
+ * @param inst      Pointer to dw1000_dev_instance_t.
+ * @param config    Pointer to the structure dw1000_rng_config_t.
+ * @param type      dw1000_rng_device_type_t of DWT_NRNG_INITIATOR or DWT_NRNG_RESPONDER.
+ * @param nframes   Number of buffers defined to store the ranging data.
+ * @param nnodes    number of nodes.
+ *
+ * @return dw1000_nrng_instance_t pointer
+ */
 dw1000_nrng_instance_t *
 dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1000_nrng_device_type_t type, uint16_t nframes, uint16_t nnodes){
 #if MYNEWT_VAL(NRNG_ENABLED)
@@ -126,17 +136,17 @@ dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1
     nrng->idx = 0xFFFF;
     nrng->resp_count = nrng->t1_final_flag = 0;
     nrng->seq_num = 0;
- 
+
     if (config != NULL ){
         dw1000_nrng_config(inst, config);
     }
- 
+
     int rc = stats_init(
                     STATS_HDR(inst->nrng->stat),
                     STATS_SIZE_INIT_PARMS(inst->nrng->stat, STATS_SIZE_32),
                     STATS_NAME_INIT_PARMS(nrng_stat_section)
             );
-   
+
 #if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
         rc |= stats_register("nrng", STATS_HDR(inst->nrng->stat));
 #elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
@@ -154,11 +164,12 @@ dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1
 }
 
 /**
- * API to free the allocated resources.
+ * @fn dw1000_nrng_free(dw1000_nrng_instance_t * inst)
+ * @brief API to free the allocated resources.
  *
  * @param inst  Pointer to dw1000_rng_instance_t.
  *
- * @return void 
+ * @return void
  */
 void
 dw1000_nrng_free(dw1000_nrng_instance_t * inst){
@@ -176,6 +187,15 @@ dw1000_nrng_free(dw1000_nrng_instance_t * inst){
         inst->status.initialized = 0;
 }
 
+/**
+ * @fn dw1000_nrng_set_frames(dw1000_dev_instance_t * inst, uint16_t nframes)
+ * @brief API to set the pointer to the nrng frame buffers.
+ *
+ * @param inst      Pointer to dw1000_dev_instance_t.
+ * @param nframes   Number of buffers defined to store the ranging data.
+ *
+ * @return void
+ */
 inline void
 dw1000_nrng_set_frames(dw1000_dev_instance_t * inst, uint16_t nframes){
 #if MYNEWT_VAL(NRNG_ENABLED)
@@ -196,15 +216,14 @@ dw1000_nrng_set_frames(dw1000_dev_instance_t * inst, uint16_t nframes){
 }
 
 /**
- * API to configure dw1000 to start transmission after certain delay.
+ * @fn dw1000_nrng_get_config(dw1000_dev_instance_t * inst, dw1000_rng_modes_t code)
+ * @brief API to get configuration using dw1000_rng_modes_t.
  *
- * @param inst          Pointer to dw1000_dev_instance_t. 
- * @param dst_address   Address of the receiver to whom range request to be sent. 
- * @param delay         Time until which request has to be resumed. 
- * @param code          Represents mode of ranging DWT_SS_TWR enables single sided two way ranging DWT_DS_TWR enables double sided 
+ * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param code          Represents mode of ranging DWT_SS_TWR enables single sided two way ranging DWT_DS_TWR enables double sided
  * two way ranging DWT_DS_TWR_EXT enables double sided two way ranging with extended frame.
  *
- * @return dw1000_dev_status_t
+ * @return dw1000_rng_config_t
  */
 dw1000_rng_config_t *
 dw1000_nrng_get_config(dw1000_dev_instance_t * inst, dw1000_rng_modes_t code){
@@ -212,13 +231,13 @@ dw1000_nrng_get_config(dw1000_dev_instance_t * inst, dw1000_rng_modes_t code){
     dw1000_rng_config_t * config;
 
     switch (code){
-#if MYNEWT_VAL(TWR_DS_NRNG_ENABLED) 
+#if MYNEWT_VAL(TWR_DS_NRNG_ENABLED)
         case  DWT_DS_TWR_NRNG:                     //!< Double sided TWR
             config = twr_ds_nrng_config(inst);
             break;
 #endif
-#if MYNEWT_VAL(TWR_DS_EXT_NRNG_ENABLED) 
-        case DWT_DS_TWR_NRNG_EXT:                  //!< Double sided TWR in extended mode 
+#if MYNEWT_VAL(TWR_DS_EXT_NRNG_ENABLED)
+        case DWT_DS_TWR_NRNG_EXT:                  //!< Double sided TWR in extended mode
             config = twr_ds_ext_nrng_config(inst);
             break;
 #endif
@@ -238,15 +257,14 @@ dw1000_nrng_get_config(dw1000_dev_instance_t * inst, dw1000_rng_modes_t code){
     return config;
 }
 
-
-
 /**
- * API to assign the config parameters to range instance.
+ * @fn dw1000_nrng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config)
+ * @brief API to assign the config parameters to range instance.
  *
- * @param inst    Pointer to dw1000_dev_instance_t. 
+ * @param inst    Pointer to dw1000_dev_instance_t.
  * @param config  Pointer to dw1000_rng_config_t.
  *
- * @return dw1000_dev_status_t 
+ * @return dw1000_dev_status_t
  */
 dw1000_dev_status_t
 dw1000_nrng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config){
@@ -259,7 +277,14 @@ dw1000_nrng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config){
     return inst->status;
 }
 
-void nrng_pkg_init(void){
+/**
+ * @fn nrng_pkg_init(void)
+ * @brief API to initialise the nrng package.
+ *
+ * @return void
+ */
+void
+nrng_pkg_init(void){
 #if MYNEWT_VAL(NRNG_ENABLED)
     printf("{\"utime\": %lu,\"msg\": \"nrng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
@@ -281,11 +306,24 @@ void nrng_pkg_init(void){
 #endif
 }
 
-dw1000_dev_status_t 
+/**
+ * @fn dw1000_nrng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t code, uint16_t slot_mask, uint16_t cell_id)
+ * @brief API to configure dw1000 to start transmission after certain delay.
+ *
+ * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param dst_address   Address of the receiver to whom range request to be sent.
+ * @param delay         Time until which request has to be resumed.
+ * @param code          Represents mode of ranging DWT_SS_TWR enables single sided two way ranging DWT_DS_TWR enables double sided
+ * two way ranging DWT_DS_TWR_EXT enables double sided two way ranging with extended frame.
+ * @param slot_mast     nrng_request_frame_t of masked slot number
+ * @param cell_id       nrng_request_frame_t of cell id number
+ * @return dw1000_dev_status_t
+ */
+dw1000_dev_status_t
 dw1000_nrng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t code, uint16_t slot_mask, uint16_t cell_id){
 #if MYNEWT_VAL(NRNG_ENABLED)
-    dw1000_nrng_instance_t * nrng = inst->nrng;   
-   
+    dw1000_nrng_instance_t * nrng = inst->nrng;
+
     nrng->control.delay_start_enabled = 1;
     nrng->delay = delay;
     dw1000_nrng_request(inst, dst_address, code, slot_mask, cell_id);
@@ -294,12 +332,16 @@ dw1000_nrng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_addre
     return inst->status;
 }
 
-/** 
- * Help function to calculate the delay between cascading requests
- * 
- * @param inst Pointer to dw1000_dev_instance_t * 
- * @param slot_id 0 for master, and increasing
- * @return void
+/**
+ * @fn usecs_to_response(dw1000_dev_instance_t * inst, uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration)
+ * @brief Help function to calculate the delay between cascading requests
+ *
+ * @param inst         Pointer to dw1000_dev_instance_t *
+ * @param nslots       number of slot
+ * @param config       Pointer to dw1000_rng_config_t.
+ * @param duration     Time delay between request.
+ *
+ * @return ret of uint32_t constant
  */
 static inline uint32_t
 usecs_to_response(dw1000_dev_instance_t * inst, uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration){
@@ -307,12 +349,25 @@ usecs_to_response(dw1000_dev_instance_t * inst, uint16_t nslots, dw1000_rng_conf
     return ret;
 }
 
+/**
+ * @fn dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t code, uint16_t slot_mask, uint16_t cell_id){
+ * @brief API to initialise nrng request.
+ *
+ * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param dst_address   Address of the receiver to whom range request to be sent.
+ * @param code          Represents mode of ranging DWT_SS_TWR enables single sided two way ranging DWT_DS_TWR enables double sided
+ * two way ranging DWT_DS_TWR_EXT enables double sided two way ranging with extended frame.
+ * @param slot_mast     nrng_request_frame_t of masked slot number
+ * @param cell_id       nrng_request_frame_t of cell id number
+ *
+ * @return dw1000_dev_status_t
+ */
 dw1000_dev_status_t
 dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t code, uint16_t slot_mask, uint16_t cell_id){
 #if MYNEWT_VAL(NRNG_ENABLED)
     // This function executes on the device that initiates a request
     assert(inst->nrng);
-    
+
     dw1000_rng_instance_t * rng = inst->rng;
     dw1000_nrng_instance_t * nrng = inst->nrng;
 
@@ -329,7 +384,7 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_r
     inst->rng->code = frame->code = code;
     frame->src_address = inst->my_short_address;
     frame->dst_address = dst_address;
-   
+
 #if MYNEWT_VAL(CELL_ENABLED)
     frame->ptype = PTYPE_CELL;
     frame->cell_id = nrng->cell_id = cell_id;
@@ -339,7 +394,7 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_r
     frame->end_slot_id = cell_id;
     frame->start_slot_id = slot_mask;
 #endif
-   
+
     dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0, true);
     dw1000_set_wait4resp(inst, true);
@@ -347,21 +402,21 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_r
     uint16_t timeout = config->tx_holdoff_delay         // Remote side turn arround time.
                         + usecs_to_response(inst,       // Aggregated timeout of all responses
                             nrng->nnodes,               // no. of expected frames
-                            config,                    
+                            config,
                             dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)) // in usec
-                        ) 
+                        )
                         + config->rx_timeout_delay;     // TOF allowance.
-   
+
     dw1000_set_rx_timeout(inst, timeout);
 
     if (nrng->control.delay_start_enabled)
-        dw1000_set_delay_start(inst, nrng->delay); 
-    
-    dw1000_set_dblrxbuff(inst, true);  
-    
+        dw1000_set_delay_start(inst, nrng->delay);
+
+    dw1000_set_dblrxbuff(inst, true);
+
     if (dw1000_start_tx(inst).start_tx_error){
         STATS_INC(nrng->stat, start_tx_error_cb);
-        if (os_sem_get_count(&rng->sem) == 0) 
+        if (os_sem_get_count(&rng->sem) == 0)
             os_sem_release(&rng->sem);
     }
 
@@ -375,7 +430,16 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_r
     return inst->status;
 }
 
-
+/**
+ * @fn dw1000_nrng_twr_to_tof_frames(struct _dw1000_dev_instance_t * inst, nrng_frame_t *first_frame, nrng_frame_t *final_frame){
+ * @brief API to calculate time of flight based on type of ranging.
+ *
+ * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param first_frame   Pointer to the first nrng frame.
+ * @param final_frame   Poinetr to the final nrng frame.
+ *
+ * @return Time of flight in float
+ */
 float
 dw1000_nrng_twr_to_tof_frames(struct _dw1000_dev_instance_t * inst, nrng_frame_t *first_frame, nrng_frame_t *final_frame){
     float ToF = 0;
@@ -430,9 +494,16 @@ dw1000_nrng_twr_to_tof_frames(struct _dw1000_dev_instance_t * inst, nrng_frame_t
     return ToF;
 }
 
-
 #if MYNEWT_VAL(NRNG_VERBOSE)
 
+/**
+ * @fn complete_ev_cb(struct os_event *ev)
+ * @brief API for nrng complete event callback and print nrng logs into json format.
+ *
+ * @param ev    Pointer to os_event.
+ *
+ * @return true on sucess
+ */
 static void
 complete_ev_cb(struct os_event *ev) {
     assert(ev != NULL);
@@ -443,6 +514,15 @@ complete_ev_cb(struct os_event *ev) {
 }
 
 struct os_callout nrng_callout;
+/**
+ * @fn complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @brief API for nrng complete callback and put complete_event_cb in queue.
+ *
+ * @param inst   Pointer to dw1000_dev_instance_t.
+ * @param cbs    Pointer to dw1000_mac_interface_t.
+ *
+ * @return true on sucess
+ */
 static bool
 complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
@@ -453,6 +533,5 @@ complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
         os_eventq_put(os_eventq_dflt_get(), &nrng_callout.c_ev);
         return false;
 }
-
 
 #endif

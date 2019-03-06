@@ -1,6 +1,6 @@
 /*
  * Copyright 2018, Decawave Limited, All Rights Reserved
- * 
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -8,7 +8,7 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
@@ -23,7 +23,7 @@
  * @file dw1000_rng.h
  * @athor paul kettle
  * @date 2018
- * @brief Range 
+ * @brief Range
  *
  * @details This is the rng base class which utilises the functions to enable/disable the configurations related to rng.
  *
@@ -31,7 +31,6 @@
 
 #ifndef _DW1000_RNG_H_
 #define _DW1000_RNG_H_
-
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -61,7 +60,6 @@ STATS_SECT_START(rng_stat_section)
     STATS_SECT_ENTRY(reset)
 STATS_SECT_END
 
-
 //! Range configuration parameters.
 typedef struct _dw1000_rng_config_t{
    uint32_t rx_holdoff_delay;        //!< Delay between frames, in UWB usec.
@@ -76,27 +74,27 @@ typedef struct _dw1000_rng_control_t{
     uint16_t delay_start_enabled:1;  //!< Set for enabling delayed start
 }dw1000_rng_control_t;
 
-//! Ranging modes. 
+//! Ranging modes.
 typedef enum _dw1000_rng_modes_t{
     DWT_TWR_INVALID = 0,             //!< Invalid TWR
-    DWT_SS_TWR,                      //!< Single sided TWR 
-    DWT_SS_TWR_T1,                   //!< Response for single sided TWR 
-    DWT_SS_TWR_FINAL,                //!< Final response of single sided TWR 
-    DWT_SS_TWR_END,                  //!< End of single sided TWR 
+    DWT_SS_TWR,                      //!< Single sided TWR
+    DWT_SS_TWR_T1,                   //!< Response for single sided TWR
+    DWT_SS_TWR_FINAL,                //!< Final response of single sided TWR
+    DWT_SS_TWR_END,                  //!< End of single sided TWR
     DWT_SS_TWR_EXT,                  //!< Single sided TWR in extended mode
     DWT_SS_TWR_EXT_T1,               //!< Response for single sided TWR in extended mode
     DWT_SS_TWR_EXT_FINAL,            //!< Final response of single sided TWR in extended mode
     DWT_SS_TWR_EXT_END,              //!< End of single sided TWR in extended mode
-    DWT_DS_TWR,                      //!< Double sided TWR 
-    DWT_DS_TWR_T1,                   //!< Response for double sided TWR 
-    DWT_DS_TWR_T2,                   //!< Response for double sided TWR 
-    DWT_DS_TWR_FINAL,                //!< Final response of double sided TWR 
-    DWT_DS_TWR_END,                  //!< End of double sided TWR 
-    DWT_DS_TWR_EXT,                  //!< Double sided TWR in extended mode 
-    DWT_DS_TWR_EXT_T1,               //!< Response for double sided TWR in extended mode 
-    DWT_DS_TWR_EXT_T2,               //!< Response for double sided TWR in extended mode 
-    DWT_DS_TWR_EXT_FINAL,            //!< Final response of double sided TWR in extended mode 
-    DWT_DS_TWR_EXT_END,              //!< End of double sided TWR in extended mode 
+    DWT_DS_TWR,                      //!< Double sided TWR
+    DWT_DS_TWR_T1,                   //!< Response for double sided TWR
+    DWT_DS_TWR_T2,                   //!< Response for double sided TWR
+    DWT_DS_TWR_FINAL,                //!< Final response of double sided TWR
+    DWT_DS_TWR_END,                  //!< End of double sided TWR
+    DWT_DS_TWR_EXT,                  //!< Double sided TWR in extended mode
+    DWT_DS_TWR_EXT_T1,               //!< Response for double sided TWR in extended mode
+    DWT_DS_TWR_EXT_T2,               //!< Response for double sided TWR in extended mode
+    DWT_DS_TWR_EXT_FINAL,            //!< Final response of double sided TWR in extended mode
+    DWT_DS_TWR_EXT_END,              //!< End of double sided TWR in extended mode
     DWT_PROVISION_START,             //!< Start of provision
     DWT_PROVISION_RESP,              //!< End of provision
     DWT_SS_TWR_NRNG,
@@ -139,26 +137,25 @@ typedef struct _twr_frame_final_t{
 typedef struct _twr_data_t{
                 uint64_t utime;                     //!< CPU time to usecs
                 triad_t spherical;                  //!< Measurement triad spherical coordinates
-                triad_t spherical_variance;         //!< Measurement variance triad 
+                triad_t spherical_variance;         //!< Measurement variance triad
                 triad_t cartesian;                  //!< Position triad local coordinates
-          //      triad_t cartesian_variance;       //!< Position estimated variance triad 
+          //      triad_t cartesian_variance;       //!< Position estimated variance triad
 }twr_data_t;
 
 //! TWR frame format
 typedef union {
 //! Structure of TWR frame
     struct _twr_frame_t{
-//! Structure of TWR final frame 
+//! Structure of TWR final frame
         struct _twr_frame_final_t;
         union {
 //! Structure of TWR data
             struct _twr_data_t;                            //!< Structure of twr_data
-            uint8_t payload[sizeof(struct _twr_data_t)];   //!< Payload of size twr_data 
+            uint8_t payload[sizeof(struct _twr_data_t)];   //!< Payload of size twr_data
         };
     } __attribute__((__packed__, aligned(1)));
     uint8_t array[sizeof(struct _twr_frame_t)];        //!< Array of size twr_frame
 } twr_frame_t;
-
 
 //! Structure of range instance
 typedef struct _dw1000_rng_instance_t{
@@ -174,7 +171,7 @@ typedef struct _dw1000_rng_instance_t{
     uint16_t idx;                           //!< Indicates number of instances for the chosen bsp
     uint16_t nframes;                       //!< Number of buffers defined to store the ranging data
     twr_frame_t * frames[];                 //!< Pointer to twr buffers
-}dw1000_rng_instance_t; 
+}dw1000_rng_instance_t;
 
 void rng_pkg_init(void);
 dw1000_rng_instance_t * dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes);
@@ -190,8 +187,7 @@ float dw1000_rng_twr_to_tof(twr_frame_t *fframe, twr_frame_t *nframe);
 #else
 float dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng, uint16_t idx);
 #endif
-float dw1000_rng_tof_to_meters(float ToF); 
-
+float dw1000_rng_tof_to_meters(float ToF);
 
 float dw1000_rng_path_loss(float Pt, float G, float fc, float R);
 float dw1000_rng_bias_correction(dw1000_dev_instance_t * inst, float Pr);

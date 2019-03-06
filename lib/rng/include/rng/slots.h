@@ -1,6 +1,6 @@
 /*
  * Copyright 2018, Decawave Limited, All Rights Reserved
- * 
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -8,7 +8,7 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
@@ -23,7 +23,7 @@
  * @file slots.h
  * @author paul.kettle@decawave.com
  * @date 12/2018
- * @brief Slots  
+ * @brief Slots
  *
  * @details Help function to calculate the numerical ordering of a bit within a bitmask
  */
@@ -62,7 +62,6 @@ typedef struct _slot_payload_t{
         };
     };
 }slot_payload_t;
-
 
 uint32_t NumberOfBits(uint32_t bitfield);
 uint32_t BitIndex(uint32_t nslots_mask, uint32_t slot, slot_mode_t mode);
