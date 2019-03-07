@@ -441,13 +441,12 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
             {   
                 if (frame->cell_id != inst->cell_id)
                     return false;
-//                if (frame->seq_num != survey->seq_num) 
-//                    break
+                if (frame->seq_num != survey->seq_num) 
+                    break;
                 uint16_t n = sizeof(survey_broadcast_frame_t) + survey->nnodes * sizeof(float);
                 if (inst->frame_len > n || frame->slot_id > survey->nnodes - 1) {
                     return false;
                 }
-
                 uint16_t nnodes = NumberOfBits(frame->mask);
                 survey->status.empty = nnodes == 0;
                 if(!survey->status.empty){

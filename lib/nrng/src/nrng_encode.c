@@ -80,8 +80,8 @@ nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base){
             }
         }
     }
-
-    if (valid_mask == 0) 
+    // tdoa results are reference to slot 0, so reject it slot 0 did not respond. An alternative approach is needed @Niklas
+    if (valid_mask == 0 || (valid_mask & 1) == 0) 
        return;
 
     /* reset the state of the internal test */
@@ -127,6 +127,7 @@ nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base){
                 JSON_VALUE_INT(&value, (int32_t)(master->reception_timestamp - frame->reception_timestamp));
                 rc |= json_encode_array_value(&encoder, &value); 
                 if (i%64==0) _json_fflush();
+                frame->code = DWT_SS_TWR_NRNG_EXT_END;
             }
         }
     }

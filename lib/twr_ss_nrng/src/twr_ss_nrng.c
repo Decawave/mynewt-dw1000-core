@@ -334,27 +334,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                             ) + config->rx_timeout_delay;          // TOF allowance.
                     dw1000_set_rx_timeout(inst, timeout);
                 }
-            #if 0
-                if(idx == nrng->nnodes-1){
-                    dw1000_set_rx_timeout(inst, 1);
-                    if (inst->config.dblbuffon_enabled)  
-                        dw1000_stop_rx(inst);
-                    
-                    STATS_INC(inst->nrng->stat, complete);
-                    os_error_t err = os_sem_release(&nrng->sem);
-                    assert(err == OS_OK);
-                    
-                    if(!(SLIST_EMPTY(&inst->interface_cbs))){
-                        SLIST_FOREACH(cbs, &inst->interface_cbs, next){
-                        if (cbs!=NULL && cbs->complete_cb)
-                            if(cbs->complete_cb(inst, cbs)) 
-                                continue;
-                        }
-                    }
-             
-                 
-                }
-                   #endif
             break;
             }
         default:

@@ -43,7 +43,6 @@ extern "C" {
 #include <dw1000/dw1000_phy.h>
 #include <os/queue.h>
 
-
 #define TDMA_TASKS_ENABLE
 
 STATS_SECT_START(tdma_stat_section)
