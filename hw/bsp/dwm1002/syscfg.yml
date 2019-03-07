@@ -21,13 +21,13 @@
 syscfg.vals:
     MCU_NRF52832: 1
     UART_0: 1
-    UART_0_PIN_TX: 5
-    UART_0_PIN_RX: 11
+    UART_0_PIN_TX: 31   # Eval kit /dev/ttyACMx port
+    UART_0_PIN_RX: 5
     UART_0_PIN_RTS: -1
     UART_0_PIN_CTS: -1
     UART_1: 0
-    UART_1_PIN_TX: 31
-    UART_1_PIN_RX: 22
+    UART_1_PIN_TX: -1
+    UART_1_PIN_RX: -1
     TIMER_0: 1
     TIMER_1: 0
     TIMER_2: 0
