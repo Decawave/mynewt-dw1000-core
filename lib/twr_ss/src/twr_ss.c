@@ -1,6 +1,6 @@
 /*
  * Copyright 2018, Decawave Limited, All Rights Reserved
- * 
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -8,7 +8,7 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
@@ -23,7 +23,7 @@
  * @file twr_ss.c
  * @author paul kettle
  * @date 2018
- * @brief Range 
+ * @brief Range
  *
  * @details This is the rng base class which utilises the functions to enable/disable the configurations related to rng.
  *
@@ -87,7 +87,6 @@ static dw1000_mac_interface_t g_cbs[] = {
 #endif
 };
 
-
 STATS_SECT_START(twr_ss_stat_section)
     STATS_SECT_ENTRY(complete)
     STATS_SECT_ENTRY(tx_error)
@@ -108,13 +107,13 @@ static dw1000_rng_config_t g_config = {
 };
 
 /**
- * API to initialise the rng_ss package.
- *
+ * @fn twr_ss_pkg_init(void)
+ * @brief API to initialise the rng_ss package.
  *
  * @return void
  */
-
-void twr_ss_pkg_init(void){
+void
+twr_ss_pkg_init(void){
 
     printf("{\"utime\": %lu,\"msg\": \"twr_ss_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
@@ -134,55 +133,57 @@ void twr_ss_pkg_init(void){
     STATS_NAME_INIT_PARMS(twr_ss_stat_section));
     rc |= stats_register("twr_ss", STATS_HDR(g_stat));
     assert(rc == 0);
-  
 }
 
 /**
- * API to free the allocated resources.
+ * @fn twr_ss_free(dw1000_dev_instance_t * inst)
+ * @brief API to free the allocated resources.
  *
  * @param inst  Pointer to dw1000_rng_instance_t.
  *
- * @return void 
+ * @return void
  */
-void 
+void
 twr_ss_free(dw1000_dev_instance_t * inst){
-    assert(inst); 
+    assert(inst);
     dw1000_mac_remove_interface(inst, DW1000_RNG_SS);
 }
 
-
 /**
- * API for get local config callback.
+ * @fn twr_ss_config(dw1000_dev_instance_t * inst)
+ * @brief API for get local config callback.
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
  *
  * @return true on sucess
  */
-dw1000_rng_config_t * 
+dw1000_rng_config_t *
 twr_ss_config(dw1000_dev_instance_t * inst){
     return &g_config;
 }
 
-
-
 /**
- * API for start tx error callback.
+ * @fn start_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @brief API for start tx error callback.
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param cbs   Pointer to dw1000_mac_interface_t.
  *
  * @return true on sucess
  */
-static bool 
+static bool
 start_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     STATS_INC(g_stat, tx_error);
     return true;
 }
 
-
-/** 
- * API for reset_cb of rng interface
+/**
+ * @fn reset_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @brief API for reset_cb of rng interface
  *
- * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @param inst   Pointer to dw1000_dev_instance_t.
+ * @param cbs    Pointer to dw1000_mac_interface_t.
+ *
  * @return true on sucess
  */
 static bool
@@ -190,33 +191,32 @@ reset_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if(os_sem_get_count(&inst->rng->sem) == 0){
         STATS_INC(g_stat, reset);
-        os_error_t err = os_sem_release(&inst->rng->sem);  
+        os_error_t err = os_sem_release(&inst->rng->sem);
         assert(err == OS_OK);
         return true;
     }
-    else 
+    else
        return false;
-
 }
 
-
 /**
- * API for receive complete callback.
+ * @fn rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @brief API for receive complete callback.
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param cbs   Pointer to dw1000_mac_interace_t.
  *
  * @return true on sucess
  */
-static bool 
-rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
-{    
+static bool
+rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
-        
+
     if(os_sem_get_count(&inst->rng->sem) == 1) // unsolicited inbound
         return false;
-    
-    dw1000_rng_instance_t * rng = inst->rng; 
+
+    dw1000_rng_instance_t * rng = inst->rng;
     twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes]; // Frame already read within loader layers.
 
     switch(inst->rng->code){
@@ -248,19 +248,19 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 #endif
                // Write the second part of the response
                 dw1000_write_tx(inst, frame->array ,0 ,sizeof(ieee_rng_response_frame_t));
-                dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true); 
-                dw1000_set_wait4resp(inst, true);   
+                dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true);
+                dw1000_set_wait4resp(inst, true);
 
                 uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_rng_response_frame_t))
                                         + g_config.rx_timeout_delay
                                         + g_config.tx_holdoff_delay;         // Remote side turn arroud time.
 
                 dw1000_set_delay_start(inst, response_tx_delay);
-                dw1000_set_rx_timeout(inst, timeout); 
+                dw1000_set_rx_timeout(inst, timeout);
 
                 if (dw1000_start_tx(inst).start_tx_error){
-                    os_sem_release(&rng->sem);  
-                    if (cbs!=NULL && cbs->start_tx_error_cb) 
+                    os_sem_release(&rng->sem);
+                    if (cbs!=NULL && cbs->start_tx_error_cb)
                         cbs->start_tx_error_cb(inst, cbs);
                 }
                 break;
@@ -275,7 +275,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                     break;
 
                 uint64_t response_timestamp = inst->rxtimestamp;
-#if MYNEWT_VAL(WCS_ENABLED)           
+#if MYNEWT_VAL(WCS_ENABLED)
                 wcs_instance_t * wcs = inst->ccp->wcs;
                 frame->request_timestamp = wcs_local_to_master(wcs, dw1000_read_txtime(inst)) & 0xFFFFFFFFULL;
                 frame->response_timestamp = wcs_local_to_master(wcs, response_timestamp) & 0xFFFFFFFFULL;
@@ -290,32 +290,32 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = inst->carrier_integrator;
-#endif              
+#endif
                 // Transmit timestamp final report
                 dw1000_write_tx(inst, frame->array, 0,  sizeof(twr_frame_final_t));
                 dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true);
                 if (dw1000_start_tx(inst).start_tx_error){
-                    os_sem_release(&rng->sem);  
-                    if (cbs!=NULL && cbs->start_tx_error_cb) 
+                    os_sem_release(&rng->sem);
+                    if (cbs!=NULL && cbs->start_tx_error_cb)
                         cbs->start_tx_error_cb(inst, cbs);
                 }
-                else{    
+                else{
                     STATS_INC(g_stat, complete);
-                    os_sem_release(&rng->sem);  
+                    os_sem_release(&rng->sem);
                     dw1000_mac_interface_t * cbs = NULL;
-                    if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
-                        SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
-                            if (cbs!=NULL && cbs->complete_cb) 
-                                if(cbs->complete_cb(inst, cbs)) continue;        
-                            }   
-                        }       
+                    if(!(SLIST_EMPTY(&inst->interface_cbs))){
+                        SLIST_FOREACH(cbs, &inst->interface_cbs, next){
+                            if (cbs!=NULL && cbs->complete_cb)
+                                if(cbs->complete_cb(inst, cbs)) continue;
+                            }
+                        }
                     }
                 break;
             }
         case  DWT_SS_TWR_FINAL:
             {
-                // This code executes on the device that responded to the original request, and has now receive the response final timestamp. 
-                // This marks the completion of the single-size-two-way request. This final 4th message is perhaps optional in some applicaiton. 
+                // This code executes on the device that responded to the original request, and has now receive the response final timestamp.
+                // This marks the completion of the single-size-two-way request. This final 4th message is perhaps optional in some applicaiton.
 
                 if (inst->frame_len != sizeof(twr_frame_final_t))
                    break;
@@ -323,12 +323,12 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 STATS_INC(g_stat, complete);
                 os_sem_release(&rng->sem);
                 dw1000_mac_interface_t * cbs = NULL;
-                if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
-                    SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
-                    if (cbs!=NULL && cbs->complete_cb) 
-                        if(cbs->complete_cb(inst, cbs)) continue;        
-                    }   
-                }       
+                if(!(SLIST_EMPTY(&inst->interface_cbs))){
+                    SLIST_FOREACH(cbs, &inst->interface_cbs, next){
+                    if (cbs!=NULL && cbs->complete_cb)
+                        if(cbs->complete_cb(inst, cbs)) continue;
+                    }
+                }
                 break;
             }
         default:
@@ -338,7 +338,3 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
     return true;
 }
-
-
-
-

@@ -91,7 +91,6 @@ static dw1000_mac_interface_t g_cbs[] = {
 #endif
 };
 
-
 STATS_SECT_START(twr_ss_ext_stat_section)
     STATS_SECT_ENTRY(complete)
     STATS_SECT_ENTRY(tx_error)
@@ -112,13 +111,13 @@ static dw1000_rng_config_t g_config = {
 };
 
 /**
- * API to initialise the rng_ss package.
- *
+ * @fn twr_ss_ext_pkg_init(void)
+ * @brief API to initialise the rng_ss package.
  *
  * @return void
  */
-
-void twr_ss_ext_pkg_init(void){
+void
+twr_ss_ext_pkg_init(void){
 
     printf("{\"utime\": %lu,\"msg\": \"twr_ss_ext_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
@@ -141,7 +140,8 @@ void twr_ss_ext_pkg_init(void){
 }
 
 /**
- * API to free the allocated resources.
+ * @fn twr_ss_ext_free(dw1000_dev_instance_t * inst)
+ * @brief API to free the allocated resources.
  *
  * @param inst  Pointer to dw1000_rng_instance_t.
  *
@@ -154,7 +154,8 @@ twr_ss_ext_free(dw1000_dev_instance_t * inst){
 }
 
 /**
- * API for get local config callback.
+ * @fn twr_ss_ext_config(dw1000_dev_instance_t * inst)
+ * @brief API for get local config callback.
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
  *
@@ -166,9 +167,11 @@ twr_ss_ext_config(dw1000_dev_instance_t * inst){
 }
 
 /**
- * API for start tx error callback.
+ * @fn start_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @brief API for start tx error callback.
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param cbs   Pointer to dw1000_mac_interface_t.
  *
  * @return true on sucess
  */
@@ -179,9 +182,12 @@ start_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 }
 
 /**
- * API for reset_cb of rng interface
+ * @fn reset_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @brief API for reset_cb of rng interface
  *
  * @param inst   Pointer to dw1000_dev_instance_t.
+ * @param cbs    Pointer to dw1000_mac_interface_t.
+ *
  * @return true on sucess
  */
 static bool
@@ -197,11 +203,12 @@ reset_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
        return false;
 }
 
-
 /**
- * API for receive complete callback.
+ * @fn rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @brief API for receive complete callback.
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param cbs   Pointer to dw1000_mac_interface_t.
  *
  * @return true on sucess
  */
@@ -310,6 +317,15 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     return true;
 }
 
+/**
+ * @fn tx_final_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *cbs){
+ * @brief API for final transmission to store coordinates.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param cbs   Pointer to dw1000_mac_interface_t.
+ *
+ * @return true on sucess
+ */
 static bool
 tx_final_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *cbs){
 
