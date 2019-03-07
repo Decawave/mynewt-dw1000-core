@@ -1,6 +1,6 @@
 /*
  * Copyright 2018, Decawave Limited, All Rights Reserved
- * 
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -8,7 +8,7 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
@@ -23,7 +23,7 @@
  * @file dw1000_tdma.h
  * @author paul kettle
  * @date 2018
- * @brief TDMA  
+ * @brief TDMA
  *
  * @details  This is the base class of tdma which initialises tdma instance, assigns slots for each node and does ranging continuously based on * addresses.
  */
@@ -43,7 +43,6 @@ extern "C" {
 #include <dw1000/dw1000_phy.h>
 #include <os/queue.h>
 
-
 #define TDMA_TASKS_ENABLE
 
 STATS_SECT_START(tdma_stat_section)
@@ -56,7 +55,7 @@ STATS_SECT_END
 //! Structure of TDMA
 typedef struct _tdma_status_t{
     uint16_t selfmalloc:1;            //!< Internal flag for memory garbage collection
-    uint16_t initialized:1;           //!< Instance allocated 
+    uint16_t initialized:1;           //!< Instance allocated
     uint16_t awaiting_superframe:1;   //!< Superframe of tdma
 }tdma_status_t;
 
@@ -67,17 +66,17 @@ typedef struct _tdma_slot_t{
     struct os_callout event_cb;        //!< Sturcture of event_cb
     uint16_t idx;                      //!< Slot number
     void * arg;                      //!< Optional argument
-}tdma_slot_t; 
+}tdma_slot_t;
 
 //! Structure of tdma instance
 typedef struct _tdma_instance_t{
     struct _dw1000_dev_instance_t * parent;  //!< Pointer to _dw1000_dev_instance_t
     STATS_SECT_DECL(tdma_stat_section) stat;  //!< Stats instance
-    tdma_status_t status;                    //!< Status of tdma 
+    tdma_status_t status;                    //!< Status of tdma
     dw1000_mac_interface_t cbs;              //!< MAC Layer Callbacks
-    struct os_mutex mutex;                   //!< Structure of os_mutex  
+    struct os_mutex mutex;                   //!< Structure of os_mutex
     uint16_t idx;                            //!< Slot number
-    uint16_t nslots;                         //!< Number of slots 
+    uint16_t nslots;                         //!< Number of slots
     uint32_t period;                         //!< Period of each tdma
     uint32_t os_epoch;                          //!< Epoch timestamp
     struct os_callout event_cb;              //!< Sturcture of event_cb
@@ -92,7 +91,7 @@ typedef struct _tdma_instance_t{
 #endif
 #endif
     struct _tdma_slot_t * slot[];           //!< Dynamically allocated slot
-}tdma_instance_t; 
+}tdma_instance_t;
 
 struct _tdma_instance_t * tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots);
 void tdma_free(struct _tdma_instance_t * inst);

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2017-2018, Decawave Limited, All Rights Reserved
- * 
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -8,7 +8,7 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
@@ -23,7 +23,7 @@
  * @file dw1000_tdma.c
  * @author paul kettle
  * @date 2018
- * @brief TDMA 
+ * @brief TDMA
  *
  * @details This is the base class of tdma which initialises tdma instance, assigns slots for each node and does ranging continuously based on
  * addresses.
@@ -75,31 +75,31 @@ static void tdma_tasks_init(struct _tdma_instance_t * inst);
 static void tdma_task(void *arg);
 #endif
 
-/** 
- * API to initialise the tdma instance. Sets the clkcal postprocess and 
- * assings the slot callback function for slot0. 
+/**
+ * @fn tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots)
+ * @brief API to initialise the tdma instance. Sets the clkcal postprocess and
+ * assings the slot callback function for slot0.
  *
- * @param inst     Pointer to  _dw1000_dev_instance_t. 
+ * @param inst     Pointer to  _dw1000_dev_instance_t.
  * @param period   CCP period.
  * @param nslots   Total slots to be allocated between two frames.
- * @return tdma_instance_t* 
+ *
+ * @return tdma_instance_t*
  */
-
-tdma_instance_t * 
+tdma_instance_t *
 tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots){
     assert(inst);
     tdma_instance_t * tdma;
 
-
     if (inst->tdma == NULL) {
-        tdma = (tdma_instance_t *) malloc(sizeof(struct _tdma_instance_t) + nslots * sizeof(struct _tdma_slot_t *)); 
+        tdma = (tdma_instance_t *) malloc(sizeof(struct _tdma_instance_t) + nslots * sizeof(struct _tdma_slot_t *));
         assert(tdma);
         memset(tdma, 0, sizeof(struct _tdma_instance_t) + nslots * sizeof(struct _tdma_slot_t * ));
         tdma->status.selfmalloc = 1;
         os_error_t err = os_mutex_init(&tdma->mutex);
         assert(err == OS_OK);
-        tdma->nslots = nslots; 
-        tdma->period = period; 
+        tdma->nslots = nslots;
+        tdma->period = period;
         tdma->parent = inst;
 #ifdef TDMA_TASKS_ENABLE
         tdma->task_prio = inst->task_prio + 0x4;
@@ -149,15 +149,16 @@ tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots
 }
 
 /**
- * API to free memory allocated for tdma slots.
+ * @fn tdma_free(tdma_instance_t * inst)
+ * @brief API to free memory allocated for tdma slots.
  *
  * @param inst  Pointer to tdma_instance_t.
  *
  * @return void
  */
-void 
+void
 tdma_free(tdma_instance_t * inst){
-    assert(inst);  
+    assert(inst);
     if (inst->status.selfmalloc)
         free(inst);
     else
@@ -165,13 +166,13 @@ tdma_free(tdma_instance_t * inst){
 }
 
 /**
- * API to initialise the package, only one ccp service required in the system.
- *
+ * @fn tdma_pkg_init(void)
+ * @ brief API to initialise the package, only one ccp service required in the system.
  *
  * @return void
  */
-
-void tdma_pkg_init(void){
+void
+tdma_pkg_init(void){
 
     printf("{\"utime\": %lu,\"msg\": \"tdma_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
@@ -179,19 +180,19 @@ void tdma_pkg_init(void){
         tdma_init(hal_dw1000_inst(0), MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS));
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
-        tdma_init(hal_dw1000_inst(1), MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS)); 
+        tdma_init(hal_dw1000_inst(1), MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS));
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-        tdma_init(hal_dw1000_inst(2), MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS));     
+        tdma_init(hal_dw1000_inst(2), MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS));
 #endif
 
 }
 
 #ifdef TDMA_TASKS_ENABLE
 
-
 /**
- * API to feed the sanity watchdog
+ * @fn sanity_feeding_cb(struct os_event * ev)
+ * @brief API to feed the sanity watchdog
  *
  * @return void
  */
@@ -209,13 +210,15 @@ sanity_feeding_cb(struct os_event * ev)
 #endif
 
 /**
- * API to initialise a higher priority task for the tdma slot tasks.
+ * @fn tdma_tasks_init(struct _tdma_instance_t * inst)
+ * @brief API to initialise a higher priority task for the tdma slot tasks.
  *
  * @param inst  Pointer to  _tdma_instance_t.
  *
  * @return void
  */
-static void tdma_tasks_init(struct _tdma_instance_t * inst)
+static void
+tdma_tasks_init(struct _tdma_instance_t * inst)
 {
     /* Check if the tasks are already initiated */
     if (!os_eventq_inited(&inst->eventq))
@@ -233,7 +236,7 @@ static void tdma_tasks_init(struct _tdma_instance_t * inst)
 #endif
                      inst->task_stack,
                      DW1000_DEV_TASK_STACK_SZ);
-    }       
+    }
 #if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
     os_callout_init(&inst->sanity_cb, &inst->eventq, sanity_feeding_cb, (void *) inst);
     os_callout_reset(&inst->sanity_cb, OS_TICKS_PER_SEC);
@@ -241,15 +244,15 @@ static void tdma_tasks_init(struct _tdma_instance_t * inst)
 }
 
 /**
- * API for task function of tdma.
+ * @fn tdma_task(void *arg)
+ * @brief API for task function of tdma.
  *
  * @param arg   Pointer to an argument of void type.
  *
  * @return void
  */
-
-static void tdma_task(void *arg)
-{
+static void
+tdma_task(void *arg){
     tdma_instance_t * inst = arg;
     while (1) {
         os_eventq_run(&inst->eventq);
@@ -258,17 +261,19 @@ static void tdma_task(void *arg)
 #endif
 
 /**
- * Interrupt context tdma_rx_complete callback. Used to define eopch for tdma actavities 
+ * @fn rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @brief Interrupt context tdma_rx_complete callback. Used to define eopch for tdma actavities
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
- * @return bool based on the totality of the handling which is false this implementation. 
+ * @param cbs   Pointer to dw1000_mac_interface_t.
+ *
+ * @return bool based on the totality of the handling which is false this implementation.
  */
-
-static bool 
+static bool
 rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     tdma_instance_t * tdma = inst->tdma;
-   
+
     if (inst->ccp->status.valid && inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
         STATS_INC(inst->tdma->stat, rx_complete);
         DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma:rx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
@@ -279,24 +284,26 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 #else
             os_eventq_put(&inst->eventq, &inst->tdma->event_cb.c_ev);
 #endif
-        }   
+        }
         return false; // TDMA is an observer and should not return true
     }
     return false;
 }
 
 /**
- * Interrupt context tdma_tx_complete callback. Used to define eopch for tdma actavities 
+ * @fn tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @brief Interrupt context tdma_tx_complete callback. Used to define eopch for tdma actavities
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
- * @return bool based on the totality of the handling which is false this implementation. 
+ * @param cbs   Pointer to dw1000_mac_interface_t.
+ *
+ * @return bool based on the totality of the handling which is false this implementation.
  */
-
-static bool 
+static bool
 tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
    tdma_instance_t * tdma = inst->tdma;
-    
+
     if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64 && inst->ccp->config.role == CCP_ROLE_MASTER){
         STATS_INC(inst->tdma->stat, tx_complete);
         DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma:tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
@@ -307,16 +314,15 @@ tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 #else
             os_eventq_put(&inst->eventq, &inst->tdma->event_cb.c_ev);
 #endif
-        }   
+        }
         return false;   // TDMA is an observer and should not return true
     }
     return false;
 }
 
-
-
 /**
- * API to intialise slot instance for the slot.Also initialise a timer and assigns callback for each slot.
+ * @fn tdma_assign_slot(struct _tdma_instance_t * inst, void (* callout )(struct os_event *), uint16_t idx, void * arg)
+ * @brief API to intialise slot instance for the slot.Also initialise a timer and assigns callback for each slot.
  *
  * @param inst       Pointer to _tdma_instance_t.
  * @param callout    Callback for the particular slot.
@@ -325,8 +331,7 @@ tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
  *
  * @return void
  */
-
-void 
+void
 tdma_assign_slot(struct _tdma_instance_t * inst, void (* callout )(struct os_event *), uint16_t idx, void * arg){
 
     assert(idx < inst->nslots);
@@ -335,7 +340,7 @@ tdma_assign_slot(struct _tdma_instance_t * inst, void (* callout )(struct os_eve
        return;
 
     if (inst->slot[idx] == NULL){
-        inst->slot[idx] = (tdma_slot_t  *) malloc(sizeof(struct _tdma_slot_t)); 
+        inst->slot[idx] = (tdma_slot_t  *) malloc(sizeof(struct _tdma_slot_t));
         assert(inst->slot[idx]);
         memset(inst->slot[idx], 0, sizeof(struct _tdma_slot_t));
     }else{
@@ -354,7 +359,8 @@ tdma_assign_slot(struct _tdma_instance_t * inst, void (* callout )(struct os_eve
 }
 
 /**
- * API to free the slot instance.
+ * @fn tdma_release_slot(struct _tdma_instance_t * inst, uint16_t idx)
+ * @brief API to free the slot instance.
  *
  * @param inst   Pointer to _tdma_instance_t.
  * @param idx    Slot number.
@@ -371,7 +377,8 @@ tdma_release_slot(struct _tdma_instance_t * inst, uint16_t idx){
 }
 
 /**
- * This event is generated by ccp/clkcal complete event. This event defines the start of an superframe epoch.
+ * @fn tdma_superframe_event_cb(struct os_event * ev)
+ * @brief This event is generated by ccp/clkcal complete event. This event defines the start of an superframe epoch.
  * The event also schedules a tdma_superframe_timer_cb which turns on the receiver in advance of the next superframe epoch.
  *
  * @param ev   Pointer to os_event.
@@ -385,7 +392,7 @@ tdma_superframe_event_cb(struct os_event * ev){
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma_superframe_event_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     tdma_instance_t * tdma = (void *)ev->ev_arg;
- 
+
     STATS_INC(tdma->stat, superframe_cnt);
 
     for (uint16_t i = 0; i < tdma->nslots; i++) {
@@ -398,7 +405,7 @@ tdma_superframe_event_cb(struct os_event * ev){
             hal_timer_start_at(&tdma->slot[i]->timer, tdma->os_epoch
                 + os_cputime_usecs_to_ticks(
                     (uint32_t) (i * dw1000_dwt_usecs_to_usecs(tdma->period/tdma->nslots))
-                    - (uint32_t)ceilf(dw1000_phy_SHR_duration(&tdma->parent->attrib)) 
+                    - (uint32_t)ceilf(dw1000_phy_SHR_duration(&tdma->parent->attrib))
                     - MYNEWT_VAL(OS_LATENCY))
             );
         }
@@ -409,17 +416,16 @@ tdma_superframe_event_cb(struct os_event * ev){
 #endif
 }
 
-
-
 /**
- * API for each slot. This function then puts
+ * @fn slot_timer_cb(void * arg)
+ * @brief API for each slot. This function then puts
  * the callback provided by the user in the tdma event queue.
  *
- * @param arg    A void type argument. 
+ * @param arg    A void type argument.
  *
  * @return void
  */
-static void 
+static void
 slot_timer_cb(void * arg){
 
     assert(arg);
@@ -439,15 +445,15 @@ slot_timer_cb(void * arg){
 }
 
 /**
- * API to stop tdma operation. Releases each slot and stops all cputimer callbacks
+ * @fn tdma_stop(struct _tdma_instance_t * tdma)
+ * @brief API to stop tdma operation. Releases each slot and stops all cputimer callbacks
  *
- * @param inst       Pointer to _tdma_instance_t.
+ * @param tdma      Pointer to _tdma_instance_t.
  *
  * @return void
  */
-void 
-tdma_stop(struct _tdma_instance_t * tdma)
-{
+void
+tdma_stop(struct _tdma_instance_t * tdma){
     for (uint16_t i = 0; i < tdma->nslots; i++) {
         if (tdma->slot[i]){
             os_cputime_timer_stop(&tdma->slot[i]->timer);
@@ -455,4 +461,3 @@ tdma_stop(struct _tdma_instance_t * tdma)
         }
     }
 }
-

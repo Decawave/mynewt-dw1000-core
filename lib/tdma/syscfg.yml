@@ -1,6 +1,6 @@
 
 syscfg.defs:
-   
+
     TDMA_ENABLED:
         description: 'Enable TDMA Services'
         value: 1
@@ -14,5 +14,5 @@ syscfg.defs:
     TDMA_SANITY_INTERVAL:
         description: 'Sanity watchdog timeout (seconds)'
         value: 0
-    
-        
+
+
