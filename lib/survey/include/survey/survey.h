@@ -36,18 +36,25 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 #include <rng/slots.h>
+#include <stats/stats.h>
 
-typedef struct _survey_ranges_t{
+typedef struct _survey_nrng_t{
     uint16_t mask;              //!< slot bitmask, the bit position in the mask decodes as the node slot_id
-    float ranges[];             //!< Ranging corresponding to above slot mask. When broadcasting the survey results we one transmit sucessful range requests. 
+    float rng[];                //!< Ranging corresponding to above slot mask. When broadcasting the survey results we one transmit sucessful range requests.
                                 //!< Use NumberOfBits() BitIndex() to decode the bitmask
-}survey_ranges_t;
+}survey_nrng_t;
+
+typedef struct _survey_nrngs_t{
+    uint16_t mask;              //!< slot bitmask, the bit position in the mask decodes as the node slot_id
+    survey_nrng_t * nrng[];     //!< Ranging corresponding to above slot mask. When broadcasting the survey results we one transmit sucessful range requests.
+}survey_nrngs_t;
 
 //! N-Ranges request frame
 typedef union {
@@ -55,7 +62,7 @@ typedef union {
         struct _ieee_rng_request_frame_t;
         uint16_t slot_id;
         uint16_t cell_id;
-        survey_ranges_t; 
+        struct _survey_nrng_t; 
     }__attribute__((__packed__,aligned(1)));
     uint8_t array[sizeof(struct _survey_broadcast_frame_t)]; 
 }survey_broadcast_frame_t;
@@ -80,6 +87,7 @@ typedef struct _survey_status_t{
     uint16_t start_rx_error:1;
     uint16_t start_tx_error:1;
     uint16_t empty:1;
+    uint16_t update:1;
 }survey_status_t;
 
 //! config parameters.  
@@ -92,17 +100,20 @@ typedef struct _survey_instance_t{
     struct _dw1000_dev_instance_t * parent;     //!< Pointer to _dw1000_dev_instance_t
     STATS_SECT_DECL(survey_stat_section) stat;  //!< Stats instance
     dw1000_mac_interface_t cbs;                 //!< MAC Layer Callbacks
+    void (* survey_complete_cb) (struct os_event *ev); //!< Optional Callback for post processing
     struct os_sem sem;                          //!< Structure containing os semaphores
     survey_status_t status;                     //!< Survey status parameters
     survey_config_t config;                     //!< Survey control parameters
     uint8_t seq_num;
     uint16_t nnodes;                            //!< Number of buffers defined to store the data 
-    survey_broadcast_frame_t * frame;           //!< Frame to broadcast results back between nodes   
-    survey_ranges_t * ranges[];                 //!< Array containing survey results, indexed by slot_id
+    survey_broadcast_frame_t * frame;           //!< Frame to broadcast results back between nodes
+    uint16_t nframes;                           //!< nrngs[] is cicrular buffer of size nframes
+    uint16_t idx;                               //!< idx is cicrular buffer of size nframes
+    survey_nrngs_t * nrngs[];                   //!< Array containing survey results, indexed by slot_id
 }survey_instance_t; 
 
 
-survey_instance_t * survey_init(struct _dw1000_dev_instance_t * inst, uint16_t nnodes);
+survey_instance_t * survey_init(struct _dw1000_dev_instance_t * inst, uint16_t nnodes, uint16_t nframes);
 void survey_free(survey_instance_t * inst);
 void survey_slot_range_cb(struct os_event *ev);
 void survey_slot_broadcast_cb(struct os_event *ev);

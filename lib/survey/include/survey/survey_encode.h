@@ -30,6 +30,6 @@
 #include <nrng/nrng.h>
 #include <survey/survey.h>
 
-void survey_encode(survey_instance_t * survey, uint16_t seq);
+void survey_encode(survey_instance_t * survey, uint16_t seq, uint16_t idx);
 
 #endif

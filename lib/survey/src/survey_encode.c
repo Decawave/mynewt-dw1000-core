@@ -69,17 +69,18 @@ json_write(void *buf, char* data, int len) {
  * @return none.
  */
 void 
-survey_encode(survey_instance_t * survey, uint16_t seq_num){
+survey_encode(survey_instance_t * survey, uint16_t seq, uint16_t idx){
  
     struct json_encoder encoder;
     struct json_value value;
     int rc;
     uint32_t utime = os_cputime_ticks_to_usecs(os_cputime_get32());
+    survey_nrngs_t * nrngs = survey->nrngs[idx%survey->nframes];
 
     uint32_t mask = 0;
     // Workout which node responded to the request
     for (uint16_t i=0; i < survey->nnodes; i++){
-        if (survey->ranges[i]->mask){
+        if (nrngs->nrng[i]->mask){
                 mask |= 1UL << i;
         }
     }
@@ -99,23 +100,23 @@ survey_encode(survey_instance_t * survey, uint16_t seq_num){
     rc |= json_encode_object_key(&encoder, "survey");
     rc |= json_encode_object_start(&encoder);    
   
-    JSON_VALUE_UINT(&value, seq_num);
+    JSON_VALUE_UINT(&value, seq);
     rc |= json_encode_object_entry(&encoder, "seq", &value);
     
     JSON_VALUE_UINT(&value, mask);
     rc |= json_encode_object_entry(&encoder, "mask", &value);
-    rc |= json_encode_object_key(&encoder, "node");
+    rc |= json_encode_object_key(&encoder, "nrngs");
     rc |= json_encode_array_start(&encoder);
    
     for (uint16_t i=0; i < survey->nnodes; i++){
-        if (survey->ranges[i]->mask){
-            JSON_VALUE_UINT(&value, survey->ranges[i]->mask);
+        if (nrngs->nrng[i]->mask){
+            JSON_VALUE_UINT(&value, nrngs->nrng[i]->mask);
              rc |= json_encode_object_start(&encoder); 
             rc |= json_encode_object_entry(&encoder, "mask", &value);
             rc |= json_encode_array_name(&encoder, "nrng");
             rc |= json_encode_array_start(&encoder);
-            for (uint16_t j=0; j < NumberOfBits(survey->ranges[i]->mask); j++){
-                JSON_VALUE_UINT(&value, *(uint32_t *)&survey->ranges[i]->ranges[j]);
+            for (uint16_t j=0; j < NumberOfBits(nrngs->nrng[i]->mask); j++){
+                JSON_VALUE_UINT(&value, *(uint32_t *)&nrngs->nrng[i]->rng[j]);
                 rc |= json_encode_array_value(&encoder, &value); 
             }
             rc |= json_encode_array_finish(&encoder); 

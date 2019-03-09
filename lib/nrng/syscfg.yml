@@ -16,10 +16,10 @@ syscfg.defs:
         value: 1
       NRNG_NNODES:
         description: 'Number of nodes to be ranged with'
-        value: 4
+        value: 16
       NRNG_NFRAMES:
         description: 'Number of frames expected'
-        value: 8
+        value: 32
       NRNG_VERBOSE:
         description: 'Show debug output from postprocess'
         value: 0

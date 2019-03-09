@@ -4,12 +4,15 @@ syscfg.defs:
         description: >
             'Enable automatic site survey'
         value: 1
-    SURVEY_VERBOSE:
+    SURVEY_VERBOSE: 
         description: 'Show debug output from postprocess'
         value: 0
     SURVEY_NNODES:
         description: 'Maximum number of node within survey'
         value: 8
+    SURVEY_NFRAMES:
+        description: 'Circular buffer size for nrngs'
+        value: 2
     SURVEY_MASK:
         description: 'The survey->seq_num is dreived from ccp->idx and advances every 1UL << SURVEY_MASK ccp ticks'
         value: 3
