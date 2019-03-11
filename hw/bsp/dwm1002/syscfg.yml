@@ -19,31 +19,36 @@
 # Package: hw/bsp/dwm1002
 
 syscfg.vals:
-    MCU_NRF52832: 1
+    MCU_NRF52840: 1
+    XTAL_32768: 1
+    MCU_DCDC_ENABLED: 1
+
     UART_0: 1
     UART_0_PIN_TX: 31   # Eval kit /dev/ttyACMx port
     UART_0_PIN_RX: 5
     UART_0_PIN_RTS: -1
     UART_0_PIN_CTS: -1
+
     UART_1: 0
     UART_1_PIN_TX: -1
     UART_1_PIN_RX: -1
-    TIMER_0: 1
-    TIMER_1: 0
-    TIMER_2: 0
-    TIMER_3: 0
-    TIMER_4: 0
+
     TIMER_5: 1
+
     SPI_0_MASTER: 1
     SPI_0_MASTER_PIN_SCK: 16
     SPI_0_MASTER_PIN_MOSI: 20
     SPI_0_MASTER_PIN_MISO: 21
+
+    SPI_1_MASTER: 1
+    SPI_1_MASTER_PIN_SCK:  28
+    SPI_1_MASTER_PIN_MOSI: 29
+    SPI_1_MASTER_PIN_MISO:  8
+
     CONFIG_FCB_FLASH_AREA: FLASH_AREA_NFFS
     REBOOT_LOG_FLASH_AREA: FLASH_AREA_REBOOT_LOG
     NFFS_FLASH_AREA: FLASH_AREA_NFFS
     COREDUMP_FLASH_AREA: FLASH_AREA_IMAGE_1
-    MCU_DCDC_ENABLED: 1
-    XTAL_32768: 1
     BOOT_SERIAL_DETECT_PIN: 2  # Button 1
     # Enable the shell task.
     SHELL_TASK: 1
@@ -81,6 +86,7 @@ syscfg.defs:
         value: 2000
     DW1000_DEVICE_BAUDRATE_HIGH:
         description: 'BAUDRATE_HIGH 8MHz'
+        # Change below to 16000 once upstream mynewt supports it
         value: 8000
     DW1000_DEVICE_0_TX_ANT_DLY:
         description: 'TX_ANT_DLY'
