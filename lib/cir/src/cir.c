@@ -139,6 +139,7 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     bool status = false;
     cir_instance_t * cir = inst->cir;
+    cir->status.valid = 0;
 
     if (cir->control.pmem_enable || inst->config.pmem_enable){
         cir->control.pmem_enable = inst->config.pmem_enable; // restore defaults behavior
@@ -154,7 +155,10 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if (cir->control.cir_enable || inst->config.cir_enable){
         cir->control.cir_enable = inst->config.cir_enable; // restore defaults behavior
 
-        uint16_t fp_idx = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
+        uint16_t fp_idx = inst->rxdiag.fp_idx;
+        if(!inst->config.rxdiag_enable) {
+            fp_idx = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
+        }
         cir->fp_idx = (float)fp_idx / 64.0f + 0.5f;
         fp_idx  = (uint16_t)floorf(cir->fp_idx);
 
