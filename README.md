@@ -114,6 +114,7 @@ The mynewt-dw1000-core repo is still a work in progress with the following exten
 ├── ccp                         // Clock Calibration Packet synchronization 
 ├── dsp                         // Signal Proceesing library
 ├── lwip                        // Light weight IP extension
+├── openthread                  // OpentThread libraries (As static libraries.No source code available)
 ├── nrng                        // N ranges in 2*N+2 messages
 ├── rng                         // TWR toplevel API
 ├── tdma                        // Time Devision Multiplex API
