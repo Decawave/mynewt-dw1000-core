@@ -21,7 +21,7 @@
 syscfg.vals:
     MCU_NRF52832: 1
     UART_0_PIN_TX: 5
-    UART_0_PIN_RX: 6
+    UART_0_PIN_RX: 11
     UART_0_PIN_RTS: -1
     UART_0_PIN_CTS: 7
     TIMER_0: 1
