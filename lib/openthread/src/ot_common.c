@@ -194,6 +194,22 @@ static void ot_task(void *arg)
 }
 #endif
 
+void
+ot_pkg_init(void){
+
+    printf("{\"utime\": %lu,\"msg\": \"ot_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+
+#if MYNEWT_VAL(DW1000_DEVICE_0)
+    ot_init(hal_dw1000_inst(0));
+#endif
+#if MYNEWT_VAL(DW1000_DEVICE_1)
+    ot_init(hal_dw1000_inst(1));
+#endif
+#if MYNEWT_VAL(DW1000_DEVICE_2)
+    ot_init(hal_dw1000_inst(2));
+#endif
+}
+
 ot_instance_t *
 ot_init(dw1000_dev_instance_t * inst){
 
