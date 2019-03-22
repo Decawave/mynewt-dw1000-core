@@ -20,3 +20,6 @@ syscfg.defs:
     OT_ENABLED:
         description: 'Enable open thread'
         value: 1
+    OT_FLASH_AREA:
+        description: 'Flash Section used for OT platform settings'
+        value: FLASH_AREA_NFFS
