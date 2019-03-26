@@ -85,8 +85,6 @@ ot_free(ot_instance_t * inst);
 
 void RadioInit(dw1000_dev_instance_t* inst);
 
-void nrf5AlarmDeinit();
-
 #ifdef __cplusplus
 }
 #endif
