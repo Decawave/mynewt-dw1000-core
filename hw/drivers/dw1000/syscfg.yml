@@ -67,7 +67,15 @@ syscfg.defs:
         description: >
           Default Pan ID
         value: ((const uint16_t)0xdeca)
-    DEVICE_ID:
+    DW_DEVICE_ID_0:
         description: >
-          Default Device ID
-        value: ((const uint16_t)0x1234)
+          Default Device ID, defaults to last 16 bit of prodid if set to 0 here
+        value: ((const uint16_t)0)
+    DW_DEVICE_ID_1:
+        description: >
+          Default Device ID, defaults to last 16 bit of prodid if set to 0 here
+        value: ((const uint16_t)0)
+    DW_DEVICE_ID_2:
+        description: >
+          Default Device ID, defaults to last 16 bit of prodid if set to 0 here
+        value: ((const uint16_t)0)

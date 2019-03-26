@@ -321,16 +321,22 @@ retry:
     assert(rc == 0);
 
     inst->PANID = MYNEWT_VAL(PANID);
+    inst->my_short_address = inst->partID & 0xffff;
 
-#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
-    inst->my_short_address = MYNEWT_VAL(DEVICE_ID);
-#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
-    if (inst == hal_dw1000_inst(0))
-        inst->my_short_address = MYNEWT_VAL(DEVICE_ID_0);
-    else
-        inst->my_short_address = MYNEWT_VAL(DEVICE_ID_1);
+    if (inst == hal_dw1000_inst(0)) {
+#if  MYNEWT_VAL(DW1000_DEVICE_ID_0)
+        inst->my_short_address = MYNEWT_VAL(DW1000_DEVICE_ID_0);
 #endif
-    inst->my_long_address = ((uint64_t) inst->device_id << 32) + inst->partID;
+    } else if (inst == hal_dw1000_inst(1)){
+#if  MYNEWT_VAL(DW1000_DEVICE_ID_1)
+        inst->my_short_address = MYNEWT_VAL(DW1000_DEVICE_ID_1);
+#endif
+    } else if (inst == hal_dw1000_inst(2)){
+#if  MYNEWT_VAL(DW1000_DEVICE_ID_2)
+        inst->my_short_address = MYNEWT_VAL(DW1000_DEVICE_ID_2);
+#endif
+    }
+    inst->my_long_address = ((uint64_t) inst->lotID << 32) + inst->partID;
 
     dw1000_set_panid(inst,inst->PANID);
     dw1000_mac_init(inst, NULL);
