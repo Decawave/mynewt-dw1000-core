@@ -83,8 +83,6 @@ void ot_post_init(dw1000_dev_instance_t * inst, otInstance *aInstance);
 void
 ot_free(ot_instance_t * inst);
 
-void nrf5AlarmInit(dw1000_dev_instance_t* inst);
-
 void RadioInit(dw1000_dev_instance_t* inst);
 
 void nrf5AlarmDeinit();
