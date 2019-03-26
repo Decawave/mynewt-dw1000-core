@@ -32,3 +32,5 @@ pkg.cflags:
 
 pkg.deps:
     - "@mynewt-dw1000-core/hw/drivers/dw1000"
+pkg.init:
+    ot_pkg_init: 410
