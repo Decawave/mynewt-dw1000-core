@@ -20,6 +20,9 @@ syscfg.defs:
       NRNG_NFRAMES:
         description: 'Number of frames expected'
         value: 32
+      NRNG_NTAGS:
+        description: 'Max number of tags to allow in slots'
+        value: 4
       NRNG_VERBOSE:
         description: 'Show debug output from postprocess'
         value: 0
