@@ -45,22 +45,12 @@ extern "C" {
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
 
-#define NMGR_UWB_MTU (128 - sizeof(struct _ieee_std_frame_t) - sizeof(uint16_t) - 2/*CRC*/)
-
-typedef union{
-    struct _nmgr_uwb_frame_t{
-        struct _ieee_std_frame_t;
-        union _payload{
-            struct nmgr_hdr hdr;
-            uint8_t payload[NMGR_UWB_MTU];
-        };
-    }__attribute__((__packed__,aligned(1)));
-    uint8_t array[sizeof(struct _nmgr_uwb_frame_t)];
-}nmgr_uwb_frame_t;
+#define NMGR_UWB_MTU_STD (128 -  sizeof(struct _ieee_std_frame_t) - sizeof(uint16_t) - 2/*CRC*/)
+#define NMGR_UWB_MTU_EXT (1023 - sizeof(struct _ieee_std_frame_t) - sizeof(uint16_t) - 2/*CRC*/)
 
 typedef struct _dw1000_nmgr_uwb_instance_t{
-    nmgr_uwb_frame_t* frame;
     struct _dw1000_dev_instance_t* parent;
+    uint8_t frame_seq_num;
 }dw1000_nmgr_uwb_instance_t;
 
 typedef enum _nmgr_uwb_codes_t{
@@ -74,5 +64,6 @@ typedef enum _nmgr_uwb_codes_t{
 #endif
 
 dw1000_nmgr_uwb_instance_t* dw1000_nmgr_uwb_init(dw1000_dev_instance_t* inst);
+int nmgr_uwb_tx(uint16_t dst_addr, struct os_mbuf *m);
 
-#endif /* _DW1000_RNG_H_ */
+#endif /* _NMGR_UWB_H_ */

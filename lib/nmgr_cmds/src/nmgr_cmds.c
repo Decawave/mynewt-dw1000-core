@@ -20,12 +20,12 @@
  */
 
 /**
- * @file dw1000_rng.c
+ * @file nmgr_cmds.c
  * @author paul kettle
  * @date 2018
- * @brief Range 
+ * @brief 
  *
- * @details This is the rng base class which utilises the functions to enable/disable the configurations related to rng.
+ * @details 
  *
  */
 
@@ -245,7 +245,7 @@ nmgr_uwb_img_upload(int argc, char** argv){
     int  len = 0;
     uint32_t flags =0, off = 0;
     struct os_mbuf *rsp =  NULL;
-    uint8_t buf[NMGR_UWB_MTU - IMG_UPLOAD_CBOR_OVERHEAD];
+    uint8_t buf[NMGR_UWB_MTU_STD - IMG_UPLOAD_CBOR_OVERHEAD];
     const struct flash_area *s_fa;
     struct image_version ver;
     int fa_id = flash_area_id_from_image_slot(slot_num);
@@ -348,7 +348,7 @@ nmgr_uwb_img_set_state(int argc, char** argv){
     uint16_t dst_add = 0x0000;
 
     int rc = 0;
-    struct os_mbuf* tx_pkt = os_msys_get_pkthdr(NMGR_UWB_MTU - sizeof(struct nmgr_hdr), 0);
+    struct os_mbuf* tx_pkt = os_msys_get_pkthdr(NMGR_UWB_MTU_STD - sizeof(struct nmgr_hdr), 0);
     struct nmgr_hdr *hdr = os_mbuf_extend(tx_pkt, sizeof(struct nmgr_hdr));
     
     hdr->nh_len = 0;
@@ -447,9 +447,10 @@ buf_to_imgmgr_mbuf(uint8_t *buf, uint64_t len, uint64_t off, uint32_t size)
 }
 
 static int
-nmgr_cmd_send(dw1000_dev_instance_t * inst, uint16_t dst_add, uint8_t* buf, uint16_t buf_len, uint16_t timeout){
-    
-    nmgr_uwb_frame_t *frame = inst->nmgruwb->frame;
+nmgr_cmd_send(dw1000_dev_instance_t * inst, uint16_t dst_add, uint8_t* buf, uint16_t buf_len, uint16_t timeout)
+{
+    nmgr_uwb_frame_t frame_a;
+    nmgr_uwb_frame_t *frame = &frame_a;
     uint16_t totlen = buf_len + sizeof(struct _ieee_std_frame_t);
     assert(frame!=NULL);
     assert(buf!=NULL);
@@ -508,8 +509,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     if (strncmp((char*)&inst->fctrl, "NM", 2)){
         return false;
     }
-    dw1000_nmgr_uwb_instance_t *nmgr = inst->nmgruwb;
-    nmgr_uwb_frame_t *frame = nmgr->frame;
+    nmgr_uwb_frame_t *frame = (nmgr_uwb_frame_t*)inst->rxbuf;
     if(inst->my_short_address != frame->dst_address){
         dw1000_start_rx(inst);
     }else{
@@ -521,8 +521,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 static void
 rx_post_process(struct os_event* ev){
     dw1000_dev_instance_t * inst = hal_dw1000_inst(0);
-    dw1000_nmgr_uwb_instance_t *nmgr = inst->nmgruwb;
-    nmgr_uwb_frame_t *frame = nmgr->frame;
+    nmgr_uwb_frame_t *frame = (nmgr_uwb_frame_t*)inst->rxbuf;
     
     //There is a chance that the response could be split if the total length is more than NMGR_UWB_MTU
     //If so then do the decoding only after the entire packet is received
@@ -537,7 +536,7 @@ rx_post_process(struct os_event* ev){
         //Trim out the uwb frame header
         os_mbuf_copyinto(nmgr_inst->rx_pkt, 0, &frame->array[sizeof(struct _ieee_std_frame_t)], inst->frame_len - sizeof(struct _ieee_std_frame_t));
 
-        if(htons(frame->hdr.nh_len) > NMGR_UWB_MTU){
+        if(htons(frame->hdr.nh_len) > NMGR_UWB_MTU_STD){
             nmgr_inst->repeat_mode = 1;
             nmgr_inst->rem_len = (htons(frame->hdr.nh_len) + sizeof(struct nmgr_hdr)) - OS_MBUF_PKTLEN(nmgr_inst->rx_pkt);
             uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, 128) + 0x600;

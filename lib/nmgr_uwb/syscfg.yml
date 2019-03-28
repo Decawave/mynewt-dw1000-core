@@ -1,6 +1,6 @@
 
 syscfg.defs:
-      NMGR_UWB_ENABLED:
-        description: 'Enable toplevel ranging services'
+    NMGR_UWB_ENABLED:
+        description: 'Enable UWB transport for NewtMgr'
         value: 1
 

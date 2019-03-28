@@ -35,7 +35,17 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-#include "dw1000/triad.h"
+
+typedef union{
+    struct _nmgr_uwb_frame_t{
+        struct _ieee_std_frame_t;
+        union _payload{
+            struct nmgr_hdr hdr;
+            uint8_t payload[NMGR_UWB_MTU_STD];
+        };
+    }__attribute__((__packed__,aligned(1)));
+    uint8_t array[sizeof(struct _nmgr_uwb_frame_t)];
+}nmgr_uwb_frame_t;
 
 #ifdef __cplusplus
 extern "C" {
