@@ -58,7 +58,8 @@ pkg.deps.DW1000_DEVICE_0:
     - '@mynewt-dw1000-core/hw/drivers/dw1000'
     
 pkg.deps.ESP12F_ENABLED:
-    - "@ynewt-dw1000-core/sys/espwifi"
+    - "@apache-mynewt-core/sys/id"
+    - "@loligo-mynewt-lps/sys/espwifi"
 
 pkg.init:
   config_lipo_charger: 410
