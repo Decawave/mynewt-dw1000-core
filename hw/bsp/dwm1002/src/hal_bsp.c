@@ -44,16 +44,6 @@
 #include "dw1000/dw1000_phy.h"
 #endif
 
-#if MYNEWT_VAL(UART_0) || MYNEWT_VAL(UART_1)
-#include "uart/uart.h"
-#endif
-#if MYNEWT_VAL(UART_0)
-#include "uart_hal/uart_hal.h"
-#endif
-#if MYNEWT_VAL(UART_1)
-#include "uart_bitbang/uart_bitbang.h"
-#endif
-
 #include "os/os_dev.h"
 #include "bsp.h"
 
@@ -233,15 +223,17 @@ static const struct hal_bsp_mem_dump dump_cfg[] = {
 
 
 
-const struct hal_flash * hal_bsp_flash_dev(uint8_t id)
+const struct hal_flash *
+hal_bsp_flash_dev(uint8_t id)
 {
-    /*
-     * Internal flash mapped to id 0.
-     */
-    if (id != 0) {
+    switch (id) {
+    case 0:
+        /* MCU internal flash. */
+        return &nrf52k_flash_dev;
+    default:
+        /* External flash.  Assume not present in this BSP. */
         return NULL;
     }
-    return &nrf52k_flash_dev;
 }
 
 const struct hal_bsp_mem_dump * hal_bsp_core_dump(int *area_cnt)
