@@ -185,7 +185,7 @@ nmgr_resp_cb(struct nmgr_transport *nt, struct os_mbuf *m)
     frame->dst_address = frame->src_address;
     frame->src_address = inst->my_short_address;
     dw1000_write_tx(inst, (uint8_t*)frame, 0, sizeof(struct _ieee_std_frame_t));
-    dw1000_write_tx_fctrl(inst, totlen, 0, true);
+    dw1000_write_tx_fctrl(inst, totlen, 0);
     device_offset = sizeof(struct _ieee_std_frame_t);
 
     /* Copy the mbuf payload data to the device to be sent */
@@ -305,7 +305,7 @@ nmgr_uwb_tx(uint16_t dst_addr, struct os_mbuf *m, uint64_t dx_time)
     strncpy((char*)&uwb_hdr.fctrl, "NM", 2);
 
     dw1000_write_tx(inst, (uint8_t*)&uwb_hdr, 0, sizeof(struct _ieee_std_frame_t));
-    dw1000_write_tx_fctrl(inst, sizeof(struct _ieee_std_frame_t) + OS_MBUF_PKTLEN(m), 0, true);
+    dw1000_write_tx_fctrl(inst, sizeof(struct _ieee_std_frame_t) + OS_MBUF_PKTLEN(m), 0);
     device_offset = sizeof(struct _ieee_std_frame_t);
 
     /* Copy the mbuf payload data to the device to be sent */

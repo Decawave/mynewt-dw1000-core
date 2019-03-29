@@ -249,7 +249,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 #endif
                // Write the second part of the response
                 dw1000_write_tx(inst, frame->array ,0 ,sizeof(ieee_rng_response_frame_t));
-                dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true); 
+                dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0);
                 dw1000_set_wait4resp(inst, true);   
 
                 uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_rng_response_frame_t)) 
@@ -294,7 +294,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 #endif              
                 // Transmit timestamp final report
                 dw1000_write_tx(inst, frame->array, 0,  sizeof(twr_frame_final_t));
-                dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true);
+                dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0);
                 if (dw1000_start_tx(inst).start_tx_error){
                     os_sem_release(&rng->sem);  
                     if (cbs!=NULL && cbs->start_tx_error_cb) 

@@ -601,7 +601,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         tx_frame.transmission_interval = frame->transmission_interval - ((tx_frame.transmission_timestamp.lo - frame->transmission_timestamp.lo)>>16);
 
         dw1000_write_tx(inst, tx_frame.array, 0, sizeof(ccp_blink_frame_t));
-        dw1000_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0, true);
+        dw1000_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0);
         ccp->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
         if (ccp->status.start_tx_error){
             STATS_INC(inst->ccp->stat, tx_relay_error);
@@ -786,7 +786,7 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     frame->transmission_interval = inst->ccp->period;
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(ccp_blink_frame_t));
-    dw1000_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0, true); 
+    dw1000_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0);
     dw1000_set_wait4resp(inst, false);    
     ccp->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
     if (ccp->status.start_tx_error ){

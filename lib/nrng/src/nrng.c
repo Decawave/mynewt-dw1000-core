@@ -339,7 +339,7 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_r
 #endif
    
     dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
-    dw1000_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0, true);
+    dw1000_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0);
     dw1000_set_wait4resp(inst, true);
 
     uint16_t timeout = config->tx_holdoff_delay         // Remote side turn arround time.

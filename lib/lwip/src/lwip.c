@@ -248,7 +248,7 @@ dw1000_lwip_write(dw1000_dev_instance_t * inst, struct pbuf *p, dw1000_lwip_mode
 	free(id_pbuf);
     pbuf_free(p);
     
-	dw1000_write_tx_fctrl(inst, inst->lwip->buf_len, 0, false);
+	dw1000_write_tx_fctrl(inst, inst->lwip->buf_len, 0);
 	inst->lwip->lwip_netif.flags = NETIF_FLAG_UP | NETIF_FLAG_LINK_UP ;
 	inst->lwip->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
 

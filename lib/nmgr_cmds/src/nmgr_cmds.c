@@ -463,7 +463,7 @@ nmgr_cmd_send(dw1000_dev_instance_t * inst, uint16_t dst_add, uint8_t* buf, uint
 
     memcpy(&frame->array[sizeof(struct _ieee_std_frame_t)], buf, buf_len);
     dw1000_write_tx(inst, frame->array, 0, totlen);
-    dw1000_write_tx_fctrl(inst, totlen, 0, true);
+    dw1000_write_tx_fctrl(inst, totlen, 0);
     uint64_t request_timestamp = dw1000_read_systime(inst);
     uint64_t response_tx_delay = request_timestamp + (((uint64_t)0x600) << 16);
     dw1000_set_delay_start(inst, response_tx_delay);

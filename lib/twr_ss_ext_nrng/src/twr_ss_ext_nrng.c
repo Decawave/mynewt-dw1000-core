@@ -237,7 +237,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     cbs->final_cb(inst, cbs);
 
                 dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_frame_t));
-                dw1000_write_tx_fctrl(inst, sizeof(nrng_frame_t), 0, true);
+                dw1000_write_tx_fctrl(inst, sizeof(nrng_frame_t), 0);
                 dw1000_set_wait4resp(inst, false);
                 dw1000_set_delay_start(inst, response_tx_delay);
 

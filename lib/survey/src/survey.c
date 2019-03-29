@@ -375,7 +375,7 @@ survey_broadcaster(survey_instance_t * survey, uint64_t dx_time){
     
     uint16_t n = sizeof(struct _survey_broadcast_frame_t) + nnodes * sizeof(float);
     dw1000_write_tx(inst, survey->frame->array, 0, n);
-    dw1000_write_tx_fctrl(inst, n, 0, false);
+    dw1000_write_tx_fctrl(inst, n, 0);
     dw1000_set_delay_start(inst, dx_time); 
     
     survey->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;

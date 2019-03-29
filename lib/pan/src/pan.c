@@ -399,7 +399,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         !(frame->code == DWT_PAN_RESP && frame->long_address == inst->my_long_address)) {
         frame->rpt_count++;
         dw1000_set_wait4resp(inst, true);
-        dw1000_write_tx_fctrl(inst, inst->frame_len, 0, true);
+        dw1000_write_tx_fctrl(inst, inst->frame_len, 0);
         pan->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
         dw1000_write_tx(inst, frame->array, 0, inst->frame_len);
         STATS_INC(g_stat, relay_tx);
@@ -584,7 +584,7 @@ dw1000_pan_blink(dw1000_dev_instance_t * inst, uint16_t role,
     imgr_my_version(&frame->fw_ver);
 
     dw1000_set_delay_start(inst, delay);
-    dw1000_write_tx_fctrl(inst, sizeof(struct _pan_frame_t), 0, true);
+    dw1000_write_tx_fctrl(inst, sizeof(struct _pan_frame_t), 0);
     dw1000_write_tx(inst, frame->array, 0, sizeof(struct _pan_frame_t));
     dw1000_set_wait4resp(inst, true);
     dw1000_set_rx_timeout(inst, pan->config->rx_timeout_period);
@@ -626,7 +626,7 @@ dw1000_pan_reset(dw1000_dev_instance_t * inst, uint64_t delay)
     frame->code = DWT_PAN_RESET;
 
     dw1000_set_delay_start(inst, delay);
-    dw1000_write_tx_fctrl(inst, sizeof(struct _pan_frame_t), 0, true);
+    dw1000_write_tx_fctrl(inst, sizeof(struct _pan_frame_t), 0);
     dw1000_write_tx(inst, frame->array, 0, sizeof(struct _pan_frame_t));
     dw1000_set_wait4resp(inst, false);
     pan->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
