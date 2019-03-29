@@ -315,10 +315,27 @@ config_lipo_charger(void)
     /* Disable LED functions if active */
     dw1000_gpio_config_leds(dw1000_0, 0);
     /* Set Lipo charger to 1A, (charge + used = 1A) */
-    dw1000_gpio_init_out(dw1000_0, 2, 1);
-    dw1000_gpio_init_out(dw1000_0, 3, 1);
+    hal_config_lipo_charger(1000);
 #endif
     return 0;
+}
+
+void
+hal_config_lipo_charger(int ma)
+{
+#if MYNEWT_VAL(DW1000_DEVICE_0)
+    dw1000_gpio_config_leds(dw1000_0, 0);
+    int A=0,B=0;
+    if (ma < 500) {
+        A=B=0;
+    } else if (ma<600) {
+        A=1;
+    } else if (ma>999) {
+        A=B=1;
+    }
+    dw1000_gpio_init_out(dw1000_0, 0, A);
+    dw1000_gpio_init_out(dw1000_0, 1, B);
+#endif
 }
 
 void hal_bsp_init(void)

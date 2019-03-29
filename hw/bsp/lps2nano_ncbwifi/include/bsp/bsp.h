@@ -67,6 +67,7 @@ extern uint8_t _ram_start;
 int16_t hal_bsp_read_battery_voltage();
 int16_t hal_bsp_read_usb_voltage();
 void hal_bsp_esp_bypass(int enable);
+void hal_config_lipo_charger(int ma);
 
 #ifdef __cplusplus
 }
