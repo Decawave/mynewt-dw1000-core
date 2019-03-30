@@ -80,11 +80,11 @@ typedef union {
     //! Frame format of ccp blink frame.
     struct _ccp_blink_frame_t{
         struct _ieee_blink_frame_t;
+        uint16_t short_address;                 //!< Short Address
         uint32_t transmission_interval;         //!< Transmission interval
         ccp_timestamp_t transmission_timestamp; //!< Transmission timestamp
         uint8_t rpt_count;                      //!< Repeat level
         uint8_t rpt_max;                        //!< Repeat max level
-        uint8_t superframe_mode;                //!< UNUSED
     }__attribute__((__packed__, aligned(1)));
     uint8_t array[sizeof(struct _ccp_blink_frame_t)];
 }ccp_blink_frame_t;
@@ -119,14 +119,14 @@ typedef enum _dw1000_ccp_role_t{
 }dw1000_ccp_role_t;
 
 //! Callback for fetching clock source tof compensation
-typedef uint32_t (*dw1000_ccp_tof_compensation_cb_t)(uint64_t euid);
+typedef uint32_t (*dw1000_ccp_tof_compensation_cb_t)(uint64_t euid, uint16_t short_addr);
 
 //! ccp config parameters.  
 typedef struct _dw1000_ccp_config_t{
     uint16_t postprocess:1;           //!< CCP postprocess
     uint16_t fs_xtalt_autotune:1;     //!< Autotune XTALT to Clock Master
     uint16_t role:4;                  //!< dw1000_ccp_role_t
-    uint32_t tx_holdoff_dly;          //!< Relay nodes holdoff
+    uint16_t tx_holdoff_dly;          //!< Relay nodes holdoff
 }dw1000_ccp_config_t;
 
 //! ccp instance parameters.

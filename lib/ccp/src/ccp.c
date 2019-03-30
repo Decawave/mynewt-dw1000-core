@@ -212,10 +212,16 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
     dw1000_ccp_instance_t * ccp = inst->ccp; 
 
     STATS_INC(inst->ccp->stat, slave_cnt);
-    /* TODO: Adjust using WCS? */
+#if MYNEWT_VAL(WCS_ENABLED)
+    wcs_instance_t * wcs = ccp->wcs;
+    uint64_t dx_time = ccp->local_epoch +
+        (uint64_t) roundf((1.0l + wcs->skew) * (double)((uint64_t)ccp->period << 16)) -
+        ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&inst->attrib))) << 16);
+#else
     uint64_t dx_time = ccp->local_epoch 
-            + ((uint64_t)inst->ccp->period << 16) 
-            - ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&inst->attrib))) << 16);
+             + ((uint64_t)inst->ccp->period << 16)
+             - ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&inst->attrib))) << 16);
+#endif
 
     uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ccp_blink_frame_t)) 
                         + MYNEWT_VAL(XTALT_GUARD);
@@ -339,7 +345,7 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes){
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED)
         .fs_xtalt_autotune = true,
 #endif
-        .tx_holdoff_dly = 0x300,
+        .tx_holdoff_dly = MYNEWT_VAL(CCP_RPT_HOLDOFF_DLY),
     };
 
     os_error_t err = os_sem_init(&inst->ccp->sem, 0x1); 
@@ -561,7 +567,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
     /* Compensate for time of flight */
     if (inst->ccp->tof_comp_cb) {
-        ccp->local_epoch -= inst->ccp->tof_comp_cb(frame->long_address);
+        ccp->local_epoch -= inst->ccp->tof_comp_cb(frame->euid, frame->short_address);
         frame->reception_timestamp = ccp->local_epoch;
     }
 
@@ -575,6 +581,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         /* TODO: Probably compensate for skew relative master when correcting local ts */
         ccp->local_epoch = (ccp->local_epoch - (repeat_dly << 16)) & 0x0FFFFFFFFFFUL;
         frame->reception_timestamp = ccp->local_epoch;
+        /* master_interval and transmission_interval are expressed as dwt_usecs */
         ccp->os_epoch -= os_cputime_usecs_to_ticks(master_interval - frame->transmission_interval);
     }
 
@@ -582,7 +589,8 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     if (ccp->config.role == CCP_ROLE_RELAY && ccp->status.valid && frame->rpt_count < frame->rpt_max) {
         ccp_frame_t tx_frame;
         memcpy(tx_frame.array, frame->array, sizeof(ccp_frame_t));
-
+        tx_frame.euid = inst->euid;
+        tx_frame.short_address = inst->my_short_address;
         tx_frame.rpt_count++;
         uint64_t tx_timestamp = inst->rxtimestamp + ((uint64_t)inst->ccp->config.tx_holdoff_dly<<16);
         tx_timestamp &= 0x0FFFFFFFFFFUL;
@@ -596,7 +604,6 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 #else
         tx_frame.transmission_timestamp.timestamp = frame->transmission_timestamp.timestamp + tx_timestamp - frame->reception_timestamp;
 #endif
-        tx_frame.long_address = inst->euid;
         /* TODO: losing precision here on the master's timestamp */
         tx_frame.transmission_interval = frame->transmission_interval - ((tx_frame.transmission_timestamp.lo - frame->transmission_timestamp.lo)>>16);
 
@@ -783,6 +790,7 @@ dw1000_ccp_send(struct _dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode)
     
     frame->seq_num = ++ccp->seq_num;
     frame->euid = inst->euid;
+    frame->short_address = inst->my_short_address;
     frame->transmission_interval = inst->ccp->period;
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(ccp_blink_frame_t));
