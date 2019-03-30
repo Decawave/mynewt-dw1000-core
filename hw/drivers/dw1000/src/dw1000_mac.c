@@ -285,7 +285,7 @@ struct _dw1000_dev_status_t dw1000_mac_config(struct _dw1000_dev_instance_t * in
     }
 
     inst->sys_cfg_reg &= ~SYS_CFG_PHR_MODE_11;
-    inst->sys_cfg_reg |= (SYS_CFG_PHR_MODE_11 & (config->rx.phrMode << SYS_CFG_PHR_MODE_SHFT));
+    inst->sys_cfg_reg |= (SYS_CFG_PHR_MODE_11 & (((uint32_t)config->rx.phrMode) << SYS_CFG_PHR_MODE_SHFT));
     
     if (inst->config.rxauto_enable) 
         inst->sys_cfg_reg |=SYS_CFG_RXAUTR; 
@@ -347,19 +347,19 @@ struct _dw1000_dev_status_t dw1000_mac_config(struct _dw1000_dev_instance_t * in
         nsSfd_result = 3 ;
         useDWnsSFD = 1 ;
     }
-    uint32_t regval =  (CHAN_CTRL_TX_CHAN_MASK & (chan << CHAN_CTRL_TX_CHAN_SHIFT)) | // Transmit Channel
-              (CHAN_CTRL_RX_CHAN_MASK & (chan << CHAN_CTRL_RX_CHAN_SHIFT)) | // Receive Channel
-              (CHAN_CTRL_RXFPRF_MASK & (config->prf << CHAN_CTRL_RXFPRF_SHIFT)) | // RX PRF
-              ((CHAN_CTRL_TNSSFD|CHAN_CTRL_RNSSFD) & (nsSfd_result << CHAN_CTRL_TNSSFD_SHIFT)) | // nsSFD enable RX&TX
-              (CHAN_CTRL_DWSFD & (useDWnsSFD << CHAN_CTRL_DWSFD_SHIFT)) | // Use DW nsSFD
-              (CHAN_CTRL_TX_PCOD_MASK & (config->tx.preambleCodeIndex << CHAN_CTRL_TX_PCOD_SHIFT)) | // TX Preamble Code
-              (CHAN_CTRL_RX_PCOD_MASK & (config->rx.preambleCodeIndex << CHAN_CTRL_RX_PCOD_SHIFT)) ; // RX Preamble Code
+    uint32_t regval =  (CHAN_CTRL_TX_CHAN_MASK & (((uint32_t)chan) << CHAN_CTRL_TX_CHAN_SHIFT)) |          // Transmit Channel
+        (CHAN_CTRL_RX_CHAN_MASK & (((uint32_t)chan) << CHAN_CTRL_RX_CHAN_SHIFT)) |                         // Receive Channel
+        (CHAN_CTRL_RXFPRF_MASK & (((uint32_t)config->prf) << CHAN_CTRL_RXFPRF_SHIFT)) |                    // RX PRF
+        ((CHAN_CTRL_TNSSFD|CHAN_CTRL_RNSSFD) & (((uint32_t)nsSfd_result) << CHAN_CTRL_TNSSFD_SHIFT)) |     // nsSFD enable RX&TX
+        (CHAN_CTRL_DWSFD & (((uint32_t)useDWnsSFD) << CHAN_CTRL_DWSFD_SHIFT)) |                            // Use DW nsSFD
+        (CHAN_CTRL_TX_PCOD_MASK & (((uint32_t)config->tx.preambleCodeIndex) << CHAN_CTRL_TX_PCOD_SHIFT)) | // TX Preamble Code
+        (CHAN_CTRL_RX_PCOD_MASK & (((uint32_t)config->rx.preambleCodeIndex) << CHAN_CTRL_RX_PCOD_SHIFT)) ; // RX Preamble Code
 
     dw1000_write_reg(inst, CHAN_CTRL_ID, 0, regval, sizeof(uint32_t)) ;
 
     /* Set up TX Preamble Size, PRF and Data Rate */
-    inst->tx_fctrl = ((config->tx.preambleLength | config->prf) << TX_FCTRL_TXPRF_SHFT) |
-        (config->dataRate << TX_FCTRL_TXBR_SHFT);
+    inst->tx_fctrl = (((uint32_t)(config->tx.preambleLength | config->prf)) << TX_FCTRL_TXPRF_SHFT) |
+        (((uint32_t)config->dataRate) << TX_FCTRL_TXBR_SHFT);
     dw1000_write_reg(inst, TX_FCTRL_ID, 0, inst->tx_fctrl, sizeof(uint32_t));
     /* The SFD transmit pattern is initialised by the DW1000 upon a user TX request,
      * but (due to an IC issue) it is not done for an auto-ACK TX.
@@ -518,7 +518,7 @@ inline void dw1000_write_tx_fctrl(struct _dw1000_dev_instance_t * inst, uint16_t
     assert(err == OS_OK);
 
     // Write the frame length to the TX frame control register
-    uint32_t tx_fctrl_reg = inst->tx_fctrl | (txFrameLength + 2)  | (txBufferOffset << TX_FCTRL_TXBOFFS_SHFT);
+    uint32_t tx_fctrl_reg = inst->tx_fctrl | (txFrameLength + 2)  | (((uint32_t)txBufferOffset) << TX_FCTRL_TXBOFFS_SHFT);
     dw1000_write_reg(inst, TX_FCTRL_ID, 0, tx_fctrl_reg, sizeof(uint32_t));
  
     err = os_mutex_release(&inst->mutex); 

@@ -336,7 +336,7 @@ retry:
         inst->my_short_address = MYNEWT_VAL(DW1000_DEVICE_ID_2);
 #endif
     }
-    inst->my_long_address = ((uint64_t) inst->lotID << 32) + inst->partID;
+    inst->my_long_address = (((uint64_t)inst->lotID) << 32) + inst->partID;
 
     dw1000_set_panid(inst,inst->PANID);
     dw1000_mac_init(inst, NULL);
