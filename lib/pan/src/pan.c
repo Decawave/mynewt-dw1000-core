@@ -459,8 +459,10 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         os_eventq_put(&inst->eventq, &pan->pan_callout_postprocess.c_ev);
 
     /* Release sem */
-    os_error_t err = os_sem_release(&pan->sem);
-    assert(err == OS_OK);
+    if (os_sem_get_count(&inst->pan->sem) == 0) {
+        os_error_t err = os_sem_release(&pan->sem);
+        assert(err == OS_OK);
+    }
     return true;
 }
 
