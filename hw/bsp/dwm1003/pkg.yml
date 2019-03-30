@@ -39,17 +39,8 @@ pkg.deps:
     - '@apache-mynewt-core/kernel/os'
     - '@apache-mynewt-core/libc/baselibc'
 
-pkg.deps.BLE_DEVICE:
-    - '@apache-mynewt-core/hw/drivers/nimble/nrf52'
-
-pkg.deps.UART_0:
-    - '@apache-mynewt-core/hw/drivers/uart/uart_hal'
-
-pkg.deps.UART_1:
-    - 'hw/drivers/uart/uart_bitbang'
-
-pkg.deps.PWM:
-    - '@mynewt_nordic/hw/drivers/pwm/pwm_nrf52'
+pkg.deps.UARTBB_0:
+    - "@apache-mynewt-core/hw/drivers/uart/uart_bitbang"
 
 pkg.deps.DW1000_DEVICE_0:
     - '@mynewt-dw1000-core/hw/drivers/dw1000'
