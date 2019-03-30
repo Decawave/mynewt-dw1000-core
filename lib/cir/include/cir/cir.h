@@ -52,7 +52,7 @@ typedef union{
 typedef struct _cir_t{
     uint8_t dummy;  //Errata
     struct _cir_complex_t array[MYNEWT_VAL(CIR_SIZE)]; 
-}cir_t;
+} __attribute__((packed, aligned(1))) cir_t;
 
 typedef struct _pmem_t{
     uint8_t dummy;  //Errata
