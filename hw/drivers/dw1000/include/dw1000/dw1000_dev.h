@@ -277,7 +277,9 @@ typedef struct _dw1000_dev_instance_t{
         uint8_t fctrl_array[sizeof(uint16_t)];  //!< Endianness safe interface
     };
 
+#if MYNEWT_VAL(DW1000_MAC_STATS)
     STATS_SECT_DECL(mac_stat_section) stat;
+#endif
     uint16_t frame_len;            //!< Reported frame length
     uint8_t spi_num;               //!< SPI number
     uint8_t irq_pin;               //!< Interrupt request pin

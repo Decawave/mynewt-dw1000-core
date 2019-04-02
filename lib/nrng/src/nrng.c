@@ -61,6 +61,7 @@ static dw1000_rng_config_t g_config = {
     .tx_guard_delay = MYNEWT_VAL(NRNG_TX_GUARD_DELAY)
 };
 
+#if MYNEWT_VAL(NRNG_STATS)
 STATS_NAME_START(nrng_stat_section)
     STATS_NAME(nrng_stat_section, nrng_request)
     STATS_NAME(nrng_stat_section, nrng_listen)
@@ -74,7 +75,7 @@ STATS_NAME_START(nrng_stat_section)
     STATS_NAME(nrng_stat_section, start_tx_error)
     STATS_NAME(nrng_stat_section, reset)
 STATS_NAME_END(nrng_stat_section)
-
+#endif
 
 dw1000_nrng_instance_t *
 dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1000_nrng_device_type_t type, uint16_t nframes, uint16_t nnodes){
@@ -108,6 +109,8 @@ dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1
     };
     dw1000_mac_append_interface(inst, &inst->nrng->cbs);
 #endif
+
+#if MYNEWT_VAL(NRNG_STATS)
     int rc = stats_init(
                     STATS_HDR(inst->nrng->stat),
                     STATS_SIZE_INIT_PARMS(inst->nrng->stat, STATS_SIZE_32),
@@ -123,7 +126,7 @@ dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1
         rc |= stats_register("nrng1", STATS_HDR(inst->nrng->stat));
 #endif
     assert(rc == 0);
-
+#endif
     return nrng;
 }
 
@@ -264,8 +267,9 @@ dw1000_nrng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config){
 }
 
 void nrng_pkg_init(void){
-
+#if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"nrng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+#endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
     dw1000_nrng_init(hal_dw1000_inst(0), &g_config, (dw1000_nrng_device_type_t) MYNEWT_VAL(NRNG_DEVICE_TYPE), MYNEWT_VAL(NRNG_NFRAMES), MYNEWT_VAL(NRNG_NNODES));
@@ -316,7 +320,7 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_r
 
     os_error_t err = os_sem_pend(&nrng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
-    STATS_INC(nrng->stat, nrng_request);
+    NRNG_STATS_INC(nrng_request);
 
     dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, code);
     nrng->nnodes = NumberOfBits(slot_mask); // Number of nodes involved in request
@@ -362,7 +366,7 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_r
     //dw1000_set_dblrxbuff(inst, true);  
     
     if (dw1000_start_tx(inst).start_tx_error){
-        STATS_INC(nrng->stat, start_tx_error);
+        NRNG_STATS_INC(start_tx_error);
         if (os_sem_get_count(&nrng->sem) == 0) 
             err = os_sem_release(&nrng->sem);
             assert(err == OS_OK);
@@ -397,11 +401,11 @@ dw1000_nrng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     cir_enable(inst->cir, true);
 #endif 
     
-    STATS_INC(inst->nrng->stat, nrng_listen);
+    NRNG_STATS_INC(nrng_listen);
     if(dw1000_start_rx(inst).start_rx_error){
         err = os_sem_release(&nrng->sem);
         assert(err == OS_OK);
-        STATS_INC(inst->nrng->stat, start_rx_error);
+        NRNG_STATS_INC(start_rx_error);
     }
     if (mode == DWT_BLOCKING){
         err = os_sem_pend(&nrng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 

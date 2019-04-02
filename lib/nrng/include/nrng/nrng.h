@@ -41,7 +41,8 @@ extern "C" {
 #include <rng/slots.h>
 #endif
 
-STATS_SECT_START(nrng_stat_section)
+#if MYNEWT_VAL(NRNG_STATS)
+    STATS_SECT_START(nrng_stat_section)
     STATS_SECT_ENTRY(nrng_request)
     STATS_SECT_ENTRY(nrng_listen)
     STATS_SECT_ENTRY(rx_complete)
@@ -55,6 +56,10 @@ STATS_SECT_START(nrng_stat_section)
     STATS_SECT_ENTRY(reset)
 STATS_SECT_END
 
+#define NRNG_STATS_INC(__X) STATS_INC(inst->nrng->stat, __X)
+#else
+#define NRNG_STATS_INC(__X) {}
+#endif
 
 typedef enum _dw1000_nrng_device_type_t{
     DWT_NRNG_INITIATOR,
@@ -107,7 +112,9 @@ typedef union {
 
 typedef struct _dw1000_nrng_instance_t{
     struct _dw1000_dev_instance_t * parent;
+#if MYNEWT_VAL(NRNG_STATS)
     STATS_SECT_DECL(nrng_stat_section) stat; //!< Stats instance
+#endif
     uint16_t nframes;
     uint16_t nnodes;
     uint16_t slot_mask;

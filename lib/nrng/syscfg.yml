@@ -26,4 +26,7 @@ syscfg.defs:
       NRNG_VERBOSE:
         description: 'Show debug output from postprocess'
         value: 0
+      NRNG_STATS:
+        description: 'Enable statistics for the nrng module'
+        value: 1
   

@@ -31,7 +31,10 @@ syscfg.defs:
     CCP_RPT_HOLDOFF_DLY:
         description: >
             Holdoff dly when repeating CCP packet.
-        value: ((uint16_t)0x300)
+        value: ((uint16_t)0x380)
+    CCP_STATS:
+        description: 'Enable statistics for the CCP module'
+        value: 1
 
 
        

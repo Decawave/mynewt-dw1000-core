@@ -48,6 +48,7 @@ extern "C" {
 #include <dsp/polyval.h>
 #endif
 
+#if MYNEWT_VAL(CCP_STATS)
 STATS_SECT_START(ccp_stat_section)
     STATS_SECT_ENTRY(master_cnt)
     STATS_SECT_ENTRY(slave_cnt)
@@ -65,6 +66,7 @@ STATS_SECT_START(ccp_stat_section)
     STATS_SECT_ENTRY(rx_timeout)
     STATS_SECT_ENTRY(reset)
 STATS_SECT_END
+#endif
 
 typedef union _ccp_timestamp_t{
     struct {
@@ -132,7 +134,9 @@ typedef struct _dw1000_ccp_config_t{
 //! ccp instance parameters.
 typedef struct _dw1000_ccp_instance_t{
     struct _dw1000_dev_instance_t * parent;     //!< Pointer to _dw1000_dev_instance_t
+#if MYNEWT_VAL(CCP_STATS)
     STATS_SECT_DECL(ccp_stat_section) stat;     //!< Stats instance
+#endif
 #if MYNEWT_VAL(WCS_ENABLED)
     struct _wcs_instance_t * wcs;               //!< Wireless clock calibration 
 #endif

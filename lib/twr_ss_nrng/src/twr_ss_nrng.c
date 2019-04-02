@@ -85,7 +85,9 @@ static dw1000_rng_config_t g_config = {
  * @return void
  */
 void twr_ss_nrng_pkg_init(void){
+#if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"ss_nrng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+#endif
     dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs);
 }
 
@@ -131,7 +133,7 @@ rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     
     dw1000_nrng_instance_t * nrng = inst->nrng;
     if(os_sem_get_count(&nrng->sem) == 0){
-        STATS_INC(inst->nrng->stat, rx_error);
+        NRNG_STATS_INC(rx_error);
         os_error_t err = os_sem_release(&nrng->sem);
         assert(err == OS_OK);
         return true;
@@ -155,7 +157,7 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         return false;
 
     if(os_sem_get_count(&nrng->sem) == 0){
-        STATS_INC(inst->nrng->stat, rx_timeout);
+        NRNG_STATS_INC(rx_timeout);
         // In the case of a NRNG timeout is used to mark the end of the request 
         // and is used to call the completion callback  
         if(!(SLIST_EMPTY(&inst->interface_cbs))){
@@ -183,7 +185,7 @@ reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     if(os_sem_get_count(&inst->nrng->sem) == 0){
         os_error_t err = os_sem_release(&inst->nrng->sem);  
         assert(err == OS_OK);
-        STATS_INC(inst->nrng->stat, reset);
+        NRNG_STATS_INC(reset);
         return true;
     }
     else 
@@ -208,7 +210,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     
     if(os_sem_get_count(&nrng->sem) == 1){ 
         // unsolicited inbound
-        STATS_INC(nrng->stat, rx_unsolicited);
+        NRNG_STATS_INC(rx_unsolicited);
         return false;
     }
 
@@ -218,7 +220,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if (_frame->dst_address != inst->my_short_address && _frame->dst_address != BROADCAST_ADDRESS)
         return true;
    
-    STATS_INC(inst->nrng->stat, rx_complete);
+    NRNG_STATS_INC(rx_complete);
 
     switch(_frame->code){
         case DWT_SS_TWR_NRNG:
@@ -322,7 +324,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = inst->carrier_integrator;
-#endif   
+#endif
                 if(idx == nrng->nnodes-1){
                      dw1000_set_rx_timeout(inst, 1); // Triger timeout event
                 }else{

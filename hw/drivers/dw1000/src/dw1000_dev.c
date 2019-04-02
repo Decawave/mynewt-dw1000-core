@@ -245,7 +245,9 @@ dw1000_softreset(dw1000_dev_instance_t * inst)
 int 
 dw1000_dev_init(struct os_dev *odev, void *arg)
 {
+#if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_dev_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+#endif
     struct dw1000_dev_cfg *cfg = (struct dw1000_dev_cfg*)arg;
     dw1000_dev_instance_t *inst = (dw1000_dev_instance_t *)odev;
     
