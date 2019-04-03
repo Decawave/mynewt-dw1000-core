@@ -229,7 +229,6 @@ ot_init(dw1000_dev_instance_t * inst){
 	
     ot_global_inst = inst->ot;
     
-    nrf5AlarmInit(inst);
     RadioInit(inst);
 	
     return inst->ot;
