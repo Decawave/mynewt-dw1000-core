@@ -99,6 +99,7 @@ typedef union {
 typedef union {
     struct _nrng_frame_t{
         struct _nrng_final_frame_t;
+        struct _dw1000_dev_rxdiag_t diag;
 #if MYNEWT_VAL(TWR_DS_EXT_NRNG_ENABLED)
         union {
             struct _twr_data_t;                            //!< Structure of twr_data

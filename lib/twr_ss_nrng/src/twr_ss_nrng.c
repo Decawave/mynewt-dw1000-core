@@ -325,6 +325,9 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 #else
                 frame->carrier_integrator  = inst->carrier_integrator;
 #endif
+                if(inst->config.rxdiag_enable) {
+                    memcpy(&frame->diag, &inst->rxdiag, sizeof(struct _dw1000_dev_rxdiag_t));
+                }
                 if(idx == nrng->nnodes-1){
                      dw1000_set_rx_timeout(inst, 1); // Triger timeout event
                 }else{
