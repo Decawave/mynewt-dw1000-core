@@ -882,15 +882,15 @@ dw1000_ccp_start(struct _dw1000_dev_instance_t * inst, dw1000_ccp_role_t role){
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes]; 
     ccp->config.role = role;
 
+    /* Setup CCP to send/listen for the first packet ASAP */
+    uint64_t ts = (dw1000_read_systime(inst) - (((uint64_t)ccp->period)<<16))&0xFFFFFFFFFFULL;
+    ts += ((uint64_t)ccp->config.tx_holdoff_dly)<<16;
+
     if (ccp->config.role == CCP_ROLE_MASTER){
-        ccp->local_epoch = frame->transmission_timestamp.lo = dw1000_read_systime(inst);
+        ccp->local_epoch = frame->transmission_timestamp.lo = ts;
         frame->transmission_timestamp.hi = 0;
-    }
-    else {
-        ccp->local_epoch = frame->reception_timestamp = dw1000_read_systime(inst);
-        /* Temporarily override period to start listening for the first
-         * ccp packet sooner */
-        ccp->period = 5000;
+    } else {
+        ccp->local_epoch = frame->reception_timestamp = ts;
     }
 
     ccp_timer_init(inst, role);
