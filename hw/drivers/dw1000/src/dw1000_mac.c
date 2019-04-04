@@ -581,6 +581,13 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
     }else{
         dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sys_ctrl_reg, sizeof(uint8_t));
         inst->status.start_tx_error = 0;
+
+        /* If dw1000 is instructed to sleep after tx, release
+         * the sem as there will not be a TXDONE irq */
+        if(inst->control.sleep_after_tx) {
+            inst->status.sleeping = 1;
+            err = os_sem_release(&inst->tx_sem);
+        }
     }
 
     inst->control = (dw1000_dev_control_t){
@@ -1111,8 +1118,8 @@ dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
                      inst->task_prio, OS_WAIT_FOREVER,
                      inst->task_stack,
                      DW1000_DEV_TASK_STACK_SZ);
-
-        hal_gpio_irq_init(inst->irq_pin, dw1000_irq, inst, HAL_GPIO_TRIG_RISING, HAL_GPIO_PULL_UP);
+        /* Enable pull-down on IRQ to not get spurious interrupts when dw1000 is sleeping */
+        hal_gpio_irq_init(inst->irq_pin, dw1000_irq, inst, HAL_GPIO_TRIG_RISING, HAL_GPIO_PULL_DOWN);
         hal_gpio_irq_enable(inst->irq_pin);
     }    
     dw1000_phy_interrupt_mask(inst,          SYS_MASK_MCPLOCK | SYS_MASK_MRXDFR | SYS_MASK_MLDEERR |  SYS_MASK_MTXFRS  | SYS_MASK_ALL_RX_TO   | SYS_MASK_ALL_RX_ERR | SYS_MASK_MTXBERR, false);
