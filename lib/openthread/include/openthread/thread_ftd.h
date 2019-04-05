@@ -37,7 +37,7 @@
 
 #include <openthread/link.h>
 #include <openthread/message.h>
-#include <openthread/types.h>
+#include <openthread/thread.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,6 +51,49 @@ extern "C" {
  */
 
 /**
+ * This structure holds diagnostic information for a Thread Child
+ *
+ * `mFrameErrorRate` and `mMessageErrorRate` require `OPENTHREAD_CONFIG_ENABLE_TX_ERROR_RATE_TRACKING` feature to be
+ * enabled.
+ *
+ */
+typedef struct
+{
+    otExtAddress mExtAddress;            ///< IEEE 802.15.4 Extended Address
+    uint32_t     mTimeout;               ///< Timeout
+    uint32_t     mAge;                   ///< Time last heard
+    uint16_t     mRloc16;                ///< RLOC16
+    uint16_t     mChildId;               ///< Child ID
+    uint8_t      mNetworkDataVersion;    ///< Network Data Version
+    uint8_t      mLinkQualityIn;         ///< Link Quality In
+    int8_t       mAverageRssi;           ///< Average RSSI
+    int8_t       mLastRssi;              ///< Last observed RSSI
+    uint16_t     mFrameErrorRate;        ///< Frame error rate (0xffff->100%). Requires error tracking feature.
+    uint16_t     mMessageErrorRate;      ///< (IPv6) msg error rate (0xffff->100%). Requires error tracking feature.
+    bool         mRxOnWhenIdle : 1;      ///< rx-on-when-idle
+    bool         mSecureDataRequest : 1; ///< Secure Data Requests
+    bool         mFullThreadDevice : 1;  ///< Full Thread Device
+    bool         mFullNetworkData : 1;   ///< Full Network Data
+    bool         mIsStateRestoring : 1;  ///< Is in restoring state
+} otChildInfo;
+
+#define OT_CHILD_IP6_ADDRESS_ITERATOR_INIT 0 ///< Initializer for otChildIP6AddressIterator
+
+typedef uint16_t otChildIp6AddressIterator; ///< Used to iterate through IPv6 addresses of a Thread Child entry.
+
+/**
+ * This structure represents an EID cache entry.
+ *
+ */
+typedef struct otEidCacheEntry
+{
+    otIp6Address   mTarget;    ///< Target
+    otShortAddress mRloc16;    ///< RLOC16
+    uint8_t        mAge;       ///< Age (order of use, 0 indicates most recently used entry)
+    bool           mValid : 1; ///< Indicates whether or not the cache entry is valid
+} otEidCacheEntry;
+
+/**
  * Get the maximum number of children currently allowed.
  *
  * @param[in]  aInstance A pointer to an OpenThread instance.
@@ -58,14 +101,14 @@ extern "C" {
  * @returns The maximum number of children currently allowed.
  *
  * @sa otThreadSetMaxAllowedChildren
+ *
  */
 OTAPI uint8_t OTCALL otThreadGetMaxAllowedChildren(otInstance *aInstance);
 
 /**
  * Set the maximum number of children currently allowed.
  *
- * This parameter can only be set when Thread protocol operation
- * has been stopped.
+ * This parameter can only be set when Thread protocol operation has been stopped.
  *
  * @param[in]  aInstance     A pointer to an OpenThread instance.
  * @param[in]  aMaxChildren  The maximum allowed children.
@@ -75,6 +118,7 @@ OTAPI uint8_t OTCALL otThreadGetMaxAllowedChildren(otInstance *aInstance);
  * @retval  OT_ERROR_INVALID_STATE  If Thread isn't stopped.
  *
  * @sa otThreadGetMaxAllowedChildren, otThreadStop
+ *
  */
 OTAPI otError OTCALL otThreadSetMaxAllowedChildren(otInstance *aInstance, uint8_t aMaxChildren);
 
@@ -101,9 +145,8 @@ OTAPI void OTCALL otThreadSetRouterRoleEnabled(otInstance *aInstance, bool aEnab
 /**
  * Set the preferred Router Id.
  *
- * Upon becoming a router/leader the node attempts to use this Router Id. If the
- * preferred Router Id is not set or if it can not be used, a randomly generated
- * router id is picked. This property can be set only when the device role is
+ * Upon becoming a router/leader the node attempts to use this Router Id. If the preferred Router Id is not set or if
+ * it can not be used, a randomly generated router id is picked. This property can be set only when the device role is
  * either detached or disabled.
  *
  * @param[in]  aInstance    A pointer to an OpenThread instance.
@@ -163,11 +206,12 @@ OTAPI void OTCALL otThreadSetLocalLeaderPartitionId(otInstance *aInstance, uint3
  * @returns The Joiner UDP Port number.
  *
  * @sa otThreadSetJoinerUdpPort
+ *
  */
 OTAPI uint16_t OTCALL otThreadGetJoinerUdpPort(otInstance *aInstance);
 
 /**
- * Set the Joiner UDP Port
+ * Set the Joiner UDP Port.
  *
  * @param[in]  aInstance       A pointer to an OpenThread instance.
  * @param[in]  aJoinerUdpPort  The Joiner UDP Port number.
@@ -175,11 +219,12 @@ OTAPI uint16_t OTCALL otThreadGetJoinerUdpPort(otInstance *aInstance);
  * @retval  OT_ERROR_NONE  Successfully set the Joiner UDP Port.
  *
  * @sa otThreadGetJoinerUdpPort
+ *
  */
 OTAPI otError OTCALL otThreadSetJoinerUdpPort(otInstance *aInstance, uint16_t aJoinerUdpPort);
 
 /**
- * Set Steering data out of band
+ * Set Steering data out of band.
  *
  * Configuration option `OPENTHREAD_CONFIG_ENABLE_STEERING_DATA_SET_OOB` should be set to enable setting of steering
  * data out of band. Otherwise calling this function does nothing and it returns `OT_ERROR_DISABLED_FEATURE`
@@ -195,7 +240,7 @@ OTAPI otError OTCALL otThreadSetJoinerUdpPort(otInstance *aInstance, uint16_t aJ
  * @retval  OT_ERROR_DISABLED_FEATURE  Feature is disabled, not capable of setting steering data out of band.
  *
  */
-otError otThreadSetSteeringData(otInstance *aInstance, otExtAddress *aExtAddress);
+otError otThreadSetSteeringData(otInstance *aInstance, const otExtAddress *aExtAddress);
 
 /**
  * Get the CONTEXT_ID_REUSE_DELAY parameter used in the Leader role.
@@ -205,6 +250,7 @@ otError otThreadSetSteeringData(otInstance *aInstance, otExtAddress *aExtAddress
  * @returns The CONTEXT_ID_REUSE_DELAY value.
  *
  * @sa otThreadSetContextIdReuseDelay
+ *
  */
 OTAPI uint32_t OTCALL otThreadGetContextIdReuseDelay(otInstance *aInstance);
 
@@ -215,6 +261,7 @@ OTAPI uint32_t OTCALL otThreadGetContextIdReuseDelay(otInstance *aInstance);
  * @param[in]  aDelay    The CONTEXT_ID_REUSE_DELAY value.
  *
  * @sa otThreadGetContextIdReuseDelay
+ *
  */
 OTAPI void OTCALL otThreadSetContextIdReuseDelay(otInstance *aInstance, uint32_t aDelay);
 
@@ -226,6 +273,7 @@ OTAPI void OTCALL otThreadSetContextIdReuseDelay(otInstance *aInstance, uint32_t
  * @returns The NETWORK_ID_TIMEOUT value.
  *
  * @sa otThreadSetNetworkIdTimeout
+ *
  */
 OTAPI uint8_t OTCALL otThreadGetNetworkIdTimeout(otInstance *aInstance);
 
@@ -236,6 +284,7 @@ OTAPI uint8_t OTCALL otThreadGetNetworkIdTimeout(otInstance *aInstance);
  * @param[in]  aTimeout  The NETWORK_ID_TIMEOUT value.
  *
  * @sa otThreadGetNetworkIdTimeout
+ *
  */
 OTAPI void OTCALL otThreadSetNetworkIdTimeout(otInstance *aInstance, uint8_t aTimeout);
 
@@ -247,6 +296,7 @@ OTAPI void OTCALL otThreadSetNetworkIdTimeout(otInstance *aInstance, uint8_t aTi
  * @returns The ROUTER_UPGRADE_THRESHOLD value.
  *
  * @sa otThreadSetRouterUpgradeThreshold
+ *
  */
 OTAPI uint8_t OTCALL otThreadGetRouterUpgradeThreshold(otInstance *aInstance);
 
@@ -257,6 +307,7 @@ OTAPI uint8_t OTCALL otThreadGetRouterUpgradeThreshold(otInstance *aInstance);
  * @param[in]  aThreshold  The ROUTER_UPGRADE_THRESHOLD value.
  *
  * @sa otThreadGetRouterUpgradeThreshold
+ *
  */
 OTAPI void OTCALL otThreadSetRouterUpgradeThreshold(otInstance *aInstance, uint8_t aThreshold);
 
@@ -266,7 +317,10 @@ OTAPI void OTCALL otThreadSetRouterUpgradeThreshold(otInstance *aInstance, uint8
  * @param[in]  aInstance  A pointer to an OpenThread instance.
  * @param[in]  aRouterId  The Router ID to release. Valid range is [0, 62].
  *
- * @retval OT_ERROR_NONE  Successfully released the Router ID specified by aRouterId.
+ * @retval OT_ERROR_NONE           Successfully released the router id.
+ * @retval OT_ERROR_INVALID_STATE  The device is not currently operating as a leader.
+ * @retval OT_ERROR_NOT_FOUND      The router id is not currently allocated.
+ *
  */
 OTAPI otError OTCALL otThreadReleaseRouterId(otInstance *aInstance, uint8_t aRouterId);
 
@@ -361,8 +415,29 @@ OTAPI otError OTCALL otThreadGetChildInfoById(otInstance *aInstance, uint16_t aC
  * @sa otGetMaxAllowedChildren
  *
  */
-OTAPI otError OTCALL otThreadGetChildInfoByIndex(otInstance *aInstance, uint8_t aChildIndex,
-                                                 otChildInfo *aChildInfo);
+OTAPI otError OTCALL otThreadGetChildInfoByIndex(otInstance *aInstance, uint8_t aChildIndex, otChildInfo *aChildInfo);
+
+/**
+ * This function gets the next IPv6 address (using an iterator) for a given child.
+ *
+ * @param[in]     aInstance    A pointer to an OpenThread instance.
+ * @param[in]     aChildIndex  The child index.
+ * @param[inout]  aIterator    A pointer to the iterator. On success the iterator will be updated to point to next
+ *                             entry in the list. To get the first IPv6 address the iterator should be set to
+ *                             OT_CHILD_IP6_ADDRESS_ITERATOR_INIT.
+ * @param[out]    aAddress     A pointer to an IPv6 address where the child's next address is placed (on success).
+ *
+ * @retval OT_ERROR_NONE          Successfully found the next IPv6 address (@p aAddress was successfully updated).
+ * @retval OT_ERROR_NOT_FOUND     The child has no subsequent IPv6 address entry.
+ * @retval OT_ERROR_INVALID_ARGS  @p aIterator or @p aAddress are NULL, or child at @p aChildIndex is not valid.
+ *
+ * @sa otThreadGetChildInfoByIndex
+ *
+ */
+otError otThreadGetChildNextIp6Address(otInstance *               aInstance,
+                                       uint8_t                    aChildIndex,
+                                       otChildIp6AddressIterator *aIterator,
+                                       otIp6Address *             aAddress);
 
 /**
  * Get the current Router ID Sequence.
@@ -370,8 +445,19 @@ OTAPI otError OTCALL otThreadGetChildInfoByIndex(otInstance *aInstance, uint8_t 
  * @param[in]  aInstance A pointer to an OpenThread instance.
  *
  * @returns The Router ID Sequence.
+ *
  */
 OTAPI uint8_t OTCALL otThreadGetRouterIdSequence(otInstance *aInstance);
+
+/**
+ * The function returns the maximum allowed router ID
+ *
+ * @param[in]   aInstance    A pointer to an OpenThread instance.
+ *
+ * @returns The maximum allowed router ID.
+ *
+ */
+OTAPI uint8_t OTCALL otThreadGetMaxRouterId(otInstance *aInstance);
 
 /**
  * The function retains diagnostic information for a given Thread Router.
@@ -379,6 +465,10 @@ OTAPI uint8_t OTCALL otThreadGetRouterIdSequence(otInstance *aInstance);
  * @param[in]   aInstance    A pointer to an OpenThread instance.
  * @param[in]   aRouterId    The router ID or RLOC16 for a given router.
  * @param[out]  aRouterInfo  A pointer to where the router information is placed.
+ *
+ * @retval OT_ERROR_NONE          Successfully retrieved the router info for given id.
+ * @retval OT_ERROR_NOT_FOUND     No router entry with the given id.
+ * @retval OT_ERROR_INVALID_ARGS  @p aRouterInfo is NULL.
  *
  */
 OTAPI otError OTCALL otThreadGetRouterInfo(otInstance *aInstance, uint16_t aRouterId, otRouterInfo *aRouterInfo);
@@ -404,6 +494,7 @@ OTAPI otError OTCALL otThreadGetEidCacheEntry(otInstance *aInstance, uint8_t aIn
  * @returns A pointer to a buffer containing the thrPSKc.
  *
  * @sa otThreadSetPSKc
+ *
  */
 OTAPI const uint8_t *OTCALL otThreadGetPSKc(otInstance *aInstance);
 
@@ -421,8 +512,76 @@ OTAPI const uint8_t *OTCALL otThreadGetPSKc(otInstance *aInstance);
  * @retval OT_ERROR_INVALID_STATE  Thread protocols are enabled.
  *
  * @sa otThreadGetPSKc
+ *
  */
 OTAPI otError OTCALL otThreadSetPSKc(otInstance *aInstance, const uint8_t *aPSKc);
+
+/**
+ * Get the assigned parent priority.
+ *
+ * @param[in]   aInstance   A pointer to an OpenThread instance.
+ *
+ * @returns The assigned parent priority value, -2 means not assigned.
+ *
+ * @sa otThreadSetParentPriority
+ *
+ */
+OTAPI int8_t OTCALL otThreadGetParentPriority(otInstance *aInstance);
+
+/**
+ * Set the parent priority.
+ *
+ * @param[in]  aInstance        A pointer to an OpenThread instance.
+ * @param[in]  aParentPriority  The parent priority value.
+ *
+ * @retval OT_ERROR_NONE           Successfully set the parent priority.
+ * @retval OT_ERROR_INVALID_ARGS   If the parent priority value is not among 1, 0, -1 and -2.
+ *
+ * @sa otThreadGetParentPriority
+ */
+OTAPI otError OTCALL otThreadSetParentPriority(otInstance *aInstance, int8_t aParentPriority);
+
+/**
+ * This enumeration defines the constants used in `otThreadChildTableCallback` to indicate whether a child is added or
+ * removed.
+ *
+ */
+typedef enum otThreadChildTableEvent {
+    OT_THREAD_CHILD_TABLE_EVENT_CHILD_ADDED,   ///< A child is being added.
+    OT_THREAD_CHILD_TABLE_EVENT_CHILD_REMOVED, ///< A child is being removed.
+} otThreadChildTableEvent;
+
+/**
+ * This function pointer is called to notify that a child is being added to or removed from child table.
+ *
+ * @param[in]  aEvent      A event flag indicating whether a child is being added or removed.
+ * @param[in]  aChildInfo  A pointer to child information structure.
+ *
+ */
+typedef void (*otThreadChildTableCallback)(otThreadChildTableEvent aEvent, const otChildInfo *aChildInfo);
+
+/**
+ * This function gets the child table callback function.
+ *
+ * @param[in] aInstance  A pointer to an OpenThread instance.
+ *
+ * @returns  The callback function pointer.
+ *
+ */
+otThreadChildTableCallback otThreadGetChildTableCallback(otInstance *aInstance);
+
+/**
+ * This function sets the child table callback function.
+ *
+ * The provided callback (if non-NULL) will be invoked when a child entry is being added/removed to/from the child
+ * table. Subsequent calls to this method will overwrite the previous callback. Note that this callback in invoked
+ * while the child table is being updated and always before the `otStateChangedCallback`.
+ *
+ * @param[in] aInstance  A pointer to an OpenThread instance.
+ * @param[in] aCallback  A pointer to callback handler function.
+ *
+ */
+void otThreadSetChildTableCallback(otInstance *aInstance, otThreadChildTableCallback aCallback);
 
 /**
  * @}
@@ -430,7 +589,7 @@ OTAPI otError OTCALL otThreadSetPSKc(otInstance *aInstance, const uint8_t *aPSKc
  */
 
 #ifdef __cplusplus
-}  // extern "C"
+} // extern "C"
 #endif
 
-#endif  // OPENTHREAD_THREAD_FTD_H_
+#endif // OPENTHREAD_THREAD_FTD_H_

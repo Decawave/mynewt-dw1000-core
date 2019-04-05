@@ -35,7 +35,7 @@
 #ifndef OPENTHREAD_DIAG_H_
 #define OPENTHREAD_DIAG_H_
 
-#include <openthread/types.h>
+#include <openthread/instance.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,23 +62,23 @@ void otDiagInit(otInstance *aInstance);
 /**
  * This function processes a factory diagnostics command line.
  *
- * @param[in]  argc  The argument counter of diagnostics command line.
- * @param[in]  argv  The argument vector of diagnostics command line.
- *
- * @returns A pointer to the output string.
+ * @param[in]   aArgCount       The argument counter of diagnostics command line.
+ * @param[in]   aArgVector      The argument vector of diagnostics command line.
+ * @param[out]  aOutput         The diagnostics execution result.
+ * @param[in]   aOutputMaxLen   The output buffer size.
  *
  */
-char *otDiagProcessCmd(int argc, char *argv[]);
+void otDiagProcessCmd(int aArgCount, char *aArgVector[], char *aOutput, size_t aOutputMaxLen);
 
 /**
  * This function processes a factory diagnostics command line.
  *
- * @param[in]  aString  A NULL-terminated string.
- *
- * @returns A pointer to the output string.
+ * @param[in]   aString         A NULL-terminated input string.
+ * @param[out]  aOutput         The diagnostics execution result.
+ * @param[in]   aOutputMaxLen   The output buffer size.
  *
  */
-char *otDiagProcessCmdLine(char *aString);
+void otDiagProcessCmdLine(const char *aString, char *aOutput, size_t aOutputMaxLen);
 
 /**
  * This function indicates whether or not the factory diagnostics mode is enabled.
@@ -94,7 +94,7 @@ bool otDiagIsEnabled(void);
  */
 
 #ifdef __cplusplus
-}  // extern "C"
+} // extern "C"
 #endif
 
-#endif  // OPENTHREAD_DIAG_H_
+#endif // OPENTHREAD_DIAG_H_

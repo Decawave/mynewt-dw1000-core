@@ -5,20 +5,15 @@
 #include <dw1000/dw1000_hal.h>
 #include "console/console.h"
 
-#include "openthread/ot_common.h"
 
-#include <openthread/types.h>
+#include <openthread/ot_common.h>
 #include <openthread/platform/uart.h>
 #include <openthread/platform/diag.h>
-#include <openthread/platform/platform.h>
-#include <openthread/platform/alarm.h>
-#include <openthread/platform/usec-alarm.h>
+#include <openthread/platform/alarm-milli.h>
 #include <openthread/platform/logging.h>
 #include <openthread/platform/radio.h>
 #include <openthread/tasklet.h>
 #include <hal/hal_flash.h>
-
-//#include <utils/code_utils.h>
 
 struct PlatformDiagCommand
 {
@@ -125,17 +120,18 @@ static void processTransmit(otInstance *aInstance, int argc, char *argv[], char 
     }
     else if (strcmp(argv[0], "stop") == 0)
     {
-        otPlatAlarmStop(aInstance);
+        otPlatAlarmMilliStop(aInstance);
         snprintf(aOutput, aOutputMaxLen, "diagnostic message transmission is stopped\r\nstatus 0x%02x\r\n", error);
         sTransmitActive = false;
     }
     else if (strcmp(argv[0], "start") == 0)
     {
-        otPlatAlarmStop(aInstance);
+        otPlatAlarmMilliStop(aInstance);
         sTransmitActive = true;
         sTxCount = sTxRequestedCount;
-        uint32_t now = otPlatAlarmGetNow();
-        otPlatAlarmStartAt(aInstance, now, sTxPeriod);
+        uint32_t now = otPlatAlarmMilliGetNow();
+        otPlatAlarmMilliStartAt(aInstance, now, sTxPeriod);
+
         snprintf(aOutput, aOutputMaxLen, "sending %ld diagnostic messages with %lu"
                  " ms interval\r\nstatus 0x%02x\r\n",
                  sTxRequestedCount, sTxPeriod, error);
@@ -242,7 +238,7 @@ void otPlatDiagRadioReceived(otInstance *aInstance, otRadioFrame *aFrame, otErro
                           message->mCnt,
                           sID,
                           message->mID,
-                          aFrame->mPower
+                          aFrame->mInfo.mRxInfo.mRssi
                          );
             }
         }
@@ -259,7 +255,7 @@ void otPlatDiagAlarmCallback(otInstance *aInstance)
 
             sTxPacket->mLength = sizeof(struct PlatformDiagMessage);
             sTxPacket->mChannel = sChannel;
-            sTxPacket->mPower = sTxPower;
+            sTxPacket->mInfo.mRxInfo.mRssi = sTxPower;
 
             sDiagMessage.mChannel = sTxPacket->mChannel;
             sDiagMessage.mID = sID;
@@ -274,13 +270,13 @@ void otPlatDiagAlarmCallback(otInstance *aInstance)
                 sTxCount--;
             }
 
-            uint32_t now = otPlatAlarmGetNow();
-            otPlatAlarmStartAt(aInstance, now, sTxPeriod);
+            uint32_t now = otPlatAlarmMilliGetNow();
+            otPlatAlarmMilliStartAt(aInstance, now, sTxPeriod);
         }
         else
         {
             sTransmitActive = false;
-            otPlatAlarmStop(aInstance);
+            otPlatAlarmMilliStop(aInstance);
             printf("Transmit done \n");
         }
     }

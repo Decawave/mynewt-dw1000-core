@@ -69,7 +69,7 @@ typedef struct _ot_instance_t{
     otInstance *sInstance;                             //!< Instance to OT stack
     ot_status_t status;                                //!< OT error status
     struct os_eventq eventq;                           //!< Structure of os events
-    os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ * 3]    //!< Stack size of each task
+    os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ * 4]    //!< Stack size of each task
         __attribute__((aligned(OS_STACK_ALIGNMENT)));
     uint8_t task_prio;                                 //!< Task priority
     struct os_task task_str;                           //!< Structure for task
@@ -84,6 +84,7 @@ void
 ot_free(ot_instance_t * inst);
 
 void RadioInit(dw1000_dev_instance_t* inst);
+void PlatformInit(dw1000_dev_instance_t* inst);
 
 #ifdef __cplusplus
 }

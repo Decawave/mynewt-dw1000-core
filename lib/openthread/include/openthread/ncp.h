@@ -32,10 +32,13 @@
  *  This file defines the top-level functions for the OpenThread NCP module.
  */
 
-#ifndef NCP_H_
-#define NCP_H_
+#ifndef OPENTHREAD_NCP_H_
+#define OPENTHREAD_NCP_H_
 
-#include <openthread/types.h>
+#include <stdarg.h>
+
+#include <openthread/platform/logging.h>
+#include <openthread/platform/radio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,14 +83,56 @@ void otNcpInit(otInstance *aInstance);
  * @retval OT_ERROR_BUSY         There are not enough resources to complete this
  *                               request. This is usually a temporary condition.
  * @retval OT_ERROR_INVALID_ARGS The given aStreamId was invalid.
-*/
+ */
 otError otNcpStreamWrite(int aStreamId, const uint8_t *aDataPtr, int aDataLen);
 
+/**
+ * Writes OpenThread Log using `otNcpStreamWrite`.
+ *
+ * @param[in]  aLogLevel   The log level.
+ * @param[in]  aLogRegion  The log region.
+ * @param[in]  aFormat     A pointer to the format string.
+ * @param[in]  aArgs       va_list matching aFormat.
+ */
+void otNcpPlatLogv(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aFormat, va_list aArgs);
+
+//-----------------------------------------------------------------------------------------
+// Peek/Poke memory access control delegates
+
+/**
+ * Defines delegate (function pointer) type to control behavior of peek/poke operation.
+ *
+ * This delegate function is called to decide whether to allow peek or poke of a specific memory region. It is used
+ * if NCP support for peek/poke commands is enabled.
+ *
+ * @param[in] aAddress    Start address of memory region.
+ * @param[in] aCount      Number of bytes to peek or poke.
+ *
+ * @returns  TRUE to allow peek/poke of the given memory region, FALSE otherwise.
+ *
+ */
+typedef bool (*otNcpDelegateAllowPeekPoke)(uint32_t aAddress, uint16_t aCount);
+
+/**
+ * This method registers peek/poke delegate functions with NCP module.
+ *
+ * The delegate functions are called by NCP module to decide whether to allow peek or poke of a specific memory region.
+ * If the delegate pointer is set to NULL, it allows peek/poke operation for any address.
+ *
+ * @param[in] aAllowPeekDelegate      Delegate function pointer for peek operation.
+ * @param[in] aAllowPokeDelegate      Delegate function pointer for poke operation.
+ *
+ * @retval OT_ERROR_NONE              Successfully registered delegate functions.
+ * @retval OT_ERROR_DISABLED_FEATURE  Peek/Poke feature is disabled (by a build-time configuration option).
+ *
+ */
+otError otNcpRegisterPeekPokeDelagates(otNcpDelegateAllowPeekPoke aAllowPeekDelegate,
+                                       otNcpDelegateAllowPeekPoke aAllowPokeDelegate);
 
 //-----------------------------------------------------------------------------------------
 // Legacy network APIs
 
-#define OT_NCP_LEGACY_ULA_PREFIX_LENGTH    8   ///< Legacy ULA size (in bytes)
+#define OT_NCP_LEGACY_ULA_PREFIX_LENGTH 8 ///< Legacy ULA size (in bytes)
 
 /**
  * Defines handler (function pointer) type for starting legacy network
@@ -132,21 +177,27 @@ typedef void (*otNcpHandlerSetLegacyUlaPrefix)(const uint8_t *aUlaPrefix);
  */
 typedef struct otNcpLegacyHandlers
 {
-    otNcpHandlerStartLegacy         mStartLegacy;         ///< Start handler
-    otNcpHandlerStopLegacy          mStopLegacy;          ///< Stop handler
-    otNcpHandlerJoinLegacyNode      mJoinLegacyNode;      ///< Join handler
-    otNcpHandlerSetLegacyUlaPrefix  mSetLegacyUlaPrefix;  ///< Set ULA handler
+    otNcpHandlerStartLegacy        mStartLegacy;        ///< Start handler
+    otNcpHandlerStopLegacy         mStopLegacy;         ///< Stop handler
+    otNcpHandlerJoinLegacyNode     mJoinLegacyNode;     ///< Join handler
+    otNcpHandlerSetLegacyUlaPrefix mSetLegacyUlaPrefix; ///< Set ULA handler
 } otNcpLegacyHandlers;
 
 /**
  * This callback is invoked by the legacy stack to notify that a new
  * legacy node did join the network.
+ *
+ * @param[in]   aExtAddr    A pointer to the extended address of the joined node.
+ *
  */
 void otNcpHandleLegacyNodeDidJoin(const otExtAddress *aExtAddr);
 
 /**
  * This callback is invoked by the legacy stack to notify that the
  * legacy ULA prefix has changed.
+ *
+ * @param[in]    aUlaPrefix  A pointer to the received ULA prefix.
+ *
  */
 void otNcpHandleDidReceiveNewLegacyUlaPrefix(const uint8_t *aUlaPrefix);
 
@@ -169,7 +220,7 @@ void otNcpRegisterLegacyHandlers(const otNcpLegacyHandlers *aHandlers);
  */
 
 #ifdef __cplusplus
-}  // extern "C"
+} // extern "C"
 #endif
 
-#endif
+#endif // OPENTHREAD_NCP_H_

@@ -33,12 +33,13 @@
  *
  */
 
-#ifndef RADIO_H_
-#define RADIO_H_
+#ifndef OPENTHREAD_PLATFORM_RADIO_H_
+#define OPENTHREAD_PLATFORM_RADIO_H_
 
 #include <stdint.h>
 
-#include <openthread/types.h>
+#include <openthread/error.h>
+#include <openthread/instance.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -66,69 +67,148 @@ extern "C" {
 
 enum
 {
-    OT_RADIO_FRAME_MAX_SIZE     = 127,                             ///< aMaxPHYPacketSize (IEEE 802.15.4-2006)
-#if OPENTHREAD_ENABLE_DW1000_RADIO
-    OT_RADIO_CHANNEL_MIN         = 5,
-    OT_RADIO_CHANNEL_MAX         = 5,
-#else
-    OT_RADIO_CHANNEL_MIN         = 11,                              ///< 2.4 GHz IEEE 802.15.4-2006
-    OT_RADIO_CHANNEL_MAX         = 26,                              ///< 2.4 GHz IEEE 802.15.4-2006
-#endif
+    OT_RADIO_FRAME_MAX_SIZE     = 127,                            ///< aMaxPHYPacketSize (IEEE 802.15.4-2006)
+    OT_RADIO_CHANNEL_MIN        = 11,                             ///< 2.4 GHz IEEE 802.15.4-2006
+    OT_RADIO_CHANNEL_MAX        = 26,                             ///< 2.4 GHz IEEE 802.15.4-2006
+    OT_RADIO_SUPPORTED_CHANNELS = 0xffff << OT_RADIO_CHANNEL_MIN, ///< 2.4 GHz IEEE 802.15.4-2006
+    OT_RADIO_SYMBOLS_PER_OCTET  = 2,                              ///< 2.4 GHz IEEE 802.15.4-2006
+    OT_RADIO_BIT_RATE           = 250000,                         ///< 2.4 GHz IEEE 802.15.4 (kilobits per second)
 
-    OT_RADIO_SUPPORTED_CHANNELS  = 0xffff << OT_RADIO_CHANNEL_MIN,  ///< 2.4 GHz IEEE 802.15.4-2006
-    OT_RADIO_SYMBOLS_PER_OCTET   = 2,                               ///< 2.4 GHz IEEE 802.15.4-2006
-#if OPENTHREAD_ENABLE_DW1000_RADIO
-    OT_RADIO_BIT_RATE            = 6800000,
-#else
-    OT_RADIO_BIT_RATE            = 250000,                          ///< 2.4 GHz IEEE 802.15.4 (kilobits per second)
-#endif
-    OT_RADIO_BITS_PER_OCTET  = 8,      ///< Number of bits per octet
-    OT_RADIO_SYMBOL_TIME     = ((OT_RADIO_BITS_PER_OCTET / OT_RADIO_SYMBOLS_PER_OCTET) * 1000000) / OT_RADIO_BIT_RATE,
+    OT_RADIO_BITS_PER_OCTET = 8, ///< Number of bits per octet
+    OT_RADIO_SYMBOL_TIME    = ((OT_RADIO_BITS_PER_OCTET / OT_RADIO_SYMBOLS_PER_OCTET) * 1000000) / OT_RADIO_BIT_RATE,
 
-    OT_RADIO_LQI_NONE        = 0,      ///< LQI measurement not supported
-    OT_RADIO_RSSI_INVALID    = 127,    ///< Invalid or unknown RSSI value
+    OT_RADIO_LQI_NONE     = 0,   ///< LQI measurement not supported
+    OT_RADIO_RSSI_INVALID = 127, ///< Invalid or unknown RSSI value
 };
 
 /**
- * This enum represents radio capabilities.
+ * This type represents radio capabilities.
+ *
+ * The value is a bit-field indicating the capabilities supported by the radio. See `OT_RADIO_CAPS_*` definitions.
  *
  */
+typedef uint8_t otRadioCaps;
 
-typedef enum otRadioCaps
+/**
+ * This enumeration defines constants that are used to indicate different radio capabilities. See `otRadioCaps`.
+ *
+ */
+enum
 {
-    OT_RADIO_CAPS_NONE              = 0,  ///< None
-    OT_RADIO_CAPS_ACK_TIMEOUT       = 1,  ///< Radio supports AckTime event
-    OT_RADIO_CAPS_ENERGY_SCAN       = 2,  ///< Radio supports Energy Scans
-    OT_RADIO_CAPS_TRANSMIT_RETRIES  = 4,  ///< Radio supports transmission retry logic with collision avoidance (CSMA).
-    OT_RADIO_CAPS_CSMA_BACKOFF      = 8,  ///< Radio supports CSMA backoff for frame transmission (but no retry).
-} otRadioCaps;
+    OT_RADIO_CAPS_NONE             = 0,      ///< Radio supports no capability.
+    OT_RADIO_CAPS_ACK_TIMEOUT      = 1 << 0, ///< Radio supports AckTime event.
+    OT_RADIO_CAPS_ENERGY_SCAN      = 1 << 1, ///< Radio supports Energy Scans.
+    OT_RADIO_CAPS_TRANSMIT_RETRIES = 1 << 2, ///< Radio supports tx retry logic with collision avoidance (CSMA).
+    OT_RADIO_CAPS_CSMA_BACKOFF     = 1 << 3, ///< Radio supports CSMA backoff for frame transmission (but no retry).
+};
+
+#define OT_PANID_BROADCAST 0xffff ///< IEEE 802.15.4 Broadcast PAN ID
+
+/**
+ * This type represents the IEEE 802.15.4 PAN ID.
+ *
+ */
+typedef uint16_t otPanId;
+
+/**
+ * This type represents the IEEE 802.15.4 Short Address.
+ *
+ */
+typedef uint16_t otShortAddress;
+
+#define OT_EXT_ADDRESS_SIZE 8 ///< Size of an IEEE 802.15.4 Extended Address (bytes)
+
+/**
+ * @struct otExtAddress
+ *
+ * This structure represents the IEEE 802.15.4 Extended Address.
+ *
+ */
+OT_TOOL_PACKED_BEGIN
+struct otExtAddress
+{
+    uint8_t m8[OT_EXT_ADDRESS_SIZE]; ///< IEEE 802.15.4 Extended Address bytes
+} OT_TOOL_PACKED_END;
+
+/**
+ * This structure represents the IEEE 802.15.4 Extended Address.
+ *
+ */
+typedef struct otExtAddress otExtAddress;
+
+/**
+ * This structure represents the IEEE 802.15.4 Header IE (Information Element) related information of a radio frame.
+ */
+typedef struct otRadioIeInfo
+{
+    uint8_t  mTimeIeOffset;      ///< The Time IE offset from the start of PSDU.
+    uint8_t  mTimeSyncSeq;       ///< The Time sync sequence.
+    uint64_t mTimestamp;         ///< The time in microseconds when the SFD was received.
+    int64_t  mNetworkTimeOffset; ///< The time offset to the Thread network time.
+} otRadioIeInfo;
 
 /**
  * This structure represents an IEEE 802.15.4 radio frame.
  */
 typedef struct otRadioFrame
 {
-    uint8_t  *mPsdu;            ///< The PSDU.
-    uint8_t  mLength;           ///< Length of the PSDU.
-    uint8_t  mChannel;          ///< Channel used to transmit/receive the frame.
-    int8_t   mPower;            ///< Transmit/receive power in dBm.
-    uint8_t  mLqi;              ///< Link Quality Indicator for received frames.
-    uint8_t  mMaxTxAttempts;    ///< Max number of transmit attempts for an outbound frame.
-    bool     mSecurityValid: 1; ///< Security Enabled flag is set and frame passes security checks.
-    bool     mDidTX: 1;         ///< Set to true if this frame sent from the radio. Ignored by radio driver.
-    bool     mIsARetx: 1;       ///< Set to true if this frame is a retransmission. Should be ignored by radio driver.
+    uint8_t *      mPsdu;      ///< The PSDU.
+    uint8_t        mLength;    ///< Length of the PSDU.
+    uint8_t        mChannel;   ///< Channel used to transmit/receive the frame.
+    bool           mDidTx : 1; ///< Set to true if this frame sent from the radio. Ignored by radio driver.
+    otRadioIeInfo *mIeInfo;    ///< The pointer to the Header IE(s) related information.
+
+    /**
+     * The union of transmit and receive information for a radio frame.
+     */
+    union
+    {
+        /**
+         * Structure representing radio frame transmit information.
+         */
+        struct
+        {
+            uint8_t        mMaxCsmaBackoffs;   ///< Maximum number of backoffs attempts before declaring CCA failure.
+            uint8_t        mMaxFrameRetries;   ///< Maximum number of retries allowed after a transmission failure.
+            bool           mIsARetx : 1;       ///< True if this frame is a retransmission (ignored by radio driver).
+            bool           mCsmaCaEnabled : 1; ///< Set to true to enable CSMA-CA for this packet, false otherwise.
+            const uint8_t *mAesKey;            ///< The key used for AES-CCM frame security.
+        } mTxInfo;
+
+        /**
+         * Structure representing radio frame receive information.
+         */
+        struct
+        {
+            int8_t  mRssi; ///< Received signal strength indicator in dBm for received frames.
+            uint8_t mLqi;  ///< Link Quality Indicator for received frames.
+
+            /**
+             * The timestamp when the frame was received (microseconds, the offset to mMsec).
+             * Applicable/Required only when raw-link-api feature (`OPENTHREAD_ENABLE_RAW_LINK_API`) is enabled.
+             *
+             */
+            uint16_t mUsec;
+
+            /**
+             * The timestamp when the frame was received (milliseconds).
+             * Applicable/Required only when raw-link-api feature (`OPENTHREAD_ENABLE_RAW_LINK_API`) is enabled.
+             *
+             */
+            uint32_t mMsec;
+        } mRxInfo;
+    } mInfo;
 } otRadioFrame;
 
 /**
  * This structure represents the state of a radio.
  * Initially, a radio is in the Disabled state.
  */
-typedef enum otRadioState
-{
+typedef enum otRadioState {
     OT_RADIO_STATE_DISABLED = 0,
-    OT_RADIO_STATE_SLEEP = 1,
-    OT_RADIO_STATE_RECEIVE = 2,
-    OT_RADIO_STATE_TRANSMIT = 3
+    OT_RADIO_STATE_SLEEP    = 1,
+    OT_RADIO_STATE_RECEIVE  = 2,
+    OT_RADIO_STATE_TRANSMIT = 3,
 } otRadioState;
 
 /**
@@ -163,19 +243,10 @@ typedef enum otRadioState
  * Get the factory-assigned IEEE EUI-64 for this interface.
  *
  * @param[in]  aInstance   The OpenThread instance structure.
- * @param[out] aIeeeEui64  A pointer to where the factory-assigned IEEE EUI-64 will be placed.
+ * @param[out] aIeeeEui64  A pointer to the factory-assigned IEEE EUI-64.
  *
  */
 void otPlatRadioGetIeeeEui64(otInstance *aInstance, uint8_t *aIeeeEui64);
-
-/**
- * Get the Radio PanId.
- *
- * @param[in]  aInstance   The OpenThread instance structure.
- *
- * @returns the Radio PanId
- */
-uint16_t otPlatformGetPanId(otInstance *aInstance);
 
 /**
  * Set the PAN ID for address filtering.
@@ -189,11 +260,12 @@ void otPlatRadioSetPanId(otInstance *aInstance, uint16_t aPanId);
 /**
  * Set the Extended Address for address filtering.
  *
- * @param[in] aInstance         The OpenThread instance structure.
- * @param[in] aExtendedAddress  A pointer to the IEEE 802.15.4 Extended Address.
+ * @param[in] aInstance    The OpenThread instance structure.
+ * @param[in] aExtAddress  A pointer to the IEEE 802.15.4 Extended Address stored in little-endian byte order.
+ *
  *
  */
-void otPlatRadioSetExtendedAddress(otInstance *aInstance, uint8_t *aExtendedAddress);
+void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aExtAddress);
 
 /**
  * Set the Short Address for address filtering.
@@ -319,12 +391,12 @@ otError otPlatRadioAddSrcMatchShortEntry(otInstance *aInstance, const uint16_t a
  * Add an extended address to the source address match table.
  *
  * @param[in]  aInstance    The OpenThread instance structure.
- * @param[in]  aExtAddress  The extended address to be added.
+ * @param[in]  aExtAddress  The extended address to be added stored in little-endian byte order.
  *
  * @retval OT_ERROR_NONE      Successfully added extended address to the source match table.
  * @retval OT_ERROR_NO_BUFS   No available entry in the source match table.
  */
-otError otPlatRadioAddSrcMatchExtEntry(otInstance *aInstance, const uint8_t *aExtAddress);
+otError otPlatRadioAddSrcMatchExtEntry(otInstance *aInstance, const otExtAddress *aExtAddress);
 
 /**
  * Remove a short address from the source address match table.
@@ -341,12 +413,12 @@ otError otPlatRadioClearSrcMatchShortEntry(otInstance *aInstance, const uint16_t
  * Remove an extended address from the source address match table.
  *
  * @param[in]  aInstance    The OpenThread instance structure.
- * @param[in]  aExtAddress  The extended address to be removed.
+ * @param[in]  aExtAddress  The extended address to be removed stored in little-endian byte order.
  *
  * @retval OT_ERROR_NONE        Successfully removed the extended address from the source match table.
  * @retval OT_ERROR_NO_ADDRESS  The extended address is not in source address match table.
  */
-otError otPlatRadioClearSrcMatchExtEntry(otInstance *aInstance, const uint8_t *aExtAddress);
+otError otPlatRadioClearSrcMatchExtEntry(otInstance *aInstance, const otExtAddress *aExtAddress);
 
 /**
  * Clear all short addresses from the source address match table.
@@ -400,7 +472,7 @@ otRadioFrame *otPlatRadioGetTransmitBuffer(otInstance *aInstance);
  * 2. Transmits the psdu on the given channel and at the given transmit power.
  *
  * @param[in] aInstance  The OpenThread instance structure.
- * @param[in] aFrame     A pointer to the frame that will be transmitted.
+ * @param[in] aFrame     A pointer to the transmitted frame.
  *
  * @retval OT_ERROR_NONE          Successfully transitioned to Transmit.
  * @retval OT_ERROR_INVALID_STATE The radio was not in the Receive state.
@@ -408,8 +480,20 @@ otRadioFrame *otPlatRadioGetTransmitBuffer(otInstance *aInstance);
 otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame);
 
 /**
- * The radio driver calls this method to notify OpenThread that the transmission has completed,
- * this callback pass up the ACK frame, new add platforms should use this callback function.
+ * The radio driver calls this method to notify OpenThread that the transmission has started.
+ *
+ * @note  This function should be called by the same thread that executes all of the other OpenThread code. It should
+ *        not be called by ISR or any other task.
+ *
+ * @param[in]  aInstance  A pointer to the OpenThread instance structure.
+ * @param[in]  aFrame     A pointer to the frame that is being transmitted.
+ *
+ */
+extern void otPlatRadioTxStarted(otInstance *aInstance, otRadioFrame *aFrame);
+
+/**
+ * The radio driver calls this function to notify OpenThread that the transmit operation has completed,
+ * providing both the transmitted frame and, if applicable, the received ack frame.
  *
  * @param[in]  aInstance  The OpenThread instance structure.
  * @param[in]  aFrame     A pointer to the frame that was transmitted.
@@ -420,24 +504,7 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame);
  *                        aborted for other reasons.
  *
  */
-extern void otPlatRadioTxDone(otInstance *aInstance, otRadioFrame *aFrame, otRadioFrame *aAckFrame,
-                              otError aError);
-
-/**
- * The radio driver calls this method to notify OpenThread that the transmission has completed,
- * this function is going to be deprecated, new add platfroms should not use this callback function.
- *
- * @param[in]  aInstance      The OpenThread instance structure.
- * @param[in]  aFrame         A pointer to the frame that was transmitted.
- * @param[in]  aFramePending  TRUE if an ACK frame was received and the Frame Pending bit was set.
- * @param[in]  aError         OT_ERROR_NONE when the frame was transmitted, OT_ERROR_NO_ACK when the frame was
- *                            transmitted but no ACK was received, OT_ERROR_CHANNEL_ACCESS_FAILURE when the transmission
- *                            could not take place due to activity on the channel, OT_ERROR_ABORT when transmission was
- *                            aborted for other reasons.
- *
- */
-extern void otPlatRadioTransmitDone(otInstance *aInstance, otRadioFrame *aFrame, bool aFramePending,
-                                    otError aError);
+extern void otPlatRadioTxDone(otInstance *aInstance, otRadioFrame *aFrame, otRadioFrame *aAckFrame, otError aError);
 
 /**
  * Get the most recent RSSI measurement.
@@ -458,13 +525,29 @@ int8_t otPlatRadioGetRssi(otInstance *aInstance);
 otRadioCaps otPlatRadioGetCaps(otInstance *aInstance);
 
 /**
- * Set the radio Tx power used for auto-generated frames.
+ * Get the radio's transmit power in dBm.
  *
  * @param[in] aInstance  The OpenThread instance structure.
- * @param[in] aPower     The Tx power to use in dBm.
+ * @param[out] aPower    The transmit power in dBm.
+ *
+ * @retval OT_ERROR_NONE             Successfully retrieved the transmit power.
+ * @retval OT_ERROR_INVALID_ARGS     @p aPower was NULL.
+ * @retval OT_ERROR_NOT_IMPLEMENTED  Transmit power configuration via dBm is not implemented.
  *
  */
-void otPlatRadioSetDefaultTxPower(otInstance *aInstance, int8_t aPower);
+otError otPlatRadioGetTransmitPower(otInstance *aInstance, int8_t *aPower);
+
+/**
+ * Set the radio's transmit power in dBm.
+ *
+ * @param[in] aInstance  The OpenThread instance structure.
+ * @param[in] aPower     The transmit power in dBm.
+ *
+ * @retval OT_ERROR_NONE             Successfully set the transmit power.
+ * @retval OT_ERROR_NOT_IMPLEMENTED  Transmit power configuration via dBm is not implemented.
+ *
+ */
+otError otPlatRadioSetTransmitPower(otInstance *aInstance, int8_t aPower);
 
 /**
  * Get the status of promiscuous mode.
@@ -489,15 +572,12 @@ void otPlatRadioSetPromiscuous(otInstance *aInstance, bool aEnable);
  *
  * @param[in]  aInstance      The OpenThread instance structure.
  * @param[in]  aFrame         A pointer to the frame that was transmitted.
- * @param[in]  aFramePending  TRUE if an ACK frame was received and the Frame Pending bit was set.
- * @param[in]  aError  OT_ERROR_NONE when the frame was transmitted, OT_ERROR_NO_ACK when the frame was
- *                     transmitted but no ACK was received, OT_ERROR_CHANNEL_ACCESS_FAILURE when the transmission
- *                     could not take place due to activity on the channel, OT_ERROR_ABORT when transmission was
- *                     aborted for other reasons.
+ * @param[in]  aError         OT_ERROR_NONE when the frame was transmitted, OT_ERROR_CHANNEL_ACCESS_FAILURE when the
+ *                            transmission could not take place due to activity on the channel, OT_ERROR_ABORT when
+ *                            transmission was aborted for other reasons.
  *
  */
-extern void otPlatDiagRadioTransmitDone(otInstance *aInstance, otRadioFrame *aFrame, bool aFramePending,
-                                        otError aError);
+extern void otPlatDiagRadioTransmitDone(otInstance *aInstance, otRadioFrame *aFrame, otError aError);
 
 /**
  * The radio driver calls this method to notify OpenThread diagnostics module of a received frame.
@@ -542,14 +622,30 @@ extern void otPlatRadioEnergyScanDone(otInstance *aInstance, int8_t aEnergyScanM
 int8_t otPlatRadioGetReceiveSensitivity(otInstance *aInstance);
 
 /**
- * The Cli command "logprint" calls this method to Print any variable or data.
+ * The radio driver calls this method to notify OpenThread to process transmit security for the frame,
+ * this happens when the frame includes Header IE(s) that were updated before transmission.
  *
- * @param[out]  buffer is the value to be printed.
+ * @note This function will be called from interrupt context, it should only read/write data passed in
+ *       via @p aFrame, but should not read/write any state within OpenThread.
  *
- * @returns the size of the buffer
+ * @param[in]  aInstance   The OpenThread instance structure.
+ * @param[in]  aFrame      The radio frame which needs to process transmit security.
+ *
  */
-uint8_t otPlatRadioPrintBuf(uint8_t *buffer);
+extern void otPlatRadioFrameUpdated(otInstance *aInstance, otRadioFrame *aFrame);
 
+/**
+ * Get the radio version string.
+ *
+ * This is an optional radio driver platform function. If not provided by platform radio driver, OpenThread uses
+ * the OpenThread version instead (@sa otGetVersionString()).
+ *
+ * @param[in]  aInstance   The OpenThread instance structure.
+ *
+ * @returns A pointer to the OpenThread radio version.
+ *
+ */
+const char *otPlatRadioGetVersionString(otInstance *aInstance);
 
 /**
  * @}
@@ -562,7 +658,7 @@ uint8_t otPlatRadioPrintBuf(uint8_t *buffer);
  */
 
 #ifdef __cplusplus
-}  // end of extern "C"
+} // end of extern "C"
 #endif
 
-#endif  // RADIO_H_
+#endif // OPENTHREAD_PLATFORM_RADIO_H_
