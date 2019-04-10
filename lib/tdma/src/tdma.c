@@ -396,6 +396,7 @@ tdma_superframe_event_cb(struct os_event * ev){
     
     DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma_superframe_event_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     tdma_instance_t * tdma = (void *)ev->ev_arg;
+    struct _dw1000_dev_instance_t * inst = tdma->parent;
     dw1000_ccp_instance_t * ccp = tdma->parent->ccp;
     
     TDMA_STATS_INC(superframe_cnt);
@@ -434,6 +435,7 @@ slot_timer_cb(void * arg){
 
     tdma_slot_t * slot = (tdma_slot_t *) arg;
     tdma_instance_t * tdma = slot->parent;
+    struct _dw1000_dev_instance_t * inst = tdma->parent;
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"slot_timer_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
