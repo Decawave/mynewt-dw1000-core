@@ -483,11 +483,17 @@ dw1000_dev_wakeup(dw1000_dev_instance_t * inst)
     /* Antenna delays lost in deep sleep ? */
     dw1000_phy_set_rx_antennadelay(inst, inst->rx_antenna_delay);
     dw1000_phy_set_tx_antennadelay(inst, inst->tx_antenna_delay);
-    
+
     // Critical region, unlock mutex
     err = os_mutex_release(&inst->mutex);
     assert(err == OS_OK);
- 
+
+    /* In case dw1000 was instructed to sleep directly after tx
+     * we may need to release the tx sem */
+    if(os_sem_get_count(&inst->tx_sem) == 0) {
+        os_sem_release(&inst->tx_sem);
+    }
+
     return inst->status;
 }
 
