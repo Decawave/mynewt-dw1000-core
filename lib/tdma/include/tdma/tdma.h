@@ -81,7 +81,6 @@ typedef struct _tdma_instance_t{
     struct os_mutex mutex;                   //!< Structure of os_mutex  
     uint16_t idx;                            //!< Slot number
     uint16_t nslots;                         //!< Number of slots 
-    uint32_t period;                         //!< Period of each tdma
     uint32_t os_epoch;                          //!< Epoch timestamp
     struct os_callout event_cb;              //!< Sturcture of event_cb
 #ifdef TDMA_TASKS_ENABLE
