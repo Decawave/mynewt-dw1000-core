@@ -64,18 +64,19 @@ enum {
 };
 
 static char uwb_config[CFGSTR_MAX][7] = {
-    "5",                        /* channel */
-    "64",                       /* prf */
-    "6m8",                      /* datarate */
-    "8",                        /* rx_paclen */
-    "9",                        /* rx_pream_cidx */
-    "0",                        /* rx_sfdType */
-    "e",                        /* rx_phrMode */
-    "9",                        /* tx_pream_cidx */
-    "128",                      /* tx_pream_len */
-    "15",                       /* txrf_power_coarse */
-    "22",                       /* txrf_power_fine */
-    "0x4050","0x4050"           /* rx/tx_antdly */
+    MYNEWT_VAL(UWBCFG_DEF_CH),                /* channel */
+    MYNEWT_VAL(UWBCFG_DEF_PRF),               /* prf */
+    MYNEWT_VAL(UWBCFG_DEF_DATARATE),          /* datarate */
+    MYNEWT_VAL(UWBCFG_DEF_PACLEN),            /* rx_paclen */
+    MYNEWT_VAL(UWBCFG_DEF_RX_PREAM_CIDX),     /* rx_pream_cidx */
+    MYNEWT_VAL(UWBCFG_DEF_RX_SFD_TYPE),       /* rx_sfdType */
+    MYNEWT_VAL(UWBCFG_DEF_RX_PHR_MODE),       /* rx_phrMode */
+    MYNEWT_VAL(UWBCFG_DEF_TX_PREAM_CIDX),     /* tx_pream_cidx */
+    MYNEWT_VAL(UWBCFG_DEF_TX_PREAM_LEN),      /* tx_pream_len */
+    MYNEWT_VAL(UWBCFG_DEF_TXRF_POWER_COARSE), /* txrf_power_coarse */
+    MYNEWT_VAL(UWBCFG_DEF_TXRF_POWER_FINE),   /* txrf_power_fine */
+    MYNEWT_VAL(UWBCFG_DEF_RX_ANTDLY),         /* rx_antdly */
+    MYNEWT_VAL(UWBCFG_DEF_TX_ANTDLY),         /* tx_antdly */
 };
 
 static const char* _uwbcfg_str[] = {
