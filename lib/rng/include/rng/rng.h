@@ -119,7 +119,10 @@ typedef enum _dw1000_rng_modes_t{
     DWT_DS_TWR_NRNG_EXT_END,
     DWT_DS_TWR_NRNG_INVALID,
     DWT_SURVEY_REQUEST = 0x60,
-    DWT_SURVEY_BROADCAST
+    DWT_SURVEY_BROADCAST,
+    DWT_RTDOA_INVALID = 0x80,
+    DWT_RTDOA_REQUEST,
+    DWT_RTDOA_RESP,
 }dw1000_rng_modes_t;
 
 //! Range status parameters

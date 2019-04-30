@@ -1,0 +1,6 @@
+
+syscfg.defs:
+      NODE_RTDOA_ENABLED:
+        description: 'Enable toplevel ranging services'
+        value: 1
+        restrictions: RTDOA_ENABLED
