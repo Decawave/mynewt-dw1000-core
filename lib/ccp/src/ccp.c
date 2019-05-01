@@ -601,7 +601,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         tx_frame.short_address = inst->my_short_address;
         tx_frame.rpt_count++;
         uint64_t tx_timestamp = inst->rxtimestamp + ((uint64_t)inst->ccp->config.tx_holdoff_dly<<16);
-        tx_timestamp &= 0x0FFFFFFFFFFUL;
+        tx_timestamp &= 0x0FFFFFFFE00UL;
         dw1000_set_delay_start(inst, tx_timestamp);
 
         /* Need to add antenna delay */
