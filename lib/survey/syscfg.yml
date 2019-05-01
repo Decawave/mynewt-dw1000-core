@@ -1,8 +1,7 @@
 
 syscfg.defs:
     SURVEY_ENABLED:
-        description: >
-            'Enable automatic site survey'
+        description: 'Enable automatic site survey'
         value: 1
     SURVEY_VERBOSE: 
         description: 'Show debug output from postprocess'

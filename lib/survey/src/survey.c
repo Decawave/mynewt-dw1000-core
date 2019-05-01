@@ -222,8 +222,7 @@ static void survey_complete_cb(struct os_event *ev) {
     assert(ev->ev_arg != NULL);
 
     survey_instance_t * survey = (survey_instance_t *) ev->ev_arg;
-    survey_encode(survey, survey->seq_num, survey->idx);
-    
+    survey_encode(survey, survey->seq_num, survey->idx);    
 }
 #endif
 
@@ -283,8 +282,7 @@ survey_slot_broadcast_cb(struct os_event *ev){
     if(ccp->seq_num % survey->nnodes == inst->slot_id){
         uint64_t dx_time = tdma_tx_slot_start(inst, slot->idx) & 0xFFFFFFFE00UL;
         survey_broadcaster(survey, dx_time);
-    }
-    else{
+    }else{
         uint64_t dx_time = tdma_rx_slot_start(inst, slot->idx) & 0xFFFFFFFE00UL;
         survey_receiver(survey, dx_time);  
     }
@@ -444,18 +442,19 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
+
     if(os_sem_get_count(&survey->sem) == 1){ // unsolicited inbound
         STATS_INC(survey->stat, rx_unsolicited);
         return false;
     }
+  
     if(inst->frame_len < sizeof(survey_broadcast_frame_t))
        return false;
-    
+
     survey_broadcast_frame_t * frame = ((survey_broadcast_frame_t * ) inst->rxbuf);
 
     if(frame->dst_address != 0xffff)
         return false;
-
     if(ccp->seq_num % survey->nnodes == 0)
         survey->idx++;  // advance the nrngs idx at begining of sequence.
 

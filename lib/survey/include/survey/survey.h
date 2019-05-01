@@ -117,6 +117,7 @@ survey_instance_t * survey_init(struct _dw1000_dev_instance_t * inst, uint16_t n
 void survey_free(survey_instance_t * inst);
 void survey_slot_range_cb(struct os_event *ev);
 void survey_slot_broadcast_cb(struct os_event *ev);
+survey_status_t survey_receiver(survey_instance_t * survey, uint64_t dx_time);
 
 #ifdef __cplusplus
 }
