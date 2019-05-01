@@ -159,8 +159,8 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         if(!inst->config.rxdiag_enable) {
             fp_idx = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
         }
-        cir->fp_idx = (float)fp_idx / 64.0f + 0.5f;
-        fp_idx  = (uint16_t)floorf(cir->fp_idx);
+        cir->fp_idx = (float)fp_idx / 64.0f;
+        fp_idx  = (uint16_t)floorf(cir->fp_idx + 0.5f);
 
         assert(cir->fp_idx > MYNEWT_VAL(CIR_OFFSET));
         dw1000_read_accdata(inst, (uint8_t *)&cir->cir, (fp_idx - MYNEWT_VAL(CIR_OFFSET)) * sizeof(cir_complex_t), sizeof(cir_t));
