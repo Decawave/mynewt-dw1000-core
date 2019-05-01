@@ -169,7 +169,7 @@ panmaster_dw1000_cb(struct os_event * ev)
     frame->pan_id = pan_id;
     frame->role = node->role;
 
-    dw1000_write_tx_fctrl(inst, sizeof(struct _pan_frame_t), 0, true);
+    dw1000_write_tx_fctrl(inst, sizeof(struct _pan_frame_t), 0);
     dw1000_set_wait4resp(inst, false);
     pan->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
     dw1000_write_tx(inst, frame->array, 0, sizeof(struct _pan_frame_t));

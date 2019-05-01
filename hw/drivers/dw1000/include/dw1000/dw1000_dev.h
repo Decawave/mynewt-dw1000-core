@@ -123,8 +123,6 @@ typedef struct _dw1000_dev_status_t{
     uint32_t spi_error:1;             //!< SPI error
     uint32_t LDE_enabled:1;           //!< Load LDE microcode on wake up
     uint32_t LDO_enabled:1;           //!< Load the LDO tune value on wake up
-    uint32_t rx_ranging_frame:1;      //!< Range Request bit set for inbound frame
-    uint32_t tx_ranging_frame:1;      //!< Range Request bit set for outbound frame
     uint32_t sleep_enabled:1;         //!< Indicates sleep_enabled bit is set
     uint32_t sleeping:1;              //!< Indicates sleeping state
     uint32_t sem_force_released:1;    //!< Semaphore was released in forcetrxoff
@@ -279,7 +277,9 @@ typedef struct _dw1000_dev_instance_t{
         uint8_t fctrl_array[sizeof(uint16_t)];  //!< Endianness safe interface
     };
 
+#if MYNEWT_VAL(DW1000_MAC_STATS)
     STATS_SECT_DECL(mac_stat_section) stat;
+#endif
     uint16_t frame_len;            //!< Reported frame length
     uint8_t spi_num;               //!< SPI number
     uint8_t irq_pin;               //!< Interrupt request pin

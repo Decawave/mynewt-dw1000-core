@@ -18,19 +18,16 @@
 #
 
 pkg.name: lib/nmgr_uwb
-pkg.description: TWR library superset 
+pkg.description: UWB Transport Layer for NewtMgr
 pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
     - dw1000
-    - CCP
+    - nmgr
 
 pkg.cflags:
     - "-std=gnu99"
     - "-fms-extensions"
-
-pkg.lflags:
-    - "-lm"
 
 pkg.deps:
     - "@apache-mynewt-core/kernel/os"

@@ -48,6 +48,7 @@ extern "C" {
 #include <dsp/polyval.h>
 #endif
 
+#if MYNEWT_VAL(CCP_STATS)
 STATS_SECT_START(ccp_stat_section)
     STATS_SECT_ENTRY(master_cnt)
     STATS_SECT_ENTRY(slave_cnt)
@@ -65,12 +66,21 @@ STATS_SECT_START(ccp_stat_section)
     STATS_SECT_ENTRY(rx_timeout)
     STATS_SECT_ENTRY(reset)
 STATS_SECT_END
+#endif
 
+// XXX This needs to be made bitfield-safe. Not sure the ifdefs below are enough
 typedef union _ccp_timestamp_t{
     struct {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
         uint64_t lo:40;
         uint64_t hi:23;
         uint64_t halfperiod:1;
+#endif
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        uint64_t halfperiod:1;
+        uint64_t hi:23;
+        uint64_t lo:40;
+#endif
     };
     uint64_t timestamp;
 }ccp_timestamp_t;
@@ -80,11 +90,11 @@ typedef union {
     //! Frame format of ccp blink frame.
     struct _ccp_blink_frame_t{
         struct _ieee_blink_frame_t;
+        uint16_t short_address;                 //!< Short Address
         uint32_t transmission_interval;         //!< Transmission interval
         ccp_timestamp_t transmission_timestamp; //!< Transmission timestamp
         uint8_t rpt_count;                      //!< Repeat level
         uint8_t rpt_max;                        //!< Repeat max level
-        uint8_t superframe_mode;                //!< UNUSED
     }__attribute__((__packed__, aligned(1)));
     uint8_t array[sizeof(struct _ccp_blink_frame_t)];
 }ccp_blink_frame_t;
@@ -119,20 +129,22 @@ typedef enum _dw1000_ccp_role_t{
 }dw1000_ccp_role_t;
 
 //! Callback for fetching clock source tof compensation
-typedef uint32_t (*dw1000_ccp_tof_compensation_cb_t)(uint64_t euid);
+typedef uint32_t (*dw1000_ccp_tof_compensation_cb_t)(uint64_t euid, uint16_t short_addr);
 
 //! ccp config parameters.  
 typedef struct _dw1000_ccp_config_t{
     uint16_t postprocess:1;           //!< CCP postprocess
     uint16_t fs_xtalt_autotune:1;     //!< Autotune XTALT to Clock Master
     uint16_t role:4;                  //!< dw1000_ccp_role_t
-    uint32_t tx_holdoff_dly;          //!< Relay nodes holdoff
+    uint16_t tx_holdoff_dly;          //!< Relay nodes holdoff
 }dw1000_ccp_config_t;
 
 //! ccp instance parameters.
 typedef struct _dw1000_ccp_instance_t{
     struct _dw1000_dev_instance_t * parent;     //!< Pointer to _dw1000_dev_instance_t
+#if MYNEWT_VAL(CCP_STATS)
     STATS_SECT_DECL(ccp_stat_section) stat;     //!< Stats instance
+#endif
 #if MYNEWT_VAL(WCS_ENABLED)
     struct _wcs_instance_t * wcs;               //!< Wireless clock calibration 
 #endif

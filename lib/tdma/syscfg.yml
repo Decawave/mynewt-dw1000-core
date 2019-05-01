@@ -8,11 +8,9 @@ syscfg.defs:
     TDMA_NSLOTS:
         description: 'Enable TDMA Services'
         value: 128
-    TDMA_PERIOD:
-        description: 'Supoerframe period for TDMA scheme, (dwt usec)'
-        value: ((uint32_t)0x100000)
     TDMA_SANITY_INTERVAL:
         description: 'Sanity watchdog timeout (seconds)'
         value: 0
-    
-        
+    TDMA_STATS:
+        description: 'Enable statistics for the tdma module'
+        value: 1

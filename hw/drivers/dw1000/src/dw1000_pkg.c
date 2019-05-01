@@ -51,8 +51,9 @@
  * @return void
  */
 void dw1000_pkg_init(void){
-
+#if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+#endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
     dw1000_dev_config(hal_dw1000_inst(0));

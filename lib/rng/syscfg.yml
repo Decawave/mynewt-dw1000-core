@@ -12,4 +12,7 @@ syscfg.defs:
       RNG_VERBOSE:
         description: 'Show debug output from postprocess'
         value: 0
+      RNG_STATS:
+        description: 'Enable statistics for the rng module'
+        value: 1
     

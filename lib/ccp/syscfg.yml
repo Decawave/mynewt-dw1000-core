@@ -28,6 +28,13 @@ syscfg.defs:
             Max number of cascade levels allowed in repeating CCP packet.
             Set to 0 to disable cascading. Relates to tx_holdoff_dly and tdma slot size.
         value: 4
+    CCP_RPT_HOLDOFF_DLY:
+        description: >
+            Holdoff dly when repeating CCP packet.
+        value: ((uint16_t)0x380)
+    CCP_STATS:
+        description: 'Enable statistics for the CCP module'
+        value: 1
 
 
        

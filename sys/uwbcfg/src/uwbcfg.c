@@ -64,18 +64,19 @@ enum {
 };
 
 static char uwb_config[CFGSTR_MAX][7] = {
-    "5",                        /* channel */
-    "64",                       /* prf */
-    "6m8",                      /* datarate */
-    "8",                        /* rx_paclen */
-    "9",                        /* rx_pream_cidx */
-    "0",                        /* rx_sfdType */
-    "e",                        /* rx_phrMode */
-    "9",                        /* tx_pream_cidx */
-    "128",                      /* tx_pream_len */
-    "15",                       /* txrf_power_coarse */
-    "22",                       /* txrf_power_fine */
-    "0x4050","0x4050"           /* rx/tx_antdly */
+    MYNEWT_VAL(UWBCFG_DEF_CH),                /* channel */
+    MYNEWT_VAL(UWBCFG_DEF_PRF),               /* prf */
+    MYNEWT_VAL(UWBCFG_DEF_DATARATE),          /* datarate */
+    MYNEWT_VAL(UWBCFG_DEF_PACLEN),            /* rx_paclen */
+    MYNEWT_VAL(UWBCFG_DEF_RX_PREAM_CIDX),     /* rx_pream_cidx */
+    MYNEWT_VAL(UWBCFG_DEF_RX_SFD_TYPE),       /* rx_sfdType */
+    MYNEWT_VAL(UWBCFG_DEF_RX_PHR_MODE),       /* rx_phrMode */
+    MYNEWT_VAL(UWBCFG_DEF_TX_PREAM_CIDX),     /* tx_pream_cidx */
+    MYNEWT_VAL(UWBCFG_DEF_TX_PREAM_LEN),      /* tx_pream_len */
+    MYNEWT_VAL(UWBCFG_DEF_TXRF_POWER_COARSE), /* txrf_power_coarse */
+    MYNEWT_VAL(UWBCFG_DEF_TXRF_POWER_FINE),   /* txrf_power_fine */
+    MYNEWT_VAL(UWBCFG_DEF_RX_ANTDLY),         /* rx_antdly */
+    MYNEWT_VAL(UWBCFG_DEF_TX_ANTDLY),         /* tx_antdly */
 };
 
 static const char* _uwbcfg_str[] = {
@@ -145,6 +146,7 @@ static int
 uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst)
 {
     uint8_t coarse, fine, txpwr, paclen;
+    int sfd_len=0;
 
     conf_value_from_str(uwb_config[CFGSTR_CH], CONF_INT8, (void*)&(inst->config.channel), 0);
     switch (inst->config.channel) {
@@ -160,21 +162,30 @@ uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst)
     }
     
     /* Set the PRF */
-    if (!strcmp(uwb_config[CFGSTR_PRF], "16")) inst->config.prf = DWT_PRF_16M;
-    else if (!strcmp(uwb_config[CFGSTR_PRF], "64")) inst->config.prf = DWT_PRF_64M;
-    else {
+    if (!strcmp(uwb_config[CFGSTR_PRF], "16")) {
+        inst->config.prf = DWT_PRF_16M;
+    } else if (!strcmp(uwb_config[CFGSTR_PRF], "64")) {
+        inst->config.prf = DWT_PRF_64M;
+    } else {
         UC_WARN("inv prf\n");
     }
-    
-    if (!strcmp(uwb_config[CFGSTR_DATARATE], "6m8")) inst->config.dataRate = DWT_BR_6M8;
-    else if (!strcmp(uwb_config[CFGSTR_DATARATE], "850k")) inst->config.dataRate = DWT_BR_850K;
-    else if (!strcmp(uwb_config[CFGSTR_DATARATE], "110k")) inst->config.dataRate = DWT_BR_110K;
-    else {
+
+    /* Data rate */
+    if (!strcmp(uwb_config[CFGSTR_DATARATE], "6m8")) {
+        inst->config.dataRate = DWT_BR_6M8;
+        sfd_len = 8;
+    } else if (!strcmp(uwb_config[CFGSTR_DATARATE], "850k")) {
+        inst->config.dataRate = DWT_BR_850K;
+        sfd_len = 8;
+    } else if (!strcmp(uwb_config[CFGSTR_DATARATE], "110k")) {
+        inst->config.dataRate = DWT_BR_110K;
+        sfd_len = 64;
+    } else {
         UC_WARN("inv datarate\n");
     }
     
-    conf_value_from_str(uwb_config[CFGSTR_RX_PACLEN], CONF_INT8,
-                        (void*)&paclen, 0);
+    /* PAC length */
+    conf_value_from_str(uwb_config[CFGSTR_RX_PACLEN], CONF_INT8, (void*)&paclen, 0);
     switch (paclen) {
     case (8):  inst->config.rx.pacLength = DWT_PAC8;break;
     case (16): inst->config.rx.pacLength = DWT_PAC16;break;
@@ -195,6 +206,7 @@ uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst)
                         (void*)&(inst->config.tx.preambleCodeIndex), 0);
     check_preamble_code(inst, &inst->config.tx.preambleCodeIndex);
 
+    /* Tx Power */
     conf_value_from_str(uwb_config[CFGSTR_TXRF_PWR_COARSE], CONF_INT8, (void*)&coarse, 0);
     conf_value_from_str(uwb_config[CFGSTR_TXRF_PWR_FINE], CONF_INT8, (void*)&fine, 0);
 
@@ -220,29 +232,30 @@ uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst)
     conf_value_from_str(uwb_config[CFGSTR_TX_ANTDLY], CONF_INT16, (void*)&inst->tx_antenna_delay, 0);
 
     /* Preamble */
-    uint16_t plen;
+    uint16_t preamble_len;
     uint8_t  txP = inst->config.tx.preambleLength;
-    uint16_t sfdTO = inst->config.rx.sfdTimeout;
+    uint16_t sfd_timeout = inst->config.rx.sfdTimeout;
     conf_value_from_str(uwb_config[CFGSTR_TX_PREAM_LEN], CONF_INT16,
-                        (void*)&plen, 0);
+                        (void*)&preamble_len, 0);
 
-    /* TODO: calculate with proper pac-len etc. */
-    switch (plen)
+    switch (preamble_len)
     {
-    case (64):   txP = DWT_PLEN_64;   sfdTO = (plen + 1 + 8 - 8);break;
-    case (128):  txP = DWT_PLEN_128;  sfdTO = (plen + 1 + 8 - 8);break;
-    case (256):  txP = DWT_PLEN_256;  sfdTO = (plen + 1 + 8 - 8);break;
-    case (512):  txP = DWT_PLEN_512;  sfdTO = (plen + 1 + 8 - 8);break;
-    case (1024): txP = DWT_PLEN_1024; sfdTO = (plen + 1 + 8 - 8);break;
-    case (2048): txP = DWT_PLEN_2048; sfdTO = (plen + 1 + 8 - 8);break;
-    case (4096): txP = DWT_PLEN_4096; sfdTO = (plen + 1 + 8 - 8);break;
+    case (64):   txP = DWT_PLEN_64  ;break;
+    case (128):  txP = DWT_PLEN_128 ;break;
+    case (256):  txP = DWT_PLEN_256 ;break;
+    case (512):  txP = DWT_PLEN_512 ;break;
+    case (1024): txP = DWT_PLEN_1024;break;
+    case (2048): txP = DWT_PLEN_2048;break;
+    case (4096): txP = DWT_PLEN_4096;break;
     default:
         UC_WARN("inv preamb_len\n");
         break;
     }
+    /* Calculate the SFD timeout */
+    sfd_timeout = (preamble_len + 1 + sfd_len - paclen);
     inst->config.tx.preambleLength = txP;
-    inst->config.rx.sfdTimeout = sfdTO;
-    inst->attrib.nsync = plen;
+    inst->config.rx.sfdTimeout = sfd_timeout;
+    inst->attrib.nsync = preamble_len;
 
     /* Callback to allow host application to decide when to update config
        of chip */
