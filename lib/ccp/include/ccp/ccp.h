@@ -68,11 +68,19 @@ STATS_SECT_START(ccp_stat_section)
 STATS_SECT_END
 #endif
 
+// XXX This needs to be made bitfield-safe. Not sure the ifdefs below are enough
 typedef union _ccp_timestamp_t{
     struct {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
         uint64_t lo:40;
         uint64_t hi:23;
         uint64_t halfperiod:1;
+#endif
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        uint64_t halfperiod:1;
+        uint64_t hi:23;
+        uint64_t lo:40;
+#endif
     };
     uint64_t timestamp;
 }ccp_timestamp_t;
