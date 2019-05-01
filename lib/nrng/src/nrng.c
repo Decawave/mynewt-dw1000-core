@@ -367,9 +367,10 @@ dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_r
     
     if (dw1000_start_tx(inst).start_tx_error){
         NRNG_STATS_INC(start_tx_error);
-        if (os_sem_get_count(&nrng->sem) == 0) 
+        if (os_sem_get_count(&nrng->sem) == 0) {
             err = os_sem_release(&nrng->sem);
             assert(err == OS_OK);
+        }
     }else{
         err = os_sem_pend(&nrng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
         assert(err == OS_OK);
