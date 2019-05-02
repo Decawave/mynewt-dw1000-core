@@ -969,6 +969,11 @@ extern "C" {
 #define DRX_CARRIER_INT_LEN     (3)
 #define DRX_CARRIER_INT_MASK    0x001FFFFF
 
+/* offset from DRX_CONF_ID in bytes */
+#define RPACC_NOSAT_OFFSET      0x2C    /* 7.2.40.11 Sub-Register 0x27:2C - RXPACC_NOSAT */
+#define RPACC_NOSAT_LEN         (2)
+#define RPACC_NOSAT_MASK        0xFFFF
+
 
 /****************************************************************************//**
  * @brief Bit definitions for register  RF_CONF
