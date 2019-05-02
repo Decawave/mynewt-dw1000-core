@@ -35,7 +35,7 @@
 #ifndef OPENTHREAD_DHCP6_SERVER_H_
 #define OPENTHREAD_DHCP6_SERVER_H_
 
-#include <openthread/types.h>
+#include <openthread/instance.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,7 +62,7 @@ void otDhcp6ServerUpdate(otInstance *aInstance);
  */
 
 #ifdef __cplusplus
-}  // end of extern "C"
+} // end of extern "C"
 #endif
 
-#endif  // OPENTHREAD_DHCP6_SERVER_H_
+#endif // OPENTHREAD_DHCP6_SERVER_H_

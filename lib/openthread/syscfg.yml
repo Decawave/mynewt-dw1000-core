@@ -23,3 +23,5 @@ syscfg.defs:
     OT_FLASH_AREA:
         description: 'Flash Section used for OT platform settings'
         value: FLASH_AREA_NFFS
+    OT_DEBUG:
+        value: 0

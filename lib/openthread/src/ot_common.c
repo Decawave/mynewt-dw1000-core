@@ -5,16 +5,11 @@
 #include <dw1000/dw1000_hal.h>
 #include "console/console.h"
 
-#include "openthread/ot_common.h"
-
-#include <openthread/types.h>
-#include <openthread/platform/uart.h>
-#include <openthread/platform/diag.h>
-#include <openthread/platform/platform.h>
-#include <openthread/platform/alarm.h>
-#include <openthread/platform/usec-alarm.h>
 #include <openthread/platform/logging.h>
 #include <openthread/platform/radio.h>
+#include <openthread/platform/uart.h>
+#include <openthread/platform/diag.h>
+#include <openthread/ot_common.h>
 #include <openthread/tasklet.h>
 #include "flash_map/flash_map.h"
 #include "hal/hal_flash.h"
@@ -172,7 +167,14 @@ static void tasklet_sched(struct os_event* ev){
     otInstance* aInstance = ot->sInstance;
     if(taskletprocess == true){
         taskletprocess = false;
-        otTaskletsProcess(aInstance);
+
+        if(otTaskletsArePending(aInstance))
+            otTaskletsProcess(aInstance);
+        else
+        {
+            taskletprocess = true;
+            os_callout_reset(&task_callout,OS_TICKS_PER_SEC/32);
+        }
     }
 }
 
@@ -181,10 +183,17 @@ void otTaskletsSignalPending(otInstance *aInstance)
     taskletprocess = true;
     if(ot_global_inst->status.initialized == 1)
         os_eventq_put(&ot_global_inst->eventq, &task_callout.c_ev);
-    else
-        otTaskletsProcess(aInstance);
+    else{
+        if(otTaskletsArePending(aInstance))
+            otTaskletsProcess(aInstance);
+        else
+        {
+            ot_global_inst->sInstance = aInstance;
+            os_callout_reset(&task_callout,OS_TICKS_PER_SEC/32);
+        }
+    }
 }
-#if 1
+
 static void ot_task(void *arg)
 {
     ot_instance_t *ot = (ot_instance_t*)arg;
@@ -192,7 +201,6 @@ static void ot_task(void *arg)
         os_eventq_run(&ot->eventq);
     }
 }
-#endif
 
 void
 ot_pkg_init(void){
@@ -228,15 +236,7 @@ ot_init(dw1000_dev_instance_t * inst){
 	assert(err == OS_OK);
 	
     ot_global_inst = inst->ot;
-    
-    RadioInit(inst);
-	
-    return inst->ot;
-}
 
-void ot_post_init(dw1000_dev_instance_t* inst, otInstance *aInstance){
-    ot_global_inst = inst->ot;
-    inst->ot->sInstance = aInstance;
     os_eventq_init(&inst->ot->eventq);
     os_task_init(&inst->ot->task_str, "ot_task",
             ot_task,
@@ -244,8 +244,15 @@ void ot_post_init(dw1000_dev_instance_t* inst, otInstance *aInstance){
             inst->ot->task_prio,
             OS_WAIT_FOREVER,
             inst->ot->task_stack,
-            DW1000_DEV_TASK_STACK_SZ * 3);
+            DW1000_DEV_TASK_STACK_SZ * 4);
     os_callout_init(&task_callout, &inst->ot->eventq, tasklet_sched , (void*)inst->ot);
+    RadioInit(inst);
 
+    return inst->ot;
+}
+
+void ot_post_init(dw1000_dev_instance_t* inst, otInstance *aInstance){
+    ot_global_inst = inst->ot;
+    inst->ot->sInstance = aInstance;
 	inst->ot->status.initialized = 1;
 }

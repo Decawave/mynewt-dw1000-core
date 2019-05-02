@@ -6,12 +6,12 @@
 #include "console/console.h"
 
 #include "openthread/ot_common.h"
-#include <openthread/types.h>
+//#include <openthread/types.h>
 #include <openthread/platform/uart.h>
 #include <openthread/platform/diag.h>
-#include <openthread/platform/platform.h>
-#include <openthread/platform/alarm.h>
-#include <openthread/platform/usec-alarm.h>
+//#include <openthread/platform/platform.h>
+#include <openthread/platform/alarm-milli.h>
+//#include <openthread/platform/usec-alarm.h>
 #include <openthread/platform/logging.h>
 #include <openthread/platform/radio.h>
 
@@ -66,12 +66,12 @@ void otPlatRadioGetIeeeEui64(otInstance *aInstance, uint8_t *aIeeeEui64){
     (void)aInstance;
 }
 
-void otPlatRadioSetExtendedAddress(otInstance *aInstance, uint8_t *aAddress){
+void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aAddress){
 
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
 #endif
-    dw1000_set_eui(g_ot_inst->dev, *aAddress);
+    dw1000_set_eui(g_ot_inst->dev, *((uint64_t *)aAddress->m8));
     (void)aInstance;
 }
 
@@ -133,7 +133,9 @@ otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel){
             /* TBD: FIFO related changes if required */
             dw1000_set_rx_timeout(g_ot_inst->dev, 0);
             if(!dw1000_start_rx(g_ot_inst->dev).start_rx_error)
+            {
                 gIsReceiverEnabled = true;
+            }
             else
                 error  = OT_ERROR_FAILED;
         }
@@ -174,7 +176,12 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aPacket){
     dw1000_set_rx_timeout(inst, 0);
     if(dw1000_start_tx(inst).start_tx_error)
         error = OT_ERROR_FAILED;
-    
+
+    if (error == OT_ERROR_NONE)
+    {
+        otPlatRadioTxStarted(aInstance, aPacket);
+    }
+ 
     return error;
 }
 
@@ -266,15 +273,14 @@ static void dw1000_sched(struct os_event* ev){
         {
             otPlatDiagRadioTransmitDone(aInstance,
                     &gTransmitFrame,
-                    false,
                     gTransmitError);
         }
         else
 #endif
         {
-            otPlatRadioTransmitDone(aInstance,
+            otPlatRadioTxDone(aInstance,
                     &gTransmitFrame,
-                    (gTransmitFrame.mPsdu[0] & IEEE802154_FRAME_PENDING) != 0,
+                    NULL,
                     gTransmitError);
         }
     }
@@ -285,9 +291,9 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
 	gReceiveFrame.mLength = inst->frame_len;
     gReceiveFrame.mChannel = inst->config.channel;
-    gReceiveFrame.mPower = 0;
-    gReceiveFrame.mLqi = 0;
-    
+//    gReceiveFrame.mInfo.mRxInfo.mRssi = otPlatRadioGetRssi(g_ot_inst->sInstance); //RSSI should be zero
+    gReceiveFrame.mInfo.mRxInfo.mRssi = -50;
+    gReceiveFrame.mInfo.mRxInfo.mLqi = 0;
     gReceiveError = OT_ERROR_NONE;
     memcpy(gReceiveFrame.mPsdu, inst->rxbuf, gReceiveFrame.mLength);
     gReceivedone = true;
@@ -390,7 +396,7 @@ otError otPlatRadioAddSrcMatchShortEntry(otInstance *aInstance,
     return error;
 }
 
-otError otPlatRadioClearSrcMatchExtEntry(otInstance *aInstance, const uint8_t *aExtAddress){
+otError otPlatRadioClearSrcMatchExtEntry(otInstance *aInstance, const otExtAddress *ExtAddress){
 
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
@@ -422,7 +428,7 @@ otError otPlatRadioClearSrcMatchShortEntry(otInstance *aInstance,
 }
 
 otError otPlatRadioAddSrcMatchExtEntry(otInstance *aInstance,
-                                           const uint8_t *aExtAddress){
+                                           const otExtAddress * aExtAddress){
 
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
@@ -440,8 +446,32 @@ int8_t otPlatRadioGetReceiveSensitivity(otInstance *aInstance){
 #endif
     // TBD for Getting receiver sensitivity
     (void)aInstance;
-    //int8_t a=12;
-    return (int8_t)12;
+    return -100;
 }
 
+otError otPlatRadioGetTransmitPower(otInstance *aInstance, int8_t *aPower)
+{
+    otError error = OT_ERROR_NONE;
+    (void)aInstance;
 
+    if (aPower == NULL)
+    {
+        error = OT_ERROR_INVALID_ARGS;
+    }
+    else
+    {
+//        *aPower = sDefaultTxPower;
+    }
+
+    return error;
+}
+
+otError otPlatRadioSetTransmitPower(otInstance *aInstance, int8_t aPower)
+{
+    (void)aInstance;
+
+ //   sDefaultTxPower = aPower;
+//    nrf_802154_tx_power_set(aPower);
+
+    return OT_ERROR_NONE;
+}

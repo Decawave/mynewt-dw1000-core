@@ -54,13 +54,23 @@
  *
  */
 
-#ifndef TOOLCHAIN_H_
-#define TOOLCHAIN_H_
+#ifndef OPENTHREAD_PLATFORM_TOOLCHAIN_H_
+#define OPENTHREAD_PLATFORM_TOOLCHAIN_H_
+
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#ifdef _WIN32
+#pragma warning(disable : 4214) // nonstandard extension used: bit field types other than int
+#ifdef _KERNEL_MODE
+#include <ntdef.h>
+#else
+#include <windows.h>
+#endif
+#endif /* _WIN32 */
 
 /**
  * @def OT_TOOL_PACKED_BEGIN
@@ -91,6 +101,27 @@ extern "C" {
  *
  */
 
+/**
+ * @def OT_TOOL_WEAK
+ *
+ * Compiler-specific weak symbol modifier.
+ *
+ */
+
+/**
+ * @def OT_CALL
+ *
+ * Compiler-specific function modifier, ie: Win DLL support
+ *
+ */
+
+/**
+ * @def OT_CDECL
+ *
+ * Compiler-specific function modifier, ie: Win DLL support
+ *
+ */
+
 // =========== TOOLCHAIN SELECTION : START ===========
 
 #if defined(__GNUC__) || defined(__clang__) || defined(__CC_ARM) || defined(__TI_ARM__)
@@ -99,8 +130,9 @@ extern "C" {
 // http://www.keil.com/support/man/docs/armcc/armcc_chr1359124973480.htm
 
 #define OT_TOOL_PACKED_BEGIN
-#define OT_TOOL_PACKED_FIELD                __attribute__((packed))
-#define OT_TOOL_PACKED_END                  __attribute__((packed))
+#define OT_TOOL_PACKED_FIELD __attribute__((packed))
+#define OT_TOOL_PACKED_END __attribute__((packed))
+#define OT_TOOL_WEAK __attribute__((weak))
 
 #define OT_TOOL_ALIGN(X)
 
@@ -110,19 +142,21 @@ extern "C" {
 
 #include "intrinsics.h"
 
-#define OT_TOOL_PACKED_BEGIN                __packed
+#define OT_TOOL_PACKED_BEGIN __packed
 #define OT_TOOL_PACKED_FIELD
 #define OT_TOOL_PACKED_END
+#define OT_TOOL_WEAK __weak
 
 #define OT_TOOL_ALIGN(X)
 
 #elif defined(_MSC_VER)
 
-#define OT_TOOL_PACKED_BEGIN                __pragma(pack(push,1))
+#define OT_TOOL_PACKED_BEGIN __pragma(pack(push, 1))
 #define OT_TOOL_PACKED_FIELD
-#define OT_TOOL_PACKED_END                  __pragma(pack(pop))
+#define OT_TOOL_PACKED_END __pragma(pack(pop))
+#define OT_TOOL_WEAK
 
-#define OT_TOOL_ALIGN(X)                    __declspec(align(4))
+#define OT_TOOL_ALIGN(X) __declspec(align(4))
 
 #elif defined(__SDCC)
 
@@ -131,6 +165,7 @@ extern "C" {
 #define OT_TOOL_PACKED_BEGIN
 #define OT_TOOL_PACKED_FIELD
 #define OT_TOOL_PACKED_END
+#define OT_TOOL_WEAK
 
 #define OT_TOOL_ALIGN(X)
 
@@ -143,6 +178,7 @@ extern "C" {
 #define OT_TOOL_PACKED_BEGIN
 #define OT_TOOL_PACKED_FIELD
 #define OT_TOOL_PACKED_END
+#define OT_TOOL_WEAK
 
 #define OT_TOOL_ALIGN(X)
 
@@ -190,12 +226,87 @@ extern "C" {
 #endif
 
 /**
+ * @def OT_UNUSED_VARIABLE
+ *
+ * Suppress unused variable warning in specific toolchains.
+ *
+ */
+
+/**
+ * @def OT_UNREACHABLE_CODE
+ *
+ * Suppress Unreachable code warning in specific toolchains.
+ *
+ */
+
+#if defined(__ICCARM__)
+
+#include <stddef.h>
+
+#define OT_UNUSED_VARIABLE(VARIABLE) \
+    do                               \
+    {                                \
+        if (&VARIABLE == NULL)       \
+        {                            \
+        }                            \
+    } while (false)
+
+#define OT_UNREACHABLE_CODE(CODE)                                                                    \
+    _Pragma("diag_suppress=Pe111") _Pragma("diag_suppress=Pe128") CODE _Pragma("diag_default=Pe111") \
+        _Pragma("diag_default=Pe128")
+
+#elif defined(__CC_ARM)
+
+#include <stddef.h>
+
+#define OT_UNUSED_VARIABLE(VARIABLE) \
+    do                               \
+    {                                \
+        if (&VARIABLE == NULL)       \
+        {                            \
+        }                            \
+    } while (false)
+
+#define OT_UNREACHABLE_CODE(CODE) CODE
+
+#elif defined(__TI_ARM__)
+
+#include <stddef.h>
+
+#define OT_UNUSED_VARIABLE(VARIABLE) \
+    do                               \
+    {                                \
+        if (&VARIABLE == NULL)       \
+        {                            \
+        }                            \
+    } while (false)
+
+/*
+ * #112-D statement is unreachable
+ * #129-D loop is not reachable
+ */
+#define OT_UNREACHABLE_CODE(CODE) \
+    _Pragma("diag_push") _Pragma("diag_suppress 112") _Pragma("diag_suppress 129") CODE _Pragma("diag_pop")
+
+#else
+
+#define OT_UNUSED_VARIABLE(VARIABLE) \
+    do                               \
+    {                                \
+        (void)(VARIABLE);            \
+    } while (false)
+
+#define OT_UNREACHABLE_CODE(CODE) CODE
+
+#endif
+
+/**
  * @}
  *
  */
 
 #ifdef __cplusplus
-}  // extern "C"
+} // extern "C"
 #endif
 
-#endif // TOOLCHAIN_H_
+#endif // OPENTHREAD_PLATFORM_TOOLCHAIN_H_

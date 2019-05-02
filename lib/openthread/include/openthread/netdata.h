@@ -35,7 +35,7 @@
 #ifndef OPENTHREAD_NETDATA_H_
 #define OPENTHREAD_NETDATA_H_
 
-#include <openthread/types.h>
+#include <openthread/ip6.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,6 +48,114 @@ extern "C" {
  *
  */
 
+#define OT_NETWORK_DATA_ITERATOR_INIT 0 ///< Initializer for otNetworkDataIterator.
+
+typedef uint32_t otNetworkDataIterator; ///< Used to iterate through Network Data information.
+
+/**
+ * This structure represents a Border Router configuration.
+ */
+typedef struct otBorderRouterConfig
+{
+    /**
+     * The IPv6 prefix.
+     */
+    otIp6Prefix mPrefix;
+
+    /**
+     * A 2-bit signed integer indicating router preference as defined in RFC 4191.
+     */
+    int mPreference : 2;
+
+    /**
+     * TRUE, if @p mPrefix is preferred.  FALSE, otherwise.
+     */
+    bool mPreferred : 1;
+
+    /**
+     * TRUE, if @p mPrefix should be used for address autoconfiguration.  FALSE, otherwise.
+     */
+    bool mSlaac : 1;
+
+    /**
+     * TRUE, if this border router is a DHCPv6 Agent that supplies IPv6 address configuration.  FALSE, otherwise.
+     */
+    bool mDhcp : 1;
+
+    /**
+     * TRUE, if this border router is a DHCPv6 Agent that supplies other configuration data.  FALSE, otherwise.
+     */
+    bool mConfigure : 1;
+
+    /**
+     * TRUE, if this border router is a default route for @p mPrefix.  FALSE, otherwise.
+     */
+    bool mDefaultRoute : 1;
+
+    /**
+     * TRUE, if this prefix is considered on-mesh.  FALSE, otherwise.
+     */
+    bool mOnMesh : 1;
+
+    /**
+     * TRUE, if this configuration is considered Stable Network Data.  FALSE, otherwise.
+     */
+    bool mStable : 1;
+
+    /**
+     * The Border Agent Rloc.
+     */
+    uint16_t mRloc16;
+} otBorderRouterConfig;
+
+/**
+ * This structure represents an External Route configuration.
+ *
+ */
+typedef struct otExternalRouteConfig
+{
+    /**
+     * The prefix for the off-mesh route.
+     */
+    otIp6Prefix mPrefix;
+
+    /**
+     * The Rloc associated with the external route entry.
+     *
+     * This value is ignored when adding an external route. For any added route, the device's Rloc is used.
+     */
+    uint16_t mRloc16;
+
+    /**
+     * A 2-bit signed integer indicating router preference as defined in RFC 4191.
+     */
+    int mPreference : 2;
+
+    /**
+     * TRUE, if this configuration is considered Stable Network Data.  FALSE, otherwise.
+     */
+    bool mStable : 1;
+
+    /**
+     * TRUE if the external route entry's next hop is this device itself (i.e., the route was added earlier by this
+     * device). FALSE otherwise.
+     *
+     * This value is ignored when adding an external route. For any added route the next hop is this device.
+     */
+    bool mNextHopIsThisDevice : 1;
+
+} otExternalRouteConfig;
+
+/**
+ * Defines valid values for member mPreference in otExternalRouteConfig and otBorderRouterConfig.
+ *
+ */
+typedef enum otRoutePreference {
+    OT_ROUTE_PREFERENCE_LOW  = -1, ///< Low route preference.
+    OT_ROUTE_PREFERENCE_MED  = 0,  ///< Medium route preference.
+    OT_ROUTE_PREFERENCE_HIGH = 1,  ///< High route preference.
+} otRoutePreference;
+
 /**
  * This method provides a full or stable copy of the Leader's Thread Network Data.
  *
@@ -56,27 +164,14 @@ extern "C" {
  * @param[out]    aData        A pointer to the data buffer.
  * @param[inout]  aDataLength  On entry, size of the data buffer pointed to by @p aData.
  *                             On exit, number of copied bytes.
- */
-OTAPI otError OTCALL otNetDataGetLeader(otInstance *aInstance, bool aStable, uint8_t *aData,
-                                        uint8_t *aDataLength);
-
-/**
- * This method provides a full or stable copy of the local Thread Network Data.
  *
- * @param[in]     aInstance    A pointer to an OpenThread instance.
- * @param[in]     aStable      TRUE when copying the stable version, FALSE when copying the full version.
- * @param[out]    aData        A pointer to the data buffer.
- * @param[inout]  aDataLength  On entry, size of the data buffer pointed to by @p aData.
- *                             On exit, number of copied bytes.
  */
-OTAPI otError OTCALL otNetDataGetLocal(otInstance *aInstance, bool aStable, uint8_t *aData,
-                                       uint8_t *aDataLength);
+OTAPI otError OTCALL otNetDataGet(otInstance *aInstance, bool aStable, uint8_t *aData, uint8_t *aDataLength);
 
 /**
- * This function gets the next On Mesh Prefix in the Network Data.
+ * This function gets the next On Mesh Prefix in the partition's Network Data.
  *
  * @param[in]     aInstance  A pointer to an OpenThread instance.
- * @param[in]     aLocal     TRUE to retrieve from the local Network Data, FALSE for partition's Network Data
  * @param[inout]  aIterator  A pointer to the Network Data iterator context. To get the first on-mesh entry
                              it should be set to OT_NETWORK_DATA_ITERATOR_INIT.
  * @param[out]    aConfig    A pointer to where the On Mesh Prefix information will be placed.
@@ -85,70 +180,14 @@ OTAPI otError OTCALL otNetDataGetLocal(otInstance *aInstance, bool aStable, uint
  * @retval OT_ERROR_NOT_FOUND  No subsequent On Mesh prefix exists in the Thread Network Data.
  *
  */
-OTAPI otError OTCALL otNetDataGetNextPrefixInfo(otInstance *aInstance, bool aLocal,
-                                                otNetworkDataIterator *aIterator, otBorderRouterConfig *aConfig);
+OTAPI otError OTCALL otNetDataGetNextOnMeshPrefix(otInstance *           aInstance,
+                                                  otNetworkDataIterator *aIterator,
+                                                  otBorderRouterConfig * aConfig);
 
 /**
- * Add a border router configuration to the local network data.
- *
- * @param[in]  aInstance A pointer to an OpenThread instance.
- * @param[in]  aConfig   A pointer to the border router configuration.
- *
- * @retval OT_ERROR_NONE          Successfully added the configuration to the local network data.
- * @retval OT_ERROR_INVALID_ARGS  One or more configuration parameters were invalid.
- * @retval OT_ERROR_NO_BUFS       Not enough room is available to add the configuration to the local network data.
- *
- * @sa otRemoveBorderRouter
- * @sa otSendServerData
- */
-OTAPI otError OTCALL otNetDataAddPrefixInfo(otInstance *aInstance, const otBorderRouterConfig *aConfig);
-
-/**
- * Remove a border router configuration from the local network data.
- *
- * @param[in]  aInstance A pointer to an OpenThread instance.
- * @param[in]  aPrefix   A pointer to an IPv6 prefix.
- *
- * @retval OT_ERROR_NONE  Successfully removed the configuration from the local network data.
- *
- * @sa otAddBorderRouter
- * @sa otSendServerData
- */
-OTAPI otError OTCALL otNetDataRemovePrefixInfo(otInstance *aInstance, const otIp6Prefix *aPrefix);
-
-/**
- * Add an external route configuration to the local network data.
- *
- * @param[in]  aInstance A pointer to an OpenThread instance.
- * @param[in]  aConfig   A pointer to the external route configuration.
- *
- * @retval OT_ERROR_NONE          Successfully added the configuration to the local network data.
- * @retval OT_ERROR_INVALID_ARGS  One or more configuration parameters were invalid.
- * @retval OT_ERROR_NO_BUFS       Not enough room is available to add the configuration to the local network data.
- *
- * @sa otRemoveExternalRoute
- * @sa otSendServerData
- */
-OTAPI otError OTCALL otNetDataAddRoute(otInstance *aInstance, const otExternalRouteConfig *aConfig);
-
-/**
- * Remove an external route configuration from the local network data.
- *
- * @param[in]  aInstance A pointer to an OpenThread instance.
- * @param[in]  aPrefix   A pointer to an IPv6 prefix.
- *
- * @retval OT_ERROR_NONE  Successfully removed the configuration from the local network data.
- *
- * @sa otAddExternalRoute
- * @sa otSendServerData
- */
-OTAPI otError OTCALL otNetDataRemoveRoute(otInstance *aInstance, const otIp6Prefix *aPrefix);
-
-/**
- * This function gets the next external route in the Network Data.
+ * This function gets the next external route in the partition's Network Data.
  *
  * @param[in]     aInstance  A pointer to an OpenThread instance.
- * @param[in]     aLocal     TRUE to retrieve from the local Network Data, FALSE for partition's Network Data
  * @param[inout]  aIterator  A pointer to the Network Data iterator context. To get the first external route entry
                              it should be set to OT_NETWORK_DATA_ITERATOR_INIT.
  * @param[out]    aConfig    A pointer to where the External Route information will be placed.
@@ -157,22 +196,7 @@ OTAPI otError OTCALL otNetDataRemoveRoute(otInstance *aInstance, const otIp6Pref
  * @retval OT_ERROR_NOT_FOUND  No subsequent external route entry exists in the Thread Network Data.
  *
  */
-otError otNetDataGetNextRoute(otInstance *aInstance, bool aLocal, otNetworkDataIterator *aIterator,
-                              otExternalRouteConfig *aConfig);
-
-/**
- * Immediately register the local network data with the Leader.
- *
- * @param[in]  aInstance A pointer to an OpenThread instance.
- *
- * retval OT_ERROR_NONE  Successfully queued a Server Data Request message for delivery.
- *
- * @sa otAddBorderRouter
- * @sa otRemoveBorderRouter
- * @sa otAddExternalRoute
- * @sa otRemoveExternalRoute
- */
-OTAPI otError OTCALL otNetDataRegister(otInstance *aInstance);
+otError otNetDataGetNextRoute(otInstance *aInstance, otNetworkDataIterator *aIterator, otExternalRouteConfig *aConfig);
 
 /**
  * Get the Network Data Version.
@@ -180,6 +204,7 @@ OTAPI otError OTCALL otNetDataRegister(otInstance *aInstance);
  * @param[in]  aInstance A pointer to an OpenThread instance.
  *
  * @returns The Network Data Version.
+ *
  */
 OTAPI uint8_t OTCALL otNetDataGetVersion(otInstance *aInstance);
 
@@ -189,6 +214,7 @@ OTAPI uint8_t OTCALL otNetDataGetVersion(otInstance *aInstance);
  * @param[in]  aInstance A pointer to an OpenThread instance.
  *
  * @returns The Stable Network Data Version.
+ *
  */
 OTAPI uint8_t OTCALL otNetDataGetStableVersion(otInstance *aInstance);
 
@@ -198,7 +224,7 @@ OTAPI uint8_t OTCALL otNetDataGetStableVersion(otInstance *aInstance);
  */
 
 #ifdef __cplusplus
-}  // extern "C"
+} // extern "C"
 #endif
 
-#endif  // OPENTHREAD_NETDATA_H_
+#endif // OPENTHREAD_NETDATA_H_
