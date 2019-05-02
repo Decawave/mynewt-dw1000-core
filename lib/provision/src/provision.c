@@ -20,7 +20,7 @@
  */
 
 /**
- * @file dw1000_provision.c
+ * @file provision.c
  * @author paul kettle
  * @date 2018
  * @brief provisioning
@@ -272,8 +272,8 @@ provision_rx_complete_cb(dw1000_dev_instance_t* inst, dw1000_mac_interface_t * c
                 frame->src_address = inst->my_short_address;
                 frame->code = DWT_PROVISION_RESP;
                 dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_rng_response_frame_t));
-                dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true);
-                //dw1000_set_wait4resp(inst,true);
+                dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0);
+                dw1000_set_wait4resp(inst,true);
                 dw1000_set_delay_start(inst, response_tx_delay);
                 //dw1000_set_rx_timeout(inst,0);
                 if (dw1000_start_tx(inst).start_tx_error){
@@ -419,7 +419,7 @@ dw1000_provision_request(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     frame->src_address = inst->my_short_address;
     frame->dst_address = BROADCAST_ADDRESS;
     dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_rng_response_frame_t));
-    dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true);
+    dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0);
     dw1000_set_wait4resp(inst, true);
     dw1000_set_rx_timeout(inst, provision->config.rx_timeout_period);
     provision->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;

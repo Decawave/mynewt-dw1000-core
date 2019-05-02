@@ -248,7 +248,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->code = DWT_DS_TWR_NRNG_EXT_T1;
                 frame->slot_id = inst->slot_id;
                 dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_response_frame_t));
-                dw1000_write_tx_fctrl(inst, sizeof(nrng_response_frame_t), 0, true);
+                dw1000_write_tx_fctrl(inst, sizeof(nrng_response_frame_t), 0);
                 dw1000_set_wait4resp(inst, true);
                 uint16_t timeout =config->tx_holdoff_delay + (frame->end_slot_id - slot_id + 1) * (dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t))
                         + config->rx_timeout_period
@@ -323,7 +323,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     dw1000_set_rx_timeout(inst, timeout);
 
                     dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
-                    dw1000_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0, true);
+                    dw1000_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0);
                     dw1000_set_wait4resp(inst, true);
                     if (dw1000_start_tx(inst).start_tx_error){
                         os_sem_release(&nrng->sem);
@@ -365,7 +365,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     cbs->final_cb(inst, cbs);
 
                 dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_frame_t));
-                dw1000_write_tx_fctrl(inst, sizeof(nrng_frame_t), 0, true);
+                dw1000_write_tx_fctrl(inst, sizeof(nrng_frame_t), 0);
                 dw1000_set_wait4resp(inst, false);
                 dw1000_set_delay_start(inst, response_tx_delay);
                 if (dw1000_start_tx(inst).start_tx_error){
@@ -444,7 +444,7 @@ send_final_msg(dw1000_dev_instance_t * inst , nrng_frame_t * frame){
     dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, DWT_DS_TWR_NRNG_EXT);
     uint16_t nnodes = nrng->nnodes;
     dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
-    dw1000_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0, true);
+    dw1000_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0);
     dw1000_set_wait4resp(inst, true);
     uint16_t timeout = (((nnodes) * (dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_frame_t))))
             + (nnodes - 1)*(config->tx_guard_delay))

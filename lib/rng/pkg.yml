@@ -34,7 +34,8 @@ pkg.lflags:
 
 pkg.deps:
     - "@apache-mynewt-core/encoding/json"
+    - "@mynewt-dw1000-core/lib/euclid"
     
 pkg.init:
     rng_pkg_init: 404
-    nrng_pkg_init: 411
+

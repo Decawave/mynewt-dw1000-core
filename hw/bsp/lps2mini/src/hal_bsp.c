@@ -189,8 +189,6 @@ sensor_dev_create(void)
 
 void hal_bsp_init(void)
 {
-    int rc;
-
     /* Make sure system clocks have started */
     hal_system_clock_start();
 
@@ -202,7 +200,7 @@ void hal_bsp_init(void)
 #endif
     
 #if MYNEWT_VAL(SPI_0_MASTER)
-    rc = os_sem_init(&g_spi0_sem, 0x1);
+    int rc = os_sem_init(&g_spi0_sem, 0x1);
     assert(rc == 0);
 #endif
 

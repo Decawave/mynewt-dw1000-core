@@ -43,7 +43,7 @@ extern "C" {
 
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
-#include <rng/nrng.h>
+#include <nrng/nrng.h>
 
 void twr_ss_nrng_pkg_init(void);
 void twr_ss_nrng_free(dw1000_dev_instance_t * inst);

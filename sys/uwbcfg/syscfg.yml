@@ -1,4 +1,46 @@
 syscfg.defs:
+    UWBCFG_ENABLED:
+        description: 'UWB Configuration manager enabled'
+        value: 1
     UWBCFG_APPLY_AT_INIT:
         description: 'Apply stored uwbcfg at package init'
         value: 0
+    UWBCFG_DEF_CH:
+        description: 'Default UWB Channel'
+        value: '"5"'
+    UWBCFG_DEF_PRF:
+        description: 'Default UWB PRF (MHz)'
+        value: '"64"'
+    UWBCFG_DEF_DATARATE:
+        description: 'Default UWB Datarate (110k, 850k, 6m8)'
+        value: '"6m8"'
+    UWBCFG_DEF_PACLEN:
+        description: 'Default UWB PAC Length (8, 16, 32, 64)'
+        value: '"8"'
+    UWBCFG_DEF_RX_PREAM_CIDX:
+        description: 'Default UWB RX Preamble Code Index'
+        value: '"9"'
+    UWBCFG_DEF_TX_PREAM_CIDX:
+        description: 'Default UWB TX Preamble Code Index'
+        value: '"9"'
+    UWBCFG_DEF_RX_PHR_MODE:
+        description: 'Default UWB PHR Mode (s, e)'
+        value: '"e"'
+    UWBCFG_DEF_RX_SFD_TYPE:
+        description: 'Default UWB SFD Type (0, 1)'
+        value: '"0"'
+    UWBCFG_DEF_TX_PREAM_LEN:
+        description: 'Default UWB Preamble Lenght'
+        value: '"128"'
+    UWBCFG_DEF_TXRF_POWER_COARSE:
+        description: 'Default UWB Coarse TX Power (0,3,6,..,18)'
+        value: '"15"'
+    UWBCFG_DEF_TXRF_POWER_FINE:
+        description: 'Default UWB FINE TX Power (0,1,2,..,31)'
+        value: '"22"'
+    UWBCFG_DEF_RX_ANTDLY:
+        description: 'Default UWB RX Antenna delay'
+        value: '"0x4050"'
+    UWBCFG_DEF_TX_ANTDLY:
+        description: 'Default UWB TX Antenna delay'
+        value: '"0x4050"'

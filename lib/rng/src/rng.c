@@ -51,7 +51,6 @@
 #if MYNEWT_VAL(RNG_ENABLED)
 #include <rng/rng.h>
 #include <rng/rng_encode.h>
-#include <rng/nrng.h>
 #endif
 #if MYNEWT_VAL(TWR_SS_EXT_ENABLED)
 #include <twr_ss_ext/twr_ss_ext.h>
@@ -72,6 +71,7 @@
 #include <cir/cir.h>
 #endif
 
+#if MYNEWT_VAL(RNG_STATS)
 STATS_NAME_START(rng_stat_section)
     STATS_NAME(rng_stat_section, rng_request)
     STATS_NAME(rng_stat_section, rng_listen)
@@ -83,6 +83,11 @@ STATS_NAME_START(rng_stat_section)
     STATS_NAME(rng_stat_section, rx_timeout)
     STATS_NAME(rng_stat_section, reset)
 STATS_NAME_END(rng_stat_section)
+
+#define RNG_STATS_INC(__X) STATS_INC(inst->rng->stat, __X)
+#else
+#define RNG_STATS_INC(__X) {}
+#endif
 
 //#define DIAGMSG(s,u) printf(s,u)
 #ifndef DIAGMSG
@@ -253,7 +258,8 @@ dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint
     };
     inst->rng->idx = 0xFFFF;
     inst->rng->status.initialized = 1;
-
+    
+#if MYNEWT_VAL(RNG_STATS)
     int rc = stats_init(
                     STATS_HDR(inst->rng->stat),
                     STATS_SIZE_INIT_PARMS(inst->rng->stat, STATS_SIZE_32),
@@ -269,6 +275,7 @@ dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint
         rc |= stats_register("rng1", STATS_HDR(inst->rng->stat));
 #endif
     assert(rc == 0);
+#endif
     return inst->rng;
 }
 
@@ -299,8 +306,9 @@ dw1000_rng_free(dw1000_rng_instance_t * inst){
 
 void
 rng_pkg_init(void){
-
+#if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"rng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+#endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
     dw1000_rng_init(hal_dw1000_inst(0), &g_config, sizeof(g_twr_0)/sizeof(twr_frame_t));
@@ -410,10 +418,10 @@ dw1000_rng_get_config(dw1000_dev_instance_t * inst, dw1000_rng_modes_t code){
  * @return dw1000_dev_status_t
  */
 dw1000_dev_status_t
-dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t code){
-
-    // This function executes on the device that initiates a request
-    STATS_INC(inst->rng->stat, rng_request);
+dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t code)
+{
+    // This function executes on the device that initiates a request 
+    RNG_STATS_INC(rng_request);
     os_error_t err = os_sem_pend(&inst->rng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
@@ -438,8 +446,8 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
 #endif
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_rng_request_frame_t));
-    dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_request_frame_t), 0, true);
-    dw1000_set_wait4resp(inst, true);
+    dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_request_frame_t), 0);
+    dw1000_set_wait4resp(inst, true);    
    // dw1000_set_wait4resp_delay(inst, config->tx_holdoff_delay - dw1000_phy_SHR_duration(&inst->attrib));
     uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_rng_response_frame_t))
                     + config->rx_timeout_delay // At least 2 * ToF, 1us ~= 300m
@@ -452,7 +460,7 @@ dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rn
 
     if (dw1000_start_tx(inst).start_tx_error && inst->status.rx_timeout_error == 0){
         os_sem_release(&inst->rng->sem);
-        STATS_INC(inst->rng->stat, tx_error);
+        RNG_STATS_INC(tx_error);
     }
 
     err = os_sem_pend(&inst->rng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
@@ -478,19 +486,16 @@ dw1000_rng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     os_error_t err = os_sem_pend(&inst->rng->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
-    // Set fcntl in the event of a timeout
-    inst->fctrl = FCNTL_IEEE_RANGE_16;
-
-    // Download the CIR on the response
-#if MYNEWT_VAL(CIR_ENABLED)
+    // Download the CIR on the response    
+#if MYNEWT_VAL(CIR_ENABLED)   
     cir_enable(inst->cir, true);
-#endif
-
-    STATS_INC(inst->rng->stat, rng_listen);
+#endif 
+    
+    RNG_STATS_INC(rng_listen);
     if(dw1000_start_rx(inst).start_rx_error){
         err = os_sem_release(&inst->rng->sem);
         assert(err == OS_OK);
-        STATS_INC(inst->rng->stat, rx_error);
+        RNG_STATS_INC(rx_error);
     }
 
     if (mode == DWT_BLOCKING){
@@ -720,30 +725,30 @@ dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code){
  *
  * @return true on sucess
  */
-
-static bool
+static bool 
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     dw1000_rng_instance_t * rng = inst->rng;
-    if(inst->fctrl != FCNTL_IEEE_RANGE_16 && os_sem_get_count(&rng->sem) == 1){
+
+    if(os_sem_get_count(&rng->sem) == 1)
         return false;
-    }
+
     if(os_sem_get_count(&rng->sem) == 0){
         os_error_t err = os_sem_release(&rng->sem);
         assert(err == OS_OK);
-        STATS_INC(inst->rng->stat, rx_timeout);
+        RNG_STATS_INC(rx_timeout);
         switch(rng->code){
             case DWT_SS_TWR ... DWT_DS_TWR_EXT_FINAL:
                 {
-                    STATS_INC(inst->rng->stat, rx_timeout);
+                    RNG_STATS_INC(rx_timeout);
                     return true;
                 }
-                break;
-
+                break;    
+ /*                  
             case DWT_SS_TWR_NRNG ... DWT_SS_TWR_NRNG_FINAL:
                 {
-                    // In the case of a NRNG timeout is used to mark the end of the request and is used to call the completion callback
-                    STATS_INC(inst->rng->stat, rx_complete);
+                    // In the case of a NRNG timeout is used to mark the end of the request and is used to call the completion callback  
+                    RNG_STATS_INC(rx_complete);
                     if(!(SLIST_EMPTY(&inst->interface_cbs))){
                         SLIST_FOREACH(cbs, &inst->interface_cbs, next){
                             if (cbs!=NULL && cbs->complete_cb)
@@ -752,7 +757,8 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     }
                     return true;
                 }
-                break;
+                break;   
+*/
             default:
                 return false;
         }
@@ -775,7 +781,7 @@ reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     if(os_sem_get_count(&inst->rng->sem) == 0){
         os_error_t err = os_sem_release(&inst->rng->sem);
         assert(err == OS_OK);
-        STATS_INC(inst->rng->stat, reset);
+        RNG_STATS_INC(reset);
         return true;
     }
     else
@@ -799,14 +805,11 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
     if(os_sem_get_count(&inst->rng->sem) == 1){
         // unsolicited inbound
-        STATS_INC(inst->rng->stat, rx_unsolicited);
+        RNG_STATS_INC(rx_unsolicited);
         return false;
     }
+    dw1000_rng_instance_t * rng = inst->rng; 
 
-    dw1000_rng_instance_t * rng = inst->rng;
-#if MYNEWT_VAL(NRNG_ENABLED)
-    dw1000_nrng_instance_t * nrng = inst->nrng;
-#endif
     if (inst->frame_len < sizeof(ieee_rng_request_frame_t))
        return false;
 
@@ -823,22 +826,23 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 if (inst->config.framefilter_enabled == false && frame->dst_address != inst->my_short_address){
                     return true;
                 }else{
-                    STATS_INC(rng->stat, rx_complete);
-                    rng->idx++;     // confirmed frame advance
+                    RNG_STATS_INC(rx_complete); 
+                    rng->idx++;     // confirmed frame advance  
                     return false;   // Allow sub extensions to handle event
                 }
             }
             break;
-#if MYNEWT_VAL(NRNG_ENABLED)
+#if 0//MYNEWT_VAL(NRNG_ENABLED)
         case DWT_SS_TWR_NRNG ... DWT_DS_TWR_NRNG_EXT_END:
-            {
-                nrng_frame_t * frame = (nrng_frame_t *) inst->rxbuf;
-                if (inst->frame_len < sizeof(nrng_request_frame_t))
+            {   
+                dw1000_nrng_instance_t * nrng = inst->nrng; 
+                nrng_frame_t * frame = (nrng_frame_t *) inst->rxbuf; 
+                if (inst->frame_len < sizeof(nrng_request_frame_t)) 
                     return false;
                 if (frame->dst_address != inst->my_short_address && (frame->dst_address != BROADCAST_ADDRESS || nrng->device_type == DWT_NRNG_INITIATOR)){
                     return true;
                 }else{
-                    STATS_INC(rng->stat, rx_complete);
+                    RNG_STATS_INC(rx_complete); 
                     return false;   // Allow sub extensions to handle event
                 }
             }
@@ -864,10 +868,15 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
+    
+    if(os_sem_get_count(&inst->rng->sem) == 1){ 
+        // unsolicited inbound
+        return false;
+    }
 
     switch(inst->rng->code) {
         case DWT_SS_TWR ... DWT_DS_TWR_EXT_END:
-            STATS_INC(inst->rng->stat, tx_complete);
+            RNG_STATS_INC(tx_complete);
             return true;
             break;
         default:

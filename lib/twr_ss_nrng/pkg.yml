@@ -18,7 +18,7 @@
 #
 
 pkg.name: lib/twr_ss_nrng
-pkg.description: Double Sided TWR library
+pkg.description: Single Sided NRNG library
 pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
@@ -33,7 +33,7 @@ pkg.lflags:
     - "-lm"
 
 pkg.deps:
-    - "@mynewt-dw1000-core/lib/rng"
+    - "@mynewt-dw1000-core/lib/nrng"
 
 pkg.init:
     twr_ss_nrng_pkg_init: 414

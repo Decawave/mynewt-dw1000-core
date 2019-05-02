@@ -36,8 +36,7 @@
 #include <rng/slots.h>
 
 /**
- * @fn NumberOfBits(uint32_t n)
- * @brief Help function to calculate the number of active slots within a bitmask
+ * Help function to calculate the number of slots within a bitmask
  *
  * @param n bitfield to count bits within
  *
@@ -54,16 +53,13 @@ NumberOfBits(uint32_t n) {
 }
 
 /**
- * @fn BitPosition(uint32_t n)
- * @brief Help function to calculate the position of active slots within a bitmask
+ * Help function to calculate the position of slots within a bitmask
  *
  * @param n bitfield to count bits within
  *
  * @return number of set bits
  */
-static uint32_t
-BitPosition(uint32_t n) {
-
+uint32_t BitPosition(uint32_t n) {
     uint32_t count = 0;
     assert(n && (! (n & (n-1)) )); // single bit set
 
@@ -87,9 +83,9 @@ BitPosition(uint32_t n) {
 uint32_t
 BitIndex(uint32_t nslots_mask, uint32_t n, uint8_t mode) {
 
-    assert(n && (! (n & (n-1)) )); // single bit set
-    assert(n & nslots_mask); // bit set is within ROI
-
+    assert(n && (! (n & (n-1)) ));  // single bit set
+    assert(n & nslots_mask);        // bit set is within ROI
+    
     uint32_t idx = BitPosition(n);
     uint32_t slot_mask =  (((uint32_t)~0UL >> (sizeof(uint32_t) * 8 - idx)));
     uint32_t remaining_mask = ((uint32_t)~0UL << idx);

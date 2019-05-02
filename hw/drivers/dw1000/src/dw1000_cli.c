@@ -41,6 +41,12 @@
 #if MYNEWT_VAL(RNG_ENABLED)
 #include <rng/rng.h>
 #endif
+#if MYNEWT_VAL(NRNG_ENABLED)
+#include <nrng/nrng.h>
+#endif
+#if MYNEWT_VAL(SURVEY_ENABLED)
+#include <survey/survey.h>
+#endif
 
 
 #if MYNEWT_VAL(DW1000_CLI)
@@ -114,11 +120,18 @@ dw1000_dump_registers(struct _dw1000_dev_instance_t * inst)
                            reg&0xffffffffffffffffll);
         }
     }
+    console_printf("{\"inst->tx_sem\"=\"0x%0X\"}\n", os_sem_get_count(&inst->tx_sem));
 #if MYNEWT_VAL(RNG_ENABLED)
     console_printf("{\"rng->sem\"=\"0x%0X\"}\n", os_sem_get_count(&inst->rng->sem));
 #endif
+#if MYNEWT_VAL(NRNG_ENABLED)
+    console_printf("{\"nrng->sem\"=\"0x%0X\"}\n", os_sem_get_count(&inst->nrng->sem));
+#endif
 #if MYNEWT_VAL(CCP_ENABLED)
     console_printf("{\"ccp->sem\"=\"0x%0X\"}\n", os_sem_get_count(&inst->ccp->sem));
+#endif
+#if MYNEWT_VAL(SURVEY_ENABLED)
+    console_printf("{\"survey->sem\"=\"0x%0X\"}\n", os_sem_get_count(&inst->survey->sem));
 #endif
 }
 

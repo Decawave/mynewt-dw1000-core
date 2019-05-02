@@ -39,6 +39,7 @@
 extern "C" {
 #endif
 
+#if MYNEWT_VAL(DW1000_MAC_STATS)
 STATS_SECT_START(mac_stat_section)
     STATS_SECT_ENTRY(tx_bytes)
     STATS_SECT_ENTRY(rx_bytes)
@@ -48,7 +49,9 @@ STATS_SECT_START(mac_stat_section)
     STATS_SECT_ENTRY(TFG_cnt)
     STATS_SECT_ENTRY(LDE_err)
     STATS_SECT_ENTRY(RX_err)
+    STATS_SECT_ENTRY(TXBUF_err)
 STATS_SECT_END
+#endif
 
 #ifdef __cplusplus
 }

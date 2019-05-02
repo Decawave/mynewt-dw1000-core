@@ -29,12 +29,12 @@
  *
  */
 
-#ifndef _DW1000_RNG_H_
-#define _DW1000_RNG_H_
+#ifndef __RNG_H_
+#define __RNG_H_
 
 #include <stdlib.h>
 #include <stdint.h>
-#include "dw1000/triad.h"
+#include "euclid/triad.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,10 +44,11 @@ extern "C" {
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
-#include <dw1000/triad.h>
+#include <euclid/triad.h>
 #include <stats/stats.h>
 #include <rng/slots.h>
 
+#if MYNEWT_VAL(RNG_STATS)
 STATS_SECT_START(rng_stat_section)
     STATS_SECT_ENTRY(rng_request)
     STATS_SECT_ENTRY(rng_listen)
@@ -59,6 +60,7 @@ STATS_SECT_START(rng_stat_section)
     STATS_SECT_ENTRY(rx_timeout)
     STATS_SECT_ENTRY(reset)
 STATS_SECT_END
+#endif
 
 //! Range configuration parameters.
 typedef struct _dw1000_rng_config_t{
@@ -77,34 +79,35 @@ typedef struct _dw1000_rng_control_t{
 //! Ranging modes.
 typedef enum _dw1000_rng_modes_t{
     DWT_TWR_INVALID = 0,             //!< Invalid TWR
-    DWT_SS_TWR,                      //!< Single sided TWR
-    DWT_SS_TWR_T1,                   //!< Response for single sided TWR
-    DWT_SS_TWR_FINAL,                //!< Final response of single sided TWR
-    DWT_SS_TWR_END,                  //!< End of single sided TWR
+    DWT_SS_TWR = 0x10,               //!< Single sided TWR 
+    DWT_SS_TWR_T1,                   //!< Response for single sided TWR 
+    DWT_SS_TWR_FINAL,                //!< Final response of single sided TWR 
+    DWT_SS_TWR_END,                  //!< End of single sided TWR 
     DWT_SS_TWR_EXT,                  //!< Single sided TWR in extended mode
     DWT_SS_TWR_EXT_T1,               //!< Response for single sided TWR in extended mode
     DWT_SS_TWR_EXT_FINAL,            //!< Final response of single sided TWR in extended mode
     DWT_SS_TWR_EXT_END,              //!< End of single sided TWR in extended mode
-    DWT_DS_TWR,                      //!< Double sided TWR
-    DWT_DS_TWR_T1,                   //!< Response for double sided TWR
-    DWT_DS_TWR_T2,                   //!< Response for double sided TWR
-    DWT_DS_TWR_FINAL,                //!< Final response of double sided TWR
-    DWT_DS_TWR_END,                  //!< End of double sided TWR
-    DWT_DS_TWR_EXT,                  //!< Double sided TWR in extended mode
-    DWT_DS_TWR_EXT_T1,               //!< Response for double sided TWR in extended mode
-    DWT_DS_TWR_EXT_T2,               //!< Response for double sided TWR in extended mode
-    DWT_DS_TWR_EXT_FINAL,            //!< Final response of double sided TWR in extended mode
-    DWT_DS_TWR_EXT_END,              //!< End of double sided TWR in extended mode
-    DWT_PROVISION_START,             //!< Start of provision
+    DWT_DS_TWR = 0x20,                      //!< Double sided TWR 
+    DWT_DS_TWR_T1,                   //!< Response for double sided TWR 
+    DWT_DS_TWR_T2,                   //!< Response for double sided TWR 
+    DWT_DS_TWR_FINAL,                //!< Final response of double sided TWR 
+    DWT_DS_TWR_END,                  //!< End of double sided TWR 
+    DWT_DS_TWR_EXT,                  //!< Double sided TWR in extended mode 
+    DWT_DS_TWR_EXT_T1,               //!< Response for double sided TWR in extended mode 
+    DWT_DS_TWR_EXT_T2,               //!< Response for double sided TWR in extended mode 
+    DWT_DS_TWR_EXT_FINAL,            //!< Final response of double sided TWR in extended mode 
+    DWT_DS_TWR_EXT_END,              //!< End of double sided TWR in extended mode 
+    DWT_PROVISION_START = 0x30,      //!< Start of provision
     DWT_PROVISION_RESP,              //!< End of provision
-    DWT_SS_TWR_NRNG,
+    DWT_SS_TWR_NRNG = 0x40,
     DWT_SS_TWR_NRNG_T1,
     DWT_SS_TWR_NRNG_FINAL,
+    DWT_SS_TWR_NRNG_END,
     DWT_SS_TWR_NRNG_EXT,
     DWT_SS_TWR_NRNG_EXT_T1,
     DWT_SS_TWR_NRNG_EXT_FINAL,
     DWT_SS_TWR_NRNG_EXT_END,
-    DWT_DS_TWR_NRNG,
+    DWT_DS_TWR_NRNG = 0x50,
     DWT_DS_TWR_NRNG_T1,
     DWT_DS_TWR_NRNG_T2,
     DWT_DS_TWR_NRNG_FINAL,
@@ -114,7 +117,9 @@ typedef enum _dw1000_rng_modes_t{
     DWT_DS_TWR_NRNG_EXT_T2,
     DWT_DS_TWR_NRNG_EXT_FINAL,
     DWT_DS_TWR_NRNG_EXT_END,
-    DWT_DS_TWR_NRNG_INVALID = 0xFFFF
+    DWT_DS_TWR_NRNG_INVALID,
+    DWT_SURVEY_REQUEST = 0x60,
+    DWT_SURVEY_BROADCAST
 }dw1000_rng_modes_t;
 
 //! Range status parameters
@@ -160,7 +165,9 @@ typedef union {
 //! Structure of range instance
 typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * parent; //!< Structure of DW1000_dev_instance
+#if MYNEWT_VAL(RNG_STATS)
     STATS_SECT_DECL(rng_stat_section) stat; //!< Stats instance
+#endif
     uint16_t code;                          //!< Range profile code
     uint16_t seq_num;                       //!< Local sequence number
     struct os_sem sem;                      //!< Structure of semaphores

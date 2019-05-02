@@ -247,7 +247,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->code = DWT_DS_TWR_T1;
 
                 dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_rng_response_frame_t));
-                dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0, true); 
+                dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0);
                 dw1000_set_wait4resp(inst, true);   
 
                 dw1000_set_delay_start(inst, response_tx_delay);
@@ -306,7 +306,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->transmission_timestamp =  (uint32_t) (response_timestamp & 0xFFFFFFFFUL);
 
                 dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_final_t));                
-                dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true);
+                dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0);
                 dw1000_set_wait4resp(inst, true);
                 dw1000_set_delay_start(inst, response_tx_delay);
                 uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(twr_frame_final_t))
@@ -351,7 +351,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
                 // Transmit timestamp final report
                 dw1000_write_tx(inst, frame->array, 0, sizeof(twr_frame_final_t));
-                dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0, true); 
+                dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0); 
         
                 if (dw1000_start_tx(inst).start_tx_error){
                     os_sem_release(&rng->sem);  

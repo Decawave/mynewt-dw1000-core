@@ -245,7 +245,9 @@ dw1000_softreset(dw1000_dev_instance_t * inst)
 int 
 dw1000_dev_init(struct os_dev *odev, void *arg)
 {
+#if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_dev_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+#endif
     struct dw1000_dev_cfg *cfg = (struct dw1000_dev_cfg*)arg;
     dw1000_dev_instance_t *inst = (dw1000_dev_instance_t *)odev;
     
@@ -261,7 +263,7 @@ dw1000_dev_init(struct os_dev *odev, void *arg)
 
     os_error_t err = os_mutex_init(&inst->mutex);
     assert(err == OS_OK);
-    err = os_sem_init(&inst->sem, 0x1); 
+    err = os_sem_init(&inst->tx_sem, 0x1); 
     assert(err == OS_OK);
     err = os_sem_init(&inst->spi_nb_sem, 0x1);
     assert(err == OS_OK);
@@ -321,16 +323,22 @@ retry:
     assert(rc == 0);
 
     inst->PANID = MYNEWT_VAL(PANID);
+    inst->my_short_address = inst->partID & 0xffff;
 
-#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
-    inst->my_short_address = MYNEWT_VAL(DEVICE_ID);
-#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
-    if (inst == hal_dw1000_inst(0))
-        inst->my_short_address = MYNEWT_VAL(DEVICE_ID_0);
-    else
-        inst->my_short_address = MYNEWT_VAL(DEVICE_ID_1);
+    if (inst == hal_dw1000_inst(0)) {
+#if  MYNEWT_VAL(DW1000_DEVICE_ID_0)
+        inst->my_short_address = MYNEWT_VAL(DW1000_DEVICE_ID_0);
 #endif
-    inst->my_long_address = ((uint64_t) inst->device_id << 32) + inst->partID;
+    } else if (inst == hal_dw1000_inst(1)){
+#if  MYNEWT_VAL(DW1000_DEVICE_ID_1)
+        inst->my_short_address = MYNEWT_VAL(DW1000_DEVICE_ID_1);
+#endif
+    } else if (inst == hal_dw1000_inst(2)){
+#if  MYNEWT_VAL(DW1000_DEVICE_ID_2)
+        inst->my_short_address = MYNEWT_VAL(DW1000_DEVICE_ID_2);
+#endif
+    }
+    inst->my_long_address = (((uint64_t)inst->lotID) << 32) + inst->partID;
 
     dw1000_set_panid(inst,inst->PANID);
     dw1000_mac_init(inst, NULL);
@@ -475,11 +483,17 @@ dw1000_dev_wakeup(dw1000_dev_instance_t * inst)
     /* Antenna delays lost in deep sleep ? */
     dw1000_phy_set_rx_antennadelay(inst, inst->rx_antenna_delay);
     dw1000_phy_set_tx_antennadelay(inst, inst->tx_antenna_delay);
-    
+
     // Critical region, unlock mutex
     err = os_mutex_release(&inst->mutex);
     assert(err == OS_OK);
- 
+
+    /* In case dw1000 was instructed to sleep directly after tx
+     * we may need to release the tx sem */
+    if(os_sem_get_count(&inst->tx_sem) == 0) {
+        os_sem_release(&inst->tx_sem);
+    }
+
     return inst->status;
 }
 

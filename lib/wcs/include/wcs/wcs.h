@@ -53,8 +53,8 @@ typedef struct _wcs_instance_t{
     wcs_control_t control;
     wcs_config_t config;
     uint64_t observed_interval;
-    uint64_t master_epoch;
-    uint64_t local_epoch;
+    ccp_timestamp_t master_epoch;
+    ccp_timestamp_t local_epoch;
     double skew;
     struct os_event postprocess_ev;
     struct _dw1000_ccp_instance_t * ccp;
@@ -81,6 +81,7 @@ uint32_t wcs_read_txtime_lo_master(struct _dw1000_dev_instance_t * inst);
 
 double wcs_dtu_time_correction(struct _wcs_instance_t * wcs);
 uint64_t wcs_dtu_time_adjust(struct _wcs_instance_t * wcs, uint64_t dtu_time);
+uint64_t wcs_local_to_master64(struct _wcs_instance_t * wcs, uint64_t dtu_time);
 uint64_t wcs_local_to_master(struct _wcs_instance_t * wcs, uint64_t dtu_time);
 
 

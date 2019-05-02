@@ -22,7 +22,6 @@
 #include <assert.h>
 #include <string.h>
 #include <sysinit/sysinit.h>
-//#include <nrf52.h>
 #include <nrf52840.h>
 #include "os/os_cputime.h"
 #include "syscfg/syscfg.h"
@@ -36,56 +35,21 @@
 #include "hal/hal_i2c.h"
 #include "hal/hal_gpio.h"
 #include "mcu/nrf52_hal.h"
+#include "mcu/nrf52_periph.h"
 
 
 #if MYNEWT_VAL(DW1000_DEVICE_0) || MYNEWT_VAL(DW1000_DEVICE_1)
 #include "dw1000/dw1000_dev.h"
 #include "dw1000/dw1000_hal.h"
-#endif
-
-#if MYNEWT_VAL(UART_0) || MYNEWT_VAL(UART_1)
-#include "uart/uart.h"
-#endif
-#if MYNEWT_VAL(UART_0)
-#include "uart_hal/uart_hal.h"
-#endif
-#if MYNEWT_VAL(UART_1)
-#include "uart_bitbang/uart_bitbang.h"
+#include "dw1000/dw1000_phy.h"
 #endif
 
 #include "os/os_dev.h"
 #include "bsp.h"
 
-#if MYNEWT_VAL(UART_0)
-static struct uart_dev os_bsp_uart0;
-static const struct nrf52_uart_cfg os_bsp_uart0_cfg = {
-    .suc_pin_tx = MYNEWT_VAL(UART_0_PIN_TX),
-    .suc_pin_rx = MYNEWT_VAL(UART_0_PIN_RX),
-    .suc_pin_rts = MYNEWT_VAL(UART_0_PIN_RTS),
-    .suc_pin_cts = MYNEWT_VAL(UART_0_PIN_CTS),
-};
-#endif
-
-#if MYNEWT_VAL(UART_1)
-static struct uart_dev os_bsp_bitbang_uart1;
-static const struct uart_bitbang_conf os_bsp_uart1_cfg = {
-    .ubc_txpin = MYNEWT_VAL(UART_1_PIN_TX),
-    .ubc_rxpin = MYNEWT_VAL(UART_1_PIN_RX),
-    .ubc_cputimer_freq = MYNEWT_VAL(OS_CPUTIME_FREQ),
-};
-#endif
 
 #if MYNEWT_VAL(SPI_0_MASTER)
 struct os_sem g_spi0_sem;
-/*
- * NOTE: Our HAL expects that the SS pin, if used, is treated as a gpio line
- * and is handled outside the SPI routines.
- */
-static const struct nrf52_hal_spi_cfg os_bsp_spi0m_cfg = {
-    .sck_pin      =  MYNEWT_VAL(SPI_0_MASTER_PIN_SCK),    // P0.16    
-    .mosi_pin     =  MYNEWT_VAL(SPI_0_MASTER_PIN_MOSI),    // P0.20
-    .miso_pin     =  MYNEWT_VAL(SPI_0_MASTER_PIN_MISO),    // P0.21
-};
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
 /* 
@@ -114,15 +78,6 @@ static const struct dw1000_dev_cfg dw1000_1_cfg = {
 
 #if MYNEWT_VAL(SPI_2_MASTER)
 struct os_mutex g_spi2_mutex;
-/*
- * NOTE: Our HAL expects that the SS pin, if used, is treated as a gpio line
- * and is handled outside the SPI routines.
- */
-static const struct nrf52_hal_spi_cfg os_bsp_spi2m_cfg = {
-    .sck_pin      =  28,
-    .mosi_pin     =  29,
-    .miso_pin     =  LSM6DSL_SDO_PIN,
-};
 
 static struct hal_spi_settings os_bsp_spi2m_settings = {
     .data_order = HAL_SPI_MSB_FIRST,
@@ -171,11 +126,6 @@ spi2_three_wire_read(int en)
 
 #if MYNEWT_VAL(I2C_1)
 struct os_mutex g_i2c1_mutex;
-static const struct nrf52_hal_i2c_cfg hal_i2c_cfg = {
-    .scl_pin = 28,
-    .sda_pin = 29,
-    .i2c_frequency = 400    /* 400 kHz */
-};
 #endif
 
 
@@ -273,15 +223,17 @@ static const struct hal_bsp_mem_dump dump_cfg[] = {
 
 
 
-const struct hal_flash * hal_bsp_flash_dev(uint8_t id)
+const struct hal_flash *
+hal_bsp_flash_dev(uint8_t id)
 {
-    /*
-     * Internal flash mapped to id 0.
-     */
-    if (id != 0) {
+    switch (id) {
+    case 0:
+        /* MCU internal flash. */
+        return &nrf52k_flash_dev;
+    default:
+        /* External flash.  Assume not present in this BSP. */
         return NULL;
     }
-    return &nrf52k_flash_dev;
 }
 
 const struct hal_bsp_mem_dump * hal_bsp_core_dump(int *area_cnt)
@@ -455,39 +407,10 @@ void hal_bsp_init(void)
     /* Make sure system clocks have started */
     hal_system_clock_start();
 
-#if MYNEWT_VAL(TIMER_0)
-    rc = hal_timer_init(0, NULL);
-    assert(rc == 0);
-#endif
-#if MYNEWT_VAL(TIMER_1)
-    rc = hal_timer_init(1, NULL);
-    assert(rc == 0);
-#endif
-#if MYNEWT_VAL(TIMER_2)
-    rc = hal_timer_init(2, NULL);
-    assert(rc == 0);
-#endif
-#if MYNEWT_VAL(TIMER_3)
-    rc = hal_timer_init(3, NULL);
-    assert(rc == 0);
-#endif
-#if MYNEWT_VAL(TIMER_4)
-    rc = hal_timer_init(4, NULL);
-    assert(rc == 0);
-#endif
-#if MYNEWT_VAL(TIMER_5)
-    rc = hal_timer_init(5, NULL);
-    assert(rc == 0);
-#endif
-
-#if (MYNEWT_VAL(OS_CPUTIME_TIMER_NUM) >= 0)
-    rc = os_cputime_init(MYNEWT_VAL(OS_CPUTIME_FREQ));
-    assert(rc == 0);
-#endif
+    /* Create all available nRF52832 peripherals */
+    nrf52_periph_create();
 
 #if MYNEWT_VAL(I2C_1)
-    rc = hal_i2c_init(1, (void *)&hal_i2c_cfg);
-    assert(rc == 0);
     hal_gpio_init_in(LSM6DSL_SDO_PIN, HAL_GPIO_PULL_UP);
     hal_gpio_init_in(LPS22HB_SDO_PIN, HAL_GPIO_PULL_UP);
 
@@ -497,8 +420,6 @@ void hal_bsp_init(void)
 #endif
 
 #if MYNEWT_VAL(SPI_0_MASTER)
-    rc = hal_spi_init(0, (void *)&os_bsp_spi0m_cfg, HAL_SPI_TYPE_MASTER);
-    assert(rc == 0);
     rc = os_sem_init(&g_spi0_sem, 0x1);
     assert(rc == 0);
 #endif
@@ -524,9 +445,6 @@ void hal_bsp_init(void)
     hal_gpio_init_in(LSM6DSL_SDO_PIN, HAL_GPIO_PULL_UP);
     hal_gpio_init_in(LPS22HB_SDO_PIN, HAL_GPIO_PULL_UP);
 
-    rc = hal_spi_init(2, (void *)&os_bsp_spi2m_cfg, HAL_SPI_TYPE_MASTER);
-    assert(rc == 0);
-
     hal_spi_disable(2);
     rc = hal_spi_config(2, &os_bsp_spi2m_settings);
     assert(rc == 0);
@@ -536,23 +454,37 @@ void hal_bsp_init(void)
     rc = os_mutex_init(&g_spi2_mutex);
     assert(rc == 0);
 #endif
-    
-#if MYNEWT_VAL(SPI_0_SLAVE)
-    rc = hal_spi_init(0, (void *)&os_bsp_spi0s_cfg, HAL_SPI_TYPE_SLAVE);
-    assert(rc == 0);
-#endif
-
-#if MYNEWT_VAL(UART_0)
-    rc = os_dev_create((struct os_dev *) &os_bsp_uart0, "uart0",
-      OS_DEV_INIT_PRIMARY, 0, uart_hal_init, (void *)&os_bsp_uart0_cfg);
-    assert(rc == 0);
-#endif
-
-#if MYNEWT_VAL(UART_1)
-    rc = os_dev_create((struct os_dev *) &os_bsp_bitbang_uart1, "uart1",
-      OS_DEV_INIT_PRIMARY, 0, uart_bitbang_init, (void *)&os_bsp_uart1_cfg);
-    assert(rc == 0);
-#endif
-    
     sensor_dev_create();
 }
+
+#if MYNEWT_VAL(DW1000_DEVICE_0) || MYNEWT_VAL(DW1000_DEVICE_1)
+void
+hal_bsp_dw_clk_sync(dw1000_dev_instance_t * inst[], uint8_t n)
+{
+    /* Prepare for sync */
+    hal_gpio_init_out(MYNEWT_VAL(DW1000_PDOA_SYNC), 0);
+    hal_gpio_init_out(MYNEWT_VAL(DW1000_PDOA_SYNC_CLR), 1);
+    hal_gpio_init_out(MYNEWT_VAL(DW1000_PDOA_SYNC_EN), 1);
+
+    for (uint8_t i = 0; i < n; i++ ) {
+        dw1000_phy_external_sync(inst[i],33, true);
+    }
+
+    hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC), 1);
+    /* Only needs to be active for 1 period of 38.4MHz => < 1usec */
+    os_cputime_delay_usecs(1);
+    hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC), 0);
+
+    for (uint8_t i = 0; i < n; i++ ) {
+        /* Verify that chip was synced */
+        uint32_t status = dw1000_read_reg(inst[i], SYS_STATUS_ID, 0, sizeof(uint32_t));
+        assert(status&SYS_STATUS_ESYNCR);
+        /* Clear sync status and ext sync registers */
+        dw1000_write_reg(inst[i], SYS_STATUS_ID, 0, status&SYS_STATUS_ESYNCR, sizeof(uint32_t));
+        dw1000_phy_external_sync(inst[i],0, false);
+    }
+
+    hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC_CLR), 0);
+    hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC_EN), 0);
+}
+#endif

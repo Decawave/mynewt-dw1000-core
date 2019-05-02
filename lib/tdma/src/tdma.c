@@ -51,14 +51,24 @@
 #include <ccp/ccp.h>
 #endif
 
+#if MYNEWT_VAL(WCS_ENABLED)
+#include <wcs/wcs.h>
+#endif
+
 #include <stats/stats.h>
 
+#if MYNEWT_VAL(TDMA_STATS)
 STATS_NAME_START(tdma_stat_section)
     STATS_NAME(tdma_stat_section, slot_timer_cnt)
     STATS_NAME(tdma_stat_section, superframe_cnt)
     STATS_NAME(tdma_stat_section, rx_complete)
     STATS_NAME(tdma_stat_section, tx_complete)
 STATS_NAME_END(tdma_stat_section)
+
+#define TDMA_STATS_INC(__X) STATS_INC(inst->tdma->stat, __X)
+#else
+#define TDMA_STATS_INC(__X) {}
+#endif
 
 //#define DIAGMSG(s,u) printf(s,u)
 #ifndef DIAGMSG
@@ -80,14 +90,13 @@ static void tdma_task(void *arg);
  * @brief API to initialise the tdma instance. Sets the clkcal postprocess and
  * assings the slot callback function for slot0.
  *
- * @param inst     Pointer to  _dw1000_dev_instance_t.
- * @param period   CCP period.
+ * @param inst     Pointer to  _dw1000_dev_instance_t. 
  * @param nslots   Total slots to be allocated between two frames.
  *
  * @return tdma_instance_t*
  */
-tdma_instance_t *
-tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots){
+tdma_instance_t * 
+tdma_init(struct _dw1000_dev_instance_t * inst, uint16_t nslots){
     assert(inst);
     tdma_instance_t * tdma;
 
@@ -98,11 +107,10 @@ tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots
         tdma->status.selfmalloc = 1;
         os_error_t err = os_mutex_init(&tdma->mutex);
         assert(err == OS_OK);
-        tdma->nslots = nslots;
-        tdma->period = period;
+        tdma->nslots = nslots; 
         tdma->parent = inst;
 #ifdef TDMA_TASKS_ENABLE
-        tdma->task_prio = inst->task_prio + 0x4;
+        tdma->task_prio = inst->task_prio + 0x6;
 #endif
         inst->tdma = tdma;
     }else{
@@ -115,7 +123,8 @@ tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots
         .rx_complete_cb = rx_complete_cb
     };
     dw1000_mac_append_interface(inst, &inst->tdma->cbs);
-
+    
+#if MYNEWT_VAL(TDMA_STATS)
     int rc = stats_init(
                 STATS_HDR(inst->tdma->stat),
                 STATS_SIZE_INIT_PARMS(inst->tdma->stat, STATS_SIZE_32),
@@ -132,6 +141,7 @@ tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots
         rc |= stats_register("tdma1", STATS_HDR(inst->tdma->stat));
 #endif
     assert(rc == 0);
+#endif
 
 #ifdef TDMA_TASKS_ENABLE
     os_callout_init(&tdma->event_cb, &tdma->eventq, tdma_superframe_event_cb, (void *) tdma);
@@ -171,19 +181,20 @@ tdma_free(tdma_instance_t * inst){
  *
  * @return void
  */
-void
-tdma_pkg_init(void){
 
+void tdma_pkg_init(void){
+#if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"tdma_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+#endif
 
-#if MYNEWT_VAL(DW1000_DEVICE_0)
-        tdma_init(hal_dw1000_inst(0), MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS));
+#if MYNEWT_VAL(DW1000_DEVICE_0) 
+        tdma_init(hal_dw1000_inst(0), MYNEWT_VAL(TDMA_NSLOTS));
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
-        tdma_init(hal_dw1000_inst(1), MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS));
+        tdma_init(hal_dw1000_inst(1), MYNEWT_VAL(TDMA_NSLOTS));
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-        tdma_init(hal_dw1000_inst(2), MYNEWT_VAL(TDMA_PERIOD), MYNEWT_VAL(TDMA_NSLOTS));
+        tdma_init(hal_dw1000_inst(2), MYNEWT_VAL(TDMA_NSLOTS));
 #endif
 
 }
@@ -275,10 +286,10 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     tdma_instance_t * tdma = inst->tdma;
 
     if (inst->ccp->status.valid && inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
-        STATS_INC(inst->tdma->stat, rx_complete);
+        TDMA_STATS_INC(rx_complete);
         DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma:rx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         if (inst->tdma != NULL && inst->tdma->status.initialized){
-            tdma->os_epoch = inst->ccp->os_epoch;//os_cputime_get32();
+            tdma->os_epoch = inst->ccp->os_epoch;
 #ifdef TDMA_TASKS_ENABLE
             os_eventq_put(&inst->tdma->eventq, &inst->tdma->event_cb.c_ev);
 #else
@@ -305,10 +316,10 @@ tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
    tdma_instance_t * tdma = inst->tdma;
 
     if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64 && inst->ccp->config.role == CCP_ROLE_MASTER){
-        STATS_INC(inst->tdma->stat, tx_complete);
+        TDMA_STATS_INC(tx_complete);
         DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma:tx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         if (inst->tdma != NULL && inst->tdma->status.initialized){
-            tdma->os_epoch = os_cputime_get32();
+            tdma->os_epoch = inst->ccp->os_epoch;
 #ifdef TDMA_TASKS_ENABLE
             os_eventq_put(&inst->tdma->eventq, &inst->tdma->event_cb.c_ev);
 #else
@@ -392,8 +403,10 @@ tdma_superframe_event_cb(struct os_event * ev){
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma_superframe_event_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     tdma_instance_t * tdma = (void *)ev->ev_arg;
-
-    STATS_INC(tdma->stat, superframe_cnt);
+    struct _dw1000_dev_instance_t * inst = tdma->parent;
+    dw1000_ccp_instance_t * ccp = tdma->parent->ccp;
+    
+    TDMA_STATS_INC(superframe_cnt);
 
     for (uint16_t i = 0; i < tdma->nslots; i++) {
         if (tdma->slot[i]){
@@ -404,16 +417,12 @@ tdma_superframe_event_cb(struct os_event * ev){
         if (tdma->slot[i]){
             hal_timer_start_at(&tdma->slot[i]->timer, tdma->os_epoch
                 + os_cputime_usecs_to_ticks(
-                    (uint32_t) (i * dw1000_dwt_usecs_to_usecs(tdma->period/tdma->nslots))
-                    - (uint32_t)ceilf(dw1000_phy_SHR_duration(&tdma->parent->attrib))
+                    (uint32_t) (i * dw1000_dwt_usecs_to_usecs(ccp->period/tdma->nslots))
+                    - (uint32_t)ceilf(dw1000_phy_SHR_duration(&tdma->parent->attrib)) 
                     - MYNEWT_VAL(OS_LATENCY))
             );
         }
     }
-#if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
-    struct os_task * t = os_sched_get_current_task();
-    os_sanity_task_checkin(t);
-#endif
 }
 
 /**
@@ -432,10 +441,11 @@ slot_timer_cb(void * arg){
 
     tdma_slot_t * slot = (tdma_slot_t *) arg;
     tdma_instance_t * tdma = slot->parent;
+    struct _dw1000_dev_instance_t * inst = tdma->parent;
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"slot_timer_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
-    STATS_INC(tdma->stat, slot_timer_cnt);
+    TDMA_STATS_INC(slot_timer_cnt);
 
 #ifdef TDMA_TASKS_ENABLE
     os_eventq_put(&tdma->eventq, &slot->event_cb.c_ev);
@@ -460,4 +470,48 @@ tdma_stop(struct _tdma_instance_t * tdma){
             tdma_release_slot(tdma, i);
         }
     }
+}
+
+
+/**
+ * Function for calculating the start of the slot for a tx operation
+ *
+ * @param inst       Pointer to struct _dw1000_dev_instance_t
+ * @param idx        Slot index
+ *
+ * @return dx_time   The time for a tx operation to start
+ */
+uint64_t
+tdma_tx_slot_start(struct _dw1000_dev_instance_t * inst, float idx)
+{
+
+    tdma_instance_t * tdma = inst->tdma;
+    dw1000_ccp_instance_t * ccp = inst->ccp;
+
+#if MYNEWT_VAL(WCS_ENABLED)
+    wcs_instance_t * wcs = ccp->wcs;
+    uint64_t dx_time = (ccp->local_epoch + (uint64_t) wcs_dtu_time_adjust(wcs, ((idx * ((uint64_t)ccp->period << 16))/tdma->nslots)));
+    //uint64_t dx_time = (ccp->local_epoch + (uint64_t) roundf((1.0l + wcs->skew) * (double)((idx * (uint64_t)inst->ccp->period << 16)/tdma->nslots)));
+#else
+    uint64_t dx_time = (ccp->local_epoch + (uint64_t) ((idx * ((uint64_t)ccp->period << 16)/tdma->nslots)));
+#endif
+    return dx_time;
+}
+
+/**
+ * Function for calculating the start of the slot for a rx operation.
+ * taking into account that the preamble needs to be sent before the
+ * RMARKER, which marks the time of the frame, is sent.
+ *
+ * @param inst       Pointer to struct _dw1000_dev_instance_t
+ * @param idx        Slot index
+ *
+ * @return dx_time   The time for a rx operation to start
+ */
+uint64_t
+tdma_rx_slot_start(struct _dw1000_dev_instance_t * inst, float idx)
+{
+    uint64_t dx_time = tdma_tx_slot_start(inst, idx);
+    dx_time = (dx_time - ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&inst->attrib))) << 16));
+    return dx_time;
 }
