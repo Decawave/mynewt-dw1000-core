@@ -255,7 +255,7 @@ uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst)
     sfd_timeout = (preamble_len + 1 + sfd_len - paclen);
     inst->config.tx.preambleLength = txP;
     inst->config.rx.sfdTimeout = sfd_timeout;
-    inst->attrib.nsfd = sfdlen;
+    inst->attrib.nsfd = sfd_len;
     inst->attrib.nsync = preamble_len;
 
     /* Callback to allow host application to decide when to update config
