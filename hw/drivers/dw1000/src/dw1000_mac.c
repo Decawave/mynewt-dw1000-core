@@ -1084,6 +1084,7 @@ dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdi
     dw1000_read(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, (uint8_t*)&diag->rx_time, sizeof(diag->rx_time));
     dw1000_read(inst, RX_FQUAL_ID, 0, (uint8_t*)&diag->rx_fqual, sizeof(diag->rx_fqual));
     diag->pacc_cnt =  (dw1000_read_reg(inst, RX_FINFO_ID, 0, sizeof(uint32_t)) & RX_FINFO_RXPACC_MASK) >> RX_FINFO_RXPACC_SHIFT;
+    // diag->pacc_cnt_nosat =  (dw1000_read_reg(inst, DRX_CONF_ID, RPACC_NOSAT_OFFSET, sizeof(uint16_t)) & RPACC_NOSAT_MASK);
 }
 
 
