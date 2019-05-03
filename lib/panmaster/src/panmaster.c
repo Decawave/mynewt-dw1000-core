@@ -335,12 +335,12 @@ slot_lease_expired(int idx)
     return now_ms > le_ms;
 }
 
-static uint8_t
+static uint16_t
 first_free_slot_id(uint16_t node_addr, uint16_t role)
 {
     int j;
-    uint8_t slot_id=1;
-    while (slot_id < 255)
+    uint16_t slot_id=0;
+    while (slot_id < 0xffff)
     {
         for (j=0;j<MYNEWT_VAL(PANMASTER_MAXNUM_NODES);j++)
         {
@@ -361,7 +361,7 @@ first_free_slot_id(uint16_t node_addr, uint16_t role)
         slot_id++;
     }
 
-    return 255;
+    return 0xffff;
 }
 
 int
@@ -582,7 +582,7 @@ panmaster_delete_node(uint64_t euid)
 
     node.addr = 0xFFFF;
     node_idx[node.index].addr = 0xFFFF;
-    node_idx[node.index].slot_id = 0xFF;
+    node_idx[node.index].slot_id = 0xFFFF;
 
 #if MYNEWT_VAL(PANMASTER_NFFS)
     panm_file_save(&panmaster_storage_file, &node);

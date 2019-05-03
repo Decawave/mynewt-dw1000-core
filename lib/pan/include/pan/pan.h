@@ -77,7 +77,7 @@ typedef union{
             struct {
                 uint16_t pan_id;             //!< Assigned pan_id
                 uint16_t short_address;      //!< Assigned device_id
-                uint8_t slot_id;             //!< Assigned slot_id
+                uint16_t slot_id;            //!< Assigned slot_id
             };
         };
     }__attribute__((__packed__, aligned(1)));

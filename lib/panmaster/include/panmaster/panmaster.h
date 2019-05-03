@@ -31,13 +31,13 @@ struct panmaster_node {
     uint16_t flags:12;       /*!< Flags (unused for now) */
     uint16_t role:4;         /*!< Network role */
     uint8_t  index;          /*!< Index into vector */
-    uint8_t  slot_id;        /*!< slot_id */
+    uint16_t  slot_id;       /*!< slot_id */
     struct image_version fw_ver;
 } __attribute__((__packed__, aligned(1)));
 
 struct panmaster_node_idx {
     uint16_t addr;           /*!< Local id, 16bit */
-    uint8_t slot_id;
+    uint16_t slot_id;
     uint8_t role;
     uint32_t lease_ends;
 };
@@ -50,10 +50,10 @@ struct find_node_s {
 
 
 #define PANMASTER_NODE_DEFAULT(N)  {(N).first_seen_utc=0;(N).euid=0;    \
-        (N).addr=0xffff;(N).flags=0;(N).index=0;(N).slot_id=0xff;(N).role=0; \
+        (N).addr=0xffff;(N).flags=0;(N).index=0;(N).slot_id=0xffff;(N).role=0; \
         (N).fw_ver.iv_major=0;(N).fw_ver.iv_minor=0;                    \
         (N).fw_ver.iv_revision=0;(N).fw_ver.iv_build_num=0;}
-#define PANMASTER_NODE_IDX_DEFAULT(N)  {(N).addr=0xffff;(N).slot_id=0xff;(N).role=0;}
+#define PANMASTER_NODE_IDX_DEFAULT(N)  {(N).addr=0xffff;(N).slot_id=0xffff;(N).role=0;}
 
 typedef void (*panm_load_cb)(struct panmaster_node *node, void *cb_arg);
 
