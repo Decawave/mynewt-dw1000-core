@@ -91,7 +91,12 @@ typedef union {
     struct _ccp_blink_frame_t{
         struct _ieee_blink_frame_t;
         uint16_t short_address;                 //!< Short Address
-        uint32_t transmission_interval;         //!< Transmission interval
+        union {
+            struct _transmission_interval_struct{
+                uint64_t transmission_interval:40; //!< Transmission interval. Also used to correct transmission timestamp in relays
+            };
+            uint8_t ti_array[sizeof(struct _transmission_interval_struct)];
+        }__attribute__((__packed__, aligned(1)));
         ccp_timestamp_t transmission_timestamp; //!< Transmission timestamp
         uint8_t rpt_count;                      //!< Repeat level
         uint8_t rpt_max;                        //!< Repeat max level
