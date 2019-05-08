@@ -41,7 +41,7 @@ typedef union{
         struct _ieee_std_frame_t;
         union _payload{
             struct nmgr_hdr hdr;
-            uint8_t payload[NMGR_UWB_MTU_STD];
+            uint8_t payload[NMGR_UWB_MTU_EXT];
         };
     }__attribute__((__packed__,aligned(1)));
     uint8_t array[sizeof(struct _nmgr_uwb_frame_t)];

@@ -65,8 +65,25 @@ static bool tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
 static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static int nmgr_resp_cb(struct nmgr_transport *nt, struct os_mbuf *m);
 
-struct nmgr_transport uwb_transport;
-struct os_sem sem;
+static struct nmgr_transport uwb_transport_0;
+#if MYNEWT_VAL(DW1000_DEVICE_1)
+static struct nmgr_transport uwb_transport_1;
+#endif
+#if MYNEWT_VAL(DW1000_DEVICE_2)
+static struct nmgr_transport uwb_transport_2;
+#endif
+
+static struct nmgr_transport*
+uwb_transport(int idx) {
+    if (idx == 0) return &uwb_transport_0;
+#if MYNEWT_VAL(DW1000_DEVICE_1)
+    if (idx == 1) return &uwb_transport_1;
+#endif
+#if MYNEWT_VAL(DW1000_DEVICE_2)
+    if (idx == 2) return &uwb_transport_2;
+#endif
+    return 0;
+}
 
 static dw1000_mac_interface_t g_cbs[] = {
         [0] = {
@@ -94,23 +111,48 @@ static dw1000_mac_interface_t g_cbs[] = {
 };
 
 
-static uint16_t
-nmgr_uwb_mtu(struct os_mbuf *m)
-{    
-    return NMGR_UWB_MTU_STD;
+uint16_t
+nmgr_uwb_mtu(struct os_mbuf *m, int idx)
+{
+    dw1000_dev_instance_t* inst = hal_dw1000_inst(idx);
+    return (inst->config.rx.phrMode==DWT_PHRMODE_STD) ? NMGR_UWB_MTU_STD : NMGR_UWB_MTU_EXT;
 }
 
-dw1000_nmgr_uwb_instance_t*
-dw1000_nmgr_uwb_init(dw1000_dev_instance_t* inst)
+static uint16_t
+nmgr_uwb_mtu_0(struct os_mbuf *m)
+{
+    return nmgr_uwb_mtu(m, 0);
+}
+
+
+#if MYNEWT_VAL(DW1000_DEVICE_1)
+static uint16_t
+nmgr_uwb_mtu_1(struct os_mbuf *m, int idx)
+{
+    return nmgr_uwb_mtu(struct os_mbuf *m, 1);
+}
+#endif
+#if MYNEWT_VAL(DW1000_DEVICE_2)
+static uint16_t
+nmgr_uwb_mtu_2(struct os_mbuf *m, int idx)
+{
+    return nmgr_uwb_mtu(struct os_mbuf *m, 2);
+}
+#endif
+
+nmgr_uwb_instance_t*
+nmgr_uwb_init(dw1000_dev_instance_t* inst)
 {
     assert(inst != NULL);
     if(inst->nmgruwb == NULL){
-        dw1000_nmgr_uwb_instance_t* nmgruwb = (dw1000_nmgr_uwb_instance_t*)malloc(sizeof(dw1000_nmgr_uwb_instance_t));
+        nmgr_uwb_instance_t* nmgruwb = (nmgr_uwb_instance_t*)malloc(sizeof(nmgr_uwb_instance_t));
         assert(nmgruwb);
         nmgruwb->parent = inst;
         inst->nmgruwb = nmgruwb;
     }
-    os_sem_init(&sem, 0x1);
+    os_sem_init(&inst->nmgruwb->sem, 0x1);
+    os_mqueue_init(&inst->nmgruwb->tx_q, NULL, NULL);
+
     return inst->nmgruwb;
 }
 
@@ -122,25 +164,24 @@ dw1000_nmgr_uwb_init(dw1000_dev_instance_t* inst)
  */
 void nmgr_uwb_pkg_init(void)
 {
+    SYSINIT_ASSERT_ACTIVE();
+#if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"nmgr_uwb_init\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
+#endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    SYSINIT_ASSERT_ACTIVE();
-
-    nmgr_transport_init(&uwb_transport, nmgr_resp_cb, nmgr_uwb_mtu);
-    dw1000_nmgr_uwb_init(hal_dw1000_inst(0));
+    nmgr_transport_init(uwb_transport(0), nmgr_resp_cb, nmgr_uwb_mtu_0);
+    nmgr_uwb_init(hal_dw1000_inst(0));
     dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs[0]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
-    SYSINIT_ASSERT_ACTIVE();
-
-    nmgr_transport_init(&uwb_transport, nmgr_resp_cb, nmgr_uwb_mtu);
+    nmgr_uwb_init(hal_dw1000_inst(1));
+    nmgr_transport_init(uwb_transport(1), nmgr_resp_cb, nmgr_uwb_mtu_1);
     dw1000_mac_append_interface(hal_dw1000_inst(1), &g_cbs[1]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-    SYSINIT_ASSERT_ACTIVE();
-
-    nmgr_transport_init(&uwb_transport, nmgr_resp_cb, nmgr_uwb_mtu);
+    nmgr_uwb_init(hal_dw1000_inst(2));
+    nmgr_transport_init(uwb_transport(2), nmgr_resp_cb, nmgr_uwb_mtu_2);
     dw1000_mac_append_interface(hal_dw1000_inst(2), &g_cbs[2]);
 #endif
 }
@@ -154,7 +195,10 @@ void nmgr_uwb_pkg_init(void)
  */
 static bool 
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    //For future use
+    if(os_sem_get_count(&inst->nmgruwb->sem) == 0){
+        os_sem_release(&inst->nmgruwb->sem);
+        return true;
+    }
     return false;
 }
 
@@ -168,48 +212,60 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 static int
 nmgr_resp_cb(struct nmgr_transport *nt, struct os_mbuf *m)
 {
-    uint8_t usrlen = OS_MBUF_USRHDR_LEN(m);
-    uint8_t pktlen = OS_MBUF_PKTLEN(m);
-    uint8_t totlen = usrlen + pktlen;
-    uint8_t buf[64];
+    int rc;
+    uint8_t buf[32];
     int mbuf_offset = 0;
     int device_offset;
-    os_sem_pend(&sem, OS_TIMEOUT_NEVER);
 
     /* Prepare header and write to device */
+    if (OS_MBUF_USRHDR_LEN(m) != sizeof(struct nmgr_uwb_usr_hdr)) {
+        rc = os_mbuf_free_chain(m);
+        return rc;
+    }
     struct nmgr_uwb_usr_hdr *hdr = (struct nmgr_uwb_usr_hdr*)OS_MBUF_USRHDR(m);
     dw1000_dev_instance_t* inst = hal_dw1000_inst(hdr->inst_idx);
+    assert(inst);
     struct _ieee_std_frame_t *frame = &hdr->uwb_hdr;
+
+    if (hdr->uwb_hdr.dst_address == BROADCAST_ADDRESS) {
+        printf("uwb_nmgr_resp: Not responding to broadcast\n");
+        goto early_exit;
+    }
 
     frame->code = NMGR_CMD_STATE_RSP;
     frame->dst_address = frame->src_address;
     frame->src_address = inst->my_short_address;
     dw1000_write_tx(inst, (uint8_t*)frame, 0, sizeof(struct _ieee_std_frame_t));
-    dw1000_write_tx_fctrl(inst, totlen, 0);
+    dw1000_write_tx_fctrl(inst, sizeof(struct _ieee_std_frame_t) + OS_MBUF_PKTLEN(m), 0);
     device_offset = sizeof(struct _ieee_std_frame_t);
 
     /* Copy the mbuf payload data to the device to be sent */
     while (mbuf_offset < OS_MBUF_PKTLEN(m)) {
-        int cpy_len = OS_MBUF_PKTLEN(m) - mbuf_offset > sizeof(buf);
-        cpy_len = (cpy_len) ? sizeof(buf) : cpy_len;
-        printf("uwb_nmgr_resp: mbuf_offs:%d dev_offs:%d cpylen:%d\n",
-               mbuf_offset, device_offset, cpy_len);
+        int cpy_len = OS_MBUF_PKTLEN(m) - mbuf_offset;
+        cpy_len = (cpy_len > sizeof(buf)) ? sizeof(buf) : cpy_len;
 
-        os_mbuf_copydata(m, mbuf_offset, cpy_len, buf);
+        /* The dw1000_write_tx can do a dma transfer, make sure we wait
+         * until that's finished before updating the buffer */
+        hal_dw1000_rw_noblock_wait(inst, OS_TIMEOUT_NEVER);
+        rc = os_mbuf_copydata(m, mbuf_offset, cpy_len, buf);
         dw1000_write_tx(inst, buf, device_offset, cpy_len);
         mbuf_offset += cpy_len;
         device_offset += cpy_len;
     }
-    os_mbuf_free_chain(m);
 
-    dw1000_set_wait4resp(inst, true);
     if(dw1000_start_tx(inst).start_tx_error){
-        os_sem_release(&sem);
+        os_sem_release(&inst->nmgruwb->sem);
         printf("UWB NMGR: Tx Error \n");
+        goto early_exit;
     }
-    os_sem_pend(&sem, OS_TIMEOUT_NEVER);
-    os_sem_release(&sem);
 
+early_exit:
+    if(os_sem_get_count(&inst->nmgruwb->sem) == 0){
+        rc = os_sem_release(&inst->nmgruwb->sem);
+        assert(rc==0);
+    }
+    rc = os_mbuf_free_chain(m);
+    assert(rc==0);
     return 0;
 }
 
@@ -229,19 +285,19 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
     //Read the buffer
     struct _ieee_std_frame_t *frame = (struct _ieee_std_frame_t*)inst->rxbuf;
-    if(frame->dst_address != inst->my_short_address &&
-       frame->dst_address != 0xffff) {
+    if(frame->dst_address != inst->my_short_address && frame->dst_address != 0xffff) {
         return false;
     }
 
     if(frame->code == NMGR_CMD_STATE_RSP) {
-        //Let the nmgr_cmds.c take responsibility of this
+        /* Don't process responses here */
         return false;
     } else {
         mbuf = os_msys_get_pkthdr(inst->frame_len - sizeof(struct _ieee_std_frame_t),
                                   sizeof(struct nmgr_uwb_usr_hdr));
-        if (mbuf != NULL) {
-            printf("Err, nomem\n");
+        if (!mbuf) {
+            printf("Err, nomem %d\n", inst->frame_len - sizeof(struct _ieee_std_frame_t) +
+                   sizeof(struct nmgr_uwb_usr_hdr));
             return true;
         }
 
@@ -252,10 +308,14 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         memcpy(&hdr->uwb_hdr, inst->rxbuf, sizeof(struct _ieee_std_frame_t));
 
         /* Copy the nmgr hdr & payload */
-        os_mbuf_copyinto(mbuf, 0, inst->rxbuf + sizeof(struct _ieee_std_frame_t),
+        int rc = os_mbuf_copyinto(mbuf, 0, inst->rxbuf + sizeof(struct _ieee_std_frame_t),
                          (inst->frame_len - sizeof(struct _ieee_std_frame_t)));
-
-        nmgr_rx_req(&uwb_transport, mbuf);
+        if (rc == 0) {
+            nmgr_rx_req(&uwb_transport_0, mbuf);
+        } else {
+            os_mbuf_free_chain(mbuf);
+            printf("Err, os_mbuf_copy failed %d\n", rc);
+        }
         return true;
     }
     
@@ -275,25 +335,59 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if(strncmp((char *)&inst->fctrl, "NM",2)) {
         return false;
     }
-    if(os_sem_get_count(&sem) == 0) {
-        os_sem_release(&sem);
+    if(os_sem_get_count(&inst->nmgruwb->sem) == 0) {
+        os_sem_release(&inst->nmgruwb->sem);
     }
     return true;
 }
 
-int
-nmgr_uwb_tx(uint16_t dst_addr, struct os_mbuf *m, uint64_t dx_time)
+/**
+ * Listen for an incoming newtmgr data
+ *
+ * @param inst Pointer to dw1000_dev_instance_t.
+ * @param mode DWT_BLOCKING or DWT_NONBLOCKING
+ * @param inst Pointer to dw1000_dev_instance_t.
+ *
+ * @return dw1000_dev_status_t
+ */
+dw1000_dev_status_t
+nmgr_uwb_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout)
 {
-    dw1000_dev_instance_t* inst = hal_dw1000_inst(0);
+    os_error_t err;
+    os_sem_pend(&inst->nmgruwb->sem, OS_TIMEOUT_NEVER);
+
+    /* TODO: Persist listening until finished */
+    dw1000_set_rx_timeout(inst, timeout);
+
+    if (delay) {
+        dw1000_set_delay_start(inst, delay);
+    }
+
+    if(dw1000_start_rx(inst).start_rx_error){
+        err = os_sem_release(&inst->nmgruwb->sem);
+        assert(err == OS_OK);
+    }
+
+    if (mode == DWT_BLOCKING){
+        err = os_sem_pend(&inst->nmgruwb->sem, OS_TIMEOUT_NEVER);
+        assert(err == OS_OK);
+        err = os_sem_release(&inst->nmgruwb->sem);
+        assert(err == OS_OK);
+    }
+    return inst->status;
+}
+
+
+int
+nmgr_uwb_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, struct os_mbuf *m, uint64_t dx_time)
+{
     struct _ieee_std_frame_t uwb_hdr;
 
-    uint8_t usrlen = OS_MBUF_USRHDR_LEN(m);
-    uint8_t pktlen = OS_MBUF_PKTLEN(m);
     uint8_t buf[32];
     int mbuf_offset = 0;
     int device_offset;
-    printf("uwb_nmgr tx: usrhdr %d, pktlen %d\n", usrlen, pktlen);
-    os_sem_pend(&sem, OS_TIMEOUT_NEVER);
+    printf("uwb_nmgr[%x] tx: %d\n", dst_addr, OS_MBUF_PKTLEN(m) + sizeof(struct _ieee_std_frame_t));
+    os_sem_pend(&inst->nmgruwb->sem, OS_TIMEOUT_NEVER);
 
     /* Prepare header and write to device */
     uwb_hdr.src_address = inst->my_short_address;
@@ -301,34 +395,81 @@ nmgr_uwb_tx(uint16_t dst_addr, struct os_mbuf *m, uint64_t dx_time)
     uwb_hdr.dst_address = dst_addr;
     uwb_hdr.seq_num = inst->nmgruwb->frame_seq_num++;
     uwb_hdr.PANID = 0xDECA;
-    /* TODO:BELOW IS UGLY */
+    /* TODO:BELOW IS UGLY, change to use code as identifier instead */
     strncpy((char*)&uwb_hdr.fctrl, "NM", 2);
 
+    /* If fx_time provided, delay until then with tx */
+    if (dx_time) {
+        dw1000_set_delay_start(inst, dx_time);
+    }
+
     dw1000_write_tx(inst, (uint8_t*)&uwb_hdr, 0, sizeof(struct _ieee_std_frame_t));
-    dw1000_write_tx_fctrl(inst, sizeof(struct _ieee_std_frame_t) + OS_MBUF_PKTLEN(m), 0);
     device_offset = sizeof(struct _ieee_std_frame_t);
 
     /* Copy the mbuf payload data to the device to be sent */
     while (mbuf_offset < OS_MBUF_PKTLEN(m)) {
-        int cpy_len = OS_MBUF_PKTLEN(m) - mbuf_offset > sizeof(buf);
-        cpy_len = (cpy_len) ? sizeof(buf) : cpy_len;
-        printf("uwb_nmgr_tx: mbuf_offs:%d dev_offs:%d cpylen:%d\n",
-               mbuf_offset, device_offset, cpy_len);
+        int cpy_len = OS_MBUF_PKTLEN(m) - mbuf_offset;
+        cpy_len = (cpy_len > sizeof(buf)) ? sizeof(buf) : cpy_len;
 
+        /* The dw1000_write_tx can do a dma transfer, make sure we wait
+         * until that's finished before updating the buffer */
+        hal_dw1000_rw_noblock_wait(inst, OS_TIMEOUT_NEVER);
         os_mbuf_copydata(m, mbuf_offset, cpy_len, buf);
         dw1000_write_tx(inst, buf, device_offset, cpy_len);
         mbuf_offset += cpy_len;
         device_offset += cpy_len;
     }
-    os_mbuf_free_chain(m);
 
-    dw1000_set_wait4resp(inst, true);
+    dw1000_write_tx_fctrl(inst, sizeof(struct _ieee_std_frame_t) + OS_MBUF_PKTLEN(m), 0);
+
     if(dw1000_start_tx(inst).start_tx_error){
-        os_sem_release(&sem);
+        os_sem_release(&inst->nmgruwb->sem);
         printf("UWB NMGR_tx: Tx Error \n");
     }
-    os_sem_pend(&sem, OS_TIMEOUT_NEVER);
-    os_sem_release(&sem);
 
+    os_sem_pend(&inst->nmgruwb->sem, OS_TIMEOUT_NEVER);
+    if(os_sem_get_count(&inst->nmgruwb->sem) == 0) {
+        os_sem_release(&inst->nmgruwb->sem);
+    }
+
+    os_mbuf_free_chain(m);
+    return 0;
+}
+
+int
+uwb_nmgr_process_tx_queue(dw1000_dev_instance_t* inst, uint64_t dx_time, uint16_t timeout)
+{
+    uint16_t dst_addr;
+    struct os_mbuf *om;
+
+    if ((om = os_mqueue_get(&inst->nmgruwb->tx_q)) != NULL) {
+        /* Extract dest address */
+        os_mbuf_copydata(om, OS_MBUF_PKTLEN(om)-2, sizeof(dst_addr), &dst_addr);
+        os_mbuf_adj(om, -2);
+        if (timeout) {
+            dw1000_set_wait4resp(inst, true);
+            dw1000_set_rx_timeout(inst, timeout);
+        }
+        /* nmgr_uwb_tx consumes the mbuf */
+        nmgr_uwb_tx(inst, dst_addr, om, dx_time);
+        return true;
+    }
+    return false;
+}
+
+int
+uwb_nmgr_queue_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, struct os_mbuf *om)
+{
+    /* Append the address to the end of the mbuf */
+    int rc = os_mbuf_append(om, (const void*)&dst_addr,  sizeof(dst_addr));
+    if (rc != 0) {
+        return -1;
+    }
+
+    /* Enqueue the packet for sending at the next slot */
+    rc = os_mqueue_put(&inst->nmgruwb->tx_q, NULL, om);
+    if (rc != 0) {
+        return -1;
+    }
     return 0;
 }
