@@ -48,6 +48,7 @@ void hal_dw1000_read(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, 
 void hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
 void hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
 void hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length);
+os_error_t hal_dw1000_rw_noblock_wait(struct _dw1000_dev_instance_t * inst, os_time_t timeout);
 
 void hal_dw1000_wakeup(struct _dw1000_dev_instance_t * inst);
 int hal_dw1000_get_rst(struct _dw1000_dev_instance_t * inst);

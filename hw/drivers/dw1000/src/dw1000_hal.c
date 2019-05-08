@@ -501,6 +501,24 @@ hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * c
     }
 }
 
+/**
+ * API to wait for a DMA transfer
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param timeout  Time in os_ticks to wait, use OS_TIMEOUT_NEVER to wait indefinitely
+ * @return void
+ */
+os_error_t
+hal_dw1000_rw_noblock_wait(struct _dw1000_dev_instance_t * inst, os_time_t timeout)
+{
+    os_error_t err;
+    err = os_sem_pend(inst->spi_sem, timeout);
+    if (inst->spi_sem->sem_tokens == 0) {
+        os_sem_release(inst->spi_sem);
+    }
+    return err;
+}
+
 
 /**
  * API to wake dw1000 from sleep mode
