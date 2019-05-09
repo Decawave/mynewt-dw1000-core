@@ -207,7 +207,7 @@ txim_ev_cb(struct os_event *ev)
                          256, &om);
     if (tx_im_inst.reset>0) tx_im_inst.reset--;
     if (om) {
-        uwb_nmgr_queue_tx(hal_dw1000_inst(0), tx_im_inst.addr, om);
+        uwb_nmgr_queue_tx(hal_dw1000_inst(0), tx_im_inst.addr, 0, om);
         os_callout_reset(&tx_im_inst.callout, OS_TICKS_PER_SEC/30);
     } else {
         printf("bota: txim finished\n");

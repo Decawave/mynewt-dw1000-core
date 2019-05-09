@@ -63,13 +63,12 @@ typedef enum _nmgr_uwb_codes_t{
 
 uint16_t nmgr_uwb_mtu(struct os_mbuf *m, int idx);
 nmgr_uwb_instance_t* nmgr_uwb_init(dw1000_dev_instance_t* inst);
-int nmgr_uwb_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, struct os_mbuf *m, uint64_t dx_time);
+int nmgr_uwb_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, uint16_t code, struct os_mbuf *m, uint64_t dx_time);
 
 /* Sychronous model */
 dw1000_dev_status_t nmgr_uwb_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout);
 int uwb_nmgr_process_tx_queue(dw1000_dev_instance_t* inst, uint64_t dx_time, uint16_t timeout);
-int uwb_nmgr_queue_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, struct os_mbuf *om);
-
+int uwb_nmgr_queue_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, uint16_t code, struct os_mbuf *om);
 #ifdef __cplusplus
 }
 #endif

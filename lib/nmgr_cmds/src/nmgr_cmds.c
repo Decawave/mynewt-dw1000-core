@@ -276,7 +276,7 @@ nmgr_uwb_img_upload(int argc, char** argv){
         } else {
             rsp = NULL;
         }
-        uwb_nmgr_queue_tx(inst, dst_add, rsp);
+        uwb_nmgr_queue_tx(inst, dst_add, 0, rsp);
 
         err = os_sem_pend(&nmgr_inst->cmd_sem, OS_TIMEOUT_NEVER);
         err |= os_sem_release(&nmgr_inst->cmd_sem);
@@ -314,7 +314,7 @@ nmgr_uwb_img_list(int argc, char** argv){
     if(argc < 2){
         return -1;
     }
-    struct os_mbuf* om = os_msys_get_pkthdr(0, 0);
+    struct os_mbuf* om = os_msys_get_pkthdr(10, 40);
     struct nmgr_hdr *hdr = (struct nmgr_hdr *) os_mbuf_extend(om, sizeof(struct nmgr_hdr));
     hdr->nh_len = 0;
     hdr->nh_flags = 0;
@@ -322,15 +322,13 @@ nmgr_uwb_img_list(int argc, char** argv){
     hdr->nh_group = htons(MGMT_GROUP_ID_IMAGE);
     hdr->nh_seq = nmgr_inst->nmgr_cmd_seq_num++;
     hdr->nh_id = IMGMGR_NMGR_ID_STATE;
-    printf("nmgr_cmds g:%d\n", ntohs(hdr->nh_group));
-
     uint16_t dst_addr = strtol(argv[1], NULL, 16);
     if (!dst_addr) {
         console_printf("Dst addr needed\n");
         return 1;
     }
 
-    uwb_nmgr_queue_tx(hal_dw1000_inst(0), dst_addr, om);
+    uwb_nmgr_queue_tx(hal_dw1000_inst(0), dst_addr, 0, om);
     return 0;
 }
 
@@ -390,7 +388,7 @@ nmgr_uwb_img_set_state(int argc, char** argv){
     hdr->nh_len += cbor_encode_bytes_written(&nmgr_inst->n_b.encoder);
     hdr->nh_len = htons(hdr->nh_len);
 
-    uwb_nmgr_queue_tx(hal_dw1000_inst(0), dst_add, tx_pkt);
+    uwb_nmgr_queue_tx(hal_dw1000_inst(0), dst_add, 0, tx_pkt);
     return 0;
 }
 

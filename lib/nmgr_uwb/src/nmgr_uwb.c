@@ -213,10 +213,6 @@ static int
 nmgr_resp_cb(struct nmgr_transport *nt, struct os_mbuf *m)
 {
     int rc;
-    uint8_t buf[32];
-    int mbuf_offset = 0;
-    int device_offset;
-
     /* Prepare header and write to device */
     if (OS_MBUF_USRHDR_LEN(m) != sizeof(struct nmgr_uwb_usr_hdr)) {
         rc = os_mbuf_free_chain(m);
@@ -229,34 +225,14 @@ nmgr_resp_cb(struct nmgr_transport *nt, struct os_mbuf *m)
 
     if (hdr->uwb_hdr.dst_address == BROADCAST_ADDRESS) {
         printf("uwb_nmgr_resp: Not responding to broadcast\n");
+        rc = os_mbuf_free_chain(m);
+        assert(rc==0);
         goto early_exit;
     }
 
-    frame->code = NMGR_CMD_STATE_RSP;
-    frame->dst_address = frame->src_address;
-    frame->src_address = inst->my_short_address;
-    dw1000_write_tx(inst, (uint8_t*)frame, 0, sizeof(struct _ieee_std_frame_t));
-    dw1000_write_tx_fctrl(inst, sizeof(struct _ieee_std_frame_t) + OS_MBUF_PKTLEN(m), 0);
-    device_offset = sizeof(struct _ieee_std_frame_t);
-
-    /* Copy the mbuf payload data to the device to be sent */
-    while (mbuf_offset < OS_MBUF_PKTLEN(m)) {
-        int cpy_len = OS_MBUF_PKTLEN(m) - mbuf_offset;
-        cpy_len = (cpy_len > sizeof(buf)) ? sizeof(buf) : cpy_len;
-
-        /* The dw1000_write_tx can do a dma transfer, make sure we wait
-         * until that's finished before updating the buffer */
-        hal_dw1000_rw_noblock_wait(inst, OS_TIMEOUT_NEVER);
-        rc = os_mbuf_copydata(m, mbuf_offset, cpy_len, buf);
-        dw1000_write_tx(inst, buf, device_offset, cpy_len);
-        mbuf_offset += cpy_len;
-        device_offset += cpy_len;
-    }
-
-    if(dw1000_start_tx(inst).start_tx_error){
-        os_sem_release(&inst->nmgruwb->sem);
-        printf("UWB NMGR: Tx Error \n");
-        goto early_exit;
+    if (uwb_nmgr_queue_tx(inst, frame->src_address, NMGR_CMD_STATE_RSP, m) != 0) {
+        rc = os_mbuf_free_chain(m);
+        assert(rc==0);
     }
 
 early_exit:
@@ -264,8 +240,6 @@ early_exit:
         rc = os_sem_release(&inst->nmgruwb->sem);
         assert(rc==0);
     }
-    rc = os_mbuf_free_chain(m);
-    assert(rc==0);
     return 0;
 }
 
@@ -379,19 +353,20 @@ nmgr_uwb_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t 
 
 
 int
-nmgr_uwb_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, struct os_mbuf *m, uint64_t dx_time)
+nmgr_uwb_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, uint16_t code,
+            struct os_mbuf *m, uint64_t dx_time)
 {
     struct _ieee_std_frame_t uwb_hdr;
 
     uint8_t buf[32];
     int mbuf_offset = 0;
     int device_offset;
-    printf("uwb_nmgr[%x] tx: %d\n", dst_addr, OS_MBUF_PKTLEN(m) + sizeof(struct _ieee_std_frame_t));
+    printf("uwb_nmgr[%x] c:%x tx: %d\n", dst_addr, code, OS_MBUF_PKTLEN(m));
     os_sem_pend(&inst->nmgruwb->sem, OS_TIMEOUT_NEVER);
 
     /* Prepare header and write to device */
     uwb_hdr.src_address = inst->my_short_address;
-    uwb_hdr.code = NMGR_CMD_STATE_SEND;
+    uwb_hdr.code = code;
     uwb_hdr.dst_address = dst_addr;
     uwb_hdr.seq_num = inst->nmgruwb->frame_seq_num++;
     uwb_hdr.PANID = 0xDECA;
@@ -439,40 +414,53 @@ nmgr_uwb_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, struct os_mbuf *m, u
 int
 uwb_nmgr_process_tx_queue(dw1000_dev_instance_t* inst, uint64_t dx_time, uint16_t timeout)
 {
-    uint16_t dst_addr;
+    int rc;
+    uint16_t dst_addr = 0;
+    uint16_t code = 0;
     struct os_mbuf *om;
 
     if ((om = os_mqueue_get(&inst->nmgruwb->tx_q)) != NULL) {
-        /* Extract dest address */
-        os_mbuf_copydata(om, OS_MBUF_PKTLEN(om)-2, sizeof(dst_addr), &dst_addr);
-        os_mbuf_adj(om, -2);
+        /* Extract dest address and code */
+        rc = os_mbuf_copydata(om, OS_MBUF_PKTLEN(om)-4, sizeof(dst_addr), &dst_addr);
+        assert(rc==0);
+        rc = os_mbuf_copydata(om, OS_MBUF_PKTLEN(om)-2, sizeof(code), &code);
+        assert(rc==0);
+        os_mbuf_adj(om, -4);
         if (timeout) {
             dw1000_set_wait4resp(inst, true);
             dw1000_set_rx_timeout(inst, timeout);
         }
         /* nmgr_uwb_tx consumes the mbuf */
-        nmgr_uwb_tx(inst, dst_addr, om, dx_time);
+        nmgr_uwb_tx(inst, dst_addr, code, om, dx_time);
         return true;
     }
     return false;
 }
 
 int
-uwb_nmgr_queue_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, struct os_mbuf *om)
+uwb_nmgr_queue_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, uint16_t code, struct os_mbuf *om)
 {
 #if MYNEWT_VAL(NMGR_UWB_LOOPBACK)
     nmgr_rx_req(&uwb_transport_0, om);
 #else
-    /* Append the address to the end of the mbuf */
-    int rc = os_mbuf_append(om, (const void*)&dst_addr,  sizeof(dst_addr));
-    if (rc != 0) {
-        return -1;
+    int rc;
+    if (code==0) {
+         code = NMGR_CMD_STATE_SEND;
     }
+
+    /* Append the code and address to the end of the mbuf */
+    printf("uwb_nmgr_q a:%x s:%d pkthdr:%d\n", dst_addr, OS_MBUF_PKTLEN(om), OS_MBUF_IS_PKTHDR(om));
+    uint16_t *p = os_mbuf_extend(om, sizeof(uint16_t)*2);
+    if (!p) {
+        return OS_EINVAL;
+    }
+    p[0] = dst_addr;
+    p[1] = code;
 
     /* Enqueue the packet for sending at the next slot */
     rc = os_mqueue_put(&inst->nmgruwb->tx_q, NULL, om);
     if (rc != 0) {
-        return -1;
+        return OS_EINVAL;
     }
 #endif
     return 0;
