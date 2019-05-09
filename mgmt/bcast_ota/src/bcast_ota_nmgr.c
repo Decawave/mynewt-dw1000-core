@@ -350,4 +350,8 @@ bcast_ota_nmgr_module_init(void)
 
     rc = mgmt_group_register(&bota_nmgr_group);
     SYSINIT_PANIC_ASSERT(rc == 0);
+
+#if MYNEWT_VAL(BCAST_OTA_REBOOT_ON_NEW_IMAGE)
+    bcast_ota_set_new_fw_cb(hal_system_reset);
+#endif
 }

@@ -460,6 +460,9 @@ uwb_nmgr_process_tx_queue(dw1000_dev_instance_t* inst, uint64_t dx_time, uint16_
 int
 uwb_nmgr_queue_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, struct os_mbuf *om)
 {
+#if MYNEWT_VAL(NMGR_UWB_LOOPBACK)
+    nmgr_rx_req(&uwb_transport_0, om);
+#else
     /* Append the address to the end of the mbuf */
     int rc = os_mbuf_append(om, (const void*)&dst_addr,  sizeof(dst_addr));
     if (rc != 0) {
@@ -471,5 +474,6 @@ uwb_nmgr_queue_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, struct os_mbuf
     if (rc != 0) {
         return -1;
     }
+#endif
     return 0;
 }

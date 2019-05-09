@@ -33,3 +33,6 @@ syscfg.defs:
         description: 'Where to store image before writing to mcu'
         type: 'flash_owner'
         value:
+    BCAST_OTA_REBOOT_ON_NEW_IMAGE:
+        description: 'Sets the new image cb to reset'
+        value: 1

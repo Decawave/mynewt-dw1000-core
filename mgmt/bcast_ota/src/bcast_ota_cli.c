@@ -126,7 +126,7 @@ static int bota_cli_cmd(int argc, char **argv);
 #if MYNEWT_VAL(SHELL_CMD_HELP)
 const struct shell_param cmd_bota_param[] = {
     {"check", "<fa_id>"},
-    {"txim", "<fa_id> [reset]"},
+    {"txim", "<addr> <fa_id> [reset]"},
     {NULL,NULL},
 };
 
@@ -186,13 +186,40 @@ check_image_fid(int fid)
     return rc;
 }
 
+static struct {
+    int8_t reset;
+    uint16_t addr;
+    int slot_id;
+    int blocksize;
+    struct os_callout callout;
+} tx_im_inst = {0};
 
+static void
+txim_ev_cb(struct os_event *ev)
+{
+    struct os_mbuf *om = 0;
+    if (os_msys_num_free() < os_msys_count()/2) {
+        os_callout_reset(&tx_im_inst.callout, OS_TICKS_PER_SEC/10);
+        return;
+    }
+    bcast_ota_get_packet(tx_im_inst.slot_id, (tx_im_inst.reset>0)?
+                         BCAST_MODE_RESET_OFFSET : BCAST_MODE_NONE,
+                         256, &om);
+    if (tx_im_inst.reset>0) tx_im_inst.reset--;
+    if (om) {
+        uwb_nmgr_queue_tx(hal_dw1000_inst(0), tx_im_inst.addr, om);
+        os_callout_reset(&tx_im_inst.callout, OS_TICKS_PER_SEC/30);
+    } else {
+        printf("bota: txim finished\n");
+    }
+}
 
 static int
 bota_cli_cmd(int argc, char **argv)
 {
     int rc;
     int fa_id;
+
     if (argc < 2) {
         console_printf("Too few args\n");
         return 0;
@@ -211,16 +238,18 @@ bota_cli_cmd(int argc, char **argv)
         rc = check_image_fid(fa_id);
         console_printf("rc=%d\n", rc);
     } else if (!strcmp(argv[1], "txim")) {
-        struct os_mbuf *om;
-        if (argc < 3) {
-            console_printf("pls provide src id [0 or 1]\n");
+        if (argc < 4) {
+            console_printf("pls provide <addr> and slot src id [0 or 1]\n");
             return 0;
         }
-        int id = strtol(argv[2], NULL, 0);
-        if (id > 1) return 0;
-        // rc = bcast_ota_get_packet(id, (argc > 3)? BCAST_MODE_RESET_OFFSET : BCAST_MODE_NONE, nmgr_uwb_mtu(0,0), &om);
-        rc = bcast_ota_get_packet(id, (argc > 3)? BCAST_MODE_RESET_OFFSET : BCAST_MODE_NONE, 256, &om);
-
+        tx_im_inst.addr = strtol(argv[2], NULL, 0);
+        tx_im_inst.reset = 5;
+        tx_im_inst.slot_id = strtol(argv[3], NULL, 0);
+        tx_im_inst.blocksize = 256;
+        os_callout_reset(&tx_im_inst.callout, 0);
+#if 0
+        struct os_mbuf *om;
+        rc = bcast_ota_get_packet(fid, (argc > 3)? BCAST_MODE_RESET_OFFSET : BCAST_MODE_NONE, 256, &om);
         /* Debug base64-print of CBOR sent */
         uint8_t *buf = malloc(OS_MBUF_PKTLEN(om));
         os_mbuf_copydata(om, 0, OS_MBUF_PKTLEN(om), buf);
@@ -229,9 +258,9 @@ bota_cli_cmd(int argc, char **argv)
         free(buf);
         console_printf("tx '%s'\n", buf2);
         free(buf2);
-        
         uwb_nmgr_queue_tx(hal_dw1000_inst(0), 0xffff, om);
         console_printf("rc=%d\n", rc);
+#endif
     } else {
         console_printf("Unknown cmd\n");
     }
@@ -245,6 +274,7 @@ bota_cli_register(void)
     rc = nmgr_transport_init(&nmgr_mstr_transport, nmgr_mstr_out,
                              nmgr_mstr_get_mtu);
     assert(rc == 0);
+    os_callout_init(&tx_im_inst.callout, os_eventq_dflt_get(), txim_ev_cb, NULL);
 
     return shell_cmd_register(&shell_bota_cmd);
 }
