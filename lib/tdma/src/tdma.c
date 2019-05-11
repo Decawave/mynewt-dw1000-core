@@ -491,7 +491,7 @@ tdma_tx_slot_start(struct _dw1000_dev_instance_t * inst, float idx)
 #if MYNEWT_VAL(WCS_ENABLED)
     wcs_instance_t * wcs = ccp->wcs;
     uint64_t dx_time = (ccp->local_epoch + (uint64_t) wcs_dtu_time_adjust(wcs, ((idx * ((uint64_t)ccp->period << 16))/tdma->nslots)));
-    //uint64_t dx_time = (ccp->local_epoch + (uint64_t) roundf((1.0l + wcs->skew) * (double)((idx * (uint64_t)inst->ccp->period << 16)/tdma->nslots)));
+    // uint64_t dx_time = (ccp->local_epoch + (uint64_t) roundf((1.0l + wcs->skew) * (double)((idx * (uint64_t)inst->ccp->period * 65536)/tdma->nslots)));
 #else
     uint64_t dx_time = (ccp->local_epoch + (uint64_t) ((idx * ((uint64_t)ccp->period << 16)/tdma->nslots)));
 #endif
