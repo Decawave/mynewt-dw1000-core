@@ -360,7 +360,6 @@ nmgr_uwb_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, uint16_t code,
     uint8_t buf[32];
     int mbuf_offset = 0;
     int device_offset;
-    printf("uwb_nmgr[%x] c:%x tx: %d\n", dst_addr, code, OS_MBUF_PKTLEN(m));
     os_sem_pend(&inst->nmgruwb->sem, OS_TIMEOUT_NEVER);
 
     /* Prepare header and write to device */

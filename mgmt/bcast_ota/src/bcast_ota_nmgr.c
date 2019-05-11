@@ -257,7 +257,8 @@ bota_upload(struct mgmt_cbuf *cb)
             free(img_data);
             return MGMT_ERR_EINVAL;
         }
-
+        /* TODO: Also compare target / bps + app names and use a seq_num on the
+         * txim to match? Or use core/util/crc/crc16 to encode bsp+app and label with */
         /* Only erase flash if new version is different to what we have */
         rc = flash_area_read(tmp_fa, 0, &tmp_hdr, sizeof(struct image_header));
         erase = 0;
@@ -328,8 +329,11 @@ bota_upload(struct mgmt_cbuf *cb)
             goto out;
         }
 #endif        
-        rc = boot_set_pending((flags&BOTA_FLAGS_SET_PERMANENT)?1:0);
+        BOTA_DEBUG("#### Hash ok, set perm? %d \n",
+                   (bota_state.upload.flags&BOTA_FLAGS_SET_PERMANENT)?1:0);
+        rc = boot_set_pending((bota_state.upload.flags&BOTA_FLAGS_SET_PERMANENT)?1:0);
         BOTA_INFO("#### Will boot into new image at next boot\n", rc);
+        os_time_delay(OS_TICKS_PER_SEC);
         if (_new_image_cb) {
             _new_image_cb();
         }
