@@ -126,7 +126,8 @@ static int bota_cli_cmd(int argc, char **argv);
 #if MYNEWT_VAL(SHELL_CMD_HELP)
 const struct shell_param cmd_bota_param[] = {
     {"check", "<fa_id>"},
-    {"txim", "<addr> <fa_id> [reset]"},
+    {"txim", "<addr> <fa_id>"},
+    // {"txd", "<addr> <offset> <base64>"},
     {NULL,NULL},
 };
 
@@ -188,27 +189,37 @@ check_image_fid(int fid)
 
 static struct {
     int8_t reset;
+    int8_t resend_end;
     uint16_t addr;
     int slot_id;
     int blocksize;
     struct os_callout callout;
+    uint64_t flags;
 } tx_im_inst = {0};
 
 static void
 txim_ev_cb(struct os_event *ev)
 {
     struct os_mbuf *om = 0;
-    if (os_msys_num_free() < os_msys_count()/2) {
+    /* Don't proceed unless there's plenty of room in the queue */
+    if (os_msys_num_free() < os_msys_count()/4) {
         os_callout_reset(&tx_im_inst.callout, OS_TICKS_PER_SEC/10);
         return;
     }
     bcast_ota_get_packet(tx_im_inst.slot_id, (tx_im_inst.reset>0)?
                          BCAST_MODE_RESET_OFFSET : BCAST_MODE_NONE,
-                         256, &om);
+                         256, &om, tx_im_inst.flags);
     if (tx_im_inst.reset>0) tx_im_inst.reset--;
     if (om) {
-        uwb_nmgr_queue_tx(hal_dw1000_inst(0), tx_im_inst.addr, 0, om);
-        os_callout_reset(&tx_im_inst.callout, OS_TICKS_PER_SEC/30);
+        uwb_nmgr_queue_tx(hal_dw1000_inst(0), tx_im_inst.addr, NMGR_CMD_STATE_SEND, om);
+        os_callout_reset(&tx_im_inst.callout, OS_TICKS_PER_SEC/50);
+        tx_im_inst.resend_end = 5;
+    } else if (--tx_im_inst.resend_end > 0){
+        printf("bota: resending end\n");
+        bcast_ota_get_packet(tx_im_inst.slot_id, BCAST_MODE_RESEND_END,
+                             (128-8), &om, tx_im_inst.flags);
+        uwb_nmgr_queue_tx(hal_dw1000_inst(0), tx_im_inst.addr, NMGR_CMD_STATE_SEND, om);
+        os_callout_reset(&tx_im_inst.callout, OS_TICKS_PER_SEC/4);
     } else {
         printf("bota: txim finished\n");
     }

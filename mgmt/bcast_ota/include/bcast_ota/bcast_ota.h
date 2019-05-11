@@ -27,6 +27,7 @@ struct flash_area;
 
 #define MGMT_GROUP_ID_BOTA   (65)
 
+#define BOTA_FLAGS_SET_PERMANENT (0x0001)
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,7 +43,7 @@ typedef void new_fw_cb(void);
 struct os_mbuf_pool;
 
 int bcast_ota_get_packet(int src_slot, bcast_ota_mode_t mode, int max_transfer_unit,
-                         struct os_mbuf **rsp);
+                         struct os_mbuf **rsp, uint64_t flags);
 
 void bcast_ota_nmgr_module_init(void);
 void bcast_ota_set_mpool(struct os_mbuf_pool *mbuf_pool);

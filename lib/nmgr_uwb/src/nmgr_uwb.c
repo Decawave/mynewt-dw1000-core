@@ -224,7 +224,6 @@ nmgr_resp_cb(struct nmgr_transport *nt, struct os_mbuf *m)
     struct _ieee_std_frame_t *frame = &hdr->uwb_hdr;
 
     if (hdr->uwb_hdr.dst_address == BROADCAST_ADDRESS) {
-        printf("uwb_nmgr_resp: Not responding to broadcast\n");
         rc = os_mbuf_free_chain(m);
         assert(rc==0);
         goto early_exit;
@@ -449,9 +448,10 @@ uwb_nmgr_queue_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, uint16_t code,
     }
 
     /* Append the code and address to the end of the mbuf */
-    printf("uwb_nmgr_q a:%x s:%d pkthdr:%d\n", dst_addr, OS_MBUF_PKTLEN(om), OS_MBUF_IS_PKTHDR(om));
     uint16_t *p = os_mbuf_extend(om, sizeof(uint16_t)*2);
     if (!p) {
+        printf("##### ERROR uwb_nmgr_q ext_failed\n");
+        rc = os_mbuf_free_chain(om);
         return OS_EINVAL;
     }
     p[0] = dst_addr;
@@ -460,6 +460,8 @@ uwb_nmgr_queue_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, uint16_t code,
     /* Enqueue the packet for sending at the next slot */
     rc = os_mqueue_put(&inst->nmgruwb->tx_q, NULL, om);
     if (rc != 0) {
+        printf("##### ERROR uwb_nmgr_q rc:%d\n", rc);
+        rc = os_mbuf_free_chain(om);
         return OS_EINVAL;
     }
 #endif

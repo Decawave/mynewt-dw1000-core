@@ -41,12 +41,14 @@ struct bota_state {
         uint32_t off;
         uint32_t size;
         uint32_t upl_errs;
-        int slot_id;
-        int fa_id;
+        uint8_t slot_id;
+        uint8_t fa_id;
+        uint64_t flags;
     } upload;
 };
 
 static int bota_upload(struct mgmt_cbuf *);
+static int bota_confirm(struct mgmt_cbuf *);
 static new_fw_cb *_new_image_cb;
 
 static const struct mgmt_handler bota_nmgr_handlers[] = {
@@ -54,6 +56,10 @@ static const struct mgmt_handler bota_nmgr_handlers[] = {
         .mh_read = NULL,
         .mh_write = bota_upload
     },
+    [IMGMGR_NMGR_ID_STATE] = {
+        .mh_read = NULL,
+        .mh_write = bota_confirm
+    }
 };
 
 #define BOTA_HANDLER_CNT                                                \
@@ -65,7 +71,7 @@ static struct mgmt_group bota_nmgr_group = {
     .mg_group_id = MGMT_GROUP_ID_BOTA,
 };
 
-struct bota_state bota_state;
+struct bota_state bota_state = {0};
 
 #define TMPBUF_SZ  256
 static int
@@ -142,10 +148,10 @@ bota_upload(struct mgmt_cbuf *cb)
     uint64_t off = UINT_MAX;
     uint64_t size = UINT_MAX;
     uint64_t slot = UINT_MAX;
+    uint64_t flags = UINT_MAX;
     bool erase = 0;
     size_t data_len = 0;
 
-    BOTA_DEBUG("bcast_ota_nmgr_upl\n");
     if (!img_data) {
         BOTA_ERR("ERR no mem\n");
         return OS_ENOMEM;
@@ -177,7 +183,13 @@ bota_upload(struct mgmt_cbuf *cb)
             .addr.uinteger = &slot,
             .nodefault = true
         },
-        [4] = { 0 },
+        [4] = {
+            .attribute = "f",
+            .type = CborAttrUnsignedIntegerType,
+            .addr.uinteger = &flags,
+            .nodefault = true
+        },
+        [5] = { 0 },
     };
     struct image_header *new_hdr;
     struct image_header tmp_hdr;
@@ -192,19 +204,29 @@ bota_upload(struct mgmt_cbuf *cb)
         return MGMT_ERR_EINVAL;
     }
 
-    BOTA_DEBUG("bcast_ota_nmgr_upl: l%ld,o%ld,s%ld,e%d ec:%ld\n",
-           (uint32_t)size, (uint32_t)off, (uint32_t)slot, erase,
-           bota_state.upload.upl_errs
+    BOTA_DEBUG("bota: l%ld(%lu),o%ld,s%ld(%d),e%d,f%llx(%llx) ec:%ld\n",
+               (uint32_t)size, bota_state.upload.size,
+               (uint32_t)off, (uint32_t)slot, bota_state.upload.slot_id, erase,
+               flags, bota_state.upload.flags, bota_state.upload.upl_errs
         );
     
     if (slot != UINT_MAX) {
         bota_state.upload.slot_id = slot;
         bota_state.upload.fa_id = flash_area_id_from_image_slot(slot);
-        BOTA_DEBUG("fa_id: %d\n", bota_state.upload.fa_id);
     }
     
     if (size != UINT_MAX) {
         bota_state.upload.size = size;
+    }
+
+    if (flags != UINT_MAX) {
+        bota_state.upload.flags = flags;
+    }
+
+    /* Check that we're not corrupting the image in slot 0 */
+    if (bota_state.upload.fa_id < flash_area_id_from_image_slot(1)) {
+        BOTA_ERR("ERR Unknown fa_id(%d)\n", bota_state.upload.fa_id);
+        return MGMT_ERR_EINVAL;
     }
 
 #if MYNEWT_VAL(BCAST_OTA_SCRATCH_ENABLED)
@@ -306,8 +328,7 @@ bota_upload(struct mgmt_cbuf *cb)
             goto out;
         }
 #endif        
-        rc = boot_set_pending(1);
-        BOTA_INFO("#### Image ok, set permanent, rc=%d\n", rc);
+        rc = boot_set_pending((flags&BOTA_FLAGS_SET_PERMANENT)?1:0);
         BOTA_INFO("#### Will boot into new image at next boot\n", rc);
         if (_new_image_cb) {
             _new_image_cb();
@@ -333,6 +354,26 @@ err_close:
     flash_area_close(tmp_fa);
     return rc;
 }
+
+static int
+bota_confirm(struct mgmt_cbuf *cb)
+{
+    CborError g_err = CborNoError;
+    g_err |= cbor_encode_text_stringz(&cb->encoder, "rc");
+    uint64_t rc = boot_set_confirmed();
+    if (rc == OS_OK) {
+        BOTA_INFO("#### Image confirmed, rc=%d\n", rc);
+        g_err |= cbor_encode_int(&cb->encoder, MGMT_ERR_EOK);
+    } else {
+        g_err |= cbor_encode_int(&cb->encoder, MGMT_ERR_EUNKNOWN);
+    }
+
+    if (g_err) {
+        return MGMT_ERR_ENOMEM;
+    }
+    return 0;
+}
+
 
 void
 bcast_ota_set_new_fw_cb(new_fw_cb *cb)
