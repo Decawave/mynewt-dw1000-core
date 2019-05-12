@@ -78,6 +78,7 @@ typedef union {
         uint8_t slot_modulus;       //!< How many slots to send in
         uint8_t rpt_count;          //!< Repeat level
         uint8_t rpt_max;            //!< Repeat max level
+        // Add Location and variance of location here, triad?
     }__attribute__((__packed__,aligned(1)));
     uint8_t array[sizeof(struct _rtdoa_request_frame_t)];
 } rtdoa_request_frame_t;
@@ -106,11 +107,12 @@ typedef union {
 
 typedef struct _dw1000_rtdoa_instance_t{
     struct _dw1000_dev_instance_t * parent;
-#if MYNEWT_VAL(NRNG_STATS)
+#if MYNEWT_VAL(RTDOA_STATS)
     STATS_SECT_DECL(rtdoa_stat_section) stat; //!< Stats instance
 #endif
     uint16_t resp_count;
     uint64_t delay;
+    uint64_t timeout;
     uint8_t seq_num;
     uint16_t nframes;
     struct os_sem sem;                          //!< Structure of semaphores
@@ -130,7 +132,7 @@ float dw1000_rtdoa_tdoa_between_frames(struct _dw1000_dev_instance_t * inst, rtd
 void dw1000_rtdoa_set_frames(dw1000_dev_instance_t * inst, uint16_t nframes);
 dw1000_dev_status_t dw1000_rtdoa_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config);
 
-dw1000_dev_status_t dw1000_rtdoa_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t delay);
+    dw1000_dev_status_t dw1000_rtdoa_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout);
 uint32_t rtdoa_usecs_to_response(dw1000_dev_instance_t * inst, rtdoa_request_frame_t * req,
                                  uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration);
 

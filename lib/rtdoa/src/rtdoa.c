@@ -133,20 +133,21 @@ dw1000_rtdoa_free(dw1000_rtdoa_instance_t * inst){
 }
 
 inline void
-dw1000_rtdoa_set_frames(dw1000_dev_instance_t * inst, uint16_t nframes){
-        assert(inst);
-        dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
-        assert(nframes <= rtdoa->nframes);
-        rtdoa_frame_t default_frame = {
-            .PANID = 0xDECA,
-            .fctrl = FCNTL_IEEE_RANGE_16,
-            .code = DWT_RTDOA_INVALID
-        };
-        for (uint16_t i = 0; i < nframes; i++){
-            rtdoa->frames[i] = (rtdoa_frame_t * ) malloc(sizeof(rtdoa_frame_t));
-            assert(rtdoa->frames[i]);
-            memcpy(rtdoa->frames[i], &default_frame, sizeof(rtdoa_frame_t));
-        }
+dw1000_rtdoa_set_frames(dw1000_dev_instance_t * inst, uint16_t nframes)
+{
+    assert(inst);
+    dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
+    assert(nframes <= rtdoa->nframes);
+    rtdoa_frame_t default_frame = {
+        .PANID = 0xDECA,
+        .fctrl = FCNTL_IEEE_RANGE_16,
+        .code = DWT_RTDOA_INVALID
+    };
+    for (uint16_t i = 0; i < nframes; i++){
+        rtdoa->frames[i] = (rtdoa_frame_t * ) malloc(sizeof(rtdoa_frame_t));
+        assert(rtdoa->frames[i]);
+        memcpy(rtdoa->frames[i], &default_frame, sizeof(rtdoa_frame_t));
+    }
 }
 
 /**
@@ -160,33 +161,9 @@ dw1000_rtdoa_set_frames(dw1000_dev_instance_t * inst, uint16_t nframes){
  * @return valid mask
  */
 uint32_t
-dw1000_rtdoa_get_ranges(dw1000_dev_instance_t * inst, float ranges[], uint16_t nranges, uint16_t base){
-
+dw1000_rtdoa_get_ranges(dw1000_dev_instance_t * inst, float ranges[], uint16_t nranges, uint16_t base)
+{
     uint32_t mask = 0;
-#if 0
-    dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
-    // Which slots responded with a valid frames
-    for (uint16_t i=0; i < nranges; i++){
-        if (rtdoa->slot_mask & 1UL << i){
-            // the set of all requested slots
-            uint16_t idx = BitIndex(rtdoa->slot_mask, 1UL << i, SLOT_POSITION); 
-            rtdoa_frame_t * frame = rtdoa->frames[(base + idx)%rtdoa->nframes];
-            if (frame->code == DWT_SS_TWR_RTDOA_FINAL && frame->seq_num == rtdoa->seq_num){
-                // the set of all positive responses
-                mask |= 1UL << i;
-            }
-        }
-    }
-    // Construct output vector 
-    uint16_t j = 0;
-    for (uint16_t i=0; i < nranges; i++){
-        if (mask & 1UL << i){
-            uint16_t idx = BitIndex(rtdoa->slot_mask, 1UL << i, SLOT_POSITION); 
-            rtdoa_frame_t * frame = rtdoa->frames[(base + idx)%rtdoa->nframes];
-            ranges[j++] = dw1000_rng_tof_to_meters(dw1000_rtdoa_twr_to_tof_frames(rtdoa->parent, frame, frame));
-        }
-    }
-#endif
     return mask;
 }
 
@@ -314,7 +291,7 @@ dw1000_rtdoa_request(dw1000_dev_instance_t * inst, uint64_t delay)
  * @return dw1000_dev_status_t 
  */
 dw1000_dev_status_t 
-dw1000_rtdoa_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t delay)
+dw1000_rtdoa_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout)
 {
     assert(inst->rtdoa);
     dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
@@ -322,7 +299,11 @@ dw1000_rtdoa_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint6
     os_error_t err = os_sem_pend(&rtdoa->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
+    /* Setup start time and overall timeout */
     dw1000_set_delay_start(inst, delay);
+    dw1000_set_rx_timeout(inst, timeout);
+    rtdoa->timeout = (delay + (((uint64_t)timeout)<<16))&0xFFFFFFFFFFUL;
+
     RTDOA_STATS_INC(rtdoa_listen);
     if(dw1000_start_rx(inst).start_rx_error){
         err = os_sem_release(&rtdoa->sem);

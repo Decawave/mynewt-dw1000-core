@@ -164,21 +164,14 @@ static bool
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
-    if(os_sem_get_count(&rtdoa->sem) == 1)
+    if(os_sem_get_count(&rtdoa->sem) == 1) {
         return false;
+    }
 
     if(os_sem_get_count(&rtdoa->sem) == 0){
-        RTDOA_STATS_INC(rx_timeout);
-        // In the case of a RTDOA timeout is used to mark the end of the request 
-        // and is used to call the completion callback  
-        if(!(SLIST_EMPTY(&inst->interface_cbs))){
-            SLIST_FOREACH(cbs, &inst->interface_cbs, next){
-            if (cbs!=NULL && cbs->complete_cb)
-                if(cbs->complete_cb(inst, cbs)) continue;
-            }
-        }
         os_error_t err = os_sem_release(&rtdoa->sem);
         assert(err == OS_OK);
+        RTDOA_STATS_INC(rx_timeout);
     }    
     return true;
 }
@@ -285,7 +278,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
                 frame->rx_timestamp = inst->rxtimestamp;
     
-                /* Compensate for time of flight */
+                /* Compensate for time of flight using the ccp function */
                 if (inst->ccp->tof_comp_cb) {
                     frame->rx_timestamp -= inst->ccp->tof_comp_cb(0, frame->src_address);
                 }
