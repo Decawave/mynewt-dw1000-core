@@ -67,7 +67,7 @@ STATS_NAME_END(rtdoa_stat_section)
 #endif
 
 dw1000_rtdoa_instance_t *
-dw1000_rtdoa_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1000_rtdoa_device_type_t type, uint16_t nframes)
+dw1000_rtdoa_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes)
 {
     assert(inst);
 
@@ -83,7 +83,6 @@ dw1000_rtdoa_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw
     dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa; // Updating the Global Instance of rtdoa
     rtdoa->parent = inst;
     rtdoa->nframes = nframes;
-    rtdoa->device_type = type;
     rtdoa->idx = 0xFFFF;
     rtdoa->seq_num = 0;
     
@@ -215,15 +214,15 @@ void rtdoa_pkg_init(void){
 #endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    dw1000_rtdoa_init(hal_dw1000_inst(0), &g_config, (dw1000_rtdoa_device_type_t) MYNEWT_VAL(RTDOA_DEVICE_TYPE), MYNEWT_VAL(RTDOA_NFRAMES));
+    dw1000_rtdoa_init(hal_dw1000_inst(0), &g_config, MYNEWT_VAL(RTDOA_NFRAMES));
     dw1000_rtdoa_set_frames(hal_dw1000_inst(0), MYNEWT_VAL(RTDOA_NFRAMES));
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
-    dw1000_rtdoa_init(hal_dw1000_inst(1), &g_config, (dw1000_rtdoa_device_type_t) MYNEWT_VAL(RTDOA_DEVICE_TYPE), MYNEWT_VAL(RTDOA_NFRAMES));
+    dw1000_rtdoa_init(hal_dw1000_inst(1), &g_config, MYNEWT_VAL(RTDOA_NFRAMES));
     dw1000_rtdoa_set_frames(hal_dw1000_inst(1), MYNEWT_VAL(RTDOA_NFRAMES));
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-    dw1000_rtdoa_init(hal_dw1000_inst(2), &g_config, (dw1000_rtdoa_device_type_t) MYNEWT_VAL(RTDOA_DEVICE_TYPE), MYNEWT_VAL(RTDOA_NFRAMES));
+    dw1000_rtdoa_init(hal_dw1000_inst(2), &g_config, MYNEWT_VAL(RTDOA_NFRAMES));
     dw1000_rtdoa_set_frames(hal_dw1000_inst(2), MYNEWT_VAL(RTDOA_NFRAMES));
 #endif
 
@@ -274,16 +273,18 @@ dw1000_rtdoa_request(dw1000_dev_instance_t * inst, uint64_t delay)
     frame->rpt_max = 4;
 
     dw1000_set_delay_start(inst, delay);
-    rtdoa->req_frame->rx_timestamp = delay;
 #if MYNEWT_VAL(WCS_ENABLED)       
     /* Another node is clock master - calculate tx-time using wcs */
     wcs_instance_t * wcs = inst->ccp->wcs;  
-    frame->tx_timestamp = (wcs_local_to_master(wcs, delay) & 0xFFFFFFFFFFFFFE00ULL) + inst->tx_antenna_delay;
+    frame->tx_timestamp = (wcs_local_to_master(wcs, delay) & 0xFFFFFFFFFFFFFE00ULL);
 #else
     /* Local node is clock master - easy to calculate the tx-time */
     frame->tx_timestamp = inst->ccp->master_epoch.timestamp & 0xFFFFFF0000000000ULL;
-    frame->tx_timestamp|= (delay& 0xFFFFFFFFFFFFFE00ULL) + inst->tx_antenna_delay;
+    frame->tx_timestamp|= (delay& 0xFFFFFFFFFFFFFE00ULL);
 #endif
+    frame->tx_timestamp += inst->tx_antenna_delay;
+    /* Also set the local rx_timestamp to allow us to also transmit in the next part */
+    rtdoa->req_frame->rx_timestamp = frame->tx_timestamp;
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(rtdoa_request_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(rtdoa_request_frame_t), 0);
@@ -313,13 +314,15 @@ dw1000_rtdoa_request(dw1000_dev_instance_t * inst, uint64_t delay)
  * @return dw1000_dev_status_t 
  */
 dw1000_dev_status_t 
-dw1000_rtdoa_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
+dw1000_rtdoa_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t delay)
+{
     assert(inst->rtdoa);
     dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
 
     os_error_t err = os_sem_pend(&rtdoa->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
+    dw1000_set_delay_start(inst, delay);
     RTDOA_STATS_INC(rtdoa_listen);
     if(dw1000_start_rx(inst).start_rx_error){
         err = os_sem_release(&rtdoa->sem);

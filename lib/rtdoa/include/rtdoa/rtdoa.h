@@ -124,13 +124,13 @@ typedef struct _dw1000_rtdoa_instance_t{
     rtdoa_frame_t * frames[];
 } dw1000_rtdoa_instance_t;
 
-dw1000_rtdoa_instance_t * dw1000_rtdoa_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1000_rtdoa_device_type_t type, uint16_t nframes);
+dw1000_rtdoa_instance_t * dw1000_rtdoa_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes);
 dw1000_dev_status_t dw1000_rtdoa_request(dw1000_dev_instance_t * inst, uint64_t delay);
 float dw1000_rtdoa_tdoa_between_frames(struct _dw1000_dev_instance_t * inst, rtdoa_frame_t *first_frame, rtdoa_frame_t *final_frame);
 void dw1000_rtdoa_set_frames(dw1000_dev_instance_t * inst, uint16_t nframes);
 dw1000_dev_status_t dw1000_rtdoa_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config);
 
-dw1000_dev_status_t dw1000_rtdoa_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
+dw1000_dev_status_t dw1000_rtdoa_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t delay);
 uint32_t rtdoa_usecs_to_response(dw1000_dev_instance_t * inst, rtdoa_request_frame_t * req,
                                  uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration);
 

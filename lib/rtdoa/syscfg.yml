@@ -10,10 +10,8 @@ syscfg.defs:
         description: 'TOA timeout delay for TWR (usec)'
         value: ((uint16_t)0x10)
       RTDOA_TX_GUARD_DELAY:
-        value: ((uint16_t)0x90)
-      RTDOA_DEVICE_TYPE:
-        description: 'None (0), Initiator(master = 1), Responder(node = 2), Subscriber(tag = 3)'
-        value: 0
+        description: 'Time between packages, 0x90 minimum?'
+        value: ((uint16_t)0x190)
       RTDOA_NNODES:
         description: 'Number of node slots'
         value: 16

@@ -36,9 +36,7 @@
 #include <dw1000/dw1000_ftypes.h>
 #include <ccp/ccp.h>
 #include <rtdoa/rtdoa.h>
-#if MYNEWT_VAL(WCS_ENABLED)
 #include <wcs/wcs.h>
-#endif
 #include <dsp/polyval.h>
 #include <rng/slots.h>
 
@@ -110,15 +108,10 @@ tx_rtdoa_response(dw1000_dev_instance_t * inst, uint64_t delay)
     frame->slot_id = inst->slot_id%rtdoa->req_frame->slot_modulus + 1;
 
     dw1000_set_delay_start(inst, delay& 0x000000FFFFFFFE00ULL);
-#if MYNEWT_VAL(WCS_ENABLED)
-    /* Another node is clock master - calculate tx-time using wcs */
+
+    /* Calculate tx-time using wcs */
     wcs_instance_t * wcs = inst->ccp->wcs;  
     frame->tx_timestamp = (wcs_local_to_master(wcs, delay) & 0xFFFFFFFFFFFFFE00ULL) + inst->tx_antenna_delay;
-#else
-    /* Local node is clock master - easy to calculate the tx-time */
-    frame->tx_timestamp = inst->ccp->master_epoch.timestamp & 0xFFFFFF0000000000ULL;
-    frame->tx_timestamp|= (delay& 0x000000FFFFFFFE00ULL) + inst->tx_antenna_delay;
-#endif
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(rtdoa_response_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(rtdoa_response_frame_t), 0);
@@ -236,11 +229,10 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                                             dw1000_phy_frame_duration(&inst->attrib, sizeof(rtdoa_response_frame_t))) << 16);
 
         tx_rtdoa_response(inst, dx_time);
-        printf("dx_time %d %llx d:%llx\n", slot_idx, dx_time, dx_time - rtdoa->req_frame->rx_timestamp);
-        //return;
+        // printf("dx_time %d %llx d:%llx\n", slot_idx, dx_time, dx_time - rtdoa->req_frame->rx_timestamp);
+        return true;
     }
-    //if (rtdoa->device_type == DWT_RTDOA_INITIATOR) {
-    //}
+
     if(os_sem_get_count(&inst->rtdoa->sem) == 0){
         os_error_t err = os_sem_release(&inst->rtdoa->sem);  
         assert(err == OS_OK);
@@ -265,7 +257,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
-    
+
     if(os_sem_get_count(&rtdoa->sem) == 1){ 
         // unsolicited inbound
         RTDOA_STATS_INC(rx_unsolicited);
@@ -284,7 +276,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         case DWT_RTDOA_REQUEST:
             {
                 // This code executes on the device that is responding to a request
-                DIAGMSG("{\"utime\": %lu,\"msg\": \"DWT_RTDOA_REQUEST\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
                 if (inst->frame_len < sizeof(rtdoa_request_frame_t)) 
                     break;
 
@@ -317,15 +308,14 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     dw1000_set_delay_start(inst, tx_timestamp);
                     tx_timestamp += inst->tx_antenna_delay;
 
-#if MYNEWT_VAL(WCS_ENABLED)
                     tx_frame.tx_timestamp = wcs_local_to_master64(inst->ccp->wcs, tx_timestamp);
-#else
-                    tx_frame.tx_timestamp = frame->tx_timestamp + tx_timestamp - inst->rxtimestamp;
-#endif
                     dw1000_write_tx_fctrl(inst, sizeof(tx_frame), 0);
+                    dw1000_write_tx(inst, tx_frame.array, 0, sizeof(tx_frame));
                     if (dw1000_start_tx(inst).start_tx_error) {
-                        dw1000_write_tx(inst, tx_frame.array, 0, sizeof(tx_frame));
                         RTDOA_STATS_INC(tx_relay_error);
+                        if(os_sem_get_count(&inst->rtdoa->sem) == 0){
+                            os_sem_release(&inst->rtdoa->sem);
+                        }
                     } else {
                         RTDOA_STATS_INC(tx_relay_ok);
                     }
