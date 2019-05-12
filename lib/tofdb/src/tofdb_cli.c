@@ -67,7 +67,7 @@ list_nodes()
     struct os_timeval tv;
 
     nodes = tofdb_get_nodes();
-    console_printf("#idx, addr, euid, tof, tof(mm), age\n");
+    console_printf("#idx, addr, euid, %*s tof,  tof(m), age(s)\n", 14, "");
     for (i=0;i<MYNEWT_VAL(TOFDB_MAXNUM_NODES);i++) {
         if (!nodes[i].euid && !nodes[i].addr) {
             continue;
@@ -81,11 +81,10 @@ list_nodes()
 
         if (nodes[i].last_updated) {
             os_get_uptime(&tv);
-            int32_t le_ms = nodes[i].last_updated;
-            int32_t now_ms = tv.tv_sec*1000 + tv.tv_usec/1000;
-            le_ms = le_ms - now_ms;
-            if (le_ms < 0) le_ms = 0;
-            console_printf("%4ld.%ld", le_ms/1000, (le_ms-1000*(le_ms/1000))/100);
+            uint32_t age = os_cputime_ticks_to_usecs(os_cputime_get32() -
+                                                     nodes[i].last_updated);
+            uint32_t age_s = age/1000000;
+            console_printf("%4ld.%ld", age_s, (age-1000000*(age_s))/100000);
         } 
         console_printf("\n");
     }
