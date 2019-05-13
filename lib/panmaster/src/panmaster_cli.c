@@ -116,7 +116,7 @@ list_nodes_blk()
 
             console_printf("%4d, ", i+j);
             console_printf("%4x, ", lne.nodes[j].addr);
-            if (node_idx[lne.nodes[j].index].slot_id != 0xff)
+            if (node_idx[lne.nodes[j].index].slot_id != 0xffff)
                 console_printf("%4d, ", node_idx[lne.nodes[j].index].slot_id);
             else
                 console_printf("    , ");
