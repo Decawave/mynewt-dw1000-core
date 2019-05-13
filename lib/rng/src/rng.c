@@ -685,6 +685,25 @@ dw1000_rng_tof_to_meters(float ToF) {
 }
 
 /**
+ * @fn dw1000_rng_is_los(float rssi, float fppl)
+ * @brief API to estimate likelyhood of Line of sight from rssi and fppl
+ *        Taken from 4.7 of DW1000 manual
+ * @param rssi
+ * @param fppl
+ *
+ * @return Likelyhood of LOS (1.0 very likely, 0.0 not likely)
+ */
+float
+dw1000_rng_is_los(float rssi, float fppl)
+{
+    float d = fabs(rssi-fppl);
+    if (d<6) return 1.0;
+    if (d>10) return 0.0;
+    return 1.0 - (d-6)/4.0;
+}
+
+
+/**
  * @fn dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code)
  * @brief API to calculate time of flight for symmetric type of ranging.
  *
