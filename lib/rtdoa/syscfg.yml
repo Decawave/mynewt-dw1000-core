@@ -13,10 +13,10 @@ syscfg.defs:
         description: 'Time between packages, 0x90 minimum?'
         value: ((uint16_t)0x190)
       RTDOA_NNODES:
-        description: 'Number of node slots'
+        description: 'Number of node response slots'
         value: 16
       RTDOA_NFRAMES:
-        description: 'Number of frames in memory'
+        description: 'Number of frames in memory. Should me more than NNODES+1'
         value: 18
       RTDOA_MAX_CASCADE_RPTS:
         description: >

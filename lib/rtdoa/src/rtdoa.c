@@ -25,6 +25,7 @@
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
 #include "bsp/bsp.h"
+#include <math.h>
 
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
@@ -226,63 +227,6 @@ rtdoa_usecs_to_response(dw1000_dev_instance_t * inst, rtdoa_request_frame_t * re
     return ret;
 }
 
-/* TODO: Move to node_rtdoa? */
-dw1000_dev_status_t
-dw1000_rtdoa_request(dw1000_dev_instance_t * inst, uint64_t delay)
-{
-    /* This function executes on the device that initiates the rtdoa sequence */
-    assert(inst->rtdoa);
-    dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
-
-    os_error_t err = os_sem_pend(&rtdoa->sem,  OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
-    RTDOA_STATS_INC(rtdoa_request);
-
-    rtdoa->req_frame = rtdoa->frames[rtdoa->idx%rtdoa->nframes];
-    rtdoa_request_frame_t * frame = (rtdoa_request_frame_t *) rtdoa->req_frame;
-    
-    frame->seq_num = ++rtdoa->seq_num;
-    frame->code = DWT_RTDOA_REQUEST;
-    frame->src_address = inst->my_short_address;
-    frame->dst_address = BROADCAST_ADDRESS;
-    frame->slot_modulus = 16;   /* XXX generalise / config / mynewt_val */
-    frame->rpt_count = 0;
-    frame->rpt_max = 4;
-
-    dw1000_set_delay_start(inst, delay);
-#if MYNEWT_VAL(WCS_ENABLED)       
-    /* Another node is clock master - calculate tx-time using wcs */
-    wcs_instance_t * wcs = inst->ccp->wcs;  
-    frame->tx_timestamp = (wcs_local_to_master(wcs, delay) & 0xFFFFFFFFFFFFFE00ULL);
-#else
-    /* Local node is clock master - easy to calculate the tx-time */
-    frame->tx_timestamp = inst->ccp->master_epoch.timestamp & 0xFFFFFF0000000000ULL;
-    frame->tx_timestamp|= (delay& 0xFFFFFFFFFFFFFE00ULL);
-#endif
-    frame->tx_timestamp += inst->tx_antenna_delay;
-    /* Also set the local rx_timestamp to allow us to also transmit in the next part */
-    rtdoa->req_frame->rx_timestamp = frame->tx_timestamp;
-
-    dw1000_write_tx(inst, frame->array, 0, sizeof(rtdoa_request_frame_t));
-    dw1000_write_tx_fctrl(inst, sizeof(rtdoa_request_frame_t), 0);
-    dw1000_set_wait4resp(inst, false);
-
-    if (dw1000_start_tx(inst).start_tx_error) {
-        RTDOA_STATS_INC(start_tx_error);
-        if (os_sem_get_count(&rtdoa->sem) == 0) {
-            err = os_sem_release(&rtdoa->sem);
-            assert(err == OS_OK);
-        }
-    } else {
-        err = os_sem_pend(&rtdoa->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
-        assert(err == OS_OK);
-        err = os_sem_release(&rtdoa->sem);
-        assert(err == OS_OK);
-    }
-    return inst->status;
-}
-
-
 /**
  * API to listen as a slave node
  *
@@ -321,24 +265,26 @@ dw1000_rtdoa_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint6
 
 
 float
-dw1000_rtdoa_tdoa_between_frames(struct _dw1000_dev_instance_t * inst, rtdoa_frame_t *first_frame, rtdoa_frame_t *final_frame)
+rtdoa_tdoa_between_frames(struct _dw1000_dev_instance_t * inst,
+                          rtdoa_frame_t *req_frame, rtdoa_frame_t *resp_frame)
 {
-#if 0
-    float ToF = 0;
-    uint64_t T1R, T1r, T2R, T2r;
-    int64_t nom,denom;
-
-    switch(final_frame->code){
-    case DWT_RTDOA_REQUEST ... DWT_RTDOA_RESP: {
-            assert(first_frame != NULL);
-            ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
-                    -  (first_frame->transmission_timestamp - first_frame->reception_timestamp))/2.0f;
-            break;
+    int64_t tof;
+    float diff_m = nanf("");
+    switch(resp_frame->code){
+        case DWT_RTDOA_RESP: {
+            assert(req_frame != NULL);
+            if (resp_frame->tx_timestamp < req_frame->tx_timestamp) {
+                break;
             }
+            tof = (int64_t)resp_frame->rx_timestamp - (int64_t)resp_frame->tx_timestamp;
+            diff_m = dw1000_rng_tof_to_meters(tof);
+            //printf("r[%x-%x]: %llx %llx %llx %llx\n", req_frame->src_address, resp_frame->src_address,
+            //       resp_frame->rx_timestamp, resp_frame->tx_timestamp, tof, req_frame->tx_timestamp);
+            // printf("r[%x-%x]: %lld\n", req_frame->src_address, resp_frame->src_address, tof);
+            break;
+        }
         default: break;
     }
-    return ToF;
-#endif
-    return 0.0f;
+    return diff_m;
 }
 

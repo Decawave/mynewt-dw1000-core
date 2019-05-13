@@ -199,32 +199,34 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             rtdoa_frame_t * frame = (rtdoa_frame_t *) rtdoa->frames[(++rtdoa->idx)%rtdoa->nframes];
             rtdoa->req_frame = frame;
             memcpy(frame->array, inst->rxbuf, sizeof(rtdoa_request_frame_t));
+            memcpy(&frame->diag, &inst->rxdiag, sizeof(dw1000_dev_rxdiag_t));
             
             frame->rx_timestamp = wcs_local_to_master64(inst->ccp->wcs, inst->rxtimestamp);
             
             /* Compensate for relays */
+            uint32_t repeat_dly = 0;
             if (frame->rpt_count != 0) {
                 RTDOA_STATS_INC(rx_relayed);
-                uint32_t repeat_dly = frame->rpt_count*rtdoa->config.tx_holdoff_delay;
-                frame->rx_timestamp = (inst->ccp->master_epoch.timestamp - (repeat_dly << 16));
+                repeat_dly = frame->rpt_count*rtdoa->config.tx_holdoff_delay;
+                frame->rx_timestamp -= (repeat_dly << 16);
             }
 
             /* A good rtdoa_req packet has been received, stop the receiver */
             dw1000_stop_rx(inst);
             /* Adjust timeout and delayed start to match when the responses will arrive */
-            uint64_t dx_time = inst->rxtimestamp;
+            uint64_t dx_time = inst->rxtimestamp - repeat_dly;
             dx_time += (rtdoa_usecs_to_response(inst, (rtdoa_request_frame_t*)rtdoa->req_frame, 0, &rtdoa->config,
                             dw1000_phy_frame_duration(&inst->attrib, sizeof(rtdoa_response_frame_t))) << 16);
 
+            /* Subtract the preamble time */
+            dx_time -= dw1000_phy_SHR_duration(&inst->attrib);
             dw1000_set_delay_start(inst, dx_time);
             if(dw1000_start_rx(inst).start_rx_error){
                 os_sem_release(&rtdoa->sem);
                 RTDOA_STATS_INC(start_rx_error);
-            } else {
-                printf("q\n");
             }
             goto adj_to_return;
-            break; 
+            break;
         }
         case DWT_RTDOA_RESP:
         {
@@ -235,10 +237,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             
             rtdoa_frame_t * frame = (rtdoa_frame_t *) rtdoa->frames[(++rtdoa->idx)%rtdoa->nframes];
             memcpy(frame->array, inst->rxbuf, sizeof(rtdoa_request_frame_t));
+            memcpy(&frame->diag, &inst->rxdiag, sizeof(dw1000_dev_rxdiag_t));
             frame->rx_timestamp = wcs_local_to_master64(inst->ccp->wcs, inst->rxtimestamp);
-            
-            /* Place this on a queue for processing later */
-            printf("r%x %lld\n", _frame->src_address, frame->rx_timestamp - rtdoa->req_frame->rx_timestamp);
             break; 
         }
         default:

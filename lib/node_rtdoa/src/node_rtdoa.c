@@ -89,6 +89,56 @@ node_rtdoa_free(dw1000_dev_instance_t * inst){
     dw1000_mac_remove_interface(inst, DW1000_RTDOA);
 }
 
+dw1000_dev_status_t
+dw1000_rtdoa_request(dw1000_dev_instance_t * inst, uint64_t delay)
+{
+    /* This function executes on the device that initiates the rtdoa sequence */
+    assert(inst->rtdoa);
+    dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
+
+    os_error_t err = os_sem_pend(&rtdoa->sem,  OS_TIMEOUT_NEVER);
+    assert(err == OS_OK);
+    RTDOA_STATS_INC(rtdoa_request);
+
+    rtdoa->req_frame = rtdoa->frames[rtdoa->idx%rtdoa->nframes];
+    rtdoa_request_frame_t * frame = (rtdoa_request_frame_t *) rtdoa->req_frame;
+
+    frame->seq_num = ++rtdoa->seq_num;
+    frame->code = DWT_RTDOA_REQUEST;
+    frame->src_address = inst->my_short_address;
+    frame->dst_address = BROADCAST_ADDRESS;
+    frame->slot_modulus = MYNEWT_VAL(RTDOA_NNODES);
+    frame->rpt_count = 0;
+    frame->rpt_max = MYNEWT_VAL(RTDOA_MAX_CASCADE_RPTS);
+
+    dw1000_set_delay_start(inst, delay);
+
+    /* Calculate tx_timestamp */
+    wcs_instance_t * wcs = inst->ccp->wcs;
+    frame->tx_timestamp = (wcs_local_to_master64(wcs, delay) & 0xFFFFFFFFFFFFFE00ULL);
+    frame->tx_timestamp += inst->tx_antenna_delay;
+    /* Also set the local rx_timestamp to allow us to also transmit in the next part */
+    rtdoa->req_frame->rx_timestamp = frame->tx_timestamp;
+
+    dw1000_write_tx(inst, frame->array, 0, sizeof(rtdoa_request_frame_t));
+    dw1000_write_tx_fctrl(inst, sizeof(rtdoa_request_frame_t), 0);
+    dw1000_set_wait4resp(inst, false);
+
+    if (dw1000_start_tx(inst).start_tx_error) {
+        RTDOA_STATS_INC(start_tx_error);
+        if (os_sem_get_count(&rtdoa->sem) == 0) {
+            err = os_sem_release(&rtdoa->sem);
+            assert(err == OS_OK);
+        }
+    } else {
+        err = os_sem_pend(&rtdoa->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
+        assert(err == OS_OK);
+        err = os_sem_release(&rtdoa->sem);
+        assert(err == OS_OK);
+    }
+    return inst->status;
+}
+
 
 static dw1000_dev_status_t
 tx_rtdoa_response(dw1000_dev_instance_t * inst, uint64_t delay)
@@ -111,7 +161,7 @@ tx_rtdoa_response(dw1000_dev_instance_t * inst, uint64_t delay)
 
     /* Calculate tx-time using wcs */
     wcs_instance_t * wcs = inst->ccp->wcs;  
-    frame->tx_timestamp = (wcs_local_to_master(wcs, delay) & 0xFFFFFFFFFFFFFE00ULL) + inst->tx_antenna_delay;
+    frame->tx_timestamp = (wcs_local_to_master64(wcs, delay) & 0xFFFFFFFFFFFFFE00ULL) + inst->tx_antenna_delay;
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(rtdoa_response_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(rtdoa_response_frame_t), 0);
@@ -276,6 +326,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 rtdoa->req_frame = frame;
                 memcpy(frame->array, inst->rxbuf, sizeof(rtdoa_request_frame_t));
 
+                /* Deliberately in local timeframe */
                 frame->rx_timestamp = inst->rxtimestamp;
     
                 /* Compensate for time of flight using the ccp function */
@@ -287,7 +338,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 if (frame->rpt_count != 0) {
                     RTDOA_STATS_INC(rx_relayed);
                     uint32_t repeat_dly = frame->rpt_count*rtdoa->config.tx_holdoff_delay;
-                    frame->rx_timestamp = (inst->ccp->master_epoch.timestamp - (repeat_dly << 16));
+                    frame->rx_timestamp -= (repeat_dly << 16);
                 }
 
                 /* Send a cascade relay if this is an ok relay */
