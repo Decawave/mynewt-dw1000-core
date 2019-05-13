@@ -82,7 +82,6 @@ static int nmgr_uwb_img_upload(int argc, char** argv);
 static int nmgr_uwb_img_list(int argc, char** argv);
 static int nmgr_uwb_img_set_state(int argc, char** argv);
 static struct os_mbuf* buf_to_imgmgr_mbuf(uint8_t *buf, uint64_t len, uint64_t off, uint32_t size);
-static int nmgr_cmd_send(dw1000_dev_instance_t * inst, uint16_t dst_add, uint8_t* buf, uint16_t buf_len, uint16_t timeout);
 
 static dw1000_mac_interface_t g_cbs[] = {
         [0] = {
@@ -238,6 +237,11 @@ nmgr_uwb_img_upload(int argc, char** argv){
         slot_num = 1;
 
     assert(nmgr_inst);
+    uint16_t dst_add = strtol(argv[2], NULL, 16);
+    if (!dst_add) {
+        console_printf("Dst addr needed\n");
+        return 1;
+    }
 
     dw1000_dev_instance_t * inst = nmgr_inst->parent;
     
@@ -272,16 +276,8 @@ nmgr_uwb_img_upload(int argc, char** argv){
         } else {
             rsp = NULL;
         }
-        uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, 126) + 0x5000;
-        uint8_t mbuf[OS_MBUF_PKTLEN(rsp)];
-        os_mbuf_copydata(rsp, 0, OS_MBUF_PKTLEN(rsp), mbuf);
-        if(nmgr_cmd_send(inst, strtol(argv[2], NULL, 16), mbuf, OS_MBUF_PKTLEN(rsp), timeout) != 0){
-            printf("Tx Error \n");
-            os_sem_release(&nmgr_inst->cmd_sem);
-            nmgr_inst->curr_off = 0;
-            return 0;
-        }
-        os_mbuf_free_chain(rsp); 
+        uwb_nmgr_queue_tx(inst, dst_add, 0, rsp);
+
         err = os_sem_pend(&nmgr_inst->cmd_sem, OS_TIMEOUT_NEVER);
         err |= os_sem_release(&nmgr_inst->cmd_sem);
         assert(err == OS_OK);
@@ -318,18 +314,21 @@ nmgr_uwb_img_list(int argc, char** argv){
     if(argc < 2){
         return -1;
     }
-    dw1000_dev_instance_t* inst = hal_dw1000_inst(0);
-    struct nmgr_hdr hdr;
-    hdr.nh_len = 0;
-    hdr.nh_flags = 0;
-    hdr.nh_op = NMGR_OP_READ;
-    hdr.nh_group = htons(MGMT_GROUP_ID_IMAGE);
-    hdr.nh_seq = nmgr_inst->nmgr_cmd_seq_num++;
-    hdr.nh_id = IMGMGR_NMGR_ID_STATE;
+    struct os_mbuf* om = os_msys_get_pkthdr(10, 40);
+    struct nmgr_hdr *hdr = (struct nmgr_hdr *) os_mbuf_extend(om, sizeof(struct nmgr_hdr));
+    hdr->nh_len = 0;
+    hdr->nh_flags = 0;
+    hdr->nh_op = NMGR_OP_READ;
+    hdr->nh_group = htons(MGMT_GROUP_ID_IMAGE);
+    hdr->nh_seq = nmgr_inst->nmgr_cmd_seq_num++;
+    hdr->nh_id = IMGMGR_NMGR_ID_STATE;
+    uint16_t dst_addr = strtol(argv[1], NULL, 16);
+    if (!dst_addr) {
+        console_printf("Dst addr needed\n");
+        return 1;
+    }
 
-    uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, 126) + 0x600;
-    if(nmgr_cmd_send(inst, strtol(argv[1], NULL, 16), (uint8_t*)&hdr, sizeof(struct nmgr_hdr), timeout) != 0)
-        printf("Tx Error \n");
+    uwb_nmgr_queue_tx(hal_dw1000_inst(0), dst_addr, 0, om);
     return 0;
 }
 
@@ -344,7 +343,6 @@ nmgr_uwb_img_set_state(int argc, char** argv){
         printf("Unknown state provided \n");
         return -1;
     }
-    dw1000_dev_instance_t* inst = hal_dw1000_inst(0);
     uint16_t dst_add = 0x0000;
 
     int rc = 0;
@@ -389,13 +387,8 @@ nmgr_uwb_img_set_state(int argc, char** argv){
     }
     hdr->nh_len += cbor_encode_bytes_written(&nmgr_inst->n_b.encoder);
     hdr->nh_len = htons(hdr->nh_len);
-    
-    uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, 126) + 0x1000;
-    uint8_t mbuf[OS_MBUF_PKTLEN(tx_pkt)];
-    os_mbuf_copydata(tx_pkt, 0, OS_MBUF_PKTLEN(tx_pkt), mbuf);
-    nmgr_cmd_send(inst, dst_add, mbuf, OS_MBUF_PKTLEN(tx_pkt), timeout);
 
-    os_mbuf_free_chain(tx_pkt);
+    uwb_nmgr_queue_tx(hal_dw1000_inst(0), dst_add, 0, tx_pkt);
     return 0;
 }
 
@@ -446,36 +439,6 @@ buf_to_imgmgr_mbuf(uint8_t *buf, uint64_t len, uint64_t off, uint32_t size)
     return tx_pkt;
 }
 
-static int
-nmgr_cmd_send(dw1000_dev_instance_t * inst, uint16_t dst_add, uint8_t* buf, uint16_t buf_len, uint16_t timeout)
-{
-    nmgr_uwb_frame_t frame_a;
-    nmgr_uwb_frame_t *frame = &frame_a;
-    uint16_t totlen = buf_len + sizeof(struct _ieee_std_frame_t);
-    assert(frame!=NULL);
-    assert(buf!=NULL);
-    frame->src_address = inst->my_short_address;
-    frame->code = NMGR_CMD_STATE_SEND;
-    frame->dst_address = dst_add;
-    frame->seq_num = nmgr_inst->frame_seq_num++;
-    frame->PANID = 0xDECA;
-    strncpy((char*)&frame->fctrl, "NM", 2);
-
-    memcpy(&frame->array[sizeof(struct _ieee_std_frame_t)], buf, buf_len);
-    dw1000_write_tx(inst, frame->array, 0, totlen);
-    dw1000_write_tx_fctrl(inst, totlen, 0);
-    uint64_t request_timestamp = dw1000_read_systime(inst);
-    uint64_t response_tx_delay = request_timestamp + (((uint64_t)0x600) << 16);
-    dw1000_set_delay_start(inst, response_tx_delay);
-    dw1000_set_wait4resp(inst, true);
-    dw1000_set_rx_timeout(inst, timeout);
-    if(dw1000_start_tx(inst).start_tx_error){
-        printf("Error Sending \n");
-        return -1;
-    }else{
-        return 0;
-    }
-}
 
 /**
  * API for receive timeout callback.
@@ -510,8 +473,9 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         return false;
     }
     nmgr_uwb_frame_t *frame = (nmgr_uwb_frame_t*)inst->rxbuf;
+    printf("nmgr_cmds rxc %x -> %x\n", frame->src_address, frame->dst_address);
     if(inst->my_short_address != frame->dst_address){
-        dw1000_start_rx(inst);
+        return true;
     }else{
         os_eventq_put(&nmgr_inst->nmgr_eventq, &nmgr_inst->rx_callout.c_ev);
     }
@@ -534,9 +498,10 @@ rx_post_process(struct os_event* ev){
             return;
         }
         //Trim out the uwb frame header
-        os_mbuf_copyinto(nmgr_inst->rx_pkt, 0, &frame->array[sizeof(struct _ieee_std_frame_t)], inst->frame_len - sizeof(struct _ieee_std_frame_t));
+        int rc = os_mbuf_copyinto(nmgr_inst->rx_pkt, 0, &frame->array[sizeof(struct _ieee_std_frame_t)], inst->frame_len - sizeof(struct _ieee_std_frame_t));
+        assert(rc==0);
 
-        if(htons(frame->hdr.nh_len) > NMGR_UWB_MTU_STD){
+        if(htons(frame->hdr.nh_len) > NMGR_UWB_MTU_EXT && 0){
             nmgr_inst->repeat_mode = 1;
             nmgr_inst->rem_len = (htons(frame->hdr.nh_len) + sizeof(struct nmgr_hdr)) - OS_MBUF_PKTLEN(nmgr_inst->rx_pkt);
             uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, 128) + 0x600;
@@ -662,7 +627,7 @@ rx_post_process(struct os_event* ev){
                     .nodefault = true,
                 },
                 [7] = {
-                    .attribute = "permenant",
+                    .attribute = "permanent",
                     .type= CborAttrBooleanType,
                     CBORATTR_STRUCT_OBJECT(struct h_obj, permenant),
                     .nodefault = true,
@@ -690,7 +655,7 @@ rx_post_process(struct os_event* ev){
             int err = cbor_read_object(&nmgr_inst->n_b.it, arr);
             if(rc != 0LL || err != 0){
                 nmgr_inst->err_status = 1;
-                printf("Wrong hash sent \n");
+                printf("Wrong hash sent %lld %d\n", rc, err);
                 goto err;
             }else
                 nmgr_inst->err_status = 0;

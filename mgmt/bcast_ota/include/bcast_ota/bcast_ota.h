@@ -1,6 +1,4 @@
 /*
- * Copyright 2018, Decawave Limited, All Rights Reserved
- * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -8,7 +6,7 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
@@ -19,40 +17,41 @@
  * under the License.
  */
 
-/**
- * @file dw1000_rng.h
- * @athor paul kettle
- * @date 2018
- * @brief Range 
- *
- * @details This is the rng base class which utilises the functions to enable/disable the configurations related to rng.
- *
- */
+#ifndef _BCAST_OTA_H_
+#define _BCAST_OTA_H_
 
-#ifndef _DW1000_NMGR_CMDS_H_
-#define _DW1000_NMGR_CMDS_H_
+#include <inttypes.h>
 
+struct os_mbuf;
+struct flash_area;
 
-#include <stdlib.h>
-#include <stdint.h>
+#define MGMT_GROUP_ID_BOTA   (65)
 
-typedef union{
-    struct _nmgr_uwb_frame_t{
-        struct _ieee_std_frame_t;
-        union _payload{
-            struct nmgr_hdr hdr;
-            uint8_t payload[NMGR_UWB_MTU_EXT];
-        };
-    }__attribute__((__packed__,aligned(1)));
-    uint8_t array[sizeof(struct _nmgr_uwb_frame_t)];
-}nmgr_uwb_frame_t;
+#define BOTA_FLAGS_SET_PERMANENT (0x0001)
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+typedef enum _bcast_ota_mode_t{
+    BCAST_MODE_NONE,
+    BCAST_MODE_RESET_OFFSET,
+    BCAST_MODE_RESEND_END
+} bcast_ota_mode_t;
+    
+typedef void new_fw_cb(void);
+struct os_mbuf_pool;
+
+int bcast_ota_get_packet(int src_slot, bcast_ota_mode_t mode, int max_transfer_unit,
+                         struct os_mbuf **rsp, uint64_t flags);
+
+void bcast_ota_nmgr_module_init(void);
+void bcast_ota_set_mpool(struct os_mbuf_pool *mbuf_pool);
+
+void bcast_ota_set_new_fw_cb(new_fw_cb *cb);
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _DW1000_RNG_H_ */
+#endif /* _PANMASTER_H */

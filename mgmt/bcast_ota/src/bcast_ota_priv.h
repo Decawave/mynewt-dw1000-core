@@ -1,6 +1,4 @@
 /*
- * Copyright 2018, Decawave Limited, All Rights Reserved
- * 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -8,7 +6,7 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
@@ -19,40 +17,16 @@
  * under the License.
  */
 
-/**
- * @file dw1000_rng.h
- * @athor paul kettle
- * @date 2018
- * @brief Range 
- *
- * @details This is the rng base class which utilises the functions to enable/disable the configurations related to rng.
- *
- */
+#ifndef _BCAST_OTA_PRIV_H_
+#define _BCAST_OTA_PRIV_H_
 
-#ifndef _DW1000_NMGR_CMDS_H_
-#define _DW1000_NMGR_CMDS_H_
+#include <log/log.h>
 
+#define LOG_MODULE_BCAST_OTA (70)
+#define BOTA_INFO(...)     LOG_INFO(&g_bcast_ota_log,  LOG_MODULE_BCAST_OTA, __VA_ARGS__)
+#define BOTA_DEBUG(...)    LOG_DEBUG(&g_bcast_ota_log, LOG_MODULE_BCAST_OTA, __VA_ARGS__)
+#define BOTA_WARN(...)     LOG_WARN(&g_bcast_ota_log,  LOG_MODULE_BCAST_OTA, __VA_ARGS__)
+#define BOTA_ERR(...)      LOG_ERROR(&g_bcast_ota_log, LOG_MODULE_BCAST_OTA, __VA_ARGS__)
+extern struct log g_bcast_ota_log;
 
-#include <stdlib.h>
-#include <stdint.h>
-
-typedef union{
-    struct _nmgr_uwb_frame_t{
-        struct _ieee_std_frame_t;
-        union _payload{
-            struct nmgr_hdr hdr;
-            uint8_t payload[NMGR_UWB_MTU_EXT];
-        };
-    }__attribute__((__packed__,aligned(1)));
-    uint8_t array[sizeof(struct _nmgr_uwb_frame_t)];
-}nmgr_uwb_frame_t;
-
-#ifdef __cplusplus
-extern "C" {
 #endif
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* _DW1000_RNG_H_ */

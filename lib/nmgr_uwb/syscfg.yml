@@ -3,4 +3,6 @@ syscfg.defs:
     NMGR_UWB_ENABLED:
         description: 'Enable UWB transport for NewtMgr'
         value: 1
-
+    NMGR_UWB_LOOPBACK:
+        description: 'Only loop messages back without sending them over the air '
+        value: 0
