@@ -252,47 +252,62 @@ early_exit:
 static bool 
 rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
+    bool ret = false;
     struct os_mbuf * mbuf;
-    if(strncmp((char *)&inst->fctrl, "NM",2))
-        return false;
+    if(strncmp((char *)&inst->fctrl, "NM",2)) {
+        goto early_ret;
+    }
 
     //Read the buffer
     struct _ieee_std_frame_t *frame = (struct _ieee_std_frame_t*)inst->rxbuf;
     if(frame->dst_address != inst->my_short_address && frame->dst_address != 0xffff) {
-        return false;
+        goto early_ret;
     }
 
-    if(frame->code == NMGR_CMD_STATE_RSP) {
-        /* Don't process responses here */
-        return false;
-    } else {
-        mbuf = os_msys_get_pkthdr(inst->frame_len - sizeof(struct _ieee_std_frame_t),
-                                  sizeof(struct nmgr_uwb_usr_hdr));
-        if (!mbuf) {
-            printf("Err, nomem %d\n", inst->frame_len - sizeof(struct _ieee_std_frame_t) +
-                   sizeof(struct nmgr_uwb_usr_hdr));
-            return true;
+    switch(frame->code) {
+        case NMGR_CMD_STATE_RSP: {
+            /* Don't process responses here */
+            break;
         }
+        case NMGR_CMD_STATE_SEND: {
+            ret = true;
+            mbuf = os_msys_get_pkthdr(inst->frame_len - sizeof(struct _ieee_std_frame_t),
+                                      sizeof(struct nmgr_uwb_usr_hdr));
+            if (!mbuf) {
+                printf("Err, nomem %d\n", inst->frame_len - sizeof(struct _ieee_std_frame_t) +
+                       sizeof(struct nmgr_uwb_usr_hdr));
+                break;
+            }
 
-        /* Copy the instance index and UWB header info so that we can use
-         * it during sending the response */
-        struct nmgr_uwb_usr_hdr *hdr = (struct nmgr_uwb_usr_hdr*)OS_MBUF_USRHDR(mbuf);
-        hdr->inst_idx = inst->idx;
-        memcpy(&hdr->uwb_hdr, inst->rxbuf, sizeof(struct _ieee_std_frame_t));
+            /* Copy the instance index and UWB header info so that we can use
+             * it during sending the response */
+            struct nmgr_uwb_usr_hdr *hdr = (struct nmgr_uwb_usr_hdr*)OS_MBUF_USRHDR(mbuf);
+            hdr->inst_idx = inst->idx;
+            memcpy(&hdr->uwb_hdr, inst->rxbuf, sizeof(struct _ieee_std_frame_t));
 
-        /* Copy the nmgr hdr & payload */
-        int rc = os_mbuf_copyinto(mbuf, 0, inst->rxbuf + sizeof(struct _ieee_std_frame_t),
-                         (inst->frame_len - sizeof(struct _ieee_std_frame_t)));
-        if (rc == 0) {
-            nmgr_rx_req(&uwb_transport_0, mbuf);
-        } else {
-            os_mbuf_free_chain(mbuf);
-            printf("Err, os_mbuf_copy failed %d\n", rc);
+            /* Copy the nmgr hdr & payload */
+            int rc = os_mbuf_copyinto(mbuf, 0, inst->rxbuf + sizeof(struct _ieee_std_frame_t),
+                                      (inst->frame_len - sizeof(struct _ieee_std_frame_t)));
+            if (rc == 0) {
+                nmgr_rx_req(&uwb_transport_0, mbuf);
+            } else {
+                os_mbuf_free_chain(mbuf);
+                printf("Err, os_mbuf_copy failed %d\n", rc);
+            }
+            break;
         }
-        return true;
+        default: {
+            break;
+        }
+    }
+
+early_ret:
+    /* TODO: Check and reduce slot timeout */
+    if(os_sem_get_count(&inst->nmgruwb->sem) == 0) {
+        os_sem_release(&inst->nmgruwb->sem);
     }
     
-    return true;
+    return ret;
 }
 
 /**
@@ -305,13 +320,11 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 static bool
 tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-    if(strncmp((char *)&inst->fctrl, "NM",2)) {
-        return false;
-    }
     if(os_sem_get_count(&inst->nmgruwb->sem) == 0) {
         os_sem_release(&inst->nmgruwb->sem);
+        return true;
     }
-    return true;
+    return false;
 }
 
 /**
