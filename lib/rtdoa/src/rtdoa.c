@@ -35,9 +35,7 @@
 #include <dw1000/dw1000_ftypes.h>
 #include <rtdoa/rtdoa.h>
 #include <rng/rng.h>
-#if MYNEWT_VAL(WCS_ENABLED)
 #include <wcs/wcs.h>
-#endif
 #if MYNEWT_VAL(CCP_ENABLED)
 #include <ccp/ccp.h>
 #endif
@@ -228,6 +226,32 @@ rtdoa_usecs_to_response(dw1000_dev_instance_t * inst, rtdoa_request_frame_t * re
 }
 
 /**
+ * Function for transforming local rtdoa timestamps into the reference frame timestamp
+ * domain.
+ *
+ * @param inst Pointer to dw1000_dev_instance_t *
+ * @param slot_id 0 for master, and increasing
+ * @return void
+ */
+uint64_t
+rtdoa_local_to_master64(dw1000_dev_instance_t * inst, uint64_t dtu_time, rtdoa_frame_t *req_frame)
+{
+    wcs_instance_t * wcs = inst->ccp->wcs;
+
+    double delta = ((dtu_time & 0x0FFFFFFFFFFUL) - (req_frame->rx_timestamp&0x0FFFFFFFFFFUL)) & 0x0FFFFFFFFFFUL;
+    uint64_t req_lo40 = (req_frame->tx_timestamp & 0x0FFFFFFFFFFUL);
+    if (wcs->status.valid) {
+        /* No need to take special care of 40bit overflow as the timescale forward returns
+         * a double value that can exceed the 40bit. */
+        req_lo40 += (uint64_t) roundf((1.0l + wcs->skew) * delta);
+    } else {
+        req_lo40 += delta;
+    }
+
+    return (req_frame->tx_timestamp & 0xFFFFFF0000000000UL) + req_lo40;
+}
+
+/**
  * API to listen as a slave node
  *
  * @param inst          Pointer to dw1000_dev_instance_t.
@@ -276,7 +300,9 @@ rtdoa_tdoa_between_frames(struct _dw1000_dev_instance_t * inst,
             if (resp_frame->tx_timestamp < req_frame->tx_timestamp) {
                 break;
             }
-            tof = (int64_t)resp_frame->rx_timestamp - (int64_t)resp_frame->tx_timestamp;
+            /* rxts stored in frames as local timestamp, recalc into reference frame domain */
+            uint64_t rx_ts = rtdoa_local_to_master64(inst, resp_frame->rx_timestamp, inst->rtdoa->req_frame);
+            tof = (int64_t)rx_ts - (int64_t)resp_frame->tx_timestamp;
             diff_m = dw1000_rng_tof_to_meters(tof);
             //printf("r[%x-%x]: %llx %llx %llx %llx\n", req_frame->src_address, resp_frame->src_address,
             //       resp_frame->rx_timestamp, resp_frame->tx_timestamp, tof, req_frame->tx_timestamp);

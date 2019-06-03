@@ -202,7 +202,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             memcpy(frame->array, inst->rxbuf, sizeof(rtdoa_request_frame_t));
             memcpy(&frame->diag, &inst->rxdiag, sizeof(dw1000_dev_rxdiag_t));
             
-            frame->rx_timestamp = wcs_local_to_master64(inst->ccp->wcs, inst->rxtimestamp);
+            /* Deliberately in local timeframe */
+            frame->rx_timestamp = inst->rxtimestamp;
             
             /* Compensate for relays */
             uint32_t repeat_dly = 0;
@@ -239,7 +240,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             rtdoa_frame_t * frame = (rtdoa_frame_t *) rtdoa->frames[(++rtdoa->idx)%rtdoa->nframes];
             memcpy(frame->array, inst->rxbuf, sizeof(rtdoa_request_frame_t));
             memcpy(&frame->diag, &inst->rxdiag, sizeof(dw1000_dev_rxdiag_t));
-            frame->rx_timestamp = wcs_local_to_master64(inst->ccp->wcs, inst->rxtimestamp);
+            frame->rx_timestamp = inst->rxtimestamp;
             break; 
         }
         default:

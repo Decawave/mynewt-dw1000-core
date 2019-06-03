@@ -33,7 +33,6 @@ extern "C" {
 
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
-#include <rtdoa/rtdoa.h>
 
 dw1000_dev_status_t dw1000_rtdoa_request(dw1000_dev_instance_t * inst, uint64_t delay);
 

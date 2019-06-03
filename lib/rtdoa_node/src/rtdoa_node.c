@@ -114,7 +114,7 @@ dw1000_rtdoa_request(dw1000_dev_instance_t * inst, uint64_t delay)
 
     dw1000_set_delay_start(inst, delay);
 
-    /* Calculate tx_timestamp */
+    /* Calculate tx_timestamp, really use wcs here?!?! */
     wcs_instance_t * wcs = inst->ccp->wcs;
     frame->tx_timestamp = (wcs_local_to_master64(wcs, delay) & 0xFFFFFFFFFFFFFE00ULL);
     frame->tx_timestamp += inst->tx_antenna_delay;
@@ -160,9 +160,9 @@ tx_rtdoa_response(dw1000_dev_instance_t * inst, uint64_t delay)
 
     dw1000_set_delay_start(inst, delay& 0x000000FFFFFFFE00ULL);
 
-    /* Calculate tx-time using wcs */
-    wcs_instance_t * wcs = inst->ccp->wcs;  
-    frame->tx_timestamp = (wcs_local_to_master64(wcs, delay) & 0xFFFFFFFFFFFFFE00ULL) + inst->tx_antenna_delay;
+    /* Calculate tx-time */
+    frame->tx_timestamp = (rtdoa_local_to_master64(inst, delay, rtdoa->req_frame) & 0xFFFFFFFFFFFFFE00ULL) + 
+                          inst->tx_antenna_delay;
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(rtdoa_response_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(rtdoa_response_frame_t), 0);
@@ -298,6 +298,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     assert(inst->rtdoa);
     dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
+    wcs_instance_t * wcs = inst->ccp->wcs;
 
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
@@ -330,16 +331,18 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 /* Deliberately in local timeframe */
                 frame->rx_timestamp = inst->rxtimestamp;
     
-                /* Compensate for time of flight using the ccp function */
+                /* Compensate for time of flight using the ccp function 
+                 * TODO: Check that skew is used correctly here */
                 if (inst->ccp->tof_comp_cb) {
-                    frame->rx_timestamp -= inst->ccp->tof_comp_cb(0, frame->src_address);
+                    frame->rx_timestamp -= inst->ccp->tof_comp_cb(0, frame->src_address)*(1.0l + wcs->skew);
                 }
 
-                /* Compensate for relays */
+                /* Compensate for relays 
+                 * TODO: Check that skew is used correctly here */
                 if (frame->rpt_count != 0) {
                     RTDOA_STATS_INC(rx_relayed);
                     uint32_t repeat_dly = frame->rpt_count*rtdoa->config.tx_holdoff_delay;
-                    frame->rx_timestamp -= (repeat_dly << 16);
+                    frame->rx_timestamp -= (repeat_dly << 16)*(1.0l + wcs->skew);
                 }
 
                 /* Send a cascade relay if this is an ok relay */
@@ -353,7 +356,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     dw1000_set_delay_start(inst, tx_timestamp);
                     tx_timestamp += inst->tx_antenna_delay;
 
-                    tx_frame.tx_timestamp = wcs_local_to_master64(inst->ccp->wcs, tx_timestamp);
+                    tx_frame.tx_timestamp = rtdoa_local_to_master64(inst, tx_timestamp, rtdoa->req_frame);
                     dw1000_write_tx_fctrl(inst, sizeof(tx_frame), 0);
                     dw1000_write_tx(inst, tx_frame.array, 0, sizeof(tx_frame));
                     if (dw1000_start_tx(inst).start_tx_error) {
