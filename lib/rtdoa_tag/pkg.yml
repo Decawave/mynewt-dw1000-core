@@ -17,8 +17,8 @@
 # under the License.
 #
 
-pkg.name: lib/node_rtdoa
-pkg.description: Master and Slave RTDoA Node functions
+pkg.name: lib/rtdoa_tag
+pkg.description: RTDoA Tag
 pkg.author: "Niklas Casaril <niklas@loligoelectronics.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
@@ -36,4 +36,4 @@ pkg.deps:
     - "@mynewt-dw1000-core/lib/rtdoa"
 
 pkg.init:
-    node_rtdoa_pkg_init: 414
+    rtdoa_tag_pkg_init: 415

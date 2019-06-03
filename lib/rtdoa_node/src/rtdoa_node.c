@@ -36,6 +36,7 @@
 #include <dw1000/dw1000_ftypes.h>
 #include <ccp/ccp.h>
 #include <rtdoa/rtdoa.h>
+#include <rtdoa_node/rtdoa_node.h>
 #include <wcs/wcs.h>
 #include <dsp/polyval.h>
 #include <rng/slots.h>
@@ -68,9 +69,9 @@ static dw1000_mac_interface_t g_cbs = {
  *
  * @return void
  */
-void node_rtdoa_pkg_init(void){
+void rtdoa_node_pkg_init(void){
 #if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
-    printf("{\"utime\": %lu,\"msg\": \"node_rtdoa_pkg_init\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
+    printf("{\"utime\": %lu,\"msg\": \"rtdoa_node_pkg_init\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
     dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs);
 }
@@ -84,7 +85,7 @@ void node_rtdoa_pkg_init(void){
  * @return void 
  */
 void 
-node_rtdoa_free(dw1000_dev_instance_t * inst){
+rtdoa_node_free(dw1000_dev_instance_t * inst){
     assert(inst); 
     dw1000_mac_remove_interface(inst, DW1000_RTDOA);
 }

@@ -19,10 +19,10 @@
  * under the License.
  */
 
-#ifndef _DW1000_TAG_RTDOA_H_
-#define _DW1000_TAG_RTDOA_H_
+#ifndef _DW1000_RTDOA_NODE_H_
+#define _DW1000_RTDOA_NODE_H_
 
-#if MYNEWT_VAL(TAG_RTDOA_ENABLED)
+#if MYNEWT_VAL(RTDOA_NODE_ENABLED)
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -35,12 +35,15 @@ extern "C" {
 #include <dw1000/dw1000_ftypes.h>
 #include <rtdoa/rtdoa.h>
 
-void tag_rtdoa_free(dw1000_dev_instance_t * inst);
-dw1000_rng_config_t * tag_rtdoa_config(dw1000_dev_instance_t * inst);
+dw1000_dev_status_t dw1000_rtdoa_request(dw1000_dev_instance_t * inst, uint64_t delay);
+
+void rtdoa_node_pkg_init(void);
+void rtdoa_node_free(dw1000_dev_instance_t * inst);
+dw1000_rng_config_t * rtdoa_node_config(dw1000_dev_instance_t * inst);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // TAG_RTDOA_ENABLED
-#endif //_DW1000_NODE_RTDOA_H_
+#endif // RTDOA_NODE_ENABLED
+#endif //_DW1000_RTDOA_NODE_H_
