@@ -1533,7 +1533,7 @@ dw1000_calc_rssi(struct _dw1000_dev_instance_t * inst,
         return -INFINITY;
     }
     float rssi = 10.0f * log10f(diag->cir_pwr * 0x20000/(diag->pacc_cnt * diag->pacc_cnt))
-        - ((inst->config.prf == DWT_PRF_16M) ? 115.72 : 122.74);
+        - ((inst->config.prf == DWT_PRF_16M) ? 113.77 : 121.74);
     return rssi;
 }
 
