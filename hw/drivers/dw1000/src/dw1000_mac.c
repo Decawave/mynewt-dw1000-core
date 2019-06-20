@@ -1491,7 +1491,7 @@ dw1000_calc_fppl(struct _dw1000_dev_instance_t * inst,
         (!diag->fp_amp && !diag->fp_amp2 && !diag->fp_amp3)) {
         return -INFINITY;
     }
-    float A = (inst->config.prf == DWT_PRF_16M) ? 115.72 : 122.74;
+    float A = (inst->config.prf == DWT_PRF_16M) ? 113.77 : 121.74;
 
     float N = diag->pacc_cnt;
     float v = (float)diag->fp_amp*diag->fp_amp +
