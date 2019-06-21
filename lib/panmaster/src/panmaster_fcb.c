@@ -113,6 +113,10 @@ node_idx_load_cb(struct panmaster_node *node, void *cb_arg)
     if (node->index <= MYNEWT_VAL(PANMASTER_MAXNUM_NODES)) {
         nodes[node->index].addr = node->addr;
         nodes[node->index].role = node->role;
+        if (node->has_perm_slot) {
+            nodes[node->index].slot_id = node->slot_id;
+            nodes[node->index].lease_ends = 0;
+        }
     }
 }
 

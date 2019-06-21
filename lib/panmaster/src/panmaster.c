@@ -380,17 +380,17 @@ panmaster_find_node(uint64_t euid, uint16_t role, struct panmaster_node **result
     if (fns.is_found && node.euid == euid && node.addr != 0xffff)
     {
         *results = &node;
-        node.slot_id = first_free_slot_id(node.addr, role);
+        if (!node.has_perm_slot) {
+            node.slot_id = first_free_slot_id(node.addr, role);
+        }
         node_idx[node.index].slot_id = node.slot_id;
 
-        if (node.role != role) {
+        /* Only check role if given */
+        if (node.role != role && role > 0) {
             node.role = role;
-#if MYNEWT_VAL(PANMASTER_NFFS)
-            panm_file_save(&panmaster_storage_file, &node);
-#elif MYNEWT_VAL(PANMASTER_FCB)
-            panm_fcb_save(&pm_init_conf_fcb, &node);
-#endif
+            panmaster_save_node(&node);
         }
+        node_idx[node.index].role = node.role;
 
         return 0;
     }
@@ -398,8 +398,7 @@ panmaster_find_node(uint64_t euid, uint16_t role, struct panmaster_node **result
     /* This node is unknown, find a free spot for it */
     for (i=0;i<MYNEWT_VAL(PANMASTER_MAXNUM_NODES);i++)
     {
-        if (node_idx[i].addr != 0xffff)
-        {
+        if (node_idx[i].addr != 0xffff) {
             continue;
         }
         
@@ -411,19 +410,15 @@ panmaster_find_node(uint64_t euid, uint16_t role, struct panmaster_node **result
         node_idx[i].addr = node.addr;
         node_idx[i].role = role;
         node.role = role;
-        node.slot_id = first_free_slot_id(node.addr, role);
+        if (!node.has_perm_slot) {
+            node.slot_id = first_free_slot_id(node.addr, role);
+        }
         node_idx[i].slot_id = node.slot_id;
         node.first_seen_utc = utctime.tv_sec;
-        node.flags = 0;
         node.index = i;
 
         *results = &node;
-
-#if MYNEWT_VAL(PANMASTER_NFFS)
-        panm_file_save(&panmaster_storage_file, &node);
-#elif MYNEWT_VAL(PANMASTER_FCB)
-        panm_fcb_save(&pm_init_conf_fcb, &node);
-#endif
+        panmaster_save_node(&node);
         return 0;
     }
 
@@ -461,11 +456,7 @@ panmaster_add_version(uint64_t euid, struct image_version *ver)
         }
 
         memcpy(&node.fw_ver, ver, sizeof(struct image_version));
-#if MYNEWT_VAL(PANMASTER_NFFS)
-        panm_file_save(&panmaster_storage_file, &node);
-#elif MYNEWT_VAL(PANMASTER_FCB)
-        panm_fcb_save(&pm_init_conf_fcb, &node);
-#endif
+        panmaster_save_node(&node);
         return;
     }
     /* Node not found, just return */
@@ -542,14 +533,9 @@ panmaster_add_node(uint16_t short_addr, uint16_t role, uint8_t *euid_u8)
         node.slot_id = first_free_slot_id(node.addr, role);
         node_idx[i].slot_id = node.slot_id;
         node.first_seen_utc = utctime.tv_sec;
-        node.flags = 0;
         node.index = i;
 
-#if MYNEWT_VAL(PANMASTER_NFFS)
-        panm_file_save(&panmaster_storage_file, &node);
-#elif MYNEWT_VAL(PANMASTER_FCB)
-        panm_fcb_save(&pm_init_conf_fcb, &node);
-#endif
+        panmaster_save_node(&node);
         PM_DEBUG("panm: node added\n"); 
         return;
     }
@@ -584,16 +570,21 @@ panmaster_delete_node(uint64_t euid)
     node_idx[node.index].addr = 0xFFFF;
     node_idx[node.index].slot_id = 0xFFFF;
 
-#if MYNEWT_VAL(PANMASTER_NFFS)
-    panm_file_save(&panmaster_storage_file, &node);
-#elif MYNEWT_VAL(PANMASTER_FCB)
-    panm_fcb_save(&pm_init_conf_fcb, &node);
-#endif
+    panmaster_save_node(&node);
     PM_DEBUG("panmaster_delete_node: node deleted\n");
     
     return;
 }
 
+int
+panmaster_save_node(struct panmaster_node *node)
+{
+#if MYNEWT_VAL(PANMASTER_NFFS)
+    return panm_file_save(&panmaster_storage_file, node);
+#elif MYNEWT_VAL(PANMASTER_FCB)
+    return panm_fcb_save(&pm_init_conf_fcb, node);
+#endif
+}
 
 uint16_t
 panmaster_highest_node_addr()

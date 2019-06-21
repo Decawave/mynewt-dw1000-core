@@ -43,6 +43,7 @@ const struct shell_param cmd_pm_param[] = {
     {"list", ""},
     {"add", "<euid> [addr] add node"},
     {"del", "<euid> delete node"},
+    {"pslot", "<euid> <slot_id> Set permanent slot (use slot_id=-1 to remove)"},
     {"dump", ""},
     {"clear", "erase list"},
     {"compr", ""},
@@ -101,7 +102,7 @@ list_nodes_blk()
 
     panmaster_node_idx(&node_idx, &num_nodes);
     os_gettimeofday(&utctime, &timezone);
-    console_printf("#idx, addr, slot,  lease, euid,             flags, role,          date-added, fw-ver\n");
+    console_printf("#idx, addr,  slot,  lease, euid,             flags, role,          date-added, fw-ver\n");
     for (i=0;i<num_nodes;i+=LIST_NODES_BLK_NNODES) {
         lne.index_off = i;
         lne.index_max = i+LIST_NODES_BLK_NNODES;
@@ -116,10 +117,16 @@ list_nodes_blk()
 
             console_printf("%4d, ", i+j);
             console_printf("%4x, ", lne.nodes[j].addr);
-            if (node_idx[lne.nodes[j].index].slot_id != 0xffff)
-                console_printf("%4d, ", node_idx[lne.nodes[j].index].slot_id);
-            else
-                console_printf("    , ");
+            int slot_id = node_idx[lne.nodes[j].index].slot_id;
+            if (lne.nodes[j].has_perm_slot) {
+                slot_id = lne.nodes[j].slot_id;
+            }
+            if (slot_id != 0xffff) {
+                console_printf("%4d%s, ", slot_id,
+                               (lne.nodes[j].has_perm_slot)?"p":"_");
+            } else {
+                console_printf("     , ");
+            }
 
             if (node_idx[lne.nodes[j].index].lease_ends) {
                 os_get_uptime(&tv);
@@ -155,8 +162,8 @@ static void
 dump_cb(struct panmaster_node *n, void *cb_arg)
 {
     char ver_str[32];
-    console_printf("%3d %04x %016llx %x %x ", n->index, n->addr, n->euid,
-                   n->flags, n->role);
+    console_printf("%3d %04x %016llx %x %x %d %d ", n->index, n->addr, n->euid,
+                   n->flags, n->role, n->has_perm_slot, n->slot_id);
 
     imgr_ver_str(&n->fw_ver, ver_str);
     console_printf("%s\n", ver_str);
@@ -166,6 +173,7 @@ dump_cb(struct panmaster_node *n, void *cb_arg)
 static void
 dump(void)
 {
+    console_printf("# index addr euid flags role pslot slot_id fw-ver\n");
     panmaster_load(dump_cb, 0);
 }
 
@@ -173,6 +181,7 @@ static int
 panmaster_cli_cmd(int argc, char **argv)
 {
     int rc;
+    int slot_id;
     uint16_t addr;
     uint64_t euid;
     struct panmaster_node *node;
@@ -212,6 +221,33 @@ panmaster_cli_cmd(int argc, char **argv)
         }
         euid = strtoll(argv[2], NULL, 16);
         panmaster_delete_node(euid);
+    } else if (!strcmp(argv[1], "pslot")) {
+        if (argc < 4) {
+            console_printf("euid+slot_id needed\n");
+            return 0;
+        }
+        euid = strtoll(argv[2], NULL, 16);
+        if (!euid) {
+            return 0;
+        }
+        slot_id = strtoll(argv[3], NULL, 0);
+
+        rc = panmaster_find_node(euid, 0, &node);
+        if (!rc) {
+            console_printf("0x%llX: pslot -> ", euid);
+            if (slot_id > -1) {
+                node->slot_id = slot_id;
+                node->has_perm_slot = 1;
+                console_printf("%d\n ", slot_id);
+            } else {
+                node->slot_id = 0;
+                node->has_perm_slot = 0;
+                console_printf("<removed>\n");
+            }
+            panmaster_save_node(node);
+        } else {
+            console_printf("err\n");
+        }
     } else if (!strcmp(argv[1], "clear")) {
         panmaster_clear_list();
     } else if (!strcmp(argv[1], "compr")) {
