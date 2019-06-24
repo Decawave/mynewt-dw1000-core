@@ -219,6 +219,14 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
     dw1000_ccp_instance_t * ccp = inst->ccp;
 
+    /* Sync lost since earlier, just set a long rx timeout and
+     * keep listening */
+    if (ccp->status.rx_timeout_error) {
+        dw1000_set_rx_timeout(inst, (uint16_t) 0xffff);
+        dw1000_ccp_listen(inst, DWT_BLOCKING);
+        goto reset_timer;
+    }
+
     CCP_STATS_INC(slave_cnt);
 #if MYNEWT_VAL(WCS_ENABLED)
     wcs_instance_t * wcs = ccp->wcs;
@@ -247,6 +255,8 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
         dw1000_set_rx_timeout(inst, (uint16_t) 0xffff);
         dw1000_ccp_listen(inst, DWT_BLOCKING);
     }
+
+reset_timer:
     // Schedule event
     hal_timer_start_at(&ccp->timer, ccp->os_epoch
         + os_cputime_usecs_to_ticks(
@@ -576,6 +586,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     ccp->seq_num = frame->seq_num;
     ccp->os_epoch = os_cputime_get32();
     CCP_STATS_INC(rx_complete);
+    ccp->status.rx_timeout_error = 0;
 
     if (frame->transmission_timestamp.timestamp < ccp->master_epoch.timestamp) {
         CCP_STATS_INC(wcs_resets);
@@ -767,6 +778,7 @@ ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t *
         return false;
 
     if (os_sem_get_count(&inst->ccp->sem) == 0){
+        inst->ccp->status.rx_timeout_error = 1;
         os_error_t err = os_sem_release(&inst->ccp->sem);
         assert(err == OS_OK); 
         DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp:rx_timeout_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
@@ -788,6 +800,7 @@ static bool
 ccp_reset_cb(struct _dw1000_dev_instance_t * inst,  dw1000_mac_interface_t * cbs){
     /* Place holder */
     if(os_sem_get_count(&inst->ccp->sem) == 0){
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_reset_cb\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
         os_error_t err = os_sem_release(&inst->ccp->sem);
         assert(err == OS_OK);   
         CCP_STATS_INC(reset);
