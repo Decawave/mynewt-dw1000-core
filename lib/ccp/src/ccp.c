@@ -595,7 +595,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         ccp->wcs->status.initialized = 0;
 #endif
     } else {
-        ccp->status.valid |= ccp->idx > 1;
+        ccp->status.valid |= ccp->idx > (MYNEWT_VAL(CCP_VALID_THRESHOLD)-1);
     }
 
     ccp->master_epoch.timestamp = frame->transmission_timestamp.timestamp;
