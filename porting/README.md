@@ -121,3 +121,14 @@ A standalone CMake build environment co-exists with the newt environment. The de
 
 ```
 
+
+#Usage 
+```
+make clean;make;cd build_generic/; make; cd..
+
+```
+
+#Testing
+```
+./build_generic/porting/dpl/src/linux/dpl_callout
+```
