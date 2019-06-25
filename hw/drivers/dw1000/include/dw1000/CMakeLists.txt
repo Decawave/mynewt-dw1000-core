@@ -1,0 +1,1 @@
+file(GLOB ${PROJECT_NAME}_HEADERS ./*.h)

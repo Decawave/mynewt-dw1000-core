@@ -1,0 +1,3 @@
+file(GLOB ${PROJECT_NAME}_SOURCES ./*.c)
+
+
