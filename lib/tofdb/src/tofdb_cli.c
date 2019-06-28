@@ -75,8 +75,8 @@ list_nodes()
         console_printf("%4d, ", i);
         console_printf("%4x, ", nodes[i].addr);
         console_printf("%016llX, ", nodes[i].euid);
-        console_printf("%6ld, ", nodes[i].tof);
-        float tof = dw1000_rng_tof_to_meters(nodes[i].tof);
+        console_printf("%6ld, ", (uint32_t)nodes[i].tof);
+        float tof = dw1000_rng_tof_to_meters((uint32_t)nodes[i].tof);
         console_printf("%3d.%03d, ", (int)tof, (int)(fabsf(tof-(int)tof)*1000));
 
         if (nodes[i].last_updated) {

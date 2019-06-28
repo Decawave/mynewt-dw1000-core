@@ -27,8 +27,9 @@ struct image_version;
 struct tofdb_node {
     uint64_t euid;
     uint32_t last_updated;
-    uint32_t tof;
+    float tof;
     uint16_t addr;           /*!< Local id, 16bit */
+    uint32_t num;
 };
 
 #ifdef __cplusplus

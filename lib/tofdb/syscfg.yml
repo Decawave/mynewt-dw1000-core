@@ -24,3 +24,6 @@ syscfg.defs:
     TOFDB_CLI:
         description: 'Enable command line interface'
         value: 1
+    TOFDB_LP_FILTER:
+        description: 'How much to trust each new measurement'
+        value: 0.1f

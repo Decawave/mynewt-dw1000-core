@@ -1,5 +1,6 @@
 #include <string.h>
 #include <os/mynewt.h>
+#include <syscfg/syscfg.h>
 #if MYNEWT_VAL(CCP_ENABLED)
 #include <ccp/ccp.h>
 #endif
@@ -23,11 +24,11 @@ int tofdb_get_tof(uint64_t euid, uint16_t addr, uint32_t *tof)
     }
     for (int i=0;i<MYNEWT_VAL(TOFDB_MAXNUM_NODES);i++) {
         if (euid && euid == nodes[i].euid) {
-            *tof = nodes[i].tof;
+            *tof = (uint32_t)nodes[i].tof;
             goto ret;
         }
         if (addr && addr == nodes[i].addr) {
-            *tof = nodes[i].tof;
+            *tof = (uint32_t)nodes[i].tof;
             goto ret;
         }
     }
@@ -41,14 +42,14 @@ int tofdb_set_tof(uint64_t euid, uint16_t addr, uint32_t tof)
     int i;
     /* See if this entry exist in our database already */
     for (i=0;i<MYNEWT_VAL(TOFDB_MAXNUM_NODES);i++) {
-        if (euid && euid == nodes[i].euid) {
-            nodes[i].tof = tof;
+        if ((euid && euid == nodes[i].euid) || (addr && addr == nodes[i].addr)) {
+            if (nodes[i].num) {
+                nodes[i].tof = (1.0f-MYNEWT_VAL(TOFDB_LP_FILTER))*nodes[i].tof + MYNEWT_VAL(TOFDB_LP_FILTER)*tof;
+            } else {
+                nodes[i].tof = tof;
+            }
             nodes[i].last_updated = os_cputime_get32();
-            goto ret;
-        }
-        if (addr && addr == nodes[i].addr) {
-            nodes[i].tof = tof;
-            nodes[i].last_updated = os_cputime_get32();
+            nodes[i].num++;
             goto ret;
         }
     }
@@ -63,6 +64,7 @@ int tofdb_set_tof(uint64_t euid, uint16_t addr, uint32_t tof)
         nodes[i].addr = addr;
         nodes[i].last_updated = os_cputime_get32();
         nodes[i].tof = tof;
+        nodes[i].num = 0;
         goto ret;
     }
 
