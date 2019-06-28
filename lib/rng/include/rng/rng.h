@@ -119,7 +119,10 @@ typedef enum _dw1000_rng_modes_t{
     DWT_DS_TWR_NRNG_EXT_END,
     DWT_DS_TWR_NRNG_INVALID,
     DWT_SURVEY_REQUEST = 0x60,
-    DWT_SURVEY_BROADCAST
+    DWT_SURVEY_BROADCAST,
+    DWT_RTDOA_INVALID = 0x80,
+    DWT_RTDOA_REQUEST,
+    DWT_RTDOA_RESP,
 }dw1000_rng_modes_t;
 
 //! Range status parameters
@@ -195,6 +198,7 @@ float dw1000_rng_twr_to_tof(twr_frame_t *fframe, twr_frame_t *nframe);
 float dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng, uint16_t idx);
 #endif
 float dw1000_rng_tof_to_meters(float ToF);
+float dw1000_rng_is_los(float rssi, float fppl);
 
 float dw1000_rng_path_loss(float Pt, float G, float fc, float R);
 float dw1000_rng_bias_correction(dw1000_dev_instance_t * inst, float Pr);

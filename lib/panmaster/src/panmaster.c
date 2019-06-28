@@ -350,7 +350,8 @@ first_free_slot_id(uint16_t node_addr, uint16_t role)
 
             if (slot_id == node_idx[j].slot_id &&
                 node_addr != node_idx[j].addr &&
-                slot_lease_expired(j) == false)
+                (slot_lease_expired(j) == false || node_idx[j].has_perm_slot)
+                )
             {
                 goto next_slot;
             }
@@ -391,7 +392,7 @@ panmaster_find_node(uint64_t euid, uint16_t role, struct panmaster_node **result
             panmaster_save_node(&node);
         }
         node_idx[node.index].role = node.role;
-
+        node_idx[node.index].has_perm_slot = node.has_perm_slot;
         return 0;
     }
 
@@ -517,8 +518,7 @@ panmaster_add_node(uint16_t short_addr, uint16_t role, uint8_t *euid_u8)
     /* This node is unknown, find a free spot for it */
     for (i=0;i<MYNEWT_VAL(PANMASTER_MAXNUM_NODES);i++)
     {
-        if (node_idx[i].addr != 0xffff)
-        {
+        if (node_idx[i].addr != 0xffff) {
             continue;
         }
         
@@ -569,6 +569,7 @@ panmaster_delete_node(uint64_t euid)
     node.addr = 0xFFFF;
     node_idx[node.index].addr = 0xFFFF;
     node_idx[node.index].slot_id = 0xFFFF;
+    node_idx[node.index].has_perm_slot = 0;
 
     panmaster_save_node(&node);
     PM_DEBUG("panmaster_delete_node: node deleted\n");
@@ -579,6 +580,10 @@ panmaster_delete_node(uint64_t euid)
 int
 panmaster_save_node(struct panmaster_node *node)
 {
+    /* Make sure index is up to date */
+    node_idx[node->index].role = node->role;
+    node_idx[node->index].has_perm_slot = node->has_perm_slot;
+
 #if MYNEWT_VAL(PANMASTER_NFFS)
     return panm_file_save(&panmaster_storage_file, node);
 #elif MYNEWT_VAL(PANMASTER_FCB)

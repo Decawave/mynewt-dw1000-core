@@ -9,6 +9,9 @@ syscfg.defs:
     CCP_VERBOSE:
         description: 'Show debug output from postprocess'
         value: 0
+    CCP_VALID_THRESHOLD:
+        description: 'Consider CCP valid once this many packets have been received (>=1)'
+        value: 2
     CCP_PERIOD:
         description: >
             Clock Calibration Packets Period (dwt usec). Should be a multiple of 0x10000

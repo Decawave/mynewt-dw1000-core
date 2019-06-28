@@ -43,7 +43,8 @@ const struct shell_param cmd_pm_param[] = {
     {"list", ""},
     {"add", "<euid> [addr] add node"},
     {"del", "<euid> delete node"},
-    {"pslot", "<euid> <slot_id> Set permanent slot (use slot_id=-1 to remove)"},
+    {"pslot", "<euid> <slot_id> set permanent slot (use slot_id=-1 to remove)"},
+    {"role", "<euid> <role> set role)"},
     {"dump", ""},
     {"clear", "erase list"},
     {"compr", ""},
@@ -181,7 +182,7 @@ static int
 panmaster_cli_cmd(int argc, char **argv)
 {
     int rc;
-    int slot_id;
+    int slot_id, role;
     uint16_t addr;
     uint64_t euid;
     struct panmaster_node *node;
@@ -244,6 +245,25 @@ panmaster_cli_cmd(int argc, char **argv)
                 node->has_perm_slot = 0;
                 console_printf("<removed>\n");
             }
+            panmaster_save_node(node);
+        } else {
+            console_printf("err\n");
+        }
+    } else if (!strcmp(argv[1], "role")) {
+        if (argc < 4) {
+            console_printf("euid+role needed\n");
+            return 0;
+        }
+        euid = strtoll(argv[2], NULL, 16);
+        if (!euid) {
+            return 0;
+        }
+        role = strtoll(argv[3], NULL, 0);
+
+        rc = panmaster_find_node(euid, 0, &node);
+        if (!rc) {
+            console_printf("0x%llX: role -> %d\n ", euid, role);
+            node->role = role;
             panmaster_save_node(node);
         } else {
             console_printf("err\n");

@@ -95,6 +95,7 @@ typedef enum _dw1000_extension_id_t{
     DW1000_NMGR_CMD,                         //!< UWB command support
     DW1000_CIR,                              //!< Channel impulse response 
     DW1000_OT,                               //!< Openthread
+    DW1000_RTDOA,                            //!< RTDoA
     DW1000_SURVEY,
     DW1000_APP0 = 1024, 
     DW1000_APP1, 
@@ -340,6 +341,9 @@ typedef struct _dw1000_dev_instance_t{
 #endif
 #if MYNEWT_VAL(NRNG_ENABLED)
     struct _dw1000_nrng_instance_t * nrng;
+#endif
+#if MYNEWT_VAL(RTDOA_ENABLED)
+    struct _dw1000_rtdoa_instance_t * rtdoa;
 #endif
 #if MYNEWT_VAL(CIR_ENABLED)
     struct _cir_instance_t * cir;                  //!< CIR instance
