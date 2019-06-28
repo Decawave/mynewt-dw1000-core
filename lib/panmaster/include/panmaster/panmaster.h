@@ -45,6 +45,7 @@ struct panmaster_node_idx {
     uint16_t addr;           /*!< Local id, 16bit */
     uint16_t slot_id;
     uint8_t role;
+    uint16_t has_perm_slot:1; /*!< Has Permanent slot */
     uint32_t lease_ends;
 };
 
