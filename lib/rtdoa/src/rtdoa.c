@@ -97,12 +97,13 @@ dw1000_rtdoa_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, ui
             );
    
 #if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
-        rc |= stats_register("rtdoa", STATS_HDR(inst->rtdoa->stat));
+    rc |= stats_register("rtdoa", STATS_HDR(inst->rtdoa->stat));
 #elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
-    if (inst == hal_dw1000_inst(0))
+    if (inst == hal_dw1000_inst(0)) {
         rc |= stats_register("rtdoa0", STATS_HDR(inst->rtdoa->stat));
-    else
+    } else{
         rc |= stats_register("rtdoa1", STATS_HDR(inst->rtdoa->stat));
+    }
 #endif
     assert(rc == 0);
 #endif
@@ -243,11 +244,10 @@ rtdoa_local_to_master64(dw1000_dev_instance_t * inst, uint64_t dtu_time, rtdoa_f
     if (wcs->status.valid) {
         /* No need to take special care of 40bit overflow as the timescale forward returns
          * a double value that can exceed the 40bit. */
-        req_lo40 += (uint64_t) roundf((1.0l + wcs->skew) * delta);
+        req_lo40 += (uint64_t) round((1.0l - wcs->skew) * delta);
     } else {
         req_lo40 += delta;
     }
-
     return (req_frame->tx_timestamp & 0xFFFFFF0000000000UL) + req_lo40;
 }
 
@@ -296,6 +296,9 @@ rtdoa_tdoa_between_frames(struct _dw1000_dev_instance_t * inst,
     float diff_m = nanf("");
     switch(resp_frame->code){
         case DWT_RTDOA_RESP: {
+            /* Invalidate this frame to avoid it being used more than once */
+            resp_frame->code = DWT_TWR_INVALID;
+
             assert(req_frame != NULL);
             if (resp_frame->tx_timestamp < req_frame->tx_timestamp) {
                 break;
@@ -304,9 +307,10 @@ rtdoa_tdoa_between_frames(struct _dw1000_dev_instance_t * inst,
             uint64_t rx_ts = rtdoa_local_to_master64(inst, resp_frame->rx_timestamp, inst->rtdoa->req_frame);
             tof = (int64_t)rx_ts - (int64_t)resp_frame->tx_timestamp;
             diff_m = dw1000_rng_tof_to_meters(tof);
-            //printf("r[%x-%x]: %llx %llx %llx %llx\n", req_frame->src_address, resp_frame->src_address,
-            //       resp_frame->rx_timestamp, resp_frame->tx_timestamp, tof, req_frame->tx_timestamp);
-            // printf("r[%x-%x]: %lld\n", req_frame->src_address, resp_frame->src_address, tof);
+
+            //printf("r[%x-%x]: %llx %llx %16llx %llx\n", req_frame->src_address, resp_frame->src_address,
+            //       rx_ts, resp_frame->tx_timestamp, tof, req_frame->tx_timestamp);
+            //printf("r[%x-%x]: %6lld %6ldmm\n", req_frame->src_address, resp_frame->src_address, tof, (int32_t)(diff_m*1000.0f + 0.5f));
             break;
         }
         default: break;

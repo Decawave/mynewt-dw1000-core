@@ -169,6 +169,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     int64_t new_timeout;
     assert(inst->rtdoa);
     dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
+    wcs_instance_t * wcs = inst->ccp->wcs;
 
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
@@ -210,7 +211,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             if (frame->rpt_count != 0) {
                 RTDOA_STATS_INC(rx_relayed);
                 repeat_dly = frame->rpt_count*rtdoa->config.tx_holdoff_delay;
-                frame->rx_timestamp -= (repeat_dly << 16);
+                frame->rx_timestamp -= (repeat_dly << 16)*(1.0l - wcs->skew);
             }
 
             /* A good rtdoa_req packet has been received, stop the receiver */

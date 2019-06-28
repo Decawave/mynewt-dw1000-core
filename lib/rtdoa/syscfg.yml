@@ -22,7 +22,7 @@ syscfg.defs:
         description: >
             Max number of cascade levels allowed in repeating rtdoa request packet.
             Set to 0 to disable cascading. Relates to tx_holdoff_dly and tdma slot size.
-        value: 4
+        value: 0
       RTDOA_VERBOSE:
         description: 'Show debug output from postprocess'
         value: 0

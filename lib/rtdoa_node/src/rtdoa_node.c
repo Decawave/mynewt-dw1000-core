@@ -142,11 +142,20 @@ dw1000_rtdoa_request(dw1000_dev_instance_t * inst, uint64_t delay)
 
 
 static dw1000_dev_status_t
-tx_rtdoa_response(dw1000_dev_instance_t * inst, uint64_t delay)
+tx_rtdoa_response(dw1000_dev_instance_t * inst)
 {
     /* This function executes on the device that responds to a rtdoa request */
+
     assert(inst->rtdoa);
     dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
+    dw1000_rng_config_t * config = &rtdoa->config;
+
+    /* Rx-timestamp will be compensated for relay */
+    uint64_t dx_time = rtdoa->req_frame->rx_timestamp;
+    /* usecs to dwt usecs? */
+    uint8_t slot_idx = inst->slot_id % rtdoa->req_frame->slot_modulus + 1;
+    dx_time += (rtdoa_usecs_to_response(inst, (rtdoa_request_frame_t*)rtdoa->req_frame, slot_idx, config,
+                                        dw1000_phy_frame_duration(&inst->attrib, sizeof(rtdoa_response_frame_t))) << 16);
 
     RTDOA_STATS_INC(rtdoa_response);
 
@@ -158,11 +167,12 @@ tx_rtdoa_response(dw1000_dev_instance_t * inst, uint64_t delay)
     frame->dst_address = BROADCAST_ADDRESS;
     frame->slot_id = inst->slot_id%rtdoa->req_frame->slot_modulus + 1;
 
-    dw1000_set_delay_start(inst, delay& 0x000000FFFFFFFE00ULL);
+    dw1000_set_delay_start(inst, (dx_time&0x000000FFFFFFFE00ULL));
 
     /* Calculate tx-time */
-    frame->tx_timestamp = (rtdoa_local_to_master64(inst, delay, rtdoa->req_frame) & 0xFFFFFFFFFFFFFE00ULL) + 
-                          inst->tx_antenna_delay;
+    frame->tx_timestamp = rtdoa_local_to_master64(inst, (dx_time&0x000000FFFFFFFE00ULL) +
+                                                  inst->tx_antenna_delay,
+                                                  rtdoa->req_frame);
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(rtdoa_response_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(rtdoa_response_frame_t), 0);
@@ -259,20 +269,12 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     assert(inst->rtdoa);
     dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
-    dw1000_rng_config_t * config = &rtdoa->config;
 
     /* If we sent the request or a repeat of the request, send response now */
     rtdoa_request_frame_t * frame = (rtdoa_request_frame_t *) rtdoa->frames[rtdoa->idx%rtdoa->nframes];
     if (frame->code == DWT_RTDOA_REQUEST) {
         /* Transmit response packet */
-        /* Rx-timestamp will be compensated for relay */
-        uint64_t dx_time = rtdoa->req_frame->rx_timestamp;
-        /* usecs to dwt usecs? */
-        uint8_t slot_idx = inst->slot_id%rtdoa->req_frame->slot_modulus + 1;
-        dx_time += (rtdoa_usecs_to_response(inst, (rtdoa_request_frame_t*)rtdoa->req_frame, slot_idx, config,
-                                            dw1000_phy_frame_duration(&inst->attrib, sizeof(rtdoa_response_frame_t))) << 16);
-
-        tx_rtdoa_response(inst, dx_time);
+        tx_rtdoa_response(inst);
         // printf("dx_time %d %llx d:%llx\n", slot_idx, dx_time, dx_time - rtdoa->req_frame->rx_timestamp);
         return true;
     }
@@ -331,18 +333,16 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 /* Deliberately in local timeframe */
                 frame->rx_timestamp = inst->rxtimestamp;
     
-                /* Compensate for time of flight using the ccp function 
-                 * TODO: Check that skew is used correctly here */
+                /* Compensate for time of flight using the ccp function */
                 if (inst->ccp->tof_comp_cb) {
-                    frame->rx_timestamp -= inst->ccp->tof_comp_cb(0, frame->src_address)*(1.0l + wcs->skew);
+                    frame->rx_timestamp -= inst->ccp->tof_comp_cb(0, frame->src_address)*(1.0l - wcs->skew);
                 }
 
-                /* Compensate for relays 
-                 * TODO: Check that skew is used correctly here */
+                /* Compensate for relays */
                 if (frame->rpt_count != 0) {
                     RTDOA_STATS_INC(rx_relayed);
                     uint32_t repeat_dly = frame->rpt_count*rtdoa->config.tx_holdoff_delay;
-                    frame->rx_timestamp -= (repeat_dly << 16)*(1.0l + wcs->skew);
+                    frame->rx_timestamp -= (repeat_dly << 16)*(1.0l - wcs->skew);
                 }
 
                 /* Send a cascade relay if this is an ok relay */
@@ -367,6 +367,9 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     } else {
                         RTDOA_STATS_INC(tx_relay_ok);
                     }
+                } else {
+                    /* Queue up response message directly if not relaying request */
+                    tx_rtdoa_response(inst);
                 }
 
                 break; 
