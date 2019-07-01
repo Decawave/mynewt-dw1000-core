@@ -18,6 +18,9 @@
 #
 
 syscfg.defs:
+    TOFDB_ENABLED:
+        description: 'If the time of flight database is enabled'
+        value: 1
     TOFDB_MAXNUM_NODES:
         description: 'Max number of nodes to support'
         value: 32
