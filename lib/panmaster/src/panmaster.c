@@ -165,7 +165,8 @@ panmaster_dw1000_cb(struct os_event * ev)
     if (frame->lease_time == 0) {
         frame->lease_time = MYNEWT_VAL(PANMASTER_DEFAULT_LEASE_TIME);
     }
-    node_idx[node->index].lease_ends = tv.tv_sec*1000 + tv.tv_usec/1000 + frame->lease_time*inst->ccp->period/1000;
+    /* Calculate when this lease ends in ms */
+    node_idx[node->index].lease_ends = tv.tv_sec*1000 + tv.tv_usec/1000 + (uint32_t)frame->lease_time*1000;
     frame->pan_id = pan_id;
     frame->role = node->role;
 
