@@ -382,6 +382,7 @@ void
 tdma_release_slot(struct _tdma_instance_t * inst, uint16_t idx){
     assert(idx < inst->nslots);
     if (inst->slot[idx]) {
+        os_cputime_timer_stop(&inst->slot[idx]->timer);
         free(inst->slot[idx]);
         inst->slot[idx] =  NULL;
     }
@@ -440,6 +441,10 @@ slot_timer_cb(void * arg){
     assert(arg);
 
     tdma_slot_t * slot = (tdma_slot_t *) arg;
+    /* No point in continuing if this slot is NULL */
+    if (slot == NULL) {
+        return;
+    }
     tdma_instance_t * tdma = slot->parent;
     struct _dw1000_dev_instance_t * inst = tdma->parent;
 
