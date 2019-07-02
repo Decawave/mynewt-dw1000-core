@@ -20,14 +20,13 @@
 project.name: "mynewt-dw1000-core"
 
 project.repositories:
-    - mynewt-dw1000-core
+    - apache-mynewt-core
 
 # Use github's distribution mechanism for core ASF libraries.
 # This provides mirroring automatically for us.
 #
-repository.mynewt-dw1000-core:
+repository.apache-mynewt-core:
     type: github
-    vers: 0-dev
-    user: decawave
-    repo: mynewt-dw1000-core
-    url: 'git@github.com:Decawave/mynewt-dw1000-core.git'
+    vers: 1.6.0
+    user: apache
+    repo: mynewt-core
