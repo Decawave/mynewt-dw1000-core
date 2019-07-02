@@ -605,7 +605,11 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
     /* Compensate for time of flight */
     if (inst->ccp->tof_comp_cb) {
-        ccp->local_epoch -= inst->ccp->tof_comp_cb(frame->euid, frame->short_address);
+        uint32_t tof_comp = inst->ccp->tof_comp_cb(frame->euid, frame->short_address);
+#if MYNEWT_VAL(WCS_ENABLED)
+        tof_comp *= (1.0l - ccp->wcs->skew);
+#endif
+        ccp->local_epoch -= tof_comp;
         frame->reception_timestamp = ccp->local_epoch;
     }
 
@@ -617,7 +621,11 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         ccp->period = master_interval>>16;
         uint64_t repeat_dly = master_interval - frame->transmission_interval;
         ccp->master_epoch.timestamp = (ccp->master_epoch.timestamp - repeat_dly);
-        /* TODO: Probably compensate for skew relative master when correcting local ts */
+
+#if MYNEWT_VAL(WCS_ENABLED)
+        /* Compensate for skew before correcting our local timestamp for repeat delay. */
+        repeat_dly *= (1.0l - ccp->wcs->skew);
+#endif
         ccp->local_epoch = (ccp->local_epoch - repeat_dly) & 0x0FFFFFFFFFFUL;
         frame->reception_timestamp = ccp->local_epoch;
         /* master_interval and transmission_interval are expressed as dwt_usecs */
@@ -633,26 +641,26 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         tx_frame.euid = inst->euid;
         tx_frame.short_address = inst->my_short_address;
         tx_frame.rpt_count++;
-        uint64_t tx_timestamp = inst->rxtimestamp + ((uint64_t)inst->ccp->config.tx_holdoff_dly<<16);
+        uint64_t tx_timestamp = frame->reception_timestamp;
+        tx_timestamp += tx_frame.rpt_count*((uint64_t)inst->ccp->config.tx_holdoff_dly<<16);
         tx_timestamp &= 0x0FFFFFFFE00UL;
         dw1000_set_delay_start(inst, tx_timestamp);
 
         /* Need to add antenna delay */
         tx_timestamp += inst->tx_antenna_delay;
 
+        /* Calculate the transmission time of our packet in the masters reference */
+        uint64_t tx_delay = (tx_timestamp - frame->reception_timestamp);
 #if MYNEWT_VAL(WCS_ENABLED)
-        tx_frame.transmission_timestamp.timestamp = wcs_local_to_master64(inst->ccp->wcs, tx_timestamp);
-#else
-        tx_frame.transmission_timestamp.timestamp = frame->transmission_timestamp.timestamp +
-            tx_timestamp - frame->reception_timestamp;
+        tx_delay *= (1.0l - ccp->wcs->skew);
 #endif
+        tx_frame.transmission_timestamp.timestamp += tx_delay;
+
         /* Adjust the transmission interval so listening units can calculate the
          * original master's timestamp */
-        tx_frame.transmission_interval = frame->transmission_interval -
-            (tx_frame.transmission_timestamp.lo - frame->transmission_timestamp.lo);
+        tx_frame.transmission_interval = frame->transmission_interval - tx_delay;
 
         dw1000_write_tx(inst, tx_frame.array, 0, sizeof(ccp_blink_frame_t));
-        /* TODO: improve performace by only writing frame after send starts */
         dw1000_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0);
         ccp->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
         if (ccp->status.start_tx_error){
