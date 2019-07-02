@@ -41,7 +41,7 @@ set (CPACK_PACKAGE_VERSION_MINOR "${${PROJECT_NAME}_VERSION_MINOR}")
 set (CPACK_PACKAGE_VERSION_PATCH "${${PROJECT_NAME}_VERSION_PATCH}")
 
 set (CPACK_COMPONENTS_ALL applications libraries headers)
-set (CPACK_COMPONENT_APPLICATIONS_DESCRIPTION "Timescale Matlab Toolbox")
+set (CPACK_COMPONENT_APPLICATIONS_DESCRIPTION "Decawave Porting Layer")
 set (CPACK_COMPONENT_LIBRARIES_DESCRIPTION "Static libraries used to build programs with example")
 set (CPACK_COMPONENT_HEADERS_DESCRIPTION "C/C++ header files for use with template")
 set (CPACK_COMPONENT_DOCS_DISPLAY_NAME "C++ API Documentation")

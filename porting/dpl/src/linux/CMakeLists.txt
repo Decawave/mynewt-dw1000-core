@@ -61,6 +61,7 @@ target_link_libraries(
     dpl_callout
     dpl_linux
     Threads::Threads
+    -lrt
 )
 
 #add_executable(dpl_mempool test/test_dpl_mempool.c)

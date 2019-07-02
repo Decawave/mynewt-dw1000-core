@@ -98,7 +98,6 @@ A standalone CMake build environment co-exists with the newt environment. The de
     │   ├── os
     │   │   ├── endian.h
     │   │   ├── os.h
-    │   │   ├── os_cputime.h_remove
     │   │   ├── os_dev.h
     │   │   ├── os_error.h
     │   │   ├── os_mbuf.h
