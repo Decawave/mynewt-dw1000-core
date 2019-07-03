@@ -588,9 +588,11 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     CCP_STATS_INC(rx_complete);
     ccp->status.rx_timeout_error = 0;
 
-    if (frame->transmission_timestamp.timestamp < ccp->master_epoch.timestamp) {
+    if (frame->transmission_timestamp.timestamp < ccp->master_epoch.timestamp ||
+        frame->euid != ccp->master_euid) {
+        ccp->master_euid = frame->euid; 
         CCP_STATS_INC(wcs_resets);
-        ccp->status.valid = 0;
+        ccp->status.valid = (MYNEWT_VAL(CCP_VALID_THRESHOLD)==0);
 #if MYNEWT_VAL(WCS_ENABLED)
         ccp->wcs->status.initialized = 0;
 #endif
@@ -605,7 +607,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
     /* Compensate for time of flight */
     if (inst->ccp->tof_comp_cb) {
-        uint32_t tof_comp = inst->ccp->tof_comp_cb(frame->euid, frame->short_address);
+        uint32_t tof_comp = inst->ccp->tof_comp_cb(frame->short_address);
 #if MYNEWT_VAL(WCS_ENABLED)
         tof_comp *= (1.0l - ccp->wcs->skew);
 #endif
@@ -638,7 +640,8 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     if (ccp->config.role == CCP_ROLE_RELAY && ccp->status.valid && frame->rpt_count < frame->rpt_max) {
         ccp_frame_t tx_frame;
         memcpy(tx_frame.array, frame->array, sizeof(ccp_frame_t));
-        tx_frame.euid = inst->euid;
+
+        /* Only replace the short id, retain the euid to know which master this originates from */
         tx_frame.short_address = inst->my_short_address;
         tx_frame.rpt_count++;
         uint64_t tx_timestamp = frame->reception_timestamp;

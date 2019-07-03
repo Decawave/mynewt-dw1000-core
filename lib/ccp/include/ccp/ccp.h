@@ -134,7 +134,7 @@ typedef enum _dw1000_ccp_role_t{
 }dw1000_ccp_role_t;
 
 //! Callback for fetching clock source tof compensation
-typedef uint32_t (*dw1000_ccp_tof_compensation_cb_t)(uint64_t euid, uint16_t short_addr);
+typedef uint32_t (*dw1000_ccp_tof_compensation_cb_t)(uint16_t short_addr);
 
 //! ccp config parameters.  
 typedef struct _dw1000_ccp_config_t{
@@ -158,10 +158,7 @@ typedef struct _dw1000_ccp_instance_t{
     struct _sos_instance_t * xtalt_sos;         //!< Sturcture of xtalt_sos
 #endif
     dw1000_mac_interface_t cbs;                     //!< MAC Layer Callbacks
-    union _uuid{
-        uint64_t uuid;                              //!< Clock Master UUID TODOs::depreciated nomenclature
-        uint64_t euid;                              //!< Clock Master EUID
-    };
+    uint64_t master_euid;                           //!< Clock Master EUID, used to reset wcs if master changes
     struct os_sem sem;                              //!< Structure containing os semaphores
     struct os_callout callout_postprocess;          //!< Structure of callout_postprocess
     dw1000_ccp_status_t status;                     //!< DW1000 ccp status parameters

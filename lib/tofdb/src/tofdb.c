@@ -17,16 +17,12 @@ tofdb_get_nodes()
     return nodes;
 }
 
-int tofdb_get_tof(uint64_t euid, uint16_t addr, uint32_t *tof)
+int tofdb_get_tof(uint16_t addr, uint32_t *tof)
 {
     if (!tof) {
         return OS_EINVAL;
     }
     for (int i=0;i<MYNEWT_VAL(TOFDB_MAXNUM_NODES);i++) {
-        if (euid && euid == nodes[i].euid) {
-            *tof = (uint32_t)nodes[i].tof;
-            goto ret;
-        }
         if (addr && addr == nodes[i].addr) {
             *tof = (uint32_t)nodes[i].tof;
             goto ret;
@@ -37,12 +33,12 @@ ret:
     return OS_OK;
 }
 
-int tofdb_set_tof(uint64_t euid, uint16_t addr, uint32_t tof)
+int tofdb_set_tof(uint16_t addr, uint32_t tof)
 {
     int i;
     /* See if this entry exist in our database already */
     for (i=0;i<MYNEWT_VAL(TOFDB_MAXNUM_NODES);i++) {
-        if ((euid && euid == nodes[i].euid) || (addr && addr == nodes[i].addr)) {
+        if (addr && addr == nodes[i].addr) {
             if (nodes[i].num) {
                 nodes[i].tof = (1.0f-MYNEWT_VAL(TOFDB_LP_FILTER))*nodes[i].tof + MYNEWT_VAL(TOFDB_LP_FILTER)*tof;
             } else {
@@ -56,11 +52,10 @@ int tofdb_set_tof(uint64_t euid, uint16_t addr, uint32_t tof)
 
     /* No match, look for a free spot */
     for (i=0;i<MYNEWT_VAL(TOFDB_MAXNUM_NODES);i++) {
-        if (nodes[i].euid || nodes[i].addr) {
+        if (nodes[i].addr) {
             continue;
         }
         
-        nodes[i].euid = euid;
         nodes[i].addr = addr;
         nodes[i].last_updated = os_cputime_get32();
         nodes[i].tof = tof;
@@ -76,10 +71,10 @@ ret:
 }
 
 uint32_t
-ccp_cb(uint64_t euid, uint16_t short_addr)
+ccp_cb(uint16_t short_addr)
 {
     uint32_t tof=0;
-    tofdb_get_tof(euid, short_addr, &tof);
+    tofdb_get_tof(short_addr, &tof);
     return tof;
 }
 

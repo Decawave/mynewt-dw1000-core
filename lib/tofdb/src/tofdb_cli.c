@@ -67,14 +67,13 @@ list_nodes()
     struct os_timeval tv;
 
     nodes = tofdb_get_nodes();
-    console_printf("#idx, addr, euid, %*s tof,  tof(m), age(s)\n", 14, "");
+    console_printf("#idx, addr,    tof,  tof(m), age(s)\n");
     for (i=0;i<MYNEWT_VAL(TOFDB_MAXNUM_NODES);i++) {
-        if (!nodes[i].euid && !nodes[i].addr) {
+        if (!nodes[i].addr) {
             continue;
         }
         console_printf("%4d, ", i);
         console_printf("%4x, ", nodes[i].addr);
-        console_printf("%016llX, ", nodes[i].euid);
         console_printf("%6ld, ", (uint32_t)nodes[i].tof);
         float tof = dw1000_rng_tof_to_meters((uint32_t)nodes[i].tof);
         console_printf("%3d.%03d, ", (int)tof, (int)(fabsf(tof-(int)tof)*1000));
