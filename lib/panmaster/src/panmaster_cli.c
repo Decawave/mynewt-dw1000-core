@@ -103,7 +103,7 @@ list_nodes_blk()
 
     panmaster_node_idx(&node_idx, &num_nodes);
     os_gettimeofday(&utctime, &timezone);
-    console_printf("#idx, addr,  slot,  lease, euid,             flags, role,          date-added, fw-ver\n");
+    console_printf("#idx, addr, role, slot, p,  lease, euid,             flags,          date-added, fw-ver\n");
     for (i=0;i<num_nodes;i+=LIST_NODES_BLK_NNODES) {
         lne.index_off = i;
         lne.index_max = i+LIST_NODES_BLK_NNODES;
@@ -122,12 +122,13 @@ list_nodes_blk()
             if (lne.nodes[j].has_perm_slot) {
                 slot_id = lne.nodes[j].slot_id;
             }
+            console_printf("%4X, ", lne.nodes[j].role);
             if (slot_id != 0xffff) {
-                console_printf("%4d%s, ", slot_id,
-                               (lne.nodes[j].has_perm_slot)?"p":"_");
+                console_printf("%4d, ", slot_id);
             } else {
-                console_printf("     , ");
+                console_printf("    , ");
             }
+            console_printf("%s, ", (lne.nodes[j].has_perm_slot)?"p":" ");
 
             if (node_idx[lne.nodes[j].index].lease_ends) {
                 os_get_uptime(&tv);
@@ -142,7 +143,6 @@ list_nodes_blk()
 
             console_printf("%016llX, ", lne.nodes[j].euid);
             console_printf("%5X, ", lne.nodes[j].flags);
-            console_printf("%4X, ", lne.nodes[j].role);
         
             utctime.tv_sec = lne.nodes[j].first_seen_utc;
             utctime.tv_usec = 0;
