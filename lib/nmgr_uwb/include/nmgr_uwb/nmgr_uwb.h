@@ -48,6 +48,22 @@ extern "C" {
 #define NMGR_UWB_MTU_STD (128 -  sizeof(struct _ieee_std_frame_t) - sizeof(uint16_t) - 2/*CRC*/)
 #define NMGR_UWB_MTU_EXT (1023 - sizeof(struct _ieee_std_frame_t) - sizeof(uint16_t) - 2/*CRC*/)
 
+//! IEEE 802.15.4 standard data frame.
+typedef union {
+//! Structure of standard frame
+    struct _nmgr_uwb_header{
+        uint16_t fctrl;             //!< Frame control (0x8841 to indicate a data frame using 16-bit addressing)
+        uint8_t seq_num;            //!< Sequence number, incremented for each new frame
+        uint16_t PANID;             //!< PANID (0xDECA)
+        uint16_t dst_address;       //!< Destination address
+        uint16_t src_address;       //!< Source address
+        uint16_t code;              //!< Response code for the request
+        uint8_t  rpt_count;         //!< Repeat level
+        uint8_t  rpt_max;           //!< Repeat max level
+    }__attribute__((__packed__,aligned(1)));
+    uint8_t array[sizeof(struct _ieee_std_frame_t)];  //!< Array of size standard frame
+} nmgr_uwb_frame_header_t;
+
 typedef struct _nmgr_uwb_instance_t {
     struct _dw1000_dev_instance_t* parent;
     uint8_t frame_seq_num;
@@ -67,7 +83,7 @@ int nmgr_uwb_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, uint16_t code, s
 
 /* Sychronous model */
 dw1000_dev_status_t nmgr_uwb_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout);
-int uwb_nmgr_process_tx_queue(dw1000_dev_instance_t* inst, uint64_t dx_time, uint16_t timeout);
+int uwb_nmgr_process_tx_queue(dw1000_dev_instance_t* inst, uint64_t dx_time);
 int uwb_nmgr_queue_tx(dw1000_dev_instance_t* inst, uint16_t dst_addr, uint16_t code, struct os_mbuf *om);
 #ifdef __cplusplus
 }

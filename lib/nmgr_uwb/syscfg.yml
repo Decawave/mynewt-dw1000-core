@@ -6,3 +6,8 @@ syscfg.defs:
     NMGR_UWB_LOOPBACK:
         description: 'Only loop messages back without sending them over the air '
         value: 0
+    NMGR_UWB_MAX_CASCADE_RPTS:
+        description: >
+            Max number of cascade levels allowed in repeating packets.
+            Set to 0 to disable cascading. 
+        value: 1
