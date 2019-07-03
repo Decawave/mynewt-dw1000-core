@@ -121,7 +121,9 @@ bcast_ota_get_packet(int src_slot, bcast_ota_mode_t mode, int max_transfer_unit,
     int fa_id = flash_area_id_from_image_slot(src_slot);
 
     /* Check source image */
+    bufsz = max_transfer_unit-CBOR_OVERHEAD;
     if (mode == BCAST_MODE_RESET_OFFSET) {
+        bufsz = sizeof(struct image_header)+8;
         off = 0;
         rc = imgr_read_info(src_slot, &ver, 0, &img_flags);
         if (rc != 0) {
@@ -131,7 +133,6 @@ bcast_ota_get_packet(int src_slot, bcast_ota_mode_t mode, int max_transfer_unit,
                    ver.iv_revision, ver.iv_build_num);
     }
 
-    bufsz = max_transfer_unit-CBOR_OVERHEAD;
     buf = (uint8_t*)malloc(bufsz);
     if (!buf) {
         return OS_ENOMEM;
@@ -168,7 +169,7 @@ exit_err:
 }
 
 void
-lnote_ota_set_mpool(struct os_mbuf_pool *mbuf_pool)
+bcast_ota_set_mpool(struct os_mbuf_pool *mbuf_pool)
 {
     g_mbuf_pool = mbuf_pool;
 }

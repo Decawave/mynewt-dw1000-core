@@ -208,11 +208,15 @@ txim_ev_cb(struct os_event *ev)
     }
     bcast_ota_get_packet(tx_im_inst.slot_id, (tx_im_inst.reset>0)?
                          BCAST_MODE_RESET_OFFSET : BCAST_MODE_NONE,
-                         256, &om, tx_im_inst.flags);
-    if (tx_im_inst.reset>0) tx_im_inst.reset--;
+                         tx_im_inst.blocksize, &om, tx_im_inst.flags);
     if (om) {
         uwb_nmgr_queue_tx(hal_dw1000_inst(0), tx_im_inst.addr, NMGR_CMD_STATE_SEND, om);
-        os_callout_reset(&tx_im_inst.callout, OS_TICKS_PER_SEC/50);
+        if (tx_im_inst.reset>0) {
+            os_callout_reset(&tx_im_inst.callout, OS_TICKS_PER_SEC/5);
+            tx_im_inst.reset--;
+        } else {
+            os_callout_reset(&tx_im_inst.callout, OS_TICKS_PER_SEC/50);
+        }
         tx_im_inst.resend_end = 5;
     } else if (--tx_im_inst.resend_end > 0){
         printf("bota: resending end\n");
@@ -257,6 +261,7 @@ bota_cli_cmd(int argc, char **argv)
         tx_im_inst.reset = 5;
         tx_im_inst.slot_id = strtol(argv[3], NULL, 0);
         tx_im_inst.blocksize = 256;
+        tx_im_inst.flags = BOTA_FLAGS_SET_PERMANENT;
         os_callout_reset(&tx_im_inst.callout, 0);
 #if 0
         struct os_mbuf *om;
