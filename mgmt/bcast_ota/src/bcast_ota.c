@@ -168,6 +168,44 @@ exit_err:
     return rc;
 }
 
+
+struct os_mbuf*
+bcast_ota_get_reset_mbuf(void)
+{
+    struct nmgr_hdr *hdr;
+    struct os_mbuf *rsp;
+
+    if (g_mbuf_pool) {
+        rsp = os_mbuf_get_pkthdr(g_mbuf_pool, 0);
+    } else {
+        rsp = os_msys_get_pkthdr(0, 0);
+    }
+
+    if (!rsp) {
+        BOTA_ERR("could not get mbuf %d\n", CBOR_OVERHEAD);
+        return 0;
+    }
+
+    hdr = (struct nmgr_hdr *) os_mbuf_extend(rsp, sizeof(struct nmgr_hdr));
+    if (!hdr) {
+        BOTA_ERR("could not get hdr\n");
+        goto exit_err;
+    }
+    hdr->nh_len = 0;
+    hdr->nh_flags = 0;
+    hdr->nh_op = NMGR_OP_WRITE;
+    hdr->nh_group = htons(MGMT_GROUP_ID_DEFAULT);
+    hdr->nh_seq = 0;
+    hdr->nh_id = NMGR_ID_RESET;
+    return rsp;
+
+exit_err:
+    os_mbuf_free_chain(rsp);
+    return 0;
+}
+
+
+
 void
 bcast_ota_set_mpool(struct os_mbuf_pool *mbuf_pool)
 {

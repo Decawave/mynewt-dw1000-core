@@ -154,6 +154,7 @@ bota_upload(struct mgmt_cbuf *cb)
 
     if (!img_data) {
         BOTA_ERR("ERR no mem\n");
+        assert(0);
         return OS_ENOMEM;
     }
     
@@ -226,6 +227,7 @@ bota_upload(struct mgmt_cbuf *cb)
     /* Check that we're not corrupting the image in slot 0 */
     if (bota_state.upload.fa_id < flash_area_id_from_image_slot(1)) {
         BOTA_ERR("ERR Unknown fa_id(%d)\n", bota_state.upload.fa_id);
+        free(img_data);
         return MGMT_ERR_EINVAL;
     }
 
@@ -250,12 +252,13 @@ bota_upload(struct mgmt_cbuf *cb)
             /*
              * Image header is the first thing in the image.
              */
-            return MGMT_ERR_EINVAL;
+            rc = MGMT_ERR_EINVAL;
+            goto err_close;
         }
         new_hdr = (struct image_header *)img_data;
         if (new_hdr->ih_magic != IMAGE_MAGIC) {
-            free(img_data);
-            return MGMT_ERR_EINVAL;
+            rc = MGMT_ERR_EINVAL;
+            goto err_close;
         }
         /* TODO: Also compare target / bps + app names and use a seq_num on the
          * txim to match? Or use core/util/crc/crc16 to encode bsp+app and label with */
@@ -284,8 +287,7 @@ bota_upload(struct mgmt_cbuf *cb)
             BOTA_DEBUG("### Erasing flash ###\n");
             rc = flash_area_erase(tmp_fa, 0, tmp_fa->fa_size);
             if (rc) {
-                free(img_data);
-                return MGMT_ERR_EINVAL;
+                goto err_close;
             }
         } else {
             BOTA_DEBUG("### Continuing upload of: %d.%d.%d.%d\n", tmp_hdr.ih_ver.iv_major,

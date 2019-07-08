@@ -127,6 +127,7 @@ static int bota_cli_cmd(int argc, char **argv);
 const struct shell_param cmd_bota_param[] = {
     {"check", "<fa_id>"},
     {"txim", "<addr> <fa_id>"},
+    {"txrst", "<addr> tx reset cmd"},
     // {"txd", "<addr> <offset> <base64>"},
     {NULL,NULL},
 };
@@ -263,20 +264,14 @@ bota_cli_cmd(int argc, char **argv)
         tx_im_inst.blocksize = 256;
         tx_im_inst.flags = BOTA_FLAGS_SET_PERMANENT;
         os_callout_reset(&tx_im_inst.callout, 0);
-#if 0
-        struct os_mbuf *om;
-        rc = bcast_ota_get_packet(fid, (argc > 3)? BCAST_MODE_RESET_OFFSET : BCAST_MODE_NONE, 256, &om);
-        /* Debug base64-print of CBOR sent */
-        uint8_t *buf = malloc(OS_MBUF_PKTLEN(om));
-        os_mbuf_copydata(om, 0, OS_MBUF_PKTLEN(om), buf);
-        char *buf2 = malloc(OS_MBUF_PKTLEN(om)*4/3+8);
-        base64_encode(buf,OS_MBUF_PKTLEN(om),buf2,true);
-        free(buf);
-        console_printf("tx '%s'\n", buf2);
-        free(buf2);
-        uwb_nmgr_queue_tx(hal_dw1000_inst(0), 0xffff, om);
-        console_printf("rc=%d\n", rc);
-#endif
+    } else if (!strcmp(argv[1], "txrst")) {
+        if (argc < 3) {
+            console_printf("pls provide <addr>\n");
+            return 0;
+        }
+        uint16_t addr = strtol(argv[2], NULL, 0);
+        struct os_mbuf *om = bcast_ota_get_reset_mbuf();
+        uwb_nmgr_queue_tx(hal_dw1000_inst(0), addr, NMGR_CMD_STATE_SEND, om);
     } else {
         console_printf("Unknown cmd\n");
     }
