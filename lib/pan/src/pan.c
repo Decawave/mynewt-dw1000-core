@@ -402,8 +402,9 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     }
     memcpy(frame->array, inst->rxbuf, inst->frame_len);
 
-    if (inst->pan->config->role == PAN_ROLE_RELAY && frame->rpt_count < frame->rpt_max &&
-        !(frame->code == DWT_PAN_RESP && frame->long_address == inst->my_long_address)) {
+    if (inst->pan->config->role == PAN_ROLE_RELAY &&
+        frame->rpt_count < frame->rpt_max &&
+        frame->long_address != inst->my_long_address) {
         frame->rpt_count++;
         dw1000_set_wait4resp(inst, true);
         dw1000_write_tx_fctrl(inst, inst->frame_len, 0);
@@ -462,8 +463,9 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     }
 
     /* Postprocess, all roles */
-    if (pan->control.postprocess)
+    if (pan->control.postprocess) {
         os_eventq_put(&inst->eventq, &pan->pan_callout_postprocess.c_ev);
+    }
 
     /* Release sem */
     if (os_sem_get_count(&inst->pan->sem) == 0) {

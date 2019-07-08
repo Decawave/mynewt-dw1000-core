@@ -146,6 +146,11 @@ panmaster_dw1000_cb(struct os_event * ev)
     assert(ev->ev_arg != NULL);
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
     dw1000_pan_instance_t * pan = inst->pan;
+
+    if (pan->config->role != PAN_ROLE_MASTER) {
+        return;
+    }
+
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes]; 
     struct panmaster_node *node;
     struct image_version fw_ver;
