@@ -138,6 +138,7 @@ static bool
 cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     bool status = false;
+#if MYNEWT_VAL(CIR_ENABLED)
     cir_instance_t * cir = inst->cir;
     cir->status.valid = 0;
 
@@ -176,8 +177,8 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     #endif
         status |= true;
     }
+#endif // MYNEWT_VAL(CIR_ENABLED)
     return status;
-
 }
 
 /*! 
@@ -270,8 +271,9 @@ dw1000_mac_interface_t cbs[] = {
  * @return void
  */
 
-void cir_pkg_init(void){
-
+void cir_pkg_init(void)
+{
+#if MYNEWT_VAL(CIR_ENABLED)
     printf("{\"utime\": %lu,\"msg\": \"cir_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
     dw1000_dev_instance_t * inst = hal_dw1000_inst(0);
@@ -288,7 +290,8 @@ void cir_pkg_init(void){
     inst->cir = cir_init(NULL);
     dw1000_mac_append_interface(inst, &cbs[2]);
 #endif
-  
+
+#endif // MYNEWT_VAL(CIR_ENABLED)
 }
 
 
