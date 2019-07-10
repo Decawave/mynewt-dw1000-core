@@ -254,20 +254,30 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 {
     bool ret = false;
     struct os_mbuf * mbuf;
+    static uint16_t last_rpt_src=0;
+    static uint8_t last_rpt_seq_num=0;
+
     if(strncmp((char *)&inst->fctrl, "NM",2)) {
         goto early_ret;
     }
 
     nmgr_uwb_frame_header_t *frame = (nmgr_uwb_frame_header_t*)inst->rxbuf;
 
-    /* If this packet should be repeated, repeat it */
-    if (frame->rpt_count < frame->rpt_max) {
+    /* If this packet should be repeated, repeat it (unless already repeated) */
+    if (frame->rpt_count < frame->rpt_max &&
+        frame->dst_address != inst->my_short_address &&
+        frame->src_address != inst->my_short_address &&
+        !(frame->src_address = last_rpt_src && frame->seq_num != last_rpt_seq_num)
+        ) {
+        /* Avoid repeating more than once */
+        last_rpt_src = frame->src_address;
+        last_rpt_seq_num = frame->seq_num;
         frame->rpt_count++;
 
         dw1000_set_wait4resp(inst, true);
         dw1000_write_tx_fctrl(inst, inst->frame_len, 0);
         if (dw1000_start_tx(inst).start_tx_error) {
-            printf("nmgr_uwb rpt stx err\n");
+            /* Fail silently */
         } else {
             dw1000_write_tx(inst, inst->rxbuf, 0, inst->frame_len);
         }
