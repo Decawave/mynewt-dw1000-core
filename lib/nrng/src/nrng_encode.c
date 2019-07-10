@@ -109,7 +109,11 @@ nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base){
             nrng_frame_t * frame = nrng->frames[(base + idx)%nrng->nframes];
             if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == seq_num){
                 float range = dw1000_rng_tof_to_meters(dw1000_nrng_twr_to_tof_frames(nrng->parent, frame, frame));
+#if MYNEWT_VAL(NRNG_HUMAN_READABLE_RANGES)
+                JSON_VALUE_UINT(&value, (uint32_t)(range*1000));
+#else
                 JSON_VALUE_UINT(&value, *(uint32_t *)&range);
+#endif
                 rc |= json_encode_array_value(&encoder, &value);
                 if (i%64==0) _json_fflush();
             }

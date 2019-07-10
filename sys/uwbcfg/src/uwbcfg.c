@@ -60,6 +60,7 @@ enum {
     CFGSTR_TXRF_PWR_FINE,
     CFGSTR_RX_ANTDLY,
     CFGSTR_TX_ANTDLY,
+    CFGSTR_ROLE,
     CFGSTR_MAX
 };
 
@@ -77,13 +78,14 @@ static char uwb_config[CFGSTR_MAX][7] = {
     MYNEWT_VAL(UWBCFG_DEF_TXRF_POWER_FINE),   /* txrf_power_fine */
     MYNEWT_VAL(UWBCFG_DEF_RX_ANTDLY),         /* rx_antdly */
     MYNEWT_VAL(UWBCFG_DEF_TX_ANTDLY),         /* tx_antdly */
+    MYNEWT_VAL(UWBCFG_DEF_ROLE),              /* role */
 };
 
 static const char* _uwbcfg_str[] = {
     "channel", "prf", "datarate",
     "rx_paclen", "rx_pream_cidx", "rx_sfdtype", "rx_phrmode",
     "tx_pream_cidx", "tx_pream_len", "txrf_power_coarse", "txrf_power_fine",
-    "rx_antdly", "tx_antdly"
+    "rx_antdly", "tx_antdly", "role"
 };
 
 static struct conf_handler uwbcfg_handler = {
@@ -230,6 +232,9 @@ uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst)
     /* Antenna dlys will be updated in dw1000 automatically next time it wakes up */
     conf_value_from_str(uwb_config[CFGSTR_RX_ANTDLY], CONF_INT16, (void*)&inst->rx_antenna_delay, 0);
     conf_value_from_str(uwb_config[CFGSTR_TX_ANTDLY], CONF_INT16, (void*)&inst->tx_antenna_delay, 0);
+
+    /* Role */
+    conf_value_from_str(uwb_config[CFGSTR_ROLE], CONF_INT16, (void*)&inst->role, 0);
 
     /* Preamble */
     uint16_t preamble_len;

@@ -276,7 +276,12 @@ nmgr_uwb_img_upload(int argc, char** argv){
         } else {
             rsp = NULL;
         }
-        uwb_nmgr_queue_tx(inst, dst_add, 0, rsp);
+
+        int rc = uwb_nmgr_queue_tx(inst, dst_add, 0, rsp);
+        if (rc) {
+            /* Failed to send */
+            os_time_delay(OS_TICKS_PER_SEC/10);
+        }
 
         err = os_sem_pend(&nmgr_inst->cmd_sem, OS_TIMEOUT_NEVER);
         err |= os_sem_release(&nmgr_inst->cmd_sem);
@@ -473,7 +478,6 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         return false;
     }
     nmgr_uwb_frame_t *frame = (nmgr_uwb_frame_t*)inst->rxbuf;
-    printf("nmgr_cmds rxc %x -> %x\n", frame->src_address, frame->dst_address);
     if(inst->my_short_address != frame->dst_address){
         return true;
     }else{
@@ -498,7 +502,7 @@ rx_post_process(struct os_event* ev){
             return;
         }
         //Trim out the uwb frame header
-        int rc = os_mbuf_copyinto(nmgr_inst->rx_pkt, 0, &frame->array[sizeof(struct _ieee_std_frame_t)], inst->frame_len - sizeof(struct _ieee_std_frame_t));
+        int rc = os_mbuf_copyinto(nmgr_inst->rx_pkt, 0, &frame->array[sizeof(struct _nmgr_uwb_header)], inst->frame_len - sizeof(struct _nmgr_uwb_header));
         assert(rc==0);
 
         if(htons(frame->hdr.nh_len) > NMGR_UWB_MTU_EXT && 0){
@@ -511,7 +515,7 @@ rx_post_process(struct os_event* ev){
         nmgr_inst->cmd_id = frame->hdr.nh_id;
     }
     else{
-        nmgr_inst->rem_len -= (inst->frame_len - sizeof(struct _ieee_std_frame_t));
+        nmgr_inst->rem_len -= (inst->frame_len - sizeof(struct _nmgr_uwb_header));
         if(nmgr_inst->rem_len == 0)
             nmgr_inst->repeat_mode = 0;
         else{
@@ -520,7 +524,7 @@ rx_post_process(struct os_event* ev){
             dw1000_start_rx(inst);
         }
         uint16_t cur_len = OS_MBUF_PKTLEN(nmgr_inst->rx_pkt);
-        os_mbuf_copyinto(nmgr_inst->rx_pkt, cur_len, &frame->array[sizeof(struct _ieee_std_frame_t)], inst->frame_len - sizeof(struct _ieee_std_frame_t));
+        os_mbuf_copyinto(nmgr_inst->rx_pkt, cur_len, &frame->array[sizeof(struct _nmgr_uwb_header)], inst->frame_len - sizeof(struct _nmgr_uwb_header));
     }
     //Start decoding
     if(nmgr_inst->repeat_mode == 0){
@@ -556,7 +560,7 @@ rx_post_process(struct os_event* ev){
                     .attribute = NULL
                 }
             };
-            cbor_read_object(&nmgr_inst->n_b.it, attrs);
+            rc = cbor_read_object(&nmgr_inst->n_b.it, attrs);
             if(rc != 0){
                 nmgr_inst->err_status = (uint8_t)rc;
                 
@@ -681,4 +685,10 @@ err:
             os_mbuf_free_chain(nmgr_inst->rx_pkt);
         }
     }
+}
+
+struct os_eventq*
+nmgr_cmds_get_eventq()
+{
+    return &nmgr_inst->nmgr_eventq;
 }

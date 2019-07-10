@@ -66,11 +66,10 @@ typedef enum _dw1000_dev_modes_t{
 }dw1000_dev_modes_t;
  
 //! Device Role
-typedef enum _dw1000_dev_role_t{
-    NODE_0,                         //!< Device type of NODE_0   
-    NODE,                           //!< Device type of NODE
-    TAG                             //!< Device type of tag
-}dw1000_dev_role_t;
+#define DW1000_ROLE_CCP_MASTER   (0x0001)
+#define DW1000_ROLE_PAN_MASTER   (0x0002)
+#define DW1000_ROLE_ANCHOR       (0x0004)
+
 
 //! Extension ids for services.
 typedef enum _dw1000_extension_id_t{
@@ -361,7 +360,7 @@ typedef struct _dw1000_dev_instance_t{
     dw1000_dev_config_t config;                    //!< DW1000 device configurations  
     dw1000_dev_control_t control;                  //!< DW1000 device control parameters      
     dw1000_dev_status_t status;                    //!< DW1000 device status 
-    dw1000_dev_role_t dev_type;                    //!< Type of the device (tag/node)
+    uint16_t role;                                 //!< Roles for this device
     struct _phy_attributes_t attrib;
     
 }dw1000_dev_instance_t;

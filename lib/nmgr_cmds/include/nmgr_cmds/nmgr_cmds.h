@@ -35,10 +35,12 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <mgmt/mgmt.h>
+#include <nmgr_uwb/nmgr_uwb.h>
 
 typedef union{
     struct _nmgr_uwb_frame_t{
-        struct _ieee_std_frame_t;
+        struct _nmgr_uwb_header;
         union _payload{
             struct nmgr_hdr hdr;
             uint8_t payload[NMGR_UWB_MTU_EXT];
@@ -50,6 +52,7 @@ typedef union{
 #ifdef __cplusplus
 extern "C" {
 #endif
+struct os_eventq* nmgr_cmds_get_eventq();
 
 #ifdef __cplusplus
 }

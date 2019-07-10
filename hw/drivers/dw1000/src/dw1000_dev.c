@@ -326,16 +326,16 @@ retry:
     inst->my_short_address = inst->partID & 0xffff;
 
     if (inst == hal_dw1000_inst(0)) {
-#if  MYNEWT_VAL(DW1000_DEVICE_ID_0)
-        inst->my_short_address = MYNEWT_VAL(DW1000_DEVICE_ID_0);
+#if  MYNEWT_VAL(DW_DEVICE_ID_0)
+        inst->my_short_address = MYNEWT_VAL(DW_DEVICE_ID_0);
 #endif
     } else if (inst == hal_dw1000_inst(1)){
-#if  MYNEWT_VAL(DW1000_DEVICE_ID_1)
-        inst->my_short_address = MYNEWT_VAL(DW1000_DEVICE_ID_1);
+#if  MYNEWT_VAL(DW_DEVICE_ID_1)
+        inst->my_short_address = MYNEWT_VAL(DW_DEVICE_ID_1);
 #endif
     } else if (inst == hal_dw1000_inst(2)){
-#if  MYNEWT_VAL(DW1000_DEVICE_ID_2)
-        inst->my_short_address = MYNEWT_VAL(DW1000_DEVICE_ID_2);
+#if  MYNEWT_VAL(DW_DEVICE_ID_2)
+        inst->my_short_address = MYNEWT_VAL(DW_DEVICE_ID_2);
 #endif
     }
     inst->my_long_address = (((uint64_t)inst->lotID) << 32) + inst->partID;
