@@ -335,7 +335,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     
                 /* Compensate for time of flight using the ccp function */
                 if (inst->ccp->tof_comp_cb) {
-                    frame->rx_timestamp -= inst->ccp->tof_comp_cb(0, frame->src_address)*(1.0l - wcs->skew);
+                    frame->rx_timestamp -= inst->ccp->tof_comp_cb(frame->src_address)*(1.0l - wcs->skew);
                 }
 
                 /* Compensate for relays */
