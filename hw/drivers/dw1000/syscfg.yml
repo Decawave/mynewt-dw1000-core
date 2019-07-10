@@ -73,15 +73,15 @@ syscfg.defs:
     DW_DEVICE_ID_0:
         description: >
           Default Device ID, defaults to last 16 bit of prodid if set to 0 here
-        value: ((const uint16_t)0)
+        value: 0
     DW_DEVICE_ID_1:
         description: >
           Default Device ID, defaults to last 16 bit of prodid if set to 0 here
-        value: ((const uint16_t)0)
+        value: 0
     DW_DEVICE_ID_2:
         description: >
           Default Device ID, defaults to last 16 bit of prodid if set to 0 here
-        value: ((const uint16_t)0)
+        value: 0
     DW1000_PKG_INIT_LOG:
         description: 'Enable init messages showing each package has been initialised'
         value:  1
