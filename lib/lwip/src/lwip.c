@@ -257,7 +257,9 @@ dw1000_lwip_write(dw1000_dev_instance_t * inst, struct pbuf *p, dw1000_lwip_mode
 	else
 		err = os_sem_pend(&inst->lwip->sem, 500); // Wait for completion of transactions units os_clicks
 
-	os_sem_release(&inst->lwip->sem);
+    if (os_sem_get_count(&inst->lwip->sem) == 0) {
+        os_sem_release(&inst->lwip->sem);
+    }
 	return inst->status;
 }
 
