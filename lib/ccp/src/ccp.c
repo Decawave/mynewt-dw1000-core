@@ -604,6 +604,11 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     ccp->local_epoch = frame->reception_timestamp = inst->rxtimestamp;
     ccp->period = (frame->transmission_interval >> 16);
     frame->carrier_integrator = inst->carrier_integrator;
+    if (inst->config.rxttcko_enable) {
+        frame->rxttcko = inst->rxttcko;
+    } else {
+        frame->rxttcko = 0;
+    }
 
     /* Compensate for time of flight */
     if (inst->ccp->tof_comp_cb) {
@@ -634,6 +639,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         ccp->os_epoch -= os_cputime_usecs_to_ticks(dw1000_dwt_usecs_to_usecs((repeat_dly >> 16)));
         /* Carrier integrator is only valid if direct from the master */
         frame->carrier_integrator = 0;
+        frame->rxttcko = 0;
     }
 
     /* Cascade relay of ccp packet */

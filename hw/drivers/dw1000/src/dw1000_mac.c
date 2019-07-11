@@ -1070,6 +1070,59 @@ dw1000_calc_clock_offset_ratio(struct _dw1000_dev_instance_t * inst, int32_t int
 }
 
 /**
+ * API for reading time tracking offset
+ *
+ * @brief This is used to read the integrator of the RX timing recovery loop
+ *
+ * NOTE: This is a 10-bit signed quantity, the function sign extends the most 
+ *       significant bit, which is bit #18 (numbering from bit zero) to return 
+ *       a 32-bit signed integer value.
+ *
+ * @param inst          Pointer to _dw1000_dev_instance_t.
+ *
+ * @return int32_t the signed integral part of the RX timing recovery loop.
+ *                 A positive value means the local RX clock is running faster than the remote TX device.
+ */
+int32_t
+dw1000_read_time_tracking_offset(struct _dw1000_dev_instance_t * inst)
+{
+#define B18_SIGN_EXTEND_TEST (0x00040000UL)
+#define B18_SIGN_EXTEND_MASK (0xFFFC0000UL)
+    uint32_t  regval=0;
+    /* Read 3 bytes (19-bit quantity) */
+    regval = dw1000_read_reg(inst, RX_TTCKO_ID, 0, 3);
+
+    /* Check for a negative number */
+    if (regval & B18_SIGN_EXTEND_TEST) {
+        /* sign extend bit #18 to whole word */
+        regval |= B18_SIGN_EXTEND_MASK;
+    } else {
+        /* make sure upper bits are clear if not sign extending */
+        regval &= RX_TTCKO_RXTOFS_MASK;
+    }
+    /* cast unsigned value to signed quantity */
+    return (int32_t) regval;
+}
+
+/**
+ * API for calculating the clock offset ratio from the time tracking offset
+ *
+ * @param inst Pointer to _dw1000_dev_instance_t.
+ * @param integrator_val ttcko
+ *
+ * @return float   the relative clock offset ratio
+ */
+float
+dw1000_calc_clock_offset_ratio_ttco(struct _dw1000_dev_instance_t * inst, int32_t ttcko)
+{
+    int32_t denom = 0x01F00000;
+    if (inst->config.prf != DWT_PRF_16M) {
+        denom = 0x01FC0000;
+    }
+    return (float)-ttcko / (float)denom;
+}
+
+/**
  * API to read the RX signal quality diagnostic data.
  *
  * @param inst          Pointer to _dw1000_dev_instance_t.
@@ -1316,6 +1369,11 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         
           // Toggle the Host side Receive Buffer Pointer
         if (inst->config.dblbuffon_enabled) {
+            // The rxttcko is a poor replacement for the carrier_integrator but
+            // better than nothing
+            if (inst->config.rxttcko_enable) {
+                inst->rxttcko = dw1000_read_time_tracking_offset(inst);
+            }
             inst->status.overrun_error = dw1000_checkoverrun(inst);
             if (inst->status.overrun_error == 0){ 
                  uint8_t mask = dw1000_read_reg(inst, SYS_MASK_ID, 1 , sizeof(uint8_t)) ;  
@@ -1333,7 +1391,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
                     dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
             }
         }else{
-            // carrier_integrator only avialble while in single buffer mode.
+            // carrier_integrator only avilable while in single buffer mode.
             inst->carrier_integrator = dw1000_read_carrier_integrator(inst);
 #if MYNEWT_VAL(CIR_ENABLED) || MYNEWT_VAL(PMEM_ENABLED) 
             // Call CIR complete calbacks if present

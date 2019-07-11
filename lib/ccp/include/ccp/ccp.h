@@ -111,6 +111,7 @@ typedef union {
         struct _ccp_blink_frame_t;          
         uint64_t reception_timestamp;       //!< Reception timestamp
         int32_t carrier_integrator;         //!< Receiver carrier_integrator
+        int32_t rxttcko;                    //!< Receiver time tracking offset
     }__attribute__((__packed__, aligned(1)));
     uint8_t array[sizeof(struct _ccp_frame_t)];
 }ccp_frame_t;

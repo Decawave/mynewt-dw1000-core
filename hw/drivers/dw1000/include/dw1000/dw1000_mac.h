@@ -193,6 +193,8 @@ float dw1000_estimate_los(float rssi, float fppl);
     
 int32_t dw1000_read_carrier_integrator(struct _dw1000_dev_instance_t * inst);
 float dw1000_calc_clock_offset_ratio(struct _dw1000_dev_instance_t * inst, int32_t integrator_val);
+int32_t dw1000_read_time_tracking_offset(struct _dw1000_dev_instance_t * inst);
+float dw1000_calc_clock_offset_ratio_ttco(struct _dw1000_dev_instance_t * inst, int32_t ttcko);
 
 void dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag);
 #define dw1000_set_preamble_timeout(counts) dw1000_write_reg(inst, DRX_CONF_ID, DRX_PRETOC_OFFSET, counts, sizeof(uint16_t))

@@ -192,6 +192,7 @@ typedef struct _dw1000_dev_config_t{
     uint32_t framefilter_enabled:1;         //!< Enables frame fileter
     uint32_t trxoff_enable:1;               //!< Enables forced TRXOFF in start_tx and start_tx interface 
     uint32_t rxdiag_enable:1;               //!< Enables receive diagnostics parameters 
+    uint32_t rxttcko_enable:1;              //!< Enables reading of time tracking integrator (used in dblbuffer only as carrier integrator isn't available) 
     uint32_t rxauto_enable:1;               //!< Enables auto receive parameter
     uint32_t bias_correction_enable:1;      //!< Enables bias correction ploynomial
     uint32_t LDE_enable:1;                  //!< Enables LDE
@@ -295,7 +296,8 @@ typedef struct _dw1000_dev_instance_t{
     uint64_t timestamp;            //!< Timestamp
     uint64_t rxtimestamp;          //!< Receive timestamp
     uint64_t txtimestamp;          //!< Transmit timestamp
-    int32_t carrier_integrator;
+    int32_t carrier_integrator;    //!< Carrier integrator
+    int32_t rxttcko;               //!< Integrator
     uint16_t PANID;                //!< personal network inetrface id
     uint16_t slot_id;              //!< Slot id 
     uint16_t cell_id;              //!< Cell id  
