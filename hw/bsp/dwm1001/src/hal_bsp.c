@@ -81,12 +81,34 @@ static const struct dw1000_dev_cfg dw1000_0_cfg = {
 
 #endif
 
+#if MYNEWT_VAL(SPI_1_MASTER)
+/*
+ * NOTE: Our HAL expects that the SS pin, if used, is treated as a gpio line
+ * and is handled outside the SPI routines.
+ */
+static const struct nrf52_hal_spi_cfg os_bsp_spi1m_cfg = {
+    .sck_pin      = 4,
+    .mosi_pin     = 6,
+    .miso_pin     = 7,
+};
+#endif
+
+
 #if MYNEWT_VAL(SPI_0_SLAVE)
 static const struct nrf52_hal_spi_cfg os_bsp_spi0s_cfg = {
     .sck_pin      = 16,
     .mosi_pin     = 20,
     .miso_pin     = 18,
     .ss_pin       = 17,
+};
+#endif
+
+#if MYNEWT_VAL(SPI_1_SLAVE)
+static const struct nrf52_hal_spi_cfg os_bsp_spi1s_cfg = {
+    .sck_pin      = 4,
+    .mosi_pin     = 6,
+    .miso_pin     = 7,
+    .ss_pin       = 3,
 };
 #endif
 
@@ -223,6 +245,11 @@ void hal_bsp_init(void)
     assert(rc == 0);
 #endif
 
+#if MYNEWT_VAL(SPI_1_MASTER)
+    rc = hal_spi_init(1, (void *)&os_bsp_spi1m_cfg, HAL_SPI_TYPE_MASTER);
+    assert(rc == 0);
+#endif
+
 #if MYNEWT_VAL(DW1000_DEVICE_0)
     dw1000_0 = hal_dw1000_inst(0);
     rc = os_dev_create((struct os_dev *) dw1000_0, "dw1000_0",
@@ -232,6 +259,11 @@ void hal_bsp_init(void)
     
 #if MYNEWT_VAL(SPI_0_SLAVE)
     rc = hal_spi_init(0, (void *)&os_bsp_spi0s_cfg, HAL_SPI_TYPE_SLAVE);
+    assert(rc == 0);
+#endif
+
+#if MYNEWT_VAL(SPI_1_SLAVE)
+    rc = hal_spi_init(1, (void *)&os_bsp_spi1s_cfg, HAL_SPI_TYPE_SLAVE);
     assert(rc == 0);
 #endif
 
