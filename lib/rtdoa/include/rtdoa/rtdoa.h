@@ -54,7 +54,7 @@
     STATS_SECT_ENTRY(reset)
 STATS_SECT_END
 
-#define RTDOA_STATS_INC(__X) STATS_INC(inst->rtdoa->stat, __X)
+#define RTDOA_STATS_INC(__X) STATS_INC(rtdoa->stat, __X)
 #else
 #define RTDOA_STATS_INC(__X) {}
 #endif
@@ -102,7 +102,8 @@ typedef union {
 
 
 typedef struct _dw1000_rtdoa_instance_t{
-    struct _dw1000_dev_instance_t * parent;
+    struct _dw1000_dev_instance_t * dev_inst;   //!< Pointer to _dw1000_dev_instance_t
+    struct _dw1000_ccp_instance_t * ccp;
 #if MYNEWT_VAL(RTDOA_STATS)
     STATS_SECT_DECL(rtdoa_stat_section) stat; //!< Stats instance
 #endif
@@ -127,12 +128,12 @@ extern "C" {
 #endif
 
 dw1000_rtdoa_instance_t * dw1000_rtdoa_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes);
-float rtdoa_tdoa_between_frames(struct _dw1000_dev_instance_t * inst, rtdoa_frame_t *req_frame, rtdoa_frame_t *resp_frame);
+float rtdoa_tdoa_between_frames(struct _dw1000_rtdoa_instance_t *rtdoa, rtdoa_frame_t *req_frame, rtdoa_frame_t *resp_frame);
 
-void dw1000_rtdoa_set_frames(dw1000_dev_instance_t * inst, uint16_t nframes);
-dw1000_dev_status_t dw1000_rtdoa_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config);
+void dw1000_rtdoa_set_frames(struct _dw1000_rtdoa_instance_t *rtdoa, uint16_t nframes);
+dw1000_dev_status_t dw1000_rtdoa_config(struct _dw1000_rtdoa_instance_t *rtdoa, dw1000_rng_config_t * config);
 
-dw1000_dev_status_t dw1000_rtdoa_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout);
+dw1000_dev_status_t dw1000_rtdoa_listen(dw1000_rtdoa_instance_t * rtdoa, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout);
 uint32_t rtdoa_usecs_to_response(dw1000_dev_instance_t * inst, rtdoa_request_frame_t * req,
                                  uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration);
 uint64_t rtdoa_local_to_master64(dw1000_dev_instance_t * inst, uint64_t dtu_time, rtdoa_frame_t *req_frame);

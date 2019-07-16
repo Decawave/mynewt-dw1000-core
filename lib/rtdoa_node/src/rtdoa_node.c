@@ -48,6 +48,12 @@
 #define DIAGMSG(s,u)
 #endif
 
+static dw1000_rng_config_t g_config = {
+    .tx_holdoff_delay = MYNEWT_VAL(RTDOA_TX_HOLDOFF),       // Send Time delay in usec.
+    .rx_timeout_delay = MYNEWT_VAL(RTDOA_RX_TIMEOUT),       // Receive response timeout in usec
+    .tx_guard_delay = MYNEWT_VAL(RTDOA_TX_GUARD_DELAY)
+};
+
 static bool tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
@@ -56,6 +62,7 @@ static bool reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
 static dw1000_mac_interface_t g_cbs = {
     .id = DW1000_RTDOA,
+    .inst_ptr = 0,
     .tx_complete_cb = tx_complete_cb,
     .rx_complete_cb = rx_complete_cb,
     .rx_timeout_cb = rx_timeout_cb,
@@ -69,11 +76,20 @@ static dw1000_mac_interface_t g_cbs = {
  *
  * @return void
  */
-void rtdoa_node_pkg_init(void){
+void rtdoa_node_pkg_init(void)
+{
+    struct _dw1000_rtdoa_instance_t *rtdoa = 0;
 #if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"rtdoa_node_pkg_init\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
+#if MYNEWT_VAL(DW1000_DEVICE_0)
+    g_cbs.inst_ptr = rtdoa = dw1000_rtdoa_init(hal_dw1000_inst(0), &g_config, MYNEWT_VAL(RTDOA_NFRAMES));
+    dw1000_rtdoa_set_frames(rtdoa, MYNEWT_VAL(RTDOA_NFRAMES));
+#endif
     dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs);
+
+    /* Assume that the ccp has been added to the dev instance before rtdoa */
+    rtdoa->ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_CCP);
 }
 
 
@@ -91,12 +107,12 @@ rtdoa_node_free(dw1000_dev_instance_t * inst){
 }
 
 dw1000_dev_status_t
-dw1000_rtdoa_request(dw1000_dev_instance_t * inst, uint64_t delay)
+dw1000_rtdoa_request(struct _dw1000_rtdoa_instance_t *rtdoa, uint64_t delay)
 {
+    assert(rtdoa);
+    dw1000_dev_instance_t * inst = rtdoa->dev_inst;
+    assert(inst);
     /* This function executes on the device that initiates the rtdoa sequence */
-    assert(inst->rtdoa);
-    dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
-
     os_error_t err = os_sem_pend(&rtdoa->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
     RTDOA_STATS_INC(rtdoa_request);
@@ -115,7 +131,8 @@ dw1000_rtdoa_request(dw1000_dev_instance_t * inst, uint64_t delay)
     dw1000_set_delay_start(inst, delay);
 
     /* Calculate tx_timestamp, really use wcs here?!?! */
-    wcs_instance_t * wcs = inst->ccp->wcs;
+    dw1000_ccp_instance_t *ccp = rtdoa->ccp;
+    wcs_instance_t * wcs = ccp->wcs;
     frame->tx_timestamp = (wcs_local_to_master64(wcs, delay) & 0xFFFFFFFFFFFFFE00ULL);
     frame->tx_timestamp += inst->tx_antenna_delay;
     /* Also set the local rx_timestamp to allow us to also transmit in the next part */
@@ -142,12 +159,12 @@ dw1000_rtdoa_request(dw1000_dev_instance_t * inst, uint64_t delay)
 
 
 static dw1000_dev_status_t
-tx_rtdoa_response(dw1000_dev_instance_t * inst)
+tx_rtdoa_response(dw1000_rtdoa_instance_t * rtdoa)
 {
+    assert(rtdoa);
     /* This function executes on the device that responds to a rtdoa request */
 
-    assert(inst->rtdoa);
-    dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
+    dw1000_dev_instance_t * inst = rtdoa->dev_inst;
     dw1000_rng_config_t * config = &rtdoa->config;
 
     /* Rx-timestamp will be compensated for relay */
@@ -198,12 +215,13 @@ tx_rtdoa_response(dw1000_dev_instance_t * inst)
  * @return true on sucess
  */
 static bool 
-rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    /* Place holder */
+rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
     
-    dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
     if(os_sem_get_count(&rtdoa->sem) == 0){
         RTDOA_STATS_INC(rx_error);
         os_error_t err = os_sem_release(&rtdoa->sem);
@@ -224,7 +242,7 @@ rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 static bool 
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
+    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
     if(os_sem_get_count(&rtdoa->sem) == 1) {
         return false;
     }
@@ -247,8 +265,10 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-    if(os_sem_get_count(&inst->rtdoa->sem) == 0){
-        os_error_t err = os_sem_release(&inst->rtdoa->sem);  
+    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+
+    if(os_sem_get_count(&rtdoa->sem) == 0){
+        os_error_t err = os_sem_release(&rtdoa->sem);  
         assert(err == OS_OK);
         RTDOA_STATS_INC(reset);
         return true;
@@ -267,20 +287,20 @@ reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 static bool 
 tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-    assert(inst->rtdoa);
-    dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
-
+    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    assert(rtdoa);
+    
     /* If we sent the request or a repeat of the request, send response now */
     rtdoa_request_frame_t * frame = (rtdoa_request_frame_t *) rtdoa->frames[rtdoa->idx%rtdoa->nframes];
     if (frame->code == DWT_RTDOA_REQUEST) {
         /* Transmit response packet */
-        tx_rtdoa_response(inst);
+        tx_rtdoa_response(rtdoa);
         // printf("dx_time %d %llx d:%llx\n", slot_idx, dx_time, dx_time - rtdoa->req_frame->rx_timestamp);
         return true;
     }
 
-    if(os_sem_get_count(&inst->rtdoa->sem) == 0){
-        os_error_t err = os_sem_release(&inst->rtdoa->sem);  
+    if(os_sem_get_count(&rtdoa->sem) == 0){
+        os_error_t err = os_sem_release(&rtdoa->sem);  
         assert(err == OS_OK);
         return true;
     } else {
@@ -298,9 +318,9 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 static bool 
 rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-    assert(inst->rtdoa);
-    dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
-    wcs_instance_t * wcs = inst->ccp->wcs;
+    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    dw1000_ccp_instance_t *ccp = rtdoa->ccp;
+    wcs_instance_t * wcs = ccp->wcs;
 
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
@@ -334,8 +354,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->rx_timestamp = inst->rxtimestamp;
     
                 /* Compensate for time of flight using the ccp function */
-                if (inst->ccp->tof_comp_cb) {
-                    frame->rx_timestamp -= inst->ccp->tof_comp_cb(frame->src_address)*(1.0l - wcs->skew);
+                if (ccp->tof_comp_cb) {
+                    frame->rx_timestamp -= ccp->tof_comp_cb(frame->src_address)*(1.0l - wcs->skew);
                 }
 
                 /* Compensate for relays */
@@ -351,7 +371,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     memcpy(tx_frame.array, frame->array, sizeof(tx_frame));
                     tx_frame.src_address = inst->my_short_address;
                     tx_frame.rpt_count++;
-                    uint64_t tx_timestamp = inst->rxtimestamp + tx_frame.rpt_count*((uint64_t)inst->ccp->config.tx_holdoff_dly<<16);
+                    uint64_t tx_timestamp = inst->rxtimestamp + tx_frame.rpt_count*((uint64_t)ccp->config.tx_holdoff_dly<<16);
                     tx_timestamp &= 0x0FFFFFFFE00UL;
                     dw1000_set_delay_start(inst, tx_timestamp);
                     tx_timestamp += inst->tx_antenna_delay;
@@ -361,15 +381,15 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     dw1000_write_tx(inst, tx_frame.array, 0, sizeof(tx_frame));
                     if (dw1000_start_tx(inst).start_tx_error) {
                         RTDOA_STATS_INC(tx_relay_error);
-                        if(os_sem_get_count(&inst->rtdoa->sem) == 0){
-                            os_sem_release(&inst->rtdoa->sem);
+                        if(os_sem_get_count(&rtdoa->sem) == 0){
+                            os_sem_release(&rtdoa->sem);
                         }
                     } else {
                         RTDOA_STATS_INC(tx_relay_ok);
                     }
                 } else {
                     /* Queue up response message directly if not relaying request */
-                    tx_rtdoa_response(inst);
+                    tx_rtdoa_response(rtdoa);
                 }
 
                 break; 

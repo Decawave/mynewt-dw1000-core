@@ -338,9 +338,6 @@ typedef struct _dw1000_dev_instance_t{
 #if MYNEWT_VAL(NRNG_ENABLED)
     struct _dw1000_nrng_instance_t * nrng;
 #endif
-#if MYNEWT_VAL(RTDOA_ENABLED)
-    struct _dw1000_rtdoa_instance_t * rtdoa;
-#endif
 #if MYNEWT_VAL(CIR_ENABLED)
     struct _cir_instance_t * cir;                  //!< CIR instance
 #endif

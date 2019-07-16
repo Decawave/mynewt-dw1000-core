@@ -48,6 +48,12 @@
 #define DIAGMSG(s,u)
 #endif
 
+static dw1000_rng_config_t g_config = {
+    .tx_holdoff_delay = MYNEWT_VAL(RTDOA_TX_HOLDOFF),       // Send Time delay in usec.
+    .rx_timeout_delay = MYNEWT_VAL(RTDOA_RX_TIMEOUT),       // Receive response timeout in usec
+    .tx_guard_delay = MYNEWT_VAL(RTDOA_TX_GUARD_DELAY)
+};
+
 static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
@@ -70,10 +76,19 @@ static dw1000_mac_interface_t g_cbs = {
 void
 rtdoa_tag_pkg_init(void)
 {
+    struct _dw1000_rtdoa_instance_t *rtdoa = 0;
 #if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"rtdoa_tag_pkg_init\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
+
+#if MYNEWT_VAL(DW1000_DEVICE_0)
+    g_cbs.inst_ptr = rtdoa = dw1000_rtdoa_init(hal_dw1000_inst(0), &g_config, MYNEWT_VAL(RTDOA_NFRAMES));
+    dw1000_rtdoa_set_frames(rtdoa, MYNEWT_VAL(RTDOA_NFRAMES));
+#endif
     dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs);
+
+    /* Assume that the ccp has been added to the dev instance before rtdoa */
+    rtdoa->ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_CCP);
 }
 
 
@@ -100,12 +115,12 @@ rtdoa_tag_free(dw1000_dev_instance_t * inst)
  * @return true on sucess
  */
 static bool 
-rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    /* Place holder */
+rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
-    
-    dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
+
     if(os_sem_get_count(&rtdoa->sem) == 0){
         RTDOA_STATS_INC(rx_error);
         os_error_t err = os_sem_release(&rtdoa->sem);
@@ -126,7 +141,7 @@ rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 static bool 
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
+    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
     if(os_sem_get_count(&rtdoa->sem) == 0) {
         RTDOA_STATS_INC(rx_timeout);
         os_error_t err = os_sem_release(&rtdoa->sem);
@@ -147,8 +162,9 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-    if(os_sem_get_count(&inst->rtdoa->sem) == 0){
-        os_error_t err = os_sem_release(&inst->rtdoa->sem);  
+    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    if(os_sem_get_count(&rtdoa->sem) == 0){
+        os_error_t err = os_sem_release(&rtdoa->sem);  
         assert(err == OS_OK);
         RTDOA_STATS_INC(reset);
         return true;
@@ -166,10 +182,10 @@ reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 static bool 
 rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
+    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
     int64_t new_timeout;
-    assert(inst->rtdoa);
-    dw1000_rtdoa_instance_t * rtdoa = inst->rtdoa;
-    wcs_instance_t * wcs = inst->ccp->wcs;
+    dw1000_ccp_instance_t *ccp = rtdoa->ccp;
+    wcs_instance_t * wcs = ccp->wcs;
 
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
@@ -251,7 +267,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     return true;
 
 adj_to_return:
-    new_timeout = (int64_t)inst->rtdoa->timeout - (int64_t)inst->rxtimestamp;
+    new_timeout = (int64_t)rtdoa->timeout - (int64_t)inst->rxtimestamp;
     if (new_timeout < 0) new_timeout = 1;
     dw1000_set_rx_timeout(inst, (uint16_t)(new_timeout>>16));
     return true;

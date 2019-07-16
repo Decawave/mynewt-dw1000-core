@@ -36,5 +36,3 @@ pkg.deps:
     - "@apache-mynewt-core/encoding/json"
     - "@mynewt-dw1000-core/lib/rng"
 
-pkg.init:
-    rtdoa_pkg_init: 411
