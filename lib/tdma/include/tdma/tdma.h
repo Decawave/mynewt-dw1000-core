@@ -43,6 +43,8 @@ extern "C" {
 #include <dw1000/dw1000_phy.h>
 #include <os/queue.h>
 
+#include <ccp/ccp.h>
+
 #define TDMA_TASKS_ENABLE
 
 #if MYNEWT_VAL(TDMA_STATS)
@@ -73,6 +75,9 @@ typedef struct _tdma_slot_t{
 //! Structure of tdma instance
 typedef struct _tdma_instance_t{
     struct _dw1000_dev_instance_t * parent;  //!< Pointer to _dw1000_dev_instance_t
+#if MYNEWT_VAL(CCP_ENABLED)
+    dw1000_ccp_instance_t *ccp;              //!< Pointer to ccp instance
+#endif
 #if MYNEWT_VAL(TDMA_STATS)
     STATS_SECT_DECL(tdma_stat_section) stat;  //!< Stats instance
 #endif
@@ -81,8 +86,8 @@ typedef struct _tdma_instance_t{
     struct os_mutex mutex;                   //!< Structure of os_mutex
     uint16_t idx;                            //!< Slot number
     uint16_t nslots;                         //!< Number of slots 
-    uint32_t os_epoch;                          //!< Epoch timestamp
-    struct os_callout event_cb;              //!< Sturcture of event_cb
+    uint32_t os_epoch;                       //!< Epoch timestamp
+    struct os_callout event_cb;              //!< Structure of event_cb
 #ifdef TDMA_TASKS_ENABLE
     struct os_eventq eventq;                 //!< Structure of os events
     struct os_task task_str;                 //!< Structure of os tasks
@@ -102,8 +107,8 @@ void tdma_assign_slot(struct _tdma_instance_t * inst, void (* callout )(struct o
 void tdma_release_slot(struct _tdma_instance_t * inst, uint16_t idx);
 void tdma_stop(struct _tdma_instance_t * tdma);
 
-uint64_t tdma_tx_slot_start(struct _dw1000_dev_instance_t * inst, float idx);
-uint64_t tdma_rx_slot_start(struct _dw1000_dev_instance_t * inst, float idx);
+uint64_t tdma_tx_slot_start(struct _tdma_instance_t * tdma, float idx);
+uint64_t tdma_rx_slot_start(struct _tdma_instance_t * tdma, float idx);
 
 #ifdef __cplusplus
 }

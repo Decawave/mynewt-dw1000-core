@@ -215,6 +215,7 @@ uint32_t dw1000_read_txtime_lo(struct _dw1000_dev_instance_t * inst);
 #define dw1000_get_irqstatus(inst) ((uint8_t) dw1000_read_reg(inst, SYS_STATUS_ID, SYS_STATUS_OFFSET,sizeof(uint8_t)) & (uint8_t) SYS_STATUS_IRQS)
 
 void dw1000_configcwmode(struct _dw1000_dev_instance_t * inst, uint8_t chan);
+void* dw1000_mac_find_cb_inst_ptr(dw1000_dev_instance_t * inst, uint16_t id);
 
 #ifdef __cplusplus
 }

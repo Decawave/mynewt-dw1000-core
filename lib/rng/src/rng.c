@@ -646,7 +646,8 @@ dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng, uint16_t idx){
         case DWT_SS_TWR ... DWT_SS_TWR_END:
         case DWT_SS_TWR_EXT ... DWT_SS_TWR_EXT_END:{
 #if MYNEWT_VAL(WCS_ENABLED)
-            wcs_instance_t * wcs = inst->ccp->wcs;
+            dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+            wcs_instance_t * wcs = ccp->wcs;
             float skew = wcs->skew;
 #else
             float skew = dw1000_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);

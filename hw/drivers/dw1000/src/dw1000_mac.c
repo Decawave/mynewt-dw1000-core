@@ -1769,3 +1769,26 @@ dw1000_configcwmode(struct _dw1000_dev_instance_t * inst, uint8_t chan)
     dw1000_write_reg(inst, TX_CAL_ID, TC_PGTEST_OFFSET,
                      TC_PGTEST_CW, TC_PGTEST_LEN);
 }
+
+
+/**
+ *  Finds the first instance pointer to the callback structure 
+ *  setup with a specific id.
+ *
+ * @param inst     Pointer to dw1000_dev_instance_t.
+ * @param id       Corresponding id to find (DW1000_CCP,...)
+ * @return void pointer to instance, null otherwise
+ */
+void*
+dw1000_mac_find_cb_inst_ptr(dw1000_dev_instance_t * inst, uint16_t id)
+{
+    dw1000_mac_interface_t * cbs = NULL;
+    if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
+        SLIST_FOREACH(cbs, &inst->interface_cbs, next){
+            if (cbs != NULL && cbs->inst_ptr && cbs->id==id) {
+                return cbs->inst_ptr;
+            }
+        }
+    }
+    return 0;
+}

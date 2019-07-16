@@ -164,10 +164,10 @@ void wcs_update_cb(struct os_event * ev){
             /* Update pointer in case realloc happens in timescale_init */
             states = (timescale_states_t *) (timescale->eke->x);
             states->time = (double) wcs->master_epoch.lo;
-            states->skew = (1.0l + (double ) dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator)) * MYNEWT_VAL(WCS_DTU);
+            states->skew = (1.0l + (double ) dw1000_calc_clock_offset_ratio(ccp->dev_inst, frame->carrier_integrator)) * MYNEWT_VAL(WCS_DTU);
             wcs->status.valid = wcs->status.initialized = 1;
         }else{
-            double skew = (1.0l + (double ) dw1000_calc_clock_offset_ratio(ccp->parent, frame->carrier_integrator)) * MYNEWT_VAL(WCS_DTU);
+            double skew = (1.0l + (double ) dw1000_calc_clock_offset_ratio(ccp->dev_inst, frame->carrier_integrator)) * MYNEWT_VAL(WCS_DTU);
             double T = wcs->observed_interval / WCS_DTU ; // observed interval in seconds, master reference
             //previous_frame->transmission_timestamp = (frame->transmission_timestamp + ((uint64_t)inst->ccp->period << 16)) & 0x0FFFFFFFFFFUL;
             //double T = 1e-6l * frame->transmission_interval * wcs->nT;   // interval in seconds referenced to master
@@ -318,7 +318,8 @@ uint64_t wcs_local_to_master(wcs_instance_t * wcs, uint64_t dtu_time){
  */
 
 inline uint64_t wcs_read_systime(struct _dw1000_dev_instance_t * inst){
-    wcs_instance_t * wcs = inst->ccp->wcs;
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    wcs_instance_t * wcs = ccp->wcs;
     return wcs_dtu_time_adjust(wcs, dw1000_read_systime(inst));
 }
 
@@ -331,7 +332,8 @@ inline uint64_t wcs_read_systime(struct _dw1000_dev_instance_t * inst){
  */
 
 inline uint32_t wcs_read_systime_lo(struct _dw1000_dev_instance_t * inst){
-    wcs_instance_t * wcs = inst->ccp->wcs;
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    wcs_instance_t * wcs = ccp->wcs;
     return (uint32_t) (wcs_dtu_time_adjust(wcs, dw1000_read_systime_lo(inst)) & 0xFFFFFFFFUL);
 }
 
@@ -344,8 +346,9 @@ inline uint32_t wcs_read_systime_lo(struct _dw1000_dev_instance_t * inst){
  */
 
 
-inline uint64_t wcs_read_rxtime(struct _dw1000_dev_instance_t * inst){
-    wcs_instance_t * wcs = inst->ccp->wcs;
+uint64_t wcs_read_rxtime(struct _dw1000_dev_instance_t * inst){
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    wcs_instance_t * wcs = ccp->wcs;
     return wcs_dtu_time_adjust(wcs, dw1000_read_rxtime(inst));
 }
 
@@ -358,8 +361,9 @@ inline uint64_t wcs_read_rxtime(struct _dw1000_dev_instance_t * inst){
  * @return time
  */
 
-inline uint32_t wcs_read_rxtime_lo(struct _dw1000_dev_instance_t * inst){
-    wcs_instance_t * wcs = inst->ccp->wcs;
+uint32_t wcs_read_rxtime_lo(struct _dw1000_dev_instance_t * inst){
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    wcs_instance_t * wcs = ccp->wcs;
     return (uint32_t) wcs_dtu_time_adjust(wcs, dw1000_read_rxtime_lo(inst)) & 0xFFFFFFFFUL;
 }
 
@@ -372,8 +376,9 @@ inline uint32_t wcs_read_rxtime_lo(struct _dw1000_dev_instance_t * inst){
  * 
  */
 
-inline uint64_t wcs_read_txtime(struct _dw1000_dev_instance_t * inst){
-    wcs_instance_t * wcs = inst->ccp->wcs;
+uint64_t wcs_read_txtime(struct _dw1000_dev_instance_t * inst){
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    wcs_instance_t * wcs = ccp->wcs;
     return wcs_dtu_time_adjust(wcs, dw1000_read_txtime(inst));
 }
 
@@ -385,8 +390,9 @@ inline uint64_t wcs_read_txtime(struct _dw1000_dev_instance_t * inst){
  * @return time
  */
 
-inline uint32_t wcs_read_txtime_lo(struct _dw1000_dev_instance_t * inst){
-    wcs_instance_t * wcs = inst->ccp->wcs;
+uint32_t wcs_read_txtime_lo(struct _dw1000_dev_instance_t * inst){
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    wcs_instance_t * wcs = ccp->wcs;
     return (uint32_t) (wcs_dtu_time_adjust(wcs, dw1000_read_txtime_lo(inst)) & 0xFFFFFFFFUL);
 }
 
@@ -400,8 +406,9 @@ inline uint32_t wcs_read_txtime_lo(struct _dw1000_dev_instance_t * inst){
  * @return time
  */
 
-inline uint64_t wcs_read_systime_master(struct _dw1000_dev_instance_t * inst){
-    wcs_instance_t * wcs = inst->ccp->wcs;
+uint64_t wcs_read_systime_master(struct _dw1000_dev_instance_t * inst){
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    wcs_instance_t * wcs = ccp->wcs;
     return wcs_local_to_master(wcs, dw1000_read_systime(inst));
 }
 
@@ -414,8 +421,9 @@ inline uint64_t wcs_read_systime_master(struct _dw1000_dev_instance_t * inst){
  * @return time 
  */
 
-inline uint32_t wcs_read_systime_lo_master(struct _dw1000_dev_instance_t * inst){
-    wcs_instance_t * wcs = inst->ccp->wcs;
+uint32_t wcs_read_systime_lo_master(struct _dw1000_dev_instance_t * inst){
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    wcs_instance_t * wcs = ccp->wcs;
     return (uint32_t) (wcs_local_to_master(wcs, dw1000_read_systime_lo(inst)) & 0xFFFFFFFFUL);
 }
 
@@ -428,8 +436,9 @@ inline uint32_t wcs_read_systime_lo_master(struct _dw1000_dev_instance_t * inst)
  */
 
 
-inline uint64_t wcs_read_rxtime_master(struct _dw1000_dev_instance_t * inst){
-    wcs_instance_t * wcs = inst->ccp->wcs;
+uint64_t wcs_read_rxtime_master(struct _dw1000_dev_instance_t * inst){
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    wcs_instance_t * wcs = ccp->wcs;
     return wcs_local_to_master(wcs, dw1000_read_rxtime(inst));
 }
 
@@ -442,8 +451,9 @@ inline uint64_t wcs_read_rxtime_master(struct _dw1000_dev_instance_t * inst){
  * @return time
  */
 
-inline uint32_t wcs_read_rxtime_lo_master(struct _dw1000_dev_instance_t * inst){
-    wcs_instance_t * wcs = inst->ccp->wcs;
+uint32_t wcs_read_rxtime_lo_master(struct _dw1000_dev_instance_t * inst){
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    wcs_instance_t * wcs = ccp->wcs;
     return (uint32_t) (wcs_local_to_master(wcs, dw1000_read_rxtime_lo(inst)) & 0xFFFFFFFFUL);
 }
 
@@ -456,8 +466,9 @@ inline uint32_t wcs_read_rxtime_lo_master(struct _dw1000_dev_instance_t * inst){
  * 
  */
 
-inline uint64_t wcs_read_txtime_master(struct _dw1000_dev_instance_t * inst){
-    wcs_instance_t * wcs = inst->ccp->wcs;
+uint64_t wcs_read_txtime_master(struct _dw1000_dev_instance_t * inst){
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    wcs_instance_t * wcs = ccp->wcs;
     return wcs_local_to_master(wcs, dw1000_read_txtime(inst));
 }
 
@@ -469,8 +480,9 @@ inline uint64_t wcs_read_txtime_master(struct _dw1000_dev_instance_t * inst){
  * @return time
  */
 
-inline uint32_t wcs_read_txtime_lo_master(struct _dw1000_dev_instance_t * inst){
-    wcs_instance_t * wcs = inst->ccp->wcs;
+uint32_t wcs_read_txtime_lo_master(struct _dw1000_dev_instance_t * inst){
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    wcs_instance_t * wcs = ccp->wcs;
     return (uint32_t) (wcs_local_to_master(wcs, dw1000_read_txtime_lo(inst))& 0xFFFFFFFFUL);
 }
 

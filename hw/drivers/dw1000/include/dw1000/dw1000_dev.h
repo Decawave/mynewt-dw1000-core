@@ -240,10 +240,11 @@ struct _dw1000_dev_instance_t;
 typedef struct _dw1000_mac_interface_t dw1000_mac_interface_t;
 typedef struct _dw1000_mac_interface_t {
     struct _status{
-        uint16_t selfmalloc:1;            //!< Internal flag for memory garbage collection 
-        uint16_t initialized:1;           //!< Instance allocated          
+        uint16_t selfmalloc:1;            //!< Internal flag for memory garbage collection
+        uint16_t initialized:1;           //!< Instance allocated
     } status;
     uint16_t id;
+    void *inst_ptr;                   //!< Pointer to instance
     bool (* tx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Transmit complete callback
     bool (* rx_complete_cb) (struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< Receive complete callback
     bool (* cir_complete_cb)(struct _dw1000_dev_instance_t *, struct _dw1000_mac_interface_t *);    //!< CIR complete callback, prior to RXEN
@@ -328,17 +329,11 @@ typedef struct _dw1000_dev_instance_t{
 #if MYNEWT_VAL(PROVISION_ENABLED)
     struct _dw1000_provision_instance_t * provision; //!< DW1000 provision instance
 #endif 
-#if MYNEWT_VAL(CCP_ENABLED)
-    struct _dw1000_ccp_instance_t * ccp;           //!< DW1000 ccp instance
-#endif
 #if MYNEWT_VAL(PAN_ENABLED)
     struct _dw1000_pan_instance_t * pan;           //!< DW1000 pan instance
 #endif
 #if MYNEWT_VAL(DW1000_RANGE)
     struct _dw1000_range_instance_t * range;       //!< DW1000 range instance
-#endif
-#if MYNEWT_VAL(TDMA_ENABLED)
-    struct _tdma_instance_t * tdma;               //!< DW1000 tdma instance
 #endif
 #if MYNEWT_VAL(NRNG_ENABLED)
     struct _dw1000_nrng_instance_t * nrng;
