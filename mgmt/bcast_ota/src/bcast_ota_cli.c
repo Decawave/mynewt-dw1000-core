@@ -207,11 +207,12 @@ txim_ev_cb(struct os_event *ev)
         os_callout_reset(&tx_im_inst.callout, OS_TICKS_PER_SEC/10);
         return;
     }
+    nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NMGR_UWB);
     bcast_ota_get_packet(tx_im_inst.slot_id, (tx_im_inst.reset>0)?
                          BCAST_MODE_RESET_OFFSET : BCAST_MODE_NONE,
                          tx_im_inst.blocksize, &om, tx_im_inst.flags);
     if (om) {
-        uwb_nmgr_queue_tx(hal_dw1000_inst(0), tx_im_inst.addr, NMGR_CMD_STATE_SEND, om);
+        uwb_nmgr_queue_tx(nmgruwb, tx_im_inst.addr, NMGR_CMD_STATE_SEND, om);
         if (tx_im_inst.reset>0) {
             os_callout_reset(&tx_im_inst.callout, OS_TICKS_PER_SEC/5);
             tx_im_inst.reset--;
@@ -223,7 +224,7 @@ txim_ev_cb(struct os_event *ev)
         printf("bota: resending end\n");
         bcast_ota_get_packet(tx_im_inst.slot_id, BCAST_MODE_RESEND_END,
                              (128-8), &om, tx_im_inst.flags);
-        uwb_nmgr_queue_tx(hal_dw1000_inst(0), tx_im_inst.addr, NMGR_CMD_STATE_SEND, om);
+        uwb_nmgr_queue_tx(nmgruwb, tx_im_inst.addr, NMGR_CMD_STATE_SEND, om);
         os_callout_reset(&tx_im_inst.callout, OS_TICKS_PER_SEC/4);
     } else {
         printf("bota: txim finished\n");
@@ -271,7 +272,8 @@ bota_cli_cmd(int argc, char **argv)
         }
         uint16_t addr = strtol(argv[2], NULL, 0);
         struct os_mbuf *om = bcast_ota_get_reset_mbuf();
-        uwb_nmgr_queue_tx(hal_dw1000_inst(0), addr, NMGR_CMD_STATE_SEND, om);
+        nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NMGR_UWB);
+        uwb_nmgr_queue_tx(nmgruwb, addr, NMGR_CMD_STATE_SEND, om);
     } else {
         console_printf("Unknown cmd\n");
     }

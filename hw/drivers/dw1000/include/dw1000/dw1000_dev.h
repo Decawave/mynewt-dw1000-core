@@ -344,9 +344,6 @@ typedef struct _dw1000_dev_instance_t{
 #if MYNEWT_VAL(SURVEY_ENABLED)
     struct _survey_instance_t * survey;            //!< AutoSite Survey instance
 #endif
-#if MYNEWT_VAL(NMGR_UWB_ENABLED)
-    struct _nmgr_uwb_instance_t* nmgruwb;
-#endif
     dw1000_dev_rxdiag_t rxdiag;                    //!< DW1000 receive diagnostics
     dw1000_dev_config_t config;                    //!< DW1000 device configurations  
     dw1000_dev_control_t control;                  //!< DW1000 device control parameters      
