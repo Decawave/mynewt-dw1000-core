@@ -242,16 +242,16 @@ survey_slot_range_cb(struct os_event *ev){
     tdma_slot_t * slot = (tdma_slot_t *) ev->ev_arg;
     tdma_instance_t * tdma = slot->parent;
     dw1000_dev_instance_t * inst = tdma->parent;
-    dw1000_ccp_instance_t * ccp = inst->ccp;
+    dw1000_ccp_instance_t * ccp = tdma->ccp;
     survey_instance_t * survey = inst->survey;
     survey->seq_num = (ccp->seq_num & ((uint32_t)~0UL << MYNEWT_VAL(SURVEY_MASK))) >> MYNEWT_VAL(SURVEY_MASK);
     
     if(ccp->seq_num % survey->nnodes == inst->slot_id){
-        uint64_t dx_time = tdma_tx_slot_start(inst, slot->idx) & 0xFFFFFFFE00UL;
+        uint64_t dx_time = tdma_tx_slot_start(tdma, slot->idx) & 0xFFFFFFFE00UL;
         survey_request(survey, dx_time);
     }
     else{
-        uint64_t dx_time = tdma_rx_slot_start(inst, slot->idx) & 0xFFFFFFFE00UL;
+        uint64_t dx_time = tdma_rx_slot_start(tdma, slot->idx) & 0xFFFFFFFE00UL;
         survey_listen(survey, dx_time); 
     }
 }
@@ -275,15 +275,15 @@ survey_slot_broadcast_cb(struct os_event *ev){
     tdma_slot_t * slot = (tdma_slot_t *) ev->ev_arg;
     tdma_instance_t * tdma = slot->parent;
     dw1000_dev_instance_t * inst = tdma->parent;
-    dw1000_ccp_instance_t * ccp = inst->ccp;
+    dw1000_ccp_instance_t * ccp = tdma->ccp;
     survey_instance_t * survey = inst->survey;
     survey->seq_num = (ccp->seq_num & ((uint32_t)~0UL << MYNEWT_VAL(SURVEY_MASK))) >> MYNEWT_VAL(SURVEY_MASK);
 
     if(ccp->seq_num % survey->nnodes == inst->slot_id){
-        uint64_t dx_time = tdma_tx_slot_start(inst, slot->idx) & 0xFFFFFFFE00UL;
+        uint64_t dx_time = tdma_tx_slot_start(tdma, slot->idx) & 0xFFFFFFFE00UL;
         survey_broadcaster(survey, dx_time);
     }else{
-        uint64_t dx_time = tdma_rx_slot_start(inst, slot->idx) & 0xFFFFFFFE00UL;
+        uint64_t dx_time = tdma_rx_slot_start(tdma, slot->idx) & 0xFFFFFFFE00UL;
         survey_receiver(survey, dx_time);  
     }
     if(ccp->seq_num % survey->nnodes == survey->nnodes - 1 && survey->survey_complete_cb){
@@ -301,20 +301,22 @@ survey_slot_broadcast_cb(struct os_event *ev){
  * 
  */
 survey_status_t 
-survey_request(survey_instance_t * survey, uint64_t dx_time){
+survey_request(survey_instance_t * survey, uint64_t dx_time)
+{
     assert(survey);
 
     dw1000_dev_instance_t * inst = survey->parent;
     STATS_INC(inst->survey->stat, request);
     
     uint32_t slot_mask = ~(~0UL << (survey->nnodes));
-    dw1000_nrng_request_delay_start(inst, 0xffff, dx_time, DWT_SS_TWR_NRNG, slot_mask, 0);
+    dw1000_nrng_instance_t *nrng_inst = (dw1000_nrng_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_NRNG);
+    dw1000_nrng_request_delay_start(nrng_inst, 0xffff, dx_time, DWT_SS_TWR_NRNG, slot_mask, 0);
     
     survey_nrngs_t * nrngs = survey->nrngs[(survey->idx)%survey->nframes];
-    nrngs->nrng[inst->slot_id]->mask = dw1000_nrng_get_ranges(inst, 
+    nrngs->nrng[inst->slot_id]->mask = dw1000_nrng_get_ranges(nrng_inst, 
                                 nrngs->nrng[inst->slot_id]->rng, 
                                 survey->nnodes, 
-                                inst->nrng->idx
+                                nrng_inst->idx
                             );
     return survey->status;
 }
@@ -326,12 +328,13 @@ survey_listen(survey_instance_t * survey, uint64_t dx_time){
 
     dw1000_dev_instance_t * inst = survey->parent;
     STATS_INC(inst->survey->stat, listen);
+    dw1000_nrng_instance_t *nrng = (dw1000_nrng_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_NRNG);
 
     dw1000_set_delay_start(inst, dx_time);
     uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_request_frame_t))
-                        + inst->nrng->config.rx_timeout_delay;         
+                        + nrng->config.rx_timeout_delay;
     dw1000_set_rx_timeout(inst, timeout + 0x1000);
-    dw1000_nrng_listen(inst, DWT_BLOCKING);
+    dw1000_nrng_listen(nrng, DWT_BLOCKING);
 
     return survey->status;
 }
@@ -438,7 +441,8 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 {   
     assert(inst->survey);
     survey_instance_t * survey = inst->survey; 
-    dw1000_ccp_instance_t * ccp = inst->ccp;
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    assert(ccp);
 
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;

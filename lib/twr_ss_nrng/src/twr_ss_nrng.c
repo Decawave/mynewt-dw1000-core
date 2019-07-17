@@ -88,6 +88,8 @@ void twr_ss_nrng_pkg_init(void){
 #if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"ss_nrng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
+    dw1000_nrng_instance_t *nrng = (dw1000_nrng_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NRNG);
+    g_cbs.inst_ptr = nrng;
     dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs);
 }
 
@@ -126,12 +128,12 @@ twr_ss_nrng_config(dw1000_dev_instance_t * inst){
  * @return true on sucess
  */
 static bool 
-rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    /* Place holder */
+rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *)cbs->inst_ptr;
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
     
-    dw1000_nrng_instance_t * nrng = inst->nrng;
     if(os_sem_get_count(&nrng->sem) == 0){
         NRNG_STATS_INC(rx_error);
         os_error_t err = os_sem_release(&nrng->sem);
@@ -152,7 +154,7 @@ rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 static bool 
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-    dw1000_nrng_instance_t * nrng = inst->nrng;
+    dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *)cbs->inst_ptr;
     if(os_sem_get_count(&nrng->sem) == 1)
         return false;
 
@@ -180,10 +182,11 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  * @return true on sucess
  */
 static bool
-reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-
-    if(os_sem_get_count(&inst->nrng->sem) == 0){
-        os_error_t err = os_sem_release(&inst->nrng->sem);  
+reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *)cbs->inst_ptr;
+    if(os_sem_get_count(&nrng->sem) == 0){
+        os_error_t err = os_sem_release(&nrng->sem);
         assert(err == OS_OK);
         NRNG_STATS_INC(reset);
         return true;
@@ -202,8 +205,7 @@ reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 static bool 
 rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-    assert(inst->nrng);
-    dw1000_nrng_instance_t * nrng = inst->nrng;
+    dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *)cbs->inst_ptr;
 
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
@@ -214,7 +216,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         return false;
     }
 
-    dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, DWT_SS_TWR_NRNG);
+    dw1000_rng_config_t * config = dw1000_nrng_get_config(nrng, DWT_SS_TWR_NRNG);
     nrng_request_frame_t * _frame = (nrng_request_frame_t * )inst->rxbuf;
 
     if (_frame->dst_address != inst->my_short_address && _frame->dst_address != BROADCAST_ADDRESS)
@@ -301,7 +303,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 uint16_t idx = _frame->slot_id;
 
                 // Reject out of sequence ranges, this should never occur in a well behaved system
-                if (inst->nrng->seq_num != _frame->seq_num)
+                if (nrng->seq_num != _frame->seq_num)
                     break;
 
                 nrng_frame_t * frame = nrng->frames[(nrng->idx + idx)%nrng->nframes];

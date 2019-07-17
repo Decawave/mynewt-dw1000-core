@@ -332,9 +332,6 @@ typedef struct _dw1000_dev_instance_t{
 #if MYNEWT_VAL(DW1000_RANGE)
     struct _dw1000_range_instance_t * range;       //!< DW1000 range instance
 #endif
-#if MYNEWT_VAL(NRNG_ENABLED)
-    struct _dw1000_nrng_instance_t * nrng;
-#endif
 #if MYNEWT_VAL(CIR_ENABLED)
     struct _cir_instance_t * cir;                  //!< CIR instance
 #endif
