@@ -71,13 +71,13 @@ dw1000_lwip_context_t cntxt;
  * @return dw1000_dev_status_t
  */
 dw1000_dev_status_t
-dw1000_lwip_config(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config){
-
-	assert(inst);
+dw1000_lwip_config(dw1000_lwip_instance_t * lwip, dw1000_lwip_config_t * config)
+{
+	assert(lwip);
 	assert(config);
 
-	inst->lwip->config = config;
-	return inst->status;
+	lwip->config = config;
+	return lwip->dev_inst->status;
 }
 
 /**
@@ -90,44 +90,48 @@ dw1000_lwip_config(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config){
  * @return dw1000_rng_instance_t
  */
 dw1000_lwip_instance_t *
-dw1000_lwip_init(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config, uint16_t nframes, uint16_t buf_len){
-
+dw1000_lwip_init(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config, uint16_t nframes, uint16_t buf_len)
+{
 	assert(inst);
-	if (inst->lwip == NULL ){
-		inst->lwip  = (dw1000_lwip_instance_t *) malloc(sizeof(dw1000_lwip_instance_t) + nframes * sizeof(char *));
-		assert(inst->lwip);
-		memset(inst->lwip,0,sizeof(dw1000_lwip_instance_t) + nframes * sizeof(char *));
-		inst->lwip->status.selfmalloc = 1;
-		inst->lwip->nframes = nframes;
-		inst->lwip->buf_len = buf_len;
-		inst->lwip->buf_idx = 0;
+    dw1000_lwip_instance_t *lwip = (dw1000_lwip_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_LWIP);
+
+	if (lwip == NULL){
+		lwip  = (dw1000_lwip_instance_t *) malloc(sizeof(dw1000_lwip_instance_t) + nframes * sizeof(char *));
+		assert(lwip);
+		memset(lwip,0,sizeof(dw1000_lwip_instance_t) + nframes * sizeof(char *));
+		lwip->status.selfmalloc = 1;
+		lwip->nframes = nframes;
+		lwip->buf_len = buf_len;
+		lwip->buf_idx = 0;
 
 		for(uint16_t i=0 ; i < nframes ; ++i){
-			inst->lwip->data_buf[i]  = (char *) malloc(sizeof(char)*buf_len);
-			assert(inst->lwip->data_buf[i]);
+			lwip->data_buf[i]  = (char *) malloc(sizeof(char)*buf_len);
+			assert(lwip->data_buf[i]);
 		}
 	}
-	os_error_t err = os_sem_init(&inst->lwip->sem, 0x01);
+	os_error_t err = os_sem_init(&lwip->sem, 0x01);
 	assert(err == OS_OK);
-	err = os_sem_init(&inst->lwip->data_sem, nframes);
+	err = os_sem_init(&lwip->data_sem, nframes);
 	assert(err == OS_OK);
 
 	if (config != NULL){
-		inst->lwip->config = config;
-		dw1000_lwip_config(inst, config);
+		lwip->config = config;
+		dw1000_lwip_config(lwip, config);
 	}
- 	inst->lwip->cbs = (dw1000_mac_interface_t){
+    lwip->dev_inst = inst;
+    lwip->cbs = (dw1000_mac_interface_t){
         .id = DW1000_LWIP,
+        .inst_ptr = lwip,
         .tx_complete_cb = tx_complete_cb,
         .rx_complete_cb = rx_complete_cb,
         .rx_timeout_cb = rx_timeout_cb,
         .rx_error_cb = rx_error_cb,
 		.complete_cb = complete_cb
     };
-    dw1000_mac_append_interface(inst, &inst->lwip->cbs);
+    dw1000_mac_append_interface(inst, &lwip->cbs);
 
-	inst->lwip->status.initialized = 1;
-	return inst->lwip;
+	lwip->status.initialized = 1;
+	return lwip;
 }
 
 /**
@@ -137,19 +141,19 @@ dw1000_lwip_init(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config, ui
  * @return void
  */
 void
-dw1000_pcb_init(dw1000_dev_instance_t * inst){
-
+dw1000_pcb_init(dw1000_lwip_instance_t * lwip)
+{
 	ip_addr_t ip6_tgt_addr[4];
 
     IP_ADDR6(ip6_tgt_addr, MYNEWT_VAL(TGT_IP6_ADDR_1), MYNEWT_VAL(TGT_IP6_ADDR_2), 
                             MYNEWT_VAL(TGT_IP6_ADDR_3), MYNEWT_VAL(TGT_IP6_ADDR_4));
 	struct raw_pcb * lwip_pcb;
     lwip_pcb = raw_new(IP_PROTO_ICMP);
-    raw_bind(lwip_pcb,  inst->lwip->lwip_netif.ip6_addr);
+    raw_bind(lwip_pcb,  lwip->lwip_netif.ip6_addr);
     raw_connect(lwip_pcb, ip6_tgt_addr);
-    inst->lwip->pcb = lwip_pcb;
-    raw_bind(inst->lwip->pcb,  inst->lwip->lwip_netif.ip6_addr);
-	raw_recv(inst->lwip->pcb, lwip_rx_cb, inst);
+    lwip->pcb = lwip_pcb;
+    raw_bind(lwip->pcb,  lwip->lwip_netif.ip6_addr);
+	raw_recv(lwip->pcb, lwip_rx_cb, lwip);
 }
 
 /**
@@ -159,13 +163,13 @@ dw1000_pcb_init(dw1000_dev_instance_t * inst){
  * @return void
  */
 void 
-dw1000_lwip_free(dw1000_lwip_instance_t * inst){
-
-	assert(inst);
-	if (inst->status.selfmalloc)
-		free(inst);
+dw1000_lwip_free(dw1000_lwip_instance_t * lwip)
+{
+	assert(lwip);
+	if (lwip->status.selfmalloc)
+		free(lwip);
 	else
-		inst->status.initialized = 0;
+		lwip->status.initialized = 0;
 }
 
 
@@ -179,19 +183,19 @@ dw1000_lwip_free(dw1000_lwip_instance_t * inst){
  * @return      1: Signifies that the payload is received successfully
  */
 uint8_t
-lwip_rx_cb(void *arg, struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *addr){
-
+lwip_rx_cb(void *arg, struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *addr)
+{
     LWIP_UNUSED_ARG(pcb);
     LWIP_UNUSED_ARG(addr);
     LWIP_ASSERT("p != NULL", p != NULL);
 
-    dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)arg;
+    dw1000_lwip_instance_t * lwip = (dw1000_lwip_instance_t *)arg;
     if (pbuf_header( p, -PBUF_IP_HLEN)==0){
-    	inst->lwip->payload_ptr = p->payload;
+        lwip->payload_ptr = p->payload;
 
 #if 0
-		if(inst->lwip_rx_complete_cb != NULL)
-	    	inst->lwip_rx_complete_cb(inst);
+		if(lwip_rx_complete_cb != NULL)
+            lwip_rx_complete_cb(inst);
 #endif
     }
     memp_free(MEMP_PBUF_POOL,p);
@@ -222,45 +226,45 @@ static bool complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * c
  * @return dw1000_dev_status_t
  */
 dw1000_dev_status_t 
-dw1000_lwip_write(dw1000_dev_instance_t * inst, struct pbuf *p, dw1000_lwip_modes_t mode){
-
+dw1000_lwip_write(dw1000_lwip_instance_t * lwip, struct pbuf *p, dw1000_lwip_modes_t mode)
+{
 	/* Semaphore lock for multi-threaded applications */
-	os_error_t err = os_sem_pend(&inst->lwip->sem, OS_TIMEOUT_NEVER);
+	os_error_t err = os_sem_pend(&lwip->sem, OS_TIMEOUT_NEVER);
 	assert(err == OS_OK);
 	assert(p != NULL);
 
 	char *id_pbuf, *temp_buf;
-	id_pbuf = (char *)malloc((inst->lwip->buf_len) + 4+2);
+	id_pbuf = (char *)malloc((lwip->buf_len) + 4+2);
 	assert(id_pbuf);
 	/* Append the 'L' 'W' 'I' 'P' Identifier */
 	*(id_pbuf + 0) = 'L';	*(id_pbuf + 1) = 'W';
 	*(id_pbuf + 2) = 'I';	*(id_pbuf + 3) = 'P';
 
 	/* Append the destination Short Address */
-	*(id_pbuf + 4) = (char)((inst->lwip->dst_addr >> 0) & 0xFF);
-	*(id_pbuf + 5) = (char)((inst->lwip->dst_addr >> 8) & 0xFF);
+	*(id_pbuf + 4) = (char)((lwip->dst_addr >> 0) & 0xFF);
+	*(id_pbuf + 5) = (char)((lwip->dst_addr >> 8) & 0xFF);
 
 	temp_buf = (char *)p;
 	/* Copy the LWIP packet after LWIP Id */
-	memcpy(id_pbuf+4+2, temp_buf, inst->lwip->buf_len);
+	memcpy(id_pbuf+4+2, temp_buf, lwip->buf_len);
 
-	dw1000_write_tx(inst, (uint8_t *)id_pbuf, 0, inst->lwip->buf_len+4);
+	dw1000_write_tx(lwip->dev_inst, (uint8_t *)id_pbuf, 0, lwip->buf_len+4);
 	free(id_pbuf);
     pbuf_free(p);
     
-	dw1000_write_tx_fctrl(inst, inst->lwip->buf_len, 0);
-	inst->lwip->lwip_netif.flags = NETIF_FLAG_UP | NETIF_FLAG_LINK_UP ;
-	inst->lwip->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
+	dw1000_write_tx_fctrl(lwip->dev_inst, lwip->buf_len, 0);
+	lwip->lwip_netif.flags = NETIF_FLAG_UP | NETIF_FLAG_LINK_UP ;
+	lwip->status.start_tx_error = dw1000_start_tx(lwip->dev_inst).start_tx_error;
 
 	if( mode == LWIP_BLOCKING )
-		err = os_sem_pend(&inst->lwip->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions units os_clicks
+		err = os_sem_pend(&lwip->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions units os_clicks
 	else
-		err = os_sem_pend(&inst->lwip->sem, 500); // Wait for completion of transactions units os_clicks
+		err = os_sem_pend(&lwip->sem, 500); // Wait for completion of transactions units os_clicks
 
-    if (os_sem_get_count(&inst->lwip->sem) == 0) {
-        os_sem_release(&inst->lwip->sem);
+    if (os_sem_get_count(&lwip->sem) == 0) {
+        os_sem_release(&lwip->sem);
     }
-	return inst->status;
+	return lwip->dev_inst->status;
 }
 
 /**
@@ -271,12 +275,12 @@ dw1000_lwip_write(dw1000_dev_instance_t * inst, struct pbuf *p, dw1000_lwip_mode
  * @return void
  */
 void
-dw1000_lwip_start_rx(dw1000_dev_instance_t * inst, uint16_t timeout){
-
-    os_error_t err = os_sem_pend(&inst->lwip->data_sem, OS_TIMEOUT_NEVER);
+dw1000_lwip_start_rx(dw1000_lwip_instance_t * lwip, uint16_t timeout)
+{
+    os_error_t err = os_sem_pend(&lwip->data_sem, OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
-    dw1000_set_rx_timeout(inst, timeout);
-    dw1000_start_rx(inst);
+    dw1000_set_rx_timeout(lwip->dev_inst, timeout);
+    dw1000_start_rx(lwip->dev_inst);
 }
 
 /**
@@ -286,35 +290,36 @@ dw1000_lwip_start_rx(dw1000_dev_instance_t * inst, uint16_t timeout){
  * @retrun void 
  */
 static bool 
-rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-
+rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    dw1000_lwip_instance_t * lwip = (dw1000_lwip_instance_t *)cbs->inst_ptr;
 	if(strncmp((char *)&inst->fctrl, "LW",2))
         return false;
 
-    os_error_t err = os_sem_release(&inst->lwip->data_sem);
+    os_error_t err = os_sem_release(&lwip->data_sem);
     assert(err == OS_OK);
 
-	char *ptr = inst->lwip->data_buf[0];
-    dw1000_read_rx(inst, (uint8_t *)ptr, 0, inst->lwip->buf_len);
+	char *ptr = lwip->data_buf[0];
+    dw1000_read_rx(lwip->dev_inst, (uint8_t *)ptr, 0, lwip->buf_len);
 
-    uint8_t buf_size = inst->lwip->buf_len;
+    uint8_t buf_size = lwip->buf_len;
     uint16_t pkt_addr;
 
-    pkt_addr = (uint8_t)(*(inst->lwip->data_buf[0]+4)) + ((uint8_t)(*(inst->lwip->data_buf[0]+5)) << 8);
+    pkt_addr = (uint8_t)(*(lwip->data_buf[0]+4)) + ((uint8_t)(*(lwip->data_buf[0]+5)) << 8);
 
-    if(pkt_addr == inst->my_short_address){
+    if(pkt_addr == lwip->dev_inst->my_short_address){
         char * data_buf = (char *)malloc(buf_size);
         assert(data_buf != NULL);
 
-        memcpy(data_buf,inst->lwip->data_buf[0]+4+2, buf_size);
+        memcpy(data_buf,lwip->data_buf[0]+4+2, buf_size);
 
         struct pbuf * buf = (struct pbuf *)data_buf;
         buf->payload = buf + sizeof(struct pbuf)/sizeof(struct pbuf);
 
-        inst->lwip->lwip_netif.input((struct pbuf *)data_buf, &inst->lwip->lwip_netif);
+        lwip->lwip_netif.input((struct pbuf *)data_buf, &lwip->lwip_netif);
 	}
     else
-		dw1000_lwip_start_rx(inst,0x0000);
+		dw1000_lwip_start_rx(lwip,0x0000);
 
 	return true;
 }
@@ -326,17 +331,18 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  * @return void
  */
 static bool 
-tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-
-	if(strncmp((char *)&inst->fctrl, "LW",2))
+tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    dw1000_lwip_instance_t * lwip = (dw1000_lwip_instance_t *)cbs->inst_ptr;
+	if(strncmp((char *)&inst->fctrl, "LW",2)) {
         return false;
-
-	else if (os_sem_get_count(&inst->lwip->sem) == 0){
-		os_error_t err = os_sem_release(&inst->lwip->sem);
+    } else if (os_sem_get_count(&lwip->sem) == 0) {
+		os_error_t err = os_sem_release(&lwip->sem);
 		assert(err == OS_OK);
 		return true;
-	}else 
+	} else {
 		return false;
+    }
 }
 
 /**
@@ -346,15 +352,17 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  * @param void
  */
 static bool 
-rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-
- 	if (os_sem_get_count(&inst->lwip->data_sem) == 0){
-		os_error_t err = os_sem_release(&inst->lwip->data_sem);
+rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    dw1000_lwip_instance_t * lwip = (dw1000_lwip_instance_t *)cbs->inst_ptr;
+    if (os_sem_get_count(&lwip->data_sem) == 0){
+		os_error_t err = os_sem_release(&lwip->data_sem);
 		assert(err == OS_OK);
-		inst->lwip->status.rx_timeout_error = 1;
+		lwip->status.rx_timeout_error = 1;
 		return true;
-	}else 
+	} else {
 		return false;
+    }
 }
 
 /**
@@ -364,15 +372,18 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  * @return void
  */
 static bool 
-rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    dw1000_lwip_instance_t * lwip = (dw1000_lwip_instance_t *)cbs->inst_ptr;
 
-	if (os_sem_get_count(&inst->lwip->data_sem) == 0){
-		os_error_t err = os_sem_release(&inst->lwip->data_sem);
+	if (os_sem_get_count(&lwip->data_sem) == 0) {
+		os_error_t err = os_sem_release(&lwip->data_sem);
 		assert(err == OS_OK);
-		inst->lwip->status.rx_error = 1;
-			return true;
-	}else 
+		lwip->status.rx_error = 1;
+        return true;
+	} else {
 		return false;
+    }
 }
 
 
@@ -385,8 +396,8 @@ rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  * @return void
  */
 void 
-dw1000_low_level_init( dw1000_dev_instance_t * inst, dw1000_dev_txrf_config_t * txrf_config, dw1000_dev_config_t * mac_config){
-
+dw1000_low_level_init( dw1000_dev_instance_t * inst, dw1000_dev_txrf_config_t * txrf_config, dw1000_dev_config_t * mac_config)
+{
 	dw1000_phy_init(inst, txrf_config);
 	dw1000_mac_init(inst, mac_config) ;
 }
@@ -401,8 +412,8 @@ dw1000_low_level_init( dw1000_dev_instance_t * inst, dw1000_dev_txrf_config_t * 
  * @return void
  */
 void
-dw1000_netif_config(dw1000_dev_instance_t *inst, struct netif *dw1000_netif, ip_addr_t *my_ip_addr, bool rx_status){
-
+dw1000_netif_config(dw1000_lwip_instance_t * lwip, struct netif *dw1000_netif, ip_addr_t *my_ip_addr, bool rx_status)
+{
 	netif_add(dw1000_netif, NULL, dw1000_netif_init, ip6_input);
 	IP_ADDR6_HOST(dw1000_netif->ip6_addr, 	my_ip_addr->addr[0], my_ip_addr->addr[1],
 						my_ip_addr->addr[2], my_ip_addr->addr[3]);
@@ -414,10 +425,10 @@ dw1000_netif_config(dw1000_dev_instance_t *inst, struct netif *dw1000_netif, ip_
 	netif_set_up(dw1000_netif);
 
 	cntxt.rx_cb.recv = dw1000_lwip_start_rx; 
-	inst->lwip->lwip_netif.state = (void*)&cntxt;
+	lwip->lwip_netif.state = (void*)&cntxt;
 	
 	if(rx_status)
-		dw1000_lwip_start_rx(inst, 0xffff);
+		dw1000_lwip_start_rx(lwip, 0xffff);
 }
 
 /**
@@ -451,15 +462,15 @@ dw1000_netif_init(struct netif *dw1000_netif){
  * @return void
  */
 void 
-dw1000_lwip_send(dw1000_dev_instance_t * inst, uint16_t payload_size, char * payload, ip_addr_t * ipaddr){
-
+dw1000_lwip_send(dw1000_lwip_instance_t *lwip, uint16_t payload_size, char * payload, ip_addr_t * ipaddr)
+{
 	struct pbuf *pb = pbuf_alloc(PBUF_RAW, (u16_t)payload_size, PBUF_RAM);
 	assert(pb != NULL);
 	char * payload_lwip = (char *)pb->payload;
 
 	memset(payload_lwip, 0, payload_size);
 	memcpy(payload_lwip, payload, payload_size);
-    raw_sendto(inst->lwip->pcb, pb, ipaddr);
+    raw_sendto(lwip->pcb, pb, ipaddr);
     pbuf_free(pb);
 }
 
@@ -471,18 +482,19 @@ dw1000_lwip_send(dw1000_dev_instance_t * inst, uint16_t payload_size, char * pay
  * @return Error status
  */
 err_t 
-dw1000_ll_output(struct netif *dw1000_netif, struct pbuf *p){
-
+dw1000_ll_output(struct netif *dw1000_netif, struct pbuf *p)
+{
 	dw1000_dev_instance_t * inst = hal_dw1000_inst(0);
+    dw1000_lwip_instance_t *lwip = (dw1000_lwip_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_LWIP);
 
-	dw1000_lwip_write(inst, p, LWIP_BLOCKING);
+	dw1000_lwip_write(lwip, p, LWIP_BLOCKING);
 
 	err_t error = ERR_OK;
 
-	if (inst->lwip->status.request_timeout)
+	if (lwip->status.request_timeout)
 		error = ERR_INPROGRESS;
 
-	if (inst->lwip->status.rx_timeout_error)
+	if (lwip->status.rx_timeout_error)
 		error = ERR_TIMEOUT;
 
 	return error;

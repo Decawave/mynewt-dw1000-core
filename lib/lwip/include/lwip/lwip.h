@@ -76,7 +76,7 @@ typedef struct _dw1000_lwip_status_t{
 
 //! Lwip instance parameters.
 typedef struct _dw1000_lwip_instance_t{
-    struct _dw1000_dev_instance_t * dev;   //!< Structure for DW1000 instance 
+    struct _dw1000_dev_instance_t * dev_inst;   //!< Structure for DW1000 instance 
     dw1000_mac_interface_t cbs;
     struct os_sem sem;                     //!< Structure for OS semaphores
     struct os_sem data_sem;                //!< Structure for data of semaphores
@@ -99,7 +99,7 @@ typedef struct _dw1000_lwip_instance_t{
 
 //! Lwip callback. 
 typedef struct _dw1000_lwip_cb_t{
-   void (*recv)(dw1000_dev_instance_t * inst, uint16_t timeout);  //!< Keep tracks of lwip tx/rx status
+   void (*recv)(dw1000_lwip_instance_t * lwip, uint16_t timeout);  //!< Keep tracks of lwip tx/rx status
 }dw1000_lwip_cb_t;
 
 //! Lwip context parameters. 
@@ -130,10 +130,10 @@ dw1000_lwip_init(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config, ui
 
 /**
  * [dw1000_pcb_init Function to initialize a PCB for raw lwip]
- * @param   inst    [Device/Parent instance]
+ * @param   inst    [LWIP instance]
  */
 void 
-dw1000_pcb_init(dw1000_dev_instance_t * inst);
+dw1000_pcb_init(dw1000_lwip_instance_t * lwip);
 
 /**
  * [dw1000_lwip_free Function to mark lwip serveice as free]
@@ -146,14 +146,14 @@ dw1000_lwip_free(dw1000_lwip_instance_t * inst);
 
 /**
  * [dw1000_lwip_write Function to send lwIP buffer to radio]
- * @param  inst [Device/Parent instance]
+ * @param  inst [LWIP instance]
  * @param  p    [lwIP Buffer to be sent to radio]
  * @param  mode [Blocking : Wait for Tx to complete]
  *              [Non-Blocking : Don't wait for Tx to complete]
  * @return      [Device Status]
  */
 dw1000_dev_status_t
-dw1000_lwip_write(dw1000_dev_instance_t * inst, struct pbuf *p, dw1000_lwip_modes_t code);
+dw1000_lwip_write(dw1000_lwip_instance_t * lwip, struct pbuf *p, dw1000_lwip_modes_t code);
 
 /**
  * [dw1000_low_level_init Radio Low level initialization function]
@@ -174,7 +174,7 @@ dw1000_low_level_init( dw1000_dev_instance_t * inst,
  * @param rx_status    [Defalut mode status]
  */
 void
-dw1000_netif_config(dw1000_dev_instance_t * inst, struct netif *netif, ip_addr_t *my_ip_addr, bool rx_status);
+dw1000_netif_config(dw1000_lwip_instance_t * lwip, struct netif *netif, ip_addr_t *my_ip_addr, bool rx_status);
 
 /**
  * [dw1000_netif_init Network interface initialization function]
@@ -192,7 +192,7 @@ dw1000_netif_init( struct netif * dw1000_netif);
  * @param ipaddr       [Pointer to the IP address of target device]
  */
 void 
-dw1000_lwip_send(dw1000_dev_instance_t * inst, uint16_t payload_size, char * payload, ip_addr_t * ipaddr);
+dw1000_lwip_send(dw1000_lwip_instance_t *lwip, uint16_t payload_size, char * payload, ip_addr_t * ipaddr);
 
 /**
  * [dw1000_ll_output Low Level output function, acts as a brigde between 6lowPAN and radio]
@@ -214,11 +214,11 @@ dw1000_ll_input(struct pbuf *p, struct netif *dw1000_netif);
 
 /**
  * [dw1000_lwip_start_rx Function to put the radio in Receive mode]
- * @param inst    [Device/Parent instance]
+ * @param inst    [LWIP instance]
  * @param timeout [Timeout value for radio in receive mode]
  */
 void
-dw1000_lwip_start_rx(dw1000_dev_instance_t * inst, uint16_t timeout);
+dw1000_lwip_start_rx(dw1000_lwip_instance_t * lwip, uint16_t timeout);
 
 /**
  * [print_error Function to print error status and type]
