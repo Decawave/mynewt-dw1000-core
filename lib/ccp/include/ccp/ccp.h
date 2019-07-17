@@ -182,13 +182,13 @@ typedef struct _dw1000_ccp_instance_t{
     ccp_frame_t * frames[];                          //!< Buffers to ccp frames
 }dw1000_ccp_instance_t; 
 
-uint64_t ccp_local_to_master(dw1000_dev_instance_t *inst, uint32_t timestamp_local);
+uint64_t ccp_local_to_master(dw1000_ccp_instance_t *ccp, uint32_t timestamp_local);
 dw1000_ccp_instance_t * dw1000_ccp_init(dw1000_dev_instance_t * inst,  uint16_t nframes);
 void dw1000_ccp_free(dw1000_ccp_instance_t * inst);
 void dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, os_event_fn * ccp_postprocess); 
 void dw1000_ccp_set_tof_comp_cb(dw1000_ccp_instance_t * inst, dw1000_ccp_tof_compensation_cb_t tof_comp_cb);
-void dw1000_ccp_start(dw1000_dev_instance_t * inst, dw1000_ccp_role_t role);
-void dw1000_ccp_stop(dw1000_dev_instance_t * inst);
+void dw1000_ccp_start(dw1000_ccp_instance_t *ccp, dw1000_ccp_role_t role);
+void dw1000_ccp_stop(dw1000_ccp_instance_t *ccp);
 
 #ifdef __cplusplus
 }

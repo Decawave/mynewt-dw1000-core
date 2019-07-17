@@ -139,9 +139,8 @@ static void ccp_postprocess(struct os_event * ev);
  * @return void
  */
 static void
-ccp_timer_init(struct _dw1000_dev_instance_t * inst, dw1000_ccp_role_t role) {
-
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+ccp_timer_init(dw1000_ccp_instance_t *ccp, dw1000_ccp_role_t role)
+{
     ccp->status.timer_enabled = true;
 
     os_cputime_timer_init(&ccp->timer, ccp_timer_irq, (void *) ccp);
@@ -942,11 +941,11 @@ dw1000_ccp_listen(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
  * @return void
  */
 void
-dw1000_ccp_start(struct _dw1000_dev_instance_t * inst, dw1000_ccp_role_t role)
+dw1000_ccp_start(dw1000_ccp_instance_t *ccp, dw1000_ccp_role_t role)
 {
+    struct _dw1000_dev_instance_t * inst = ccp->dev_inst;
     // Initialise frame timestamp to current time
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_start\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
     assert(ccp);
     ccp->idx = 0x0;
     ccp->status.valid = false;
@@ -964,7 +963,7 @@ dw1000_ccp_start(struct _dw1000_dev_instance_t * inst, dw1000_ccp_role_t role)
         ccp->local_epoch = frame->reception_timestamp = ts;
     }
 
-    ccp_timer_init(inst, role);
+    ccp_timer_init(ccp, role);
 }
 
 /**
@@ -975,9 +974,8 @@ dw1000_ccp_start(struct _dw1000_dev_instance_t * inst, dw1000_ccp_role_t role)
  * @return void
  */
 void
-dw1000_ccp_stop(dw1000_dev_instance_t * inst)
+dw1000_ccp_stop(dw1000_ccp_instance_t *ccp)
 {
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
     assert(ccp);
     os_cputime_timer_stop(&ccp->timer);
 }

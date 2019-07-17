@@ -329,9 +329,6 @@ typedef struct _dw1000_dev_instance_t{
 #if MYNEWT_VAL(PROVISION_ENABLED)
     struct _dw1000_provision_instance_t * provision; //!< DW1000 provision instance
 #endif 
-#if MYNEWT_VAL(PAN_ENABLED)
-    struct _dw1000_pan_instance_t * pan;           //!< DW1000 pan instance
-#endif
 #if MYNEWT_VAL(DW1000_RANGE)
     struct _dw1000_range_instance_t * range;       //!< DW1000 range instance
 #endif

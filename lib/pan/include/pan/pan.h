@@ -109,7 +109,7 @@ typedef struct _dw1000_pan_control_t{
 
 //! Pan instance parameters
 typedef struct _dw1000_pan_instance_t{
-    struct _dw1000_dev_instance_t * parent;      //!< pointer to _dw1000_dev_instance_t
+    struct _dw1000_dev_instance_t * dev_inst;    //!< pointer to _dw1000_dev_instance_t
     dw1000_mac_interface_t cbs;                  //!< MAC Layer Callbacks
     struct os_sem sem;                           //!< Structure containing os semaphores
     dw1000_pan_status_t status;                  //!< DW1000 pan status parameters
@@ -123,13 +123,13 @@ typedef struct _dw1000_pan_instance_t{
 }dw1000_pan_instance_t;
 
 dw1000_pan_instance_t * dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config, uint16_t nframes);
-void dw1000_pan_free(dw1000_dev_instance_t * inst);
-void dw1000_pan_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * postprocess);
-void dw1000_pan_start(dw1000_dev_instance_t * inst, dw1000_pan_role_t role);
-dw1000_dev_status_t dw1000_pan_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
-dw1000_pan_status_t dw1000_pan_blink(dw1000_dev_instance_t * inst, uint16_t role, dw1000_dev_modes_t mode, uint64_t delay);
-dw1000_pan_status_t dw1000_pan_reset(dw1000_dev_instance_t * inst, uint64_t delay);
-uint32_t dw1000_pan_lease_remaining(dw1000_dev_instance_t * inst);
+void dw1000_pan_free(dw1000_pan_instance_t *pan);
+void dw1000_pan_set_postprocess(dw1000_pan_instance_t *pan, os_event_fn * postprocess);
+void dw1000_pan_start(dw1000_pan_instance_t * pan, dw1000_pan_role_t role);
+dw1000_dev_status_t dw1000_pan_listen(dw1000_pan_instance_t * pan, dw1000_dev_modes_t mode);
+dw1000_pan_status_t dw1000_pan_blink(dw1000_pan_instance_t * pan, uint16_t role, dw1000_dev_modes_t mode, uint64_t delay);
+dw1000_pan_status_t dw1000_pan_reset(dw1000_pan_instance_t * pan, uint64_t delay);
+uint32_t dw1000_pan_lease_remaining(dw1000_pan_instance_t * pan);
 
 #ifdef __cplusplus
 }

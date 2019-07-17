@@ -92,7 +92,8 @@ tofdb_pkg_init(void)
 #if MYNEWT_VAL(CCP_ENABLED)
     
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    dw1000_ccp_set_tof_comp_cb(hal_dw1000_inst(0)->ccp, ccp_cb);
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_CCP);
+    dw1000_ccp_set_tof_comp_cb(ccp, ccp_cb);
 #endif
 #endif
 }
