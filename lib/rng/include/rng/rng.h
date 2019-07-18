@@ -168,6 +168,9 @@ typedef union {
 //! Structure of range instance
 typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * dev_inst; //!< Structure of DW1000_dev_instance
+#if MYNEWT_VAL(WCS_ENABLED)
+    struct _dw1000_ccp_instance_t * ccp_inst; //!< Structure of CCP
+#endif
 #if MYNEWT_VAL(RNG_STATS)
     STATS_SECT_DECL(rng_stat_section) stat; //!< Stats instance
 #endif

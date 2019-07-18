@@ -248,6 +248,10 @@ dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint
         rng->nframes = nframes;
     }
     rng->dev_inst = inst;
+#if MYNEWT_VAL(WCS_ENABLED)
+    rng->ccp_inst = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    assert(rng->ccp_inst);
+#endif
     os_error_t err = os_sem_init(&rng->sem, 0x1);
     assert(err == OS_OK);
 
@@ -380,8 +384,10 @@ dw1000_rng_config_t *
 dw1000_rng_get_config(dw1000_rng_instance_t * rng, dw1000_rng_modes_t code)
 {
     dw1000_rng_config_t * config;
-    dw1000_dev_instance_t * inst = rng->dev_inst;
 
+#if MYNEWT_VAL(TWR_SS_ENABLED) || MYNEWT_VAL(TWR_SS_EXT_ENABLED) || MYNEWT_VAL(TWR_DS_ENABLED) || MYNEWT_VAL(TWR_DS_EXT_ENABLED)
+    dw1000_dev_instance_t * inst = rng->dev_inst;
+#endif
     switch (code){
 #if MYNEWT_VAL(TWR_SS_ENABLED)
         case  DWT_SS_TWR:                     //!< Single sided TWR

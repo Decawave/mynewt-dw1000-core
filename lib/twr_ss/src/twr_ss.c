@@ -239,7 +239,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
 #if MYNEWT_VAL(WCS_ENABLED)
-                wcs_instance_t * wcs = inst->ccp->wcs;
+                wcs_instance_t * wcs = rng->ccp_inst->wcs;
                 frame->reception_timestamp = (uint32_t)(wcs_local_to_master(wcs, request_timestamp)) & 0xFFFFFFFFULL;
                 frame->transmission_timestamp = (uint32_t)(wcs_local_to_master(wcs, response_timestamp)) & 0xFFFFFFFFULL;
 #else
@@ -269,6 +269,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 dw1000_set_rx_timeout(inst, timeout);
 
                 if (dw1000_start_tx(inst).start_tx_error){
+                    STATS_INC(g_stat, tx_error);
                     os_sem_release(&rng->sem);
                     if (cbs!=NULL && cbs->start_tx_error_cb)
                         cbs->start_tx_error_cb(inst, cbs);
