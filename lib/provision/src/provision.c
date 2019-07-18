@@ -132,23 +132,25 @@ provision_timer_init(dw1000_dev_instance_t * inst) {
  * @return dw1000_provision_instance_t
  */
 dw1000_provision_instance_t*
-dw1000_provision_init(dw1000_dev_instance_t * inst, dw1000_provision_config_t config){
+dw1000_provision_init(dw1000_dev_instance_t * inst, dw1000_provision_config_t config)
+{
     assert(inst);
-    if (inst->provision == NULL ){
-        inst->provision = (dw1000_provision_instance_t *) malloc(sizeof(dw1000_provision_instance_t) + config.max_node_count*sizeof(uint16_t));
-        assert(inst->provision);
-        memset(inst->provision, 0, sizeof(dw1000_provision_instance_t));
-        inst->provision->status.selfmalloc = 1;
+    
+    dw1000_provision_instance_t *provision = (dw1000_provision_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_PROVISION);
+    if (provision == NULL ){
+        provision = (dw1000_provision_instance_t *) malloc(sizeof(dw1000_provision_instance_t) + config.max_node_count*sizeof(uint16_t));
+        assert(provision);
+        memset(provision, 0, sizeof(dw1000_provision_instance_t));
+        provision->status.selfmalloc = 1;
     }
-    dw1000_provision_instance_t* provision = inst->provision;
-    assert(provision!=NULL);
 
-    provision->parent = inst;
+    provision->dev_inst = inst;
     provision->idx = 0x0;
     provision->nframes = 2;
     memcpy(&provision->config,&config,sizeof(dw1000_provision_config_t));
     inst->provision->cbs = (dw1000_mac_interface_t){
         .id = DW1000_PROVISION,
+        .inst_ptr = provision,
         .tx_complete_cb = provision_tx_complete_cb,
         .rx_complete_cb = provision_rx_complete_cb,
         .rx_timeout_cb = provision_rx_timeout_cb,
@@ -161,49 +163,42 @@ dw1000_provision_init(dw1000_dev_instance_t * inst, dw1000_provision_config_t co
     os_error_t err = os_sem_init(&inst->provision->sem, 0x1);
     assert(err == OS_OK);
 
-    dw1000_provision_set_postprocess(inst, &provision_postprocess);
-    inst->provision->status.initialized = 1;
-    return inst->provision;
+    dw1000_provision_set_postprocess(provision, &provision_postprocess);
+    provision->status.initialized = 1;
+    return provision;
 }
 
 /**
  * API to free allocated provision resources.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to dw1000_provision_instance_t.
  *
  * @return void
  */
 
 void
-dw1000_provision_free(dw1000_dev_instance_t * inst){
-    assert(inst != NULL);
-    assert(inst->provision != NULL);
-    //dw1000_remove_extension_callbacks(inst, DW1000_PROVISION);
-    dw1000_mac_remove_interface(inst, DW1000_PROVISION);
-    if (inst->provision->status.selfmalloc){
-        if(inst->provision->dev_addr != NULL){
-            free(inst->provision->dev_addr);
-        }
-        free(inst->provision);
+dw1000_provision_free(dw1000_provision_instance_t * provision){
+    assert(provision != NULL);
+    dw1000_mac_remove_interface(provision->dev_inst, DW1000_PROVISION);
+    if (provision->status.selfmalloc){
+        free(provision);
     }
     else
-        inst->provision->status.initialized = 0;
+        provision->status.initialized = 0;
 }
 
 /**
  * API to set post_process.
  *
- * @param inst                   Pointer to dw1000_dev_instance_t.
+ * @param inst                   Pointer to dw1000_provision_instance_t.
  * @param provision_postprocess  Pointer to os_event_fn.
  *
  * @return void
  */
 void
-dw1000_provision_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * provision_postprocess){
-    assert(inst != NULL);
-    assert(inst->provision != NULL);
-    dw1000_provision_instance_t * provision = inst->provision;
-    os_callout_init(&provision->provision_callout_postprocess, os_eventq_dflt_get(), provision_postprocess, (void *) inst);
+dw1000_provision_set_postprocess(dw1000_provision_instance_t * provision, os_event_fn * provision_postprocess){
+    assert(provision != NULL);
+    os_callout_init(&provision->provision_callout_postprocess, os_eventq_dflt_get(), provision_postprocess, (void *) provision);
     provision->config.postprocess = true;
 }
 
@@ -220,6 +215,7 @@ static void
 provision_postprocess(struct os_event * ev){
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
+    /* NODE: ev->ev_arg is a dw1000_dev_provision_t */
 }
 
 /**
@@ -232,15 +228,15 @@ provision_postprocess(struct os_event * ev){
  * @return bool
  */
 static bool
-provision_rx_complete_cb(dw1000_dev_instance_t* inst, dw1000_mac_interface_t * cbs){
+provision_rx_complete_cb(dw1000_dev_instance_t* inst, dw1000_mac_interface_t * cbs)
+{
     assert(inst != NULL);
     if(inst->fctrl != FCNTL_IEEE_PROVISION_16){
         return false;
     }
-    assert(inst->provision != NULL);
-    uint16_t  frame_idx = inst->provision->idx;
+    dw1000_provision_instance_t * provision = (dw1000_provision_instance_t *)cbs->inst_ptr;
+    uint16_t  frame_idx = provision->idx;
     uint16_t code, dst_address;
-    dw1000_provision_instance_t * provision = inst->provision;
     dw1000_provision_config_t config = provision->config;
 
     dw1000_read_rx(inst, (uint8_t *) &code, offsetof(ieee_rng_request_frame_t,code), sizeof(uint16_t));
@@ -289,7 +285,7 @@ provision_rx_complete_cb(dw1000_dev_instance_t* inst, dw1000_mac_interface_t * c
                         //inst->rng_rx_error_cb(inst);
                     break;
                 }
-                if(provision_add_node(inst,frame->src_address) == PROVISION_ERROR){
+                if(provision_add_node(provision, frame->src_address) == PROVISION_ERROR){
                     //If the addition fails when the number of nodes exceeds max allowed count callout the postprocess
                     os_error_t err = os_sem_release(&provision->sem);
                     assert(err == OS_OK);
@@ -317,14 +313,13 @@ provision_rx_complete_cb(dw1000_dev_instance_t* inst, dw1000_mac_interface_t * c
  * @return bool
  */
 static bool
-provision_rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+provision_rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
     assert(inst != NULL);
-
     if(inst->fctrl != FCNTL_IEEE_PROVISION_16){
         return false;
     }
-    assert(inst->provision != NULL);
-    dw1000_provision_instance_t *provision = inst->provision;
+    dw1000_provision_instance_t * provision = (dw1000_provision_instance_t *)cbs->inst_ptr;
     if(provision->status.provision_status == PROVISION_START){
         os_error_t err = os_sem_release(&provision->sem);
         assert(err == OS_OK);
@@ -346,16 +341,17 @@ provision_rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * c
  * @return bool
  */
 static bool
-provision_rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+provision_rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
     assert(inst != NULL);
     if(inst->fctrl != FCNTL_IEEE_PROVISION_16){
          return false;
     }
-    assert(inst->provision != NULL);
-    if(inst->provision->status.provision_status == PROVISION_START){
-        os_error_t err = os_sem_release(&inst->provision->sem);
+    dw1000_provision_instance_t * provision = (dw1000_provision_instance_t *)cbs->inst_ptr;
+    if(provision->status.provision_status == PROVISION_START){
+        os_error_t err = os_sem_release(&provision->sem);
         assert(err == OS_OK);
-        inst->provision->status.provision_status = PROVISION_DONE;
+        provision->status.provision_status = PROVISION_DONE;
     }else{
         dw1000_start_rx(inst);
     }
@@ -404,11 +400,10 @@ provision_tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * 
  * @return dw1000_provision_status_t
  */
 dw1000_provision_status_t
-dw1000_provision_request(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
-
-    os_error_t err = os_sem_pend(&inst->provision->sem,OS_TIMEOUT_NEVER);
+dw1000_provision_request(dw1000_provision_instance_t * provision, dw1000_dev_modes_t mode)
+{
+    os_error_t err = os_sem_pend(&provision->sem,OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
-    dw1000_provision_instance_t * provision = inst->provision;
     provision_frame_t * frame = &provision->frames[(provision->idx++)%provision->nframes];
 
     provision->status.provision_status = PROVISION_START;
@@ -424,12 +419,12 @@ dw1000_provision_request(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
     dw1000_set_rx_timeout(inst, provision->config.rx_timeout_period);
     provision->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
     if (provision->status.start_tx_error){
-        os_sem_release(&inst->provision->sem);
+        os_sem_release(&provision->sem);
         provision->status.provision_status = PROVISION_DONE;
     }
     else if(mode == DWT_BLOCKING){
-        err = os_sem_pend(&inst->provision->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
-        os_sem_release(&inst->provision->sem);
+        err = os_sem_pend(&provision->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
+        os_sem_release(&provision->sem);
     }
    return provision->status;
 }
@@ -444,13 +439,11 @@ dw1000_provision_request(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode){
  * @return void
  */
 void
-dw1000_provision_start(dw1000_dev_instance_t * inst){
-    assert(inst != NULL);
-    assert(inst->provision != NULL);
-    dw1000_provision_instance_t * provision = inst->provision;
+dw1000_provision_start(dw1000_provision_instance_t * provision)
+{
     provision->idx = 0x0;
     provision->status.valid = true;
-    provision_timer_init(inst);
+    provision_timer_init(provision);
 }
 
 /**
@@ -461,11 +454,10 @@ dw1000_provision_start(dw1000_dev_instance_t * inst){
  * @return void
  */
 void
-dw1000_provision_stop(dw1000_dev_instance_t * inst){
-    assert(inst != NULL);
-    assert(inst->provision != NULL);
-    inst->provision->status.valid = false;
-    os_callout_stop(&inst->provision->provision_callout_timer);
+dw1000_provision_stop(dw1000_provision_instance_t * provision)
+{
+    provision->status.valid = false;
+    os_callout_stop(&provision->provision_callout_timer);
 }
 
 /**
@@ -478,10 +470,8 @@ dw1000_provision_stop(dw1000_dev_instance_t * inst){
  * @return dw1000_provision_error_t
  */
 dw1000_provision_error_t
-provision_add_node(dw1000_dev_instance_t *inst, uint16_t addr){
-    assert(inst != NULL);
-    assert(inst->provision != NULL);
-    dw1000_provision_instance_t *provision = inst->provision;
+provision_add_node(dw1000_provision_instance_t * provision, uint16_t addr)
+{
     if((provision->num_node_count+1) > provision->config.max_node_count)
         return PROVISION_ERROR;
     provision->dev_addr[provision->num_node_count++] = addr;
@@ -497,10 +487,7 @@ provision_add_node(dw1000_dev_instance_t *inst, uint16_t addr){
  * return dw1000_provision_error_t
  */
 dw1000_provision_error_t
-provision_delete_node(dw1000_dev_instance_t *inst, uint16_t addr){
-    assert(inst != NULL);
-    assert(inst->provision != NULL);
-    dw1000_provision_instance_t *provision = inst->provision;
+provision_delete_node(dw1000_provision_instance_t * provision, uint16_t addr){
     for(uint8_t i=0; i < provision->num_node_count; i++){
         if(provision->dev_addr[i] == addr){
             for(int j=i;j< provision->num_node_count-1 ; j++ ){

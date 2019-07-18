@@ -90,7 +90,7 @@ typedef union {
 
 //! Sturcture of provision instance
 typedef struct _dw1000_provision_instance_t{
-    struct _dw1000_dev_instance_t * parent;            //!< Device instance structure
+    struct _dw1000_dev_instance_t * dev_inst;          //!< Device instance structure
     struct os_sem sem;                                 //!< os_semphore
     dw1000_provision_status_t status;                  //!< Provision status
     dw1000_mac_interface_t cbs;                        //!< MAC Layer Callbacks
@@ -106,12 +106,12 @@ typedef struct _dw1000_provision_instance_t{
 
 dw1000_provision_instance_t * dw1000_provision_init(dw1000_dev_instance_t * inst, dw1000_provision_config_t config);
 dw1000_provision_status_t dw1000_provision_request(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
-void dw1000_provision_free(dw1000_dev_instance_t * inst);
-void dw1000_provision_start(dw1000_dev_instance_t * inst);
-void dw1000_provision_stop(dw1000_dev_instance_t * inst);
-void dw1000_provision_set_postprocess(dw1000_dev_instance_t * inst, os_event_fn * provision_postprocess);
-dw1000_provision_error_t provision_add_node(dw1000_dev_instance_t *inst, uint16_t addr);
-dw1000_provision_error_t provision_delete_node(dw1000_dev_instance_t *inst, uint16_t addr);
+void dw1000_provision_free(dw1000_provision_instance_t * provision);
+void dw1000_provision_start(dw1000_provision_instance_t * provision);
+void dw1000_provision_stop(dw1000_provision_instance_t * provision);
+void dw1000_provision_set_postprocess(dw1000_provision_instance_t * provision, os_event_fn * provision_postprocess);
+dw1000_provision_error_t provision_add_node(dw1000_provision_instance_t * provision, uint16_t addr);
+dw1000_provision_error_t provision_delete_node(dw1000_provision_instance_t * provision, uint16_t addr);
 #ifdef __cplusplus
 }
 #endif
