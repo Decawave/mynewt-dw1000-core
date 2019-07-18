@@ -119,12 +119,16 @@ void twr_ds_pkg_init(void){
     printf("{\"utime\": %lu,\"msg\": \"twr_ds_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
+    g_cbs[0].inst_ptr = (dw1000_rng_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_RNG);
+    assert(g_cbs[0].inst_ptr);
     dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs[0]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
+    g_cbs[1].inst_ptr = (dw1000_rng_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(1), DW1000_RNG);
     dw1000_mac_append_interface(hal_dw1000_inst(1), &g_cbs[1]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
+    g_cbs[2].inst_ptr = (dw1000_rng_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(2), DW1000_RNG);
     dw1000_mac_append_interface(hal_dw1000_inst(1), &g_cbs[2]);
 #endif
 
@@ -188,11 +192,13 @@ start_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  * @return true on sucess
  */
 static bool
-reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-
-    if(os_sem_get_count(&inst->rng->sem) == 0){
+reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
+    assert(rng);
+    if(os_sem_get_count(&rng->sem) == 0){
         STATS_INC(g_stat, reset);
-        os_error_t err = os_sem_release(&inst->rng->sem);  
+        os_error_t err = os_sem_release(&rng->sem);
         assert(err == OS_OK);
         return true;
     }
@@ -215,16 +221,17 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
 
-    if(os_sem_get_count(&inst->rng->sem) == 1){ 
+    dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
+    assert(rng);
+    if(os_sem_get_count(&rng->sem) == 1) {
         // unsolicited inbound
         return false;
     }
 
-    switch(inst->rng->code){
+    switch(rng->code){
        case DWT_DS_TWR:
             {
                 // This code executes on the device that is responding to a original request
-                dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];  // Frame already read within loader layers.
                 
                 if (inst->frame_len != sizeof(ieee_rng_request_frame_t)) 
@@ -257,6 +264,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 dw1000_set_rx_timeout(inst, timeout);
 
                 if (dw1000_start_tx(inst).start_tx_error){
+                    STATS_INC(g_stat, start_tx_error);
                     os_sem_release(&rng->sem);  
                     if (cbs!=NULL && cbs->start_tx_error_cb) 
                         cbs->start_tx_error_cb(inst, cbs);
@@ -273,7 +281,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 if (inst->frame_len != sizeof(ieee_rng_response_frame_t)) 
                     break;
 
-                dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
                 twr_frame_t * next_frame = rng->frames[(rng->idx+1)%rng->nframes];
 
@@ -315,6 +322,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 dw1000_set_rx_timeout(inst, timeout);
                      
                 if (dw1000_start_tx(inst).start_tx_error){
+                    STATS_INC(g_stat, start_tx_error);
                     os_sem_release(&rng->sem);  
                     if (cbs!=NULL && cbs->start_tx_error_cb) 
                         cbs->start_tx_error_cb(inst, cbs);
@@ -329,7 +337,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 if (inst->frame_len != sizeof(twr_frame_final_t))
                     break;
 
-                dw1000_rng_instance_t * rng = inst->rng; 
                 twr_frame_t * previous_frame = rng->frames[(uint16_t)(rng->idx-1)%rng->nframes];
                 twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
  
@@ -354,6 +361,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0); 
         
                 if (dw1000_start_tx(inst).start_tx_error){
+                    STATS_INC(g_stat, start_tx_error);
                     os_sem_release(&rng->sem);  
                     if (cbs!=NULL && cbs->start_tx_error_cb) 
                         cbs->start_tx_error_cb(inst, cbs);
@@ -378,7 +386,6 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 if (inst->config.dblbuffon_enabled && inst->config.rxauto_enable)  
                     dw1000_stop_rx(inst); // Need to prevent timeout event 
 
-                dw1000_rng_instance_t * rng = inst->rng; 
                 STATS_INC(g_stat, complete);                   
                 os_sem_release(&rng->sem);
                 dw1000_mac_interface_t * cbs = NULL;

@@ -322,7 +322,6 @@ typedef struct _dw1000_dev_instance_t{
     os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]  //!< Stack of the interrupt task 
         __attribute__((aligned(OS_STACK_ALIGNMENT)));
     uint8_t rxbuf[RX_BUFFER_LEN];            //!< local rxbuf  
-    struct _dw1000_rng_instance_t * rng;     //!< DW1000 rng instance 
 #if MYNEWT_VAL(PROVISION_ENABLED)
     struct _dw1000_provision_instance_t * provision; //!< DW1000 provision instance
 #endif 

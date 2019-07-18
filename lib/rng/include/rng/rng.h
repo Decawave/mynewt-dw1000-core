@@ -167,7 +167,7 @@ typedef union {
 
 //! Structure of range instance
 typedef struct _dw1000_rng_instance_t{
-    struct _dw1000_dev_instance_t * parent; //!< Structure of DW1000_dev_instance
+    struct _dw1000_dev_instance_t * dev_inst; //!< Structure of DW1000_dev_instance
 #if MYNEWT_VAL(RNG_STATS)
     STATS_SECT_DECL(rng_stat_section) stat; //!< Stats instance
 #endif
@@ -185,13 +185,13 @@ typedef struct _dw1000_rng_instance_t{
 
 void rng_pkg_init(void);
 dw1000_rng_instance_t * dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes);
-void dw1000_rng_free(dw1000_rng_instance_t * inst);
-dw1000_dev_status_t dw1000_rng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config);
-dw1000_dev_status_t dw1000_rng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t protocal);
-dw1000_dev_status_t dw1000_rng_listen(dw1000_dev_instance_t * inst, dw1000_dev_modes_t mode);
-dw1000_dev_status_t dw1000_rng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t protocal);
-dw1000_rng_config_t * dw1000_rng_get_config(dw1000_dev_instance_t * inst, dw1000_rng_modes_t code);
-void dw1000_rng_set_frames(dw1000_dev_instance_t * inst, twr_frame_t twr[], uint16_t nframes);
+void dw1000_rng_free(dw1000_rng_instance_t * rng);
+dw1000_dev_status_t dw1000_rng_config(struct _dw1000_rng_instance_t * rng, dw1000_rng_config_t * config);
+dw1000_dev_status_t dw1000_rng_request(struct _dw1000_rng_instance_t * rng, uint16_t dst_address, dw1000_rng_modes_t protocal);
+dw1000_dev_status_t dw1000_rng_listen(struct _dw1000_rng_instance_t * rng, dw1000_dev_modes_t mode);
+dw1000_dev_status_t dw1000_rng_request_delay_start(struct _dw1000_rng_instance_t * rng, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t protocal);
+dw1000_rng_config_t * dw1000_rng_get_config(struct _dw1000_rng_instance_t * rng, dw1000_rng_modes_t code);
+void dw1000_rng_set_frames(struct _dw1000_rng_instance_t * rng, twr_frame_t twr[], uint16_t nframes);
 #if MYNEWT_VAL(DW1000_RANGE)
 float dw1000_rng_twr_to_tof(twr_frame_t *fframe, twr_frame_t *nframe);
 #else

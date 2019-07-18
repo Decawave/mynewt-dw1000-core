@@ -119,19 +119,24 @@ twr_ss_pkg_init(void){
     printf("{\"utime\": %lu,\"msg\": \"twr_ss_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
+    g_cbs[0].inst_ptr = (dw1000_rng_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_RNG);
     dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs[0]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
+    g_cbs[1].inst_ptr = (dw1000_rng_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(1), DW1000_RNG);
     dw1000_mac_append_interface(hal_dw1000_inst(1), &g_cbs[1]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
+    g_cbs[2].inst_ptr = (dw1000_rng_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(2), DW1000_RNG);
     dw1000_mac_append_interface(hal_dw1000_inst(1), &g_cbs[2]);
 #endif
 
     int rc = stats_init(
-    STATS_HDR(g_stat),
-    STATS_SIZE_INIT_PARMS(g_stat, STATS_SIZE_32),
-    STATS_NAME_INIT_PARMS(twr_ss_stat_section));
+        STATS_HDR(g_stat),
+        STATS_SIZE_INIT_PARMS(g_stat, STATS_SIZE_32),
+        STATS_NAME_INIT_PARMS(twr_ss_stat_section));
+    assert(rc == 0);
+
     rc |= stats_register("twr_ss", STATS_HDR(g_stat));
     assert(rc == 0);
 }
@@ -188,11 +193,13 @@ start_tx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  * @return true on sucess
  */
 static bool
-reset_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-
-    if(os_sem_get_count(&inst->rng->sem) == 0){
+reset_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
+    assert(rng);
+    if(os_sem_get_count(&rng->sem) == 0){
         STATS_INC(g_stat, reset);
-        os_error_t err = os_sem_release(&inst->rng->sem);
+        os_error_t err = os_sem_release(&rng->sem);
         assert(err == OS_OK);
         return true;
     }
@@ -210,17 +217,19 @@ reset_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  * @return true on sucess
  */
 static bool
-rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
 
-    if(os_sem_get_count(&inst->rng->sem) == 1) // unsolicited inbound
+    dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
+    assert(rng);
+    if(os_sem_get_count(&rng->sem) == 1) // unsolicited inbound
         return false;
 
-    dw1000_rng_instance_t * rng = inst->rng;
     twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes]; // Frame already read within loader layers.
 
-    switch(inst->rng->code){
+    switch(rng->code){
         case DWT_SS_TWR:
             {
                 // This code executes on the device that is responding to a request
