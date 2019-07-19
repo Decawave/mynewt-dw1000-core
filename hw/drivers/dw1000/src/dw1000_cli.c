@@ -137,7 +137,9 @@ dw1000_dump_registers(struct _dw1000_dev_instance_t * inst)
         console_printf("{\"ccp->sem\"=\"0x%0X\"}\n", os_sem_get_count(&ccp->sem));
 #endif
 #if MYNEWT_VAL(SURVEY_ENABLED)
-    console_printf("{\"survey->sem\"=\"0x%0X\"}\n", os_sem_get_count(&inst->survey->sem));
+    survey_instance_t *survey = (survey_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_SURVEY);
+    if (survey)
+        console_printf("{\"survey->sem\"=\"0x%0X\"}\n", os_sem_get_count(&survey->sem));
 #endif
 }
 

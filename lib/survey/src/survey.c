@@ -101,8 +101,9 @@ survey_instance_t *
 survey_init(struct _dw1000_dev_instance_t * inst, uint16_t nnodes, uint16_t nframes){
     assert(inst);
     
-    if (inst->survey == NULL ) {
-        survey_instance_t * survey = (survey_instance_t *) malloc(sizeof(survey_instance_t) + nframes * sizeof(survey_nrngs_t * )); 
+    survey_instance_t *survey = (survey_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_SURVEY);
+    if (survey == NULL) {
+        survey = (survey_instance_t *) malloc(sizeof(survey_instance_t) + nframes * sizeof(survey_nrngs_t * )); 
         assert(survey);
         memset(survey, 0, sizeof(survey_instance_t) + nframes * sizeof(survey_nrngs_t * ));
     
@@ -133,20 +134,25 @@ survey_init(struct _dw1000_dev_instance_t * inst, uint16_t nnodes, uint16_t nfra
         survey->status.selfmalloc = 1;
         survey->nnodes = nnodes; 
         survey->nframes = nframes; 
-        survey->parent = inst;
-        inst->survey = survey;
-        os_error_t err = os_sem_init(&inst->survey->sem, 0x1); 
+
+        /* Lookup the other instances we will need */
+        survey->dev_inst = inst;
+        survey->ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+        survey->nrng = (dw1000_nrng_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_NRNG);
+
+        os_error_t err = os_sem_init(&survey->sem, 0x1); 
         assert(err == OS_OK);
     }else{
-        assert(inst->survey->nnodes == nnodes);
+        assert(survey->nnodes == nnodes);
     }
-    inst->survey->status.initialized = 1;
-    inst->survey->config = (survey_config_t){
+    survey->status.initialized = 1;
+    survey->config = (survey_config_t){
         .rx_timeout_delay = MYNEWT_VAL(SURVEY_RX_TIMEOUT)
     };
 
-    inst->survey->cbs = (dw1000_mac_interface_t){
+    survey->cbs = (dw1000_mac_interface_t){
         .id = DW1000_SURVEY,
+        .inst_ptr = (void*)survey,
         .rx_complete_cb = rx_complete_cb,
         .tx_complete_cb = tx_complete_cb,
         .rx_timeout_cb = rx_timeout_cb,
@@ -154,21 +160,21 @@ survey_init(struct _dw1000_dev_instance_t * inst, uint16_t nnodes, uint16_t nfra
     };
 
 #if MYNEWT_VAL(SURVEY_VERBOSE)
-    inst->survey->survey_complete_cb = survey_complete_cb;
+    survey->survey_complete_cb = survey_complete_cb;
 #endif
-    dw1000_mac_append_interface(inst, &inst->survey->cbs);
+    dw1000_mac_append_interface(inst, &survey->cbs);
 
     int rc = stats_init(
-                STATS_HDR(inst->survey->stat),
-                STATS_SIZE_INIT_PARMS(inst->survey->stat, STATS_SIZE_32),
+                STATS_HDR(survey->stat),
+                STATS_SIZE_INIT_PARMS(survey->stat, STATS_SIZE_32),
                 STATS_NAME_INIT_PARMS(survey_stat_section)
             );
     assert(rc == 0);
 
-    rc = stats_register("survey", STATS_HDR(inst->survey->stat));
+    rc = stats_register("survey", STATS_HDR(survey->stat));
     assert(rc == 0);
 
-    return inst->survey;
+    return survey;
 }
 
 /** 
@@ -178,20 +184,20 @@ survey_init(struct _dw1000_dev_instance_t * inst, uint16_t nnodes, uint16_t nfra
  * @return void
  */
 void 
-survey_free(survey_instance_t * inst){
-    assert(inst);  
+survey_free(survey_instance_t * survey)
+{
+    assert(survey);
     
-    if (inst->status.selfmalloc){
-        inst->parent->survey = NULL;
-        for (uint16_t j = 0; j < inst->nframes; j++){
-            for (uint16_t i = 0; i < inst->nnodes; i++)
-                free(inst->nrngs[j]->nrng[i]);
-            free(inst->nrngs[j]);
+    if (survey->status.selfmalloc){
+        for (uint16_t j = 0; j < survey->nframes; j++){
+            for (uint16_t i = 0; i < survey->nnodes; i++)
+                free(survey->nrngs[j]->nrng[i]);
+            free(survey->nrngs[j]);
         }
-        free(inst->frame);
-        free(inst);
+        free(survey->frame);
+        free(survey);
     }else{
-        inst->status.initialized = 0;
+        survey->status.initialized = 0;
     }
 }
 
@@ -201,8 +207,8 @@ survey_free(survey_instance_t * inst){
  * @return void
  */
 void 
-survey_pkg_init(void){
-
+survey_pkg_init(void)
+{
     printf("{\"utime\": %lu,\"msg\": \"survey_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
@@ -235,15 +241,16 @@ static void survey_complete_cb(struct os_event *ev) {
  * The variable SURVEY_MASK is used to derive the sequencing of the node.
  */
 void 
-survey_slot_range_cb(struct os_event *ev){
+survey_slot_range_cb(struct os_event *ev)
+{
     assert(ev);
     assert(ev->ev_arg);
 
     tdma_slot_t * slot = (tdma_slot_t *) ev->ev_arg;
     tdma_instance_t * tdma = slot->parent;
-    dw1000_dev_instance_t * inst = tdma->parent;
+    dw1000_dev_instance_t * inst = tdma->dev_inst;
     dw1000_ccp_instance_t * ccp = tdma->ccp;
-    survey_instance_t * survey = inst->survey;
+    survey_instance_t * survey = (survey_instance_t *)slot->arg;
     survey->seq_num = (ccp->seq_num & ((uint32_t)~0UL << MYNEWT_VAL(SURVEY_MASK))) >> MYNEWT_VAL(SURVEY_MASK);
     
     if(ccp->seq_num % survey->nnodes == inst->slot_id){
@@ -274,9 +281,9 @@ survey_slot_broadcast_cb(struct os_event *ev){
 
     tdma_slot_t * slot = (tdma_slot_t *) ev->ev_arg;
     tdma_instance_t * tdma = slot->parent;
-    dw1000_dev_instance_t * inst = tdma->parent;
+    dw1000_dev_instance_t * inst = tdma->dev_inst;
     dw1000_ccp_instance_t * ccp = tdma->ccp;
-    survey_instance_t * survey = inst->survey;
+    survey_instance_t * survey = (survey_instance_t *)slot->arg;
     survey->seq_num = (ccp->seq_num & ((uint32_t)~0UL << MYNEWT_VAL(SURVEY_MASK))) >> MYNEWT_VAL(SURVEY_MASK);
 
     if(ccp->seq_num % survey->nnodes == inst->slot_id){
@@ -305,18 +312,17 @@ survey_request(survey_instance_t * survey, uint64_t dx_time)
 {
     assert(survey);
 
-    dw1000_dev_instance_t * inst = survey->parent;
-    STATS_INC(inst->survey->stat, request);
+    dw1000_dev_instance_t * inst = survey->dev_inst;
+    STATS_INC(survey->stat, request);
     
     uint32_t slot_mask = ~(~0UL << (survey->nnodes));
-    dw1000_nrng_instance_t *nrng_inst = (dw1000_nrng_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_NRNG);
-    dw1000_nrng_request_delay_start(nrng_inst, 0xffff, dx_time, DWT_SS_TWR_NRNG, slot_mask, 0);
+    dw1000_nrng_request_delay_start(survey->nrng, 0xffff, dx_time, DWT_SS_TWR_NRNG, slot_mask, 0);
     
     survey_nrngs_t * nrngs = survey->nrngs[(survey->idx)%survey->nframes];
-    nrngs->nrng[inst->slot_id]->mask = dw1000_nrng_get_ranges(nrng_inst, 
+    nrngs->nrng[inst->slot_id]->mask = dw1000_nrng_get_ranges(survey->nrng, 
                                 nrngs->nrng[inst->slot_id]->rng, 
                                 survey->nnodes, 
-                                nrng_inst->idx
+                                survey->nrng->idx
                             );
     return survey->status;
 }
@@ -326,15 +332,14 @@ survey_status_t
 survey_listen(survey_instance_t * survey, uint64_t dx_time){
     assert(survey);
 
-    dw1000_dev_instance_t * inst = survey->parent;
-    STATS_INC(inst->survey->stat, listen);
-    dw1000_nrng_instance_t *nrng = (dw1000_nrng_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_NRNG);
+    dw1000_dev_instance_t * inst = survey->dev_inst;
+    STATS_INC(survey->stat, listen);
 
     dw1000_set_delay_start(inst, dx_time);
     uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_request_frame_t))
-                        + nrng->config.rx_timeout_delay;
+                        + survey->nrng->config.rx_timeout_delay;
     dw1000_set_rx_timeout(inst, timeout + 0x1000);
-    dw1000_nrng_listen(nrng, DWT_BLOCKING);
+    dw1000_nrng_listen(survey->nrng, DWT_BLOCKING);
 
     return survey->status;
 }
@@ -356,7 +361,7 @@ survey_broadcaster(survey_instance_t * survey, uint64_t dx_time){
     assert(err == OS_OK);
     STATS_INC(survey->stat, broadcaster);
 
-    dw1000_dev_instance_t * inst = survey->parent;
+    dw1000_dev_instance_t * inst = survey->dev_inst;
     survey_nrngs_t * nrngs = survey->nrngs[survey->idx%survey->nframes];
 
     survey->frame->mask = nrngs->nrng[inst->slot_id]->mask;
@@ -405,7 +410,7 @@ survey_status_t
 survey_receiver(survey_instance_t * survey, uint64_t dx_time){
     assert(survey);
 
-    dw1000_dev_instance_t * inst = survey->parent;
+    dw1000_dev_instance_t * inst = survey->dev_inst;
     os_error_t err = os_sem_pend(&survey->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
     STATS_INC(survey->stat, receiver);
@@ -439,10 +444,7 @@ survey_receiver(survey_instance_t * survey, uint64_t dx_time){
 static bool 
 rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {   
-    assert(inst->survey);
-    survey_instance_t * survey = inst->survey; 
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
-    assert(ccp);
+    survey_instance_t * survey = (survey_instance_t *)cbs->inst_ptr;
 
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
@@ -459,7 +461,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
     if(frame->dst_address != 0xffff)
         return false;
-    if(ccp->seq_num % survey->nnodes == 0)
+    if(survey->ccp->seq_num % survey->nnodes == 0)
         survey->idx++;  // advance the nrngs idx at begining of sequence.
 
     switch(frame->code) {
@@ -504,9 +506,9 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
  * @return true on sucess
  */
 static bool
-tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-
-    survey_instance_t * survey = inst->survey; 
+tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    survey_instance_t * survey = (survey_instance_t *)cbs->inst_ptr;
 
     if(os_sem_get_count(&survey->sem) == 1)
         return false;
@@ -526,10 +528,10 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  * @return true on sucess
  */
 static bool
-rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    
-    survey_instance_t * survey = inst->survey; 
-    
+rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    survey_instance_t * survey = (survey_instance_t *)cbs->inst_ptr;
+
     if(os_sem_get_count(&survey->sem) == 1)
         return false;   
 
@@ -548,9 +550,9 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  * @return true on sucess
  */
 static bool
-reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
-    
-    survey_instance_t * survey = inst->survey; 
+reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+{
+    survey_instance_t * survey = (survey_instance_t *)cbs->inst_ptr;
 
     if(os_sem_get_count(&survey->sem) == 1)
         return false;

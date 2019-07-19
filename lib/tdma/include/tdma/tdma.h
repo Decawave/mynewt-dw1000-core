@@ -74,7 +74,7 @@ typedef struct _tdma_slot_t{
 
 //! Structure of tdma instance
 typedef struct _tdma_instance_t{
-    struct _dw1000_dev_instance_t * parent;  //!< Pointer to _dw1000_dev_instance_t
+    struct _dw1000_dev_instance_t * dev_inst; //!< Pointer to _dw1000_dev_instance_t
 #if MYNEWT_VAL(CCP_ENABLED)
     dw1000_ccp_instance_t *ccp;              //!< Pointer to ccp instance
 #endif

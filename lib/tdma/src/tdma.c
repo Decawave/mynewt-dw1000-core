@@ -107,7 +107,7 @@ tdma_init(struct _dw1000_dev_instance_t * inst, uint16_t nslots)
         os_error_t err = os_mutex_init(&tdma->mutex);
         assert(err == OS_OK);
         tdma->nslots = nslots; 
-        tdma->parent = inst;
+        tdma->dev_inst = inst;
 #ifdef TDMA_TASKS_ENABLE
         tdma->task_prio = inst->task_prio + 0x6;
 #endif
@@ -407,7 +407,7 @@ tdma_superframe_event_cb(struct os_event * ev){
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma_superframe_event_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     tdma_instance_t * tdma = (void *)ev->ev_arg;
-    struct _dw1000_dev_instance_t * inst = tdma->parent;
+    struct _dw1000_dev_instance_t * inst = tdma->dev_inst;
     dw1000_ccp_instance_t * ccp = tdma->ccp;
     
     TDMA_STATS_INC(superframe_cnt);
@@ -457,7 +457,7 @@ slot_timer_cb(void * arg)
 #ifdef TDMA_TASKS_ENABLE
     os_eventq_put(&tdma->eventq, &slot->event_cb.c_ev);
 #else
-    os_eventq_put(&tdma->parent->eventq, &slot->event_cb.c_ev);
+    os_eventq_put(&tdma->dev_inst->eventq, &slot->event_cb.c_ev);
 #endif
 }
 
@@ -518,6 +518,6 @@ uint64_t
 tdma_rx_slot_start(struct _tdma_instance_t * tdma, float idx)
 {
     uint64_t dx_time = tdma_tx_slot_start(tdma, idx);
-    dx_time = (dx_time - ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&tdma->parent->attrib))) << 16));
+    dx_time = (dx_time - ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&tdma->dev_inst->attrib))) << 16));
     return dx_time;
 }

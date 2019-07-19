@@ -97,7 +97,9 @@ typedef struct _survey_config_t{
 
 //! survey instance parameters.
 typedef struct _survey_instance_t{
-    struct _dw1000_dev_instance_t * parent;     //!< Pointer to _dw1000_dev_instance_t
+    struct _dw1000_dev_instance_t * dev_inst;   //!< Pointer to _dw1000_dev_instance_t
+    struct _dw1000_ccp_instance_t * ccp;        //!< Pointer to _dw1000_ccp_instance_t
+    struct _dw1000_nrng_instance_t * nrng;      //!< Pointer to _dw1000_nrng_instance_t
     STATS_SECT_DECL(survey_stat_section) stat;  //!< Stats instance
     dw1000_mac_interface_t cbs;                 //!< MAC Layer Callbacks
     void (* survey_complete_cb) (struct os_event *ev); //!< Optional Callback for post processing
