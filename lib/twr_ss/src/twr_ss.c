@@ -287,7 +287,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
                 uint64_t response_timestamp = inst->rxtimestamp;
 #if MYNEWT_VAL(WCS_ENABLED)
-                wcs_instance_t * wcs = inst->ccp->wcs;
+                wcs_instance_t * wcs = rng->ccp_inst->wcs;
                 frame->request_timestamp = wcs_local_to_master(wcs, dw1000_read_txtime(inst)) & 0xFFFFFFFFULL;
                 frame->response_timestamp = wcs_local_to_master(wcs, response_timestamp) & 0xFFFFFFFFULL;
 #else
