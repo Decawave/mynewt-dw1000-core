@@ -362,6 +362,12 @@ tdma_assign_slot(struct _tdma_instance_t * inst, void (* call_back )(struct dpl_
 
     dpl_event_init(&inst->slot[idx]->event, call_back, (void *) inst->slot[idx]);
     os_cputime_timer_init(&inst->slot[idx]->timer, slot_timer_cb, (void *) inst->slot[idx]);
+
+#ifdef TDMA_TASKS_ENABLE
+    dpl_callout_init(&inst->slot[idx]->event_cb, &inst->eventq, callout, (void *) inst->slot[idx]);
+#else
+    dpl_callout_init(&inst->slot[idx]->event_cb, &inst->dev_inst->eventq, callout, (void *) inst->slot[idx]);
+#endif
 }
 
 /**
