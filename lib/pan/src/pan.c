@@ -138,8 +138,8 @@ static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
 static bool tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
 static bool reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static void pan_postprocess(struct os_event * ev);
-static void lease_expiry_cb(struct os_event * ev);
+static void pan_postprocess(struct dpl_event * ev);
+static void lease_expiry_cb(struct dpl_event * ev);
 
 static dw1000_mac_interface_t g_cbs[] = {
         [0] = {
@@ -199,18 +199,19 @@ dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config, uin
         .postprocess = false,
     };
 
-    os_error_t err = os_sem_init(&pan->sem, 0x1);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_sem_init(&pan->sem, 0x1);
+    assert(err == DPL_OK);
 
     dw1000_pan_set_postprocess(pan, pan_postprocess);
 
-    err = stats_init(
+    os_error_t rc = stats_init(
         STATS_HDR(g_stat),
         STATS_SIZE_INIT_PARMS(g_stat, STATS_SIZE_32),
         STATS_NAME_INIT_PARMS(pan_stat_section)
-        );
-    err |= stats_register("pan", STATS_HDR(g_stat));
-    assert(err == OS_OK);
+    );
+    rc |= stats_register("pan", STATS_HDR(g_stat));
+    
+    assert(rc == OS_OK);
 
     pan->status.valid = true;
     pan->status.initialized = 1;
@@ -312,9 +313,10 @@ dw1000_pan_set_postprocess(dw1000_pan_instance_t *pan, os_event_fn * cb)
  * @return void
  */
 static void
-pan_postprocess(struct os_event * ev){
+pan_postprocess(struct dpl_event * ev){
     assert(ev != NULL);
-    assert(ev->ev_arg != NULL);
+    assert(dpl_event_get_arg(ev));
+
 
 #if MYNEWT_VAL(PAN_VERBOSE)
     dw1000_pan_instance_t * pan = (dw1000_pan_instance_t *)ev->ev_arg;
@@ -354,11 +356,12 @@ pan_postprocess(struct os_event * ev){
  * @return void
  */
 static void
-lease_expiry_cb(struct os_event * ev)
+lease_expiry_cb(struct dpl_event * ev)
 {
     assert(ev != NULL);
-    assert(ev->ev_arg != NULL);
-    dw1000_pan_instance_t * pan = (dw1000_pan_instance_t *)ev->ev_arg;
+    assert(dpl_event_get_arg(ev));
+
+    dw1000_pan_instance_t * pan = (dw1000_pan_instance_t *) dpl_event_get_arg(ev);
     dw1000_dev_instance_t * inst = pan->dev_inst;
     STATS_INC(g_stat, lease_expiry);
     pan->status.valid = false;
@@ -395,7 +398,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         return false;
     }
 
-    if (os_sem_get_count(&pan->sem) == 1){
+    if (dpl_sem_get_count(&pan->sem) == 1){
         /* Unsolicited */
         STATS_INC(g_stat, rx_unsolicited);
         return false;
@@ -439,7 +442,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             inst->slot_id = frame->slot_id;
             pan->status.valid = true;
             pan->status.lease_expired = false;
-            os_callout_stop(&pan->pan_lease_callout_expiry);
+            dpl_callout_stop(&pan->pan_lease_callout_expiry);
             if (frame->lease_time > 0) {
                 /* Calculate when our lease expires */
                 uint32_t exp_tics;
@@ -450,7 +453,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 lease_us -= (inst->rxtimestamp>>16) - (ccp->local_epoch>>16);
 #endif
                 os_time_ms_to_ticks(lease_us/1000, &exp_tics);
-                os_callout_reset(&pan->pan_lease_callout_expiry, exp_tics);
+                dpl_callout_reset(&pan->pan_lease_callout_expiry, exp_tics);
             }
         } else {
             return true;
@@ -462,7 +465,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             pan->status.valid = false;
             pan->status.lease_expired = true;
             inst->slot_id = 0xffff;
-            os_callout_stop(&pan->pan_lease_callout_expiry);
+            dpl_callout_stop(&pan->pan_lease_callout_expiry);
         } else {
             return false;
         }
@@ -477,9 +480,9 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     }
 
     /* Release sem */
-    if (os_sem_get_count(&pan->sem) == 0) {
-        os_error_t err = os_sem_release(&pan->sem);
-        assert(err == OS_OK);
+    if (dpl_sem_get_count(&pan->sem) == 0) {
+        dpl_error_t err = dpl_sem_release(&pan->sem);
+        assert(err == DPL_OK);
     }
     return true;
 }
@@ -518,10 +521,10 @@ static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     dw1000_pan_instance_t * pan = (dw1000_pan_instance_t *)cbs->inst_ptr;
-    if (os_sem_get_count(&pan->sem) == 0){
+    if (dpl_sem_get_count(&pan->sem) == 0){
         STATS_INC(g_stat, reset);
-        os_error_t err = os_sem_release(&pan->sem);
-        assert(err == OS_OK);
+        dpl_error_t err = dpl_sem_release(&pan->sem);
+        assert(err == DPL_OK);
         return true;
     }
     return false;
@@ -540,10 +543,10 @@ static bool
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     dw1000_pan_instance_t * pan = (dw1000_pan_instance_t *)cbs->inst_ptr;
-    if (os_sem_get_count(&pan->sem) == 0){
+    if (dpl_sem_get_count(&pan->sem) == 0){
         STATS_INC(g_stat, rx_timeout);
-        os_error_t err = os_sem_release(&pan->sem);
-        assert(err == OS_OK);
+        dpl_error_t err = dpl_sem_release(&pan->sem);
+        assert(err == DPL_OK);
         return true;
     }
     return false;
@@ -562,22 +565,22 @@ dw1000_dev_status_t
 dw1000_pan_listen(dw1000_pan_instance_t * pan, dw1000_dev_modes_t mode)
 {
     dw1000_dev_instance_t * inst = pan->dev_inst;
-    os_error_t err = os_sem_pend(&pan->sem,  OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_sem_pend(&pan->sem,  DPL_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
 
     STATS_INC(g_stat, pan_listen);
 
     if(dw1000_start_rx(inst).start_rx_error){
         STATS_INC(g_stat, rx_error);
-        err = os_sem_release(&pan->sem);
-        assert(err == OS_OK);
+        err = dpl_sem_release(&pan->sem);
+        assert(err == DPL_OK);
     }
 
     if (mode == DWT_BLOCKING){
-        err = os_sem_pend(&pan->sem, OS_TIMEOUT_NEVER);
-        assert(err == OS_OK);
-        err = os_sem_release(&pan->sem);
-        assert(err == OS_OK);
+        err = dpl_sem_pend(&pan->sem, DPL_TIMEOUT_NEVER);
+        assert(err == DPL_OK);
+        err = dpl_sem_release(&pan->sem);
+        assert(err == DPL_OK);
     }
 
     return inst->status;
@@ -600,8 +603,8 @@ dw1000_pan_blink(dw1000_pan_instance_t *pan, uint16_t role,
                  dw1000_dev_modes_t mode, uint64_t delay)
 {
     dw1000_dev_instance_t * inst = pan->dev_inst;
-    os_error_t err = os_sem_pend(&pan->sem,  OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_sem_pend(&pan->sem,  DPL_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
 
     STATS_INC(g_stat, pan_request);
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
@@ -627,12 +630,12 @@ dw1000_pan_blink(dw1000_pan_instance_t *pan, uint16_t role,
         DIAGMSG("{\"utime\": %lu,\"msg\": \"pan_blnk_txerr\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         // Half Period Delay Warning occured try for the next epoch
         // Use seq_num to detect this on receiver size
-        os_sem_release(&pan->sem);
+        dpl_sem_release(&pan->sem);
     }
     else if(mode == DWT_BLOCKING){
-        err = os_sem_pend(&pan->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
-        os_sem_release(&pan->sem);
-        assert(err == OS_OK);
+        err = dpl_sem_pend(&pan->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions
+        dpl_sem_release(&pan->sem);
+        assert(err == DPL_OK);
     }
     return pan->status;
 }
@@ -715,7 +718,7 @@ dw1000_pan_start(dw1000_pan_instance_t * pan, dw1000_pan_role_t role, network_ro
 uint32_t
 dw1000_pan_lease_remaining(dw1000_pan_instance_t * pan)
 {
-    os_time_t rt = os_callout_remaining_ticks(&pan->pan_lease_callout_expiry, os_time_get());
+    os_time_t rt = dpl_callout_remaining_ticks(&pan->pan_lease_callout_expiry, os_time_get());
     return os_time_ticks_to_ms32(rt);
 }
 

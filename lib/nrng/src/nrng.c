@@ -100,7 +100,7 @@ dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1
         memset(nrng, 0, sizeof(dw1000_nrng_instance_t));
         nrng->status.selfmalloc = 1;
     }
-    os_error_t err = os_sem_init(&nrng->sem, 0x1); 
+    os_error_t err = dpl_sem_init(&nrng->sem, 0x1); 
     assert(err == OS_OK);
 
     nrng->dev_inst = inst;
@@ -375,8 +375,8 @@ dw1000_nrng_request(dw1000_nrng_instance_t * nrng, uint16_t dst_address, dw1000_
     dw1000_dev_instance_t * inst = nrng->dev_inst;
     assert(inst);
 
-    os_error_t err = os_sem_pend(&nrng->sem,  OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_sem_pend(&nrng->sem,  DPL_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
     NRNG_STATS_INC(nrng_request);
 
     dw1000_rng_config_t * config = dw1000_nrng_get_config(nrng, code);
@@ -424,15 +424,15 @@ dw1000_nrng_request(dw1000_nrng_instance_t * nrng, uint16_t dst_address, dw1000_
     
     if (dw1000_start_tx(inst).start_tx_error){
         NRNG_STATS_INC(start_tx_error);
-        if (os_sem_get_count(&nrng->sem) == 0) {
-            err = os_sem_release(&nrng->sem);
-            assert(err == OS_OK);
+        if (dpl_sem_get_count(&nrng->sem) == 0) {
+            err = dpl_sem_release(&nrng->sem);
+            assert(err == DPL_OK);
         }
     }else{
-        err = os_sem_pend(&nrng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
-        assert(err == OS_OK);
-        err = os_sem_release(&nrng->sem);
-        assert(err == OS_OK);
+        err = dpl_sem_pend(&nrng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
+        assert(err == DPL_OK);
+        err = dpl_sem_release(&nrng->sem);
+        assert(err == DPL_OK);
     }
     // dw1000_set_dblrxbuff(inst, false);
     return inst->status;
@@ -451,8 +451,8 @@ dw1000_nrng_listen(dw1000_nrng_instance_t * nrng, dw1000_dev_modes_t mode)
 {
     dw1000_dev_instance_t * inst = nrng->dev_inst;
 
-    os_error_t err = os_sem_pend(&nrng->sem,  OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_sem_pend(&nrng->sem,  DPL_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
 
     // Download the CIR on the response    
 #if MYNEWT_VAL(CIR_ENABLED)   
@@ -461,15 +461,15 @@ dw1000_nrng_listen(dw1000_nrng_instance_t * nrng, dw1000_dev_modes_t mode)
     
     NRNG_STATS_INC(nrng_listen);
     if(dw1000_start_rx(inst).start_rx_error){
-        err = os_sem_release(&nrng->sem);
-        assert(err == OS_OK);
+        err = dpl_sem_release(&nrng->sem);
+        assert(err == DPL_OK);
         NRNG_STATS_INC(start_rx_error);
     }
     if (mode == DWT_BLOCKING){
-        err = os_sem_pend(&nrng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
-        assert(err == OS_OK);
-        err = os_sem_release(&nrng->sem);
-        assert(err == OS_OK);
+        err = dpl_sem_pend(&nrng->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions 
+        assert(err == DPL_OK);
+        err = dpl_sem_release(&nrng->sem);
+        assert(err == DPL_OK);
     }
    return inst->status;
 }
@@ -534,7 +534,7 @@ dw1000_nrng_twr_to_tof_frames(struct _dw1000_dev_instance_t * inst, nrng_frame_t
 static void
 complete_ev_cb(struct os_event *ev) {
     assert(ev != NULL);
-    assert(ev->ev_arg != NULL);
+    assert(dpl_event_get_arg(ev));
 
     dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *)ev->ev_arg;
     nrng_encode(nrng, nrng->seq_num, nrng->idx);

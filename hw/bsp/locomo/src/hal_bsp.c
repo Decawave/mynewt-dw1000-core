@@ -58,7 +58,7 @@ static const struct nrf52_uart_cfg os_bsp_uart0_cfg = {
 #endif
 
 #if MYNEWT_VAL(SPI_0_MASTER)
-struct os_sem g_spi0_sem;
+struct dpl_sem g_spi0_sem;
 /*
  * NOTE: Our HAL expects that the SS pin, if used, is treated as a gpio line
  * and is handled outside the SPI routines.
@@ -230,8 +230,8 @@ void hal_bsp_init(void)
 #if MYNEWT_VAL(SPI_0_MASTER)
     rc = hal_spi_init(0, (void *)&os_bsp_spi0m_cfg, HAL_SPI_TYPE_MASTER);
     assert(rc == 0);
-    rc = os_sem_init(&g_spi0_sem, 0x1);
-    assert(rc == 0);
+    dpl_error_t err = dpl_sem_init(&g_spi0_sem, 0x1);
+    assert(err == DPL_OK);
 #endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)

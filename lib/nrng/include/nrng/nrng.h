@@ -124,7 +124,7 @@ typedef struct _dw1000_nrng_instance_t{
     uint16_t t1_final_flag;
     uint64_t delay;
     uint8_t seq_num;
-    struct os_sem sem;                          //!< Structure of semaphores
+    struct dpl_sem sem;                          //!< Structure of semaphores
     dw1000_mac_interface_t cbs;                 //!< MAC Layer Callbacks
     dw1000_nrng_device_type_t device_type;
     dw1000_rng_status_t status;

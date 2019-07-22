@@ -120,7 +120,7 @@ typedef struct _dw1000_pan_control_t{
 typedef struct _dw1000_pan_instance_t{
     struct _dw1000_dev_instance_t * dev_inst;    //!< pointer to _dw1000_dev_instance_t
     dw1000_mac_interface_t cbs;                  //!< MAC Layer Callbacks
-    struct os_sem sem;                           //!< Structure containing os semaphores
+    struct dpl_sem sem;                          //!< Structure containing os semaphores
     dw1000_pan_status_t status;                  //!< DW1000 pan status parameters
     dw1000_pan_control_t control;                //!< DW1000 pan control parameters
     struct os_event postprocess_event;           //!< Structure of postprocess event

@@ -58,7 +58,7 @@
 #include "bsp.h"
 
 #if MYNEWT_VAL(SPI_0_MASTER)
-struct os_sem g_spi0_sem;
+struct dpl_sem g_spi0_sem;
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
 /* 
@@ -75,7 +75,7 @@ static const struct dw1000_dev_cfg dw1000_0_cfg = {
 
 
 #if MYNEWT_VAL(I2C_1)
-struct os_mutex g_i2c1_mutex;
+struct dpl_mutex g_i2c1_mutex;
 
 #if MYNEWT_VAL(LSM6DSL_ONB)
 #include <lsm6dsl/lsm6dsl.h>
@@ -355,13 +355,17 @@ void hal_bsp_init(void)
 #endif
 
 #if MYNEWT_VAL(I2C_1)
-    rc = os_mutex_init(&g_i2c1_mutex);
-    assert(rc == 0);
+    {
+    dpl_error_t err = dpl_mutex_init(&g_i2c1_mutex);
+    assert(err == DPL_OK);
+    }
 #endif
 
 #if MYNEWT_VAL(SPI_0_MASTER)
-    rc = os_sem_init(&g_spi0_sem, 0x1);
-    assert(rc == 0);
+    {
+    dpl_error_t err = os_sem_init(&g_spi0_sem, 0x1);
+    assert(err == DPL_OK);
+    }
 #endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)

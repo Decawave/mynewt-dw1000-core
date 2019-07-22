@@ -43,7 +43,7 @@
 #include "bsp.h"
 
 #if MYNEWT_VAL(SPI_0_MASTER)
-struct os_sem g_spi0_sem;
+struct dpl_sem g_spi0_sem;
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
 /* 
@@ -136,7 +136,7 @@ hal_bsp_init(void)
     nrf52_periph_create();
 
 #if MYNEWT_VAL(SPI_0_MASTER)
-    rc = os_sem_init(&g_spi0_sem, 0x1);
+    rc = dpl_sem_init(&g_spi0_sem, 0x1);
     assert(rc == 0);
 #endif
 

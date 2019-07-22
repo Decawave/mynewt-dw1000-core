@@ -134,10 +134,10 @@ rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
     
-    if(os_sem_get_count(&nrng->sem) == 0){
+    if(dpl_sem_get_count(&nrng->sem) == 0){
         NRNG_STATS_INC(rx_error);
-        os_error_t err = os_sem_release(&nrng->sem);
-        assert(err == OS_OK);
+        dpl_error_t err = dpl_sem_release(&nrng->sem);
+        assert(err == DPL_OK);
         return true;
     }
     return false;
@@ -155,10 +155,10 @@ static bool
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *)cbs->inst_ptr;
-    if(os_sem_get_count(&nrng->sem) == 1)
+    if(dpl_sem_get_count(&nrng->sem) == 1)
         return false;
 
-    if(os_sem_get_count(&nrng->sem) == 0){
+    if(dpl_sem_get_count(&nrng->sem) == 0){
         NRNG_STATS_INC(rx_timeout);
         // In the case of a NRNG timeout is used to mark the end of the request 
         // and is used to call the completion callback  
@@ -168,8 +168,8 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 if(cbs->complete_cb(inst, cbs)) continue;
             }
         }
-        os_error_t err = os_sem_release(&nrng->sem);
-        assert(err == OS_OK);
+        dpl_error_t err = dpl_sem_release(&nrng->sem);
+        assert(err == DPL_OK);
     }    
     return true;
 }
@@ -185,9 +185,9 @@ static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *)cbs->inst_ptr;
-    if(os_sem_get_count(&nrng->sem) == 0){
-        os_error_t err = os_sem_release(&nrng->sem);
-        assert(err == OS_OK);
+    if(dpl_sem_get_count(&nrng->sem) == 0){
+        dpl_error_t err = dpl_sem_release(&nrng->sem);
+        assert(err == DPL_OK);
         NRNG_STATS_INC(reset);
         return true;
     }
@@ -210,7 +210,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
     
-    if(os_sem_get_count(&nrng->sem) == 1){ 
+    if(dpl_sem_get_count(&nrng->sem) == 1){ 
         // unsolicited inbound
         NRNG_STATS_INC(rx_unsolicited);
         return false;
@@ -283,12 +283,12 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 dw1000_set_delay_start(inst, response_tx_delay);
 
                 if (dw1000_start_tx(inst).start_tx_error){
-                    os_sem_release(&nrng->sem);  
+                    dpl_sem_release(&nrng->sem);  
                     if (cbs!=NULL && cbs->start_tx_error_cb) {
                         cbs->start_tx_error_cb(inst, cbs);
                     }
                 }else{
-                    os_sem_release(&nrng->sem);
+                    dpl_sem_release(&nrng->sem);
                 }
             break;
             }

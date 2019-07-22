@@ -306,10 +306,10 @@ hal_dw1000_read(struct _dw1000_dev_instance_t * inst,
                 const uint8_t * cmd, uint8_t cmd_size,
                 uint8_t * buffer, uint16_t length)
 {
-    os_error_t err;
+    dpl_error_t err;
     assert(inst->spi_sem);
-    err = os_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    err = dpl_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
     hal_gpio_write(inst->ss_pin, 0);
 
     hal_spi_txrx(inst->spi_num, (void*)cmd, 0, cmd_size);
@@ -318,8 +318,8 @@ hal_dw1000_read(struct _dw1000_dev_instance_t * inst,
 
     hal_gpio_write(inst->ss_pin, 1);
 
-    err = os_sem_release(inst->spi_sem);
-    assert(err == OS_OK);
+    err = dpl_sem_release(inst->spi_sem);
+    assert(err == DPL_OK);
 }
 
 
@@ -332,18 +332,18 @@ hal_dw1000_read(struct _dw1000_dev_instance_t * inst,
 void
 hal_dw1000_spi_txrx_cb(void *arg, int len)
 {
-    os_error_t err;
+    dpl_error_t err;
     struct _dw1000_dev_instance_t * inst = arg;
     assert(inst!=0);
 
     /* Check for longer nonblocking read/write op */
-    if (inst->spi_nb_sem.sem_tokens == 0) {
-        err = os_sem_release(&inst->spi_nb_sem);
-        assert(err == OS_OK);
+    if (inst->spi_nb_sem.sem.sem_tokens == 0) {
+        err = dpl_sem_release(&inst->spi_nb_sem);
+        assert(err == DPL_OK);
     } else {
         hal_gpio_write(inst->ss_pin, 1);
-        err = os_sem_release(inst->spi_sem);
-        assert(err == OS_OK);
+        err = dpl_sem_release(inst->spi_sem);
+        assert(err == DPL_OK);
     }
 }
 
@@ -362,11 +362,11 @@ void
 hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {
     int rc;
-    os_error_t err;
+    dpl_error_t err;
     assert(inst->spi_sem);
 
-    err = os_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    err = dpl_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
     
     hal_gpio_write(inst->ss_pin, 0);
 
@@ -384,35 +384,35 @@ hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cm
 
         /* Only use the spi_nb_sem if needed */
         if (bytes_left) {
-            err = os_sem_pend(&inst->spi_nb_sem, OS_TIMEOUT_NEVER);
-            assert(err == OS_OK);
+            err = dpl_sem_pend(&inst->spi_nb_sem, OS_TIMEOUT_NEVER);
+            assert(err == DPL_OK);
         }
    
         rc = hal_spi_disable(inst->spi_num);
         rc |= hal_spi_set_txrx_cb(inst->spi_num, hal_dw1000_spi_txrx_cb, (void*)inst);   
         rc |= hal_spi_enable(inst->spi_num);
-        assert(rc == OS_OK);
+        assert(rc == DPL_OK);
 
         rc = hal_spi_txrx_noblock(inst->spi_num, (void*)tx_buffer,
                                   (void*)buffer+offset, bytes_to_read);
-        assert(rc==OS_OK);
+        assert(rc==DPL_OK);
 
         /* Only wait for this round if there is more data to read */
         if (bytes_left) {
-            err = os_sem_pend(&inst->spi_nb_sem, OS_TIMEOUT_NEVER);
-            assert(err == OS_OK);
+            err = dpl_sem_pend(&inst->spi_nb_sem, OS_TIMEOUT_NEVER);
+            assert(err == DPL_OK);
 
-            err = os_sem_release(&inst->spi_nb_sem);
-            assert(err == OS_OK);
+            err = dpl_sem_release(&inst->spi_nb_sem);
+            assert(err == DPL_OK);
         }
     }
 
     /* Reaquire semaphore after rx complete */
-    err = os_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    err = dpl_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
 
-    err = os_sem_release(inst->spi_sem);
-    assert(err == OS_OK);
+    err = dpl_sem_release(inst->spi_sem);
+    assert(err == DPL_OK);
 }
 
 
@@ -429,10 +429,10 @@ hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cm
 void 
 hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {
-    os_error_t err;
+    dpl_error_t err;
     assert(inst->spi_sem);
-    err = os_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    err = dpl_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
 
     hal_gpio_write(inst->ss_pin, 0);
 
@@ -441,8 +441,8 @@ hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint
      
     hal_gpio_write(inst->ss_pin, 1);
 
-    err = os_sem_release(inst->spi_sem);
-    assert(err == OS_OK);
+    err = dpl_sem_release(inst->spi_sem);
+    assert(err == DPL_OK);
 }
 
 
@@ -460,15 +460,15 @@ void
 hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {
     int rc = OS_OK;
-    os_error_t err;
+    dpl_error_t err;
     assert(length);
     assert(inst->spi_sem);
-    err = os_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    err = dpl_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
 
     hal_gpio_write(inst->ss_pin, 0);
     rc = hal_spi_txrx(inst->spi_num, (void*)cmd, 0, cmd_size);
-    assert(rc==OS_OK);
+    assert(rc == OS_OK);
 
     /* Nonblocking writes can only do a maximum of 255 bytes at a time */
     int step = 255;
@@ -479,8 +479,8 @@ hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * c
 
         /* Only use the spi_nb_sem if needed */
         if (bytes_left) {
-            err = os_sem_pend(&inst->spi_nb_sem, OS_TIMEOUT_NEVER);
-            assert(err == OS_OK);
+            err = dpl_sem_pend(&inst->spi_nb_sem, OS_TIMEOUT_NEVER);
+            assert(err == DPL_OK);
         }
 
         rc = hal_spi_disable(inst->spi_num);
@@ -495,11 +495,11 @@ hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * c
         /* Only wait for this round if there is more data to read */
         if (bytes_left) {
             /* Wait for this round of writing to complete */
-            err = os_sem_pend(&inst->spi_nb_sem, OS_TIMEOUT_NEVER);
-            assert(err == OS_OK);
+            err = dpl_sem_pend(&inst->spi_nb_sem, OS_TIMEOUT_NEVER);
+            assert(err == DPL_OK);
             
-            err = os_sem_release(&inst->spi_nb_sem);
-            assert(err == OS_OK);
+            err = dpl_sem_release(&inst->spi_nb_sem);
+            assert(err == DPL_OK);
         }
     }
 }
@@ -514,10 +514,10 @@ hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * c
 os_error_t
 hal_dw1000_rw_noblock_wait(struct _dw1000_dev_instance_t * inst, os_time_t timeout)
 {
-    os_error_t err;
-    err = os_sem_pend(inst->spi_sem, timeout);
-    if (inst->spi_sem->sem_tokens == 0) {
-        os_sem_release(inst->spi_sem);
+    dpl_error_t err;
+    err = dpl_sem_pend(inst->spi_sem, timeout);
+    if (inst->spi_sem->sem.sem_tokens == 0) {
+        dpl_sem_release(inst->spi_sem);
     }
     return err;
 }
@@ -532,11 +532,11 @@ hal_dw1000_rw_noblock_wait(struct _dw1000_dev_instance_t * inst, os_time_t timeo
 void 
 hal_dw1000_wakeup(struct _dw1000_dev_instance_t * inst)
 {
-    os_error_t err;
+    dpl_error_t err;
     os_sr_t sr;
     assert(inst->spi_sem);
-    err = os_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    err = dpl_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
 
     OS_ENTER_CRITICAL(sr);
     
@@ -555,8 +555,8 @@ hal_dw1000_wakeup(struct _dw1000_dev_instance_t * inst)
 
     OS_EXIT_CRITICAL(sr);
 
-    err = os_sem_release(inst->spi_sem);
-    assert(err == OS_OK);
+    err = dpl_sem_release(inst->spi_sem);
+    assert(err == DPL_OK);
 }
 
 /**

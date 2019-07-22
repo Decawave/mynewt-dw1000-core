@@ -71,7 +71,7 @@ static const struct dw1000_dev_cfg dw1000_0_cfg = {
 
 
 #if MYNEWT_VAL(I2C_1)
-struct os_mutex g_i2c1_mutex;
+struct dpl_mutex g_i2c1_mutex;
 #endif /* end MYNEWT_VAL(I2C_1) */
 
 
@@ -189,12 +189,12 @@ void hal_bsp_init(void)
 #endif
     
 #if MYNEWT_VAL(I2C_1)
-    rc = os_mutex_init(&g_i2c1_mutex);
+    rc = dpl_mutex_init(&g_i2c1_mutex);
     assert(rc == 0);
 #endif
 
 #if MYNEWT_VAL(SPI_0_MASTER)
-    rc = os_sem_init(&g_spi0_sem, 0x1);
+    rc = dpl_sem_init(&g_spi0_sem, 0x1);
     assert(rc == 0);
 #endif
 

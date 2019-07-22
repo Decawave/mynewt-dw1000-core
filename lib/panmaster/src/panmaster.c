@@ -139,12 +139,13 @@ panm_init_fcb(void)
 
 #if MYNEWT_VAL(PAN_ENABLED)
 static void
-panmaster_dw1000_cb(struct os_event * ev)
+panmaster_dw1000_cb(struct dpl_event * ev)
 {
     struct os_timeval tv;
     assert(ev != NULL);
-    assert(ev->ev_arg != NULL);
-    dw1000_pan_instance_t * pan = (dw1000_pan_instance_t *)ev->ev_arg;
+    assert(dpl_event_get_arg(ev));
+
+    dw1000_pan_instance_t * pan = (dw1000_pan_instance_t *)ev->ev.ev_arg;
     dw1000_dev_instance_t * inst = pan->dev_inst;
 
     if (pan->config->role != PAN_ROLE_MASTER) {
@@ -227,7 +228,7 @@ panmaster_pkg_init(void)
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
     dw1000_dev_instance_t * inst = hal_dw1000_inst(0);
-    dw1000_pan_instance_t *pan = (dw1000_pan_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_PAN);
+    dw1000_pan_instance_t * pan = (dw1000_pan_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_PAN);
     assert(pan);
     dw1000_pan_set_postprocess(pan, panmaster_dw1000_cb);
 #endif

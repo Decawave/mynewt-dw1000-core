@@ -48,6 +48,7 @@ extern "C" {
 #if MYNEWT_VAL(CIR_ENABLED)
 #include <cir/cir.h>
 #endif
+#include <dpl/dpl.h>
 
 #define DWT_DEVICE_ID   (0xDECA0130) //!< Decawave Device ID 
 #define DWT_SUCCESS (0)              //!< DWT Success
@@ -265,13 +266,13 @@ typedef struct _dw1000_mac_interface_t {
 
 //! Device instance parameters.
 typedef struct _dw1000_dev_instance_t{
-    struct os_dev uwb_dev;                     //!< Has to be here for cast in create_dev to work 
-    struct os_sem *spi_sem;                    //!< Pointer to global spi bus semaphore
-    struct os_sem spi_nb_sem;                  //!< Semaphore for nonblocking rd/wr operations
-    struct os_sem tx_sem;                         //!< semphore for low level mac/phy functions
-    struct os_mutex mutex;                     //!< os_mutex
+    struct os_dev uwb_dev;                      //!< Has to be here for cast in create_dev to work 
+    struct dpl_sem * spi_sem;                   //!< Pointer to global spi bus semaphore
+    struct dpl_sem spi_nb_sem;                  //!< Semaphore for nonblocking rd/wr operations
+    struct dpl_sem tx_sem;                      //!< semphore for low level mac/phy functions
+    struct dpl_mutex mutex;                     //!< os_mutex
     uint32_t epoch; 
-    uint8_t idx;                               //!< instance number number {0, 1, 2 etc}
+    uint8_t idx;                                //!< instance number number {0, 1, 2 etc}
 
     SLIST_HEAD(,_dw1000_mac_interface_t) interface_cbs;
 
@@ -319,8 +320,8 @@ typedef struct _dw1000_dev_instance_t{
     uint16_t tx_antenna_delay;     //!< Transmit antenna delay  
     
     struct hal_spi_settings spi_settings;  //!< Structure of SPI settings in hal layer 
-    struct os_eventq eventq;     //!< Structure of os_eventq that has event queue 
-    struct os_event interrupt_ev;          //!< Structure of os_event that tirgger interrupts 
+    struct dpl_eventq eventq;     //!< Structure of os_eventq that has event queue 
+    struct dpl_event interrupt_ev;          //!< Structure of os_event that tirgger interrupts 
     struct os_task task_str;     //!< Structure of os_task that has interrupt task 
     uint8_t task_prio;           //!< Priority of the interrupt task  
     os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]  //!< Stack of the interrupt task 
@@ -340,7 +341,7 @@ typedef struct _dw1000_dev_instance_t{
 
 //! SPI parameters
 struct dw1000_dev_cfg {
-    struct os_sem *spi_sem;                        //!< Pointer to os_sem structure to lock spi bus
+    struct dpl_sem *spi_sem;                        //!< Pointer to os_sem structure to lock spi bus
     int spi_num;                                   //!< SPI number
 };
 

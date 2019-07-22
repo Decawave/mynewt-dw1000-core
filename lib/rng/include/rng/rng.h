@@ -176,7 +176,7 @@ typedef struct _dw1000_rng_instance_t{
 #endif
     uint16_t code;                          //!< Range profile code
     uint16_t seq_num;                       //!< Local sequence number
-    struct os_sem sem;                      //!< Structure of semaphores
+    struct dpl_sem sem;                      //!< Structure of semaphores
     uint64_t delay;                         //!< Delay in transmission
     dw1000_rng_config_t config;             //!< Structure of range config
     dw1000_rng_control_t control;           //!< Structure of range control
