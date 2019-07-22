@@ -911,6 +911,7 @@ static void
 complete_ev_cb(struct dpl_event *ev) {
     assert(ev != NULL);
     assert(dpl_event_get_arg(ev));
+
     dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)dpl_event_get_arg(ev);
     rng_encode(rng);
 }

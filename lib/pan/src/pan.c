@@ -299,6 +299,9 @@ void
 dw1000_pan_set_postprocess(dw1000_pan_instance_t *pan, dpl_event_fn * cb)
 {
     dpl_event_init(&pan->postprocess_event, cb, (void *) pan);
+    dpl_callout_init(&pan->pan_lease_callout_expiry, dpl_eventq_dflt_get(),
+                    lease_expiry_cb, (void *) pan);
+
     pan->control.postprocess = true;
 }
 

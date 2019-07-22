@@ -436,7 +436,7 @@ void hal_bsp_init(void)
 #endif
 
 #if MYNEWT_VAL(SPI_3_MASTER)
-    rc = os_sem_init(&g_spi3_sem, 0x1);
+    rc = dpl_sem_init(&g_spi3_sem, 0x1);
     assert(rc == 0);
 #endif
 
