@@ -56,15 +56,15 @@ typedef struct _wcs_instance_t{
     ccp_timestamp_t master_epoch;
     ccp_timestamp_t local_epoch;
     double skew;
-    struct os_event postprocess_ev;
+    struct dpl_event postprocess_ev;
     struct _dw1000_ccp_instance_t * ccp;
     struct _timescale_instance_t * timescale;
 }wcs_instance_t; 
 
 wcs_instance_t * wcs_init(wcs_instance_t * inst, dw1000_ccp_instance_t * ccp);
 void wcs_free(wcs_instance_t * inst);
-void wcs_update_cb(struct os_event * ev);
-void wcs_set_postprocess(wcs_instance_t * inst, os_event_fn * postprocess);
+void wcs_update_cb(struct dpl_event * ev);
+void wcs_set_postprocess(wcs_instance_t * inst, dpl_event_fn * postprocess);
 
 uint64_t wcs_read_systime(struct _dw1000_dev_instance_t * inst);
 uint32_t wcs_read_systime_lo(struct _dw1000_dev_instance_t * inst);

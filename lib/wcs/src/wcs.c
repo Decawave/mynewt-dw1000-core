@@ -65,7 +65,7 @@
 
 #undef TICTOC
 
-static void wcs_postprocess(struct os_event * ev);
+static void wcs_postprocess(struct dpl_event * ev);
 
 static const double g_x0[TIMESCALE_N] = {0};
 static const double g_q[] = { MYNEWT_VAL(TIMESCALE_QVAR) * 1.0l, MYNEWT_VAL(TIMESCALE_QVAR) * 0.1l, MYNEWT_VAL(TIMESCALE_QVAR) * 0.01l};
@@ -142,10 +142,11 @@ wcs_free(wcs_instance_t * inst){
  *
  * returns none 
  */
-void wcs_update_cb(struct os_event * ev){
+void wcs_update_cb(struct dpl_event * ev){
     assert(ev != NULL);
-    assert(ev->ev_arg != NULL);
-    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)ev->ev_arg;
+    assert(dpl_event_get_arg(ev) != NULL);
+
+    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)dpl_event_get_arg(ev);
     wcs_instance_t * wcs = ccp->wcs;
     timescale_instance_t * timescale = wcs->timescale;
     timescale_states_t * states = (timescale_states_t *) (timescale->eke->x);
@@ -183,7 +184,7 @@ void wcs_update_cb(struct os_event * ev){
             wcs->skew = 0.0l;
 
         if(wcs->config.postprocess == true)
-            os_eventq_put(os_eventq_dflt_get(), &wcs->postprocess_ev);
+            dpl_eventq_put(dpl_eventq_dflt_get(), &wcs->postprocess_ev);
     }
 }
 
@@ -201,12 +202,12 @@ void wcs_update_cb(struct os_event * ev){
  * returns none 
  */
 static void
-wcs_postprocess(struct os_event * ev){
+wcs_postprocess(struct dpl_event * ev){
     assert(ev != NULL);
-    assert(ev->ev_arg != NULL);
+    assert(dpl_event_get_arg(ev) != NULL);
 
 #if MYNEWT_VAL(WCS_VERBOSE)
-    wcs_instance_t * wcs = (wcs_instance_t *) ev->ev_arg;
+    wcs_instance_t * wcs = (wcs_instance_t *) dpl_event_get_arg(ev);
     timescale_instance_t * timescale = wcs->timescale; 
     timescale_states_t * x = (timescale_states_t *) (timescale->eke->x); 
 
@@ -233,9 +234,9 @@ wcs_postprocess(struct os_event * ev){
  * returns none
  */
 void 
-wcs_set_postprocess(wcs_instance_t * inst, os_event_fn * postprocess){
-    inst->postprocess_ev.ev_cb = postprocess;
-    inst->postprocess_ev.ev_arg = (void *)inst;
+wcs_set_postprocess(wcs_instance_t * inst, dpl_event_fn * postprocess){
+
+    dpl_event_init(&inst->postprocess_ev, postprocess, (void *)inst);
     inst->config.postprocess = true;
 }
 

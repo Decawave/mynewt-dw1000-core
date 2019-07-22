@@ -252,19 +252,19 @@ pan_pkg_init(void)
     g_cbs[0].inst_ptr = pan = dw1000_pan_init(hal_dw1000_inst(0), &g_config, sizeof(g_pan_0)/sizeof(pan_frame_t));
     dw1000_pan_set_frames(pan, g_pan_0, sizeof(g_pan_0)/sizeof(pan_frame_t));
     dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs[0]);
-    os_callout_init(&pan->pan_lease_callout_expiry, os_eventq_dflt_get(), lease_expiry_cb, (void *) pan);
+    dpl_callout_init(&pan->pan_lease_callout_expiry, dpl_eventq_dflt_get(), lease_expiry_cb, (void *) pan);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
     g_cbs[1].inst_ptr = pan = dw1000_pan_init(hal_dw1000_inst(1), &g_config, sizeof(g_pan_1)/sizeof(pan_frame_t));
     dw1000_pan_set_frames(pan, g_pan_1, sizeof(g_pan_1)/sizeof(pan_frame_t));
     dw1000_mac_append_interface(hal_dw1000_inst(1), &g_cbs[1]);
-    os_callout_init(&pan->pan_lease_callout_expiry, os_eventq_dflt_get(), lease_expiry_cb, (void *) pan);
+    dpl_callout_init(&pan->pan_lease_callout_expiry, dpl_eventq_dflt_get(), lease_expiry_cb, (void *) pan);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
     g_cbs[2].inst_ptr = pan = dw1000_pan_init(hal_dw1000_inst(2), &g_config, sizeof(g_pan_2)/sizeof(pan_frame_t));
     dw1000_pan_set_frames(pan, g_pan_2, sizeof(g_pan_2)/sizeof(pan_frame_t));
     dw1000_mac_append_interface(hal_dw1000_inst(2), &g_cbs[2]);
-    os_callout_init(&pan->pan_lease_callout_expiry, os_eventq_dflt_get(), lease_expiry_cb, (void *) pan);
+    dpl_callout_init(&pan->pan_lease_callout_expiry, dpl_eventq_dflt_get(), lease_expiry_cb, (void *) pan);
 #endif
 }
 
@@ -296,10 +296,9 @@ dw1000_pan_free(dw1000_pan_instance_t *pan){
  * @return void
  */
 void
-dw1000_pan_set_postprocess(dw1000_pan_instance_t *pan, os_event_fn * cb)
+dw1000_pan_set_postprocess(dw1000_pan_instance_t *pan, dpl_event_fn * cb)
 {
-    pan->postprocess_event.ev_cb  = cb;
-    pan->postprocess_event.ev_arg = (void *) pan;
+    dpl_event_init(&pan->postprocess_event, cb, (void *) pan);
     pan->control.postprocess = true;
 }
 
@@ -370,7 +369,7 @@ lease_expiry_cb(struct dpl_event * ev)
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"pan_lease_expired\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     if (pan->control.postprocess) {
-        os_eventq_put(&inst->eventq, &pan->postprocess_event);
+        dpl_eventq_put(&inst->eventq, &pan->postprocess_event);
     }
 }
 
@@ -476,7 +475,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
     /* Postprocess, all roles */
     if (pan->control.postprocess) {
-        os_eventq_put(&inst->eventq, &pan->postprocess_event);
+        dpl_eventq_put(&inst->eventq, &pan->postprocess_event);
     }
 
     /* Release sem */

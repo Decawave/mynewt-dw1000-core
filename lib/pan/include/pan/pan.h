@@ -123,8 +123,8 @@ typedef struct _dw1000_pan_instance_t{
     struct dpl_sem sem;                          //!< Structure containing os semaphores
     dw1000_pan_status_t status;                  //!< DW1000 pan status parameters
     dw1000_pan_control_t control;                //!< DW1000 pan control parameters
-    struct os_event postprocess_event;           //!< Structure of postprocess event
-    struct os_callout pan_lease_callout_expiry;  //!< Structure of lease_callout_expiry
+    struct dpl_event postprocess_event;           //!< Structure of postprocess event
+    struct dpl_callout pan_lease_callout_expiry;  //!< Structure of lease_callout_expiry
     dw1000_pan_config_t * config;                //!< DW1000 pan config parameters
     uint16_t nframes;                            //!< Number of buffers defined to store the data
     uint16_t idx;                                //!< Indicates number of DW1000 instances

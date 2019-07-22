@@ -532,16 +532,16 @@ dw1000_nrng_twr_to_tof_frames(struct _dw1000_dev_instance_t * inst, nrng_frame_t
  * @return true on sucess
  */
 static void
-complete_ev_cb(struct os_event *ev) {
+complete_ev_cb(struct dpl_event *ev) {
     assert(ev != NULL);
     assert(dpl_event_get_arg(ev));
 
-    dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *)ev->ev_arg;
+    dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *) dpl_event_get_arg(ev);
     nrng_encode(nrng, nrng->seq_num, nrng->idx);
     nrng->slot_mask = 0; 
 }
 
-struct os_event nrng_event;
+struct dpl_event nrng_event;
 /**
  * @fn complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  * @brief API for nrng complete callback and put complete_event_cb in queue.
@@ -557,10 +557,9 @@ complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
     dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *)cbs->inst_ptr;
-    if(os_sem_get_count(&nrng->sem) == 0){
-        nrng_event.ev_cb  = complete_ev_cb;
-        nrng_event.ev_arg = (void*) nrng;
-        os_eventq_put(os_eventq_dflt_get(), &nrng_event);
+    if(dpl_sem_get_count(&nrng->sem) == 0){
+        dpl_event_init(&nrng_event, complete_ev_cb, (void*) nrng);
+        dpl_eventq_put(dpl_eventq_dflt_get(), &nrng_event);
     }
     return false;
 }
