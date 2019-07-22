@@ -321,9 +321,9 @@ typedef struct _dw1000_dev_instance_t{
     
     struct hal_spi_settings spi_settings;  //!< Structure of SPI settings in hal layer 
     struct dpl_eventq eventq;     //!< Structure of os_eventq that has event queue 
-    struct dpl_event interrupt_ev;          //!< Structure of os_event that tirgger interrupts 
+    struct dpl_event interrupt_ev;//!< Structure of os_event that trigger interrupts 
     struct dpl_task task_str;     //!< Structure of os_task that has interrupt task 
-    uint8_t task_prio;           //!< Priority of the interrupt task  
+    uint8_t task_prio;            //!< Priority of the interrupt task  
     dpl_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]  //!< Stack of the interrupt task 
         __attribute__((aligned(DPL_STACK_ALIGNMENT)));
     uint8_t rxbuf[RX_BUFFER_LEN];            //!< local rxbuf  
