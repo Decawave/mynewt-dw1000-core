@@ -123,8 +123,8 @@ static struct _dw1000_ccp_status_t dw1000_ccp_listen(struct _dw1000_ccp_instance
 
 static void ccp_tasks_init(struct _dw1000_ccp_instance_t * inst);
 static void ccp_timer_irq(void * arg);
-static void ccp_master_timer_ev_cb(struct os_event *ev);
-static void ccp_slave_timer_ev_cb(struct os_event *ev);
+static void ccp_master_timer_ev_cb(struct dpl_event *ev);
+static void ccp_slave_timer_ev_cb(struct dpl_event *ev);
 
 #if !MYNEWT_VAL(WCS_ENABLED)
 static void ccp_postprocess(struct os_event * ev);
@@ -145,14 +145,11 @@ ccp_timer_init(dw1000_ccp_instance_t *ccp, dw1000_ccp_role_t role)
 
     os_cputime_timer_init(&ccp->timer, ccp_timer_irq, (void *) ccp);
 
-    if (role == CCP_ROLE_MASTER) {
-        ccp->timer_event.ev_cb = ccp_master_timer_ev_cb;
-        ccp->timer_event.ev_arg = (void *) ccp;
-    } else {
-        ccp->timer_event.ev_cb = ccp_slave_timer_ev_cb;
-        ccp->timer_event.ev_arg = (void *) ccp;
-    }
-
+    if (role == CCP_ROLE_MASTER) 
+        dpl_event_init(&ccp->timer_event, ccp_master_timer_ev_cb, (void *) ccp);
+    else 
+        dpl_event_init(&ccp->timer_event, ccp_slave_timer_ev_cb, (void *) ccp);
+    
     os_cputime_timer_relative(&ccp->timer, 0);
 }
 
@@ -168,7 +165,7 @@ ccp_timer_irq(void * arg){
     assert(arg);
 
     dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)arg;
-    os_eventq_put(&ccp->eventq, &ccp->timer_event);
+    dpl_eventq_put(&ccp->eventq, &ccp->timer_event);
 }
 
 /**
@@ -182,11 +179,11 @@ ccp_timer_irq(void * arg){
  * @return void
  */
 static void
-ccp_master_timer_ev_cb(struct os_event *ev) {
+ccp_master_timer_ev_cb(struct dpl_event *ev) {
     assert(ev != NULL);
-    assert(ev->ev_arg != NULL);
+    assert(dpl_event_get_arg(ev));
 
-    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)ev->ev_arg;
+    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *) dpl_event_get_arg(ev);
     
     CCP_STATS_INC(master_cnt);
 
@@ -212,11 +209,11 @@ ccp_master_timer_ev_cb(struct os_event *ev) {
  * @return void
  */
 static void
-ccp_slave_timer_ev_cb(struct os_event *ev) {
+ccp_slave_timer_ev_cb(struct dpl_event *ev) {
     assert(ev != NULL);
-    assert(ev->ev_arg != NULL);
+    assert(dpl_event_get_arg(ev));
 
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)ev->ev_arg;
+    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *) dpl_event_get_arg(ev);
     dw1000_dev_instance_t * inst = ccp->dev_inst;
 
     /* Sync lost since earlier, just set a long rx timeout and
@@ -279,7 +276,7 @@ ccp_task(void *arg)
 {
     dw1000_ccp_instance_t * inst = arg;
     while (1) {
-        os_eventq_run(&inst->eventq);
+        dpl_eventq_run(&inst->eventq);
     }
 }
 
@@ -294,10 +291,10 @@ static void
 ccp_tasks_init(struct _dw1000_ccp_instance_t * inst)
 {
     /* Check if the tasks are already initiated */
-    if (!os_eventq_inited(&inst->eventq))
+    if (!dpl_eventq_inited(&inst->eventq))
     {
         /* Use a dedicate event queue for tdma events */
-        os_eventq_init(&inst->eventq);
+        dpl_eventq_init(&inst->eventq);
         os_task_init(&inst->task_str, "dw1000_ccp",
                      ccp_task,
                      (void *) inst,
@@ -377,11 +374,11 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes){
         .tx_holdoff_dly = MYNEWT_VAL(CCP_RPT_HOLDOFF_DLY),
     };
 
-    os_error_t err = os_sem_init(&ccp->sem, 0x1);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_sem_init(&ccp->sem, 0x1);
+    assert(err == DPL_OK);
 
 #if MYNEWT_VAL(WCS_ENABLED)
-    ccp->wcs = wcs_init(NULL, ccp);                 // Using wcs process
+    ccp->wcs = wcs_init(NULL, ccp);                       // Using wcs process
     dw1000_ccp_set_postprocess(ccp, &wcs_update_cb);      // Using default process
 #else
     dw1000_ccp_set_postprocess(ccp, &ccp_postprocess);    // Using default process
@@ -439,7 +436,7 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes){
 void
 dw1000_ccp_free(dw1000_ccp_instance_t * inst){
     assert(inst);
-    os_sem_release(&inst->sem);
+    dpl_sem_release(&inst->sem);
 
 #if MYNEWT_VAL(WCS_ENABLED)
     wcs_free(inst->wcs);
@@ -488,10 +485,9 @@ void ccp_pkg_init(void){
  * @return void
  */
 void
-dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * ccp, os_event_fn * postprocess)
+dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * ccp, dpl_event_fn * postprocess)
 {
-    ccp->postprocess_event.ev_cb = postprocess;
-    ccp->postprocess_event.ev_arg = (void *) ccp;
+    dpl_event_init(&ccp->postprocess_event, postprocess, (void *) ccp);
     ccp->config.postprocess = true;
 }
 
@@ -504,11 +500,11 @@ dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * ccp, os_event_fn * postproces
  * @return void
  */
 static void
-ccp_postprocess(struct os_event * ev){
+ccp_postprocess(struct dpl_event * ev){
     assert(ev != NULL);
-    assert(ev->ev_arg != NULL);
-    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)ev->ev_arg;
+    assert(dpl_event_get_arg(ev));
 
+    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *) dpl_event_get_arg(ev);
     ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx-1)%ccp->nframes];
     ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes];
     uint64_t delta = 0;
@@ -554,14 +550,14 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)cbs->inst_ptr;
 
     if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64){
-        if(os_sem_get_count(&ccp->sem) == 0){
+        if(dpl_sem_get_count(&ccp->sem) == 0){
             dw1000_set_rx_timeout(inst, (uint16_t) 0xffff);
             return true;
         }
         return false;
     }
 
-    if(os_sem_get_count(&ccp->sem) != 0){
+    if(dpl_sem_get_count(&ccp->sem) != 0){
         //unsolicited inbound
         CCP_STATS_INC(rx_unsolicited);
         return false;
@@ -683,7 +679,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     }
 
     if (ccp->config.postprocess && ccp->status.valid) {
-        os_eventq_put(os_eventq_dflt_get(), &ccp->postprocess_event);
+        dpl_eventq_put(dpl_eventq_dflt_get(), &ccp->postprocess_event);
     }
 
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED)
@@ -704,7 +700,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         }
     }
 #endif
-    os_sem_release(&ccp->sem);
+    dpl_sem_release(&ccp->sem);
     return false;
 }
 
@@ -725,7 +721,7 @@ static bool
 ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)cbs->inst_ptr;
-    if(os_sem_get_count(&ccp->sem) == 1)
+    if(dpl_sem_get_count(&ccp->sem) == 1)
         return false;
 
     CCP_STATS_INC(tx_complete);
@@ -748,11 +744,11 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
     ccp->status.valid |= ccp->idx > 1;
     // Postprocess for tx_complete is used to generate tdma events on the clock master node.
     if (ccp->config.postprocess && ccp->status.valid)
-        os_eventq_put(os_eventq_dflt_get(), &ccp->postprocess_event);
+        dpl_eventq_put(dpl_eventq_dflt_get(), &ccp->postprocess_event);
 
-    if(os_sem_get_count(&ccp->sem) == 0){
-        os_error_t err = os_sem_release(&ccp->sem);
-        assert(err == OS_OK);
+    if(dpl_sem_get_count(&ccp->sem) == 0){
+        dpl_error_t err = dpl_sem_release(&ccp->sem);
+        assert(err == DPL_OK);
     }
    
     return false;
@@ -771,13 +767,13 @@ static bool
 ccp_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)cbs->inst_ptr;
-    if(os_sem_get_count(&ccp->sem) == 1)
+    if(dpl_sem_get_count(&ccp->sem) == 1)
         return false;  
 
     CCP_STATS_INC(txrx_error);
-    if(os_sem_get_count(&ccp->sem) == 0){
-        os_error_t err = os_sem_release(&ccp->sem); 
-        assert(err == OS_OK); 
+    if(dpl_sem_get_count(&ccp->sem) == 0){
+        dpl_error_t err = dpl_sem_release(&ccp->sem); 
+        assert(err == DPL_OK); 
     }
     return true;
 }
@@ -795,13 +791,13 @@ static bool
 ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)cbs->inst_ptr;
-    if(os_sem_get_count(&ccp->sem) == 1)
+    if(dpl_sem_get_count(&ccp->sem) == 1)
         return false;
 
-    if (os_sem_get_count(&ccp->sem) == 0){
+    if (dpl_sem_get_count(&ccp->sem) == 0){
         ccp->status.rx_timeout_error = 1;
-        os_error_t err = os_sem_release(&ccp->sem);
-        assert(err == OS_OK); 
+        dpl_error_t err = dpl_sem_release(&ccp->sem);
+        assert(err == DPL_OK); 
         DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp:rx_timeout_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
         CCP_STATS_INC(rx_timeout);
     }
@@ -821,10 +817,10 @@ static bool
 ccp_reset_cb(struct _dw1000_dev_instance_t * inst,  dw1000_mac_interface_t * cbs)
 {
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)cbs->inst_ptr;
-    if(os_sem_get_count(&ccp->sem) == 0){
+    if(dpl_sem_get_count(&ccp->sem) == 0){
         DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_reset_cb\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
-        os_error_t err = os_sem_release(&ccp->sem);
-        assert(err == OS_OK);
+        dpl_error_t err = dpl_sem_release(&ccp->sem);
+        assert(err == DPL_OK);
         CCP_STATS_INC(reset);
         return true;
     }
@@ -849,8 +845,8 @@ dw1000_ccp_send(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
 {
     assert(ccp);
     CCP_STATS_INC(send);
-    os_error_t err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
     struct _dw1000_dev_instance_t * inst = ccp->dev_inst;
     
     ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx)%ccp->nframes];
@@ -880,14 +876,14 @@ dw1000_ccp_send(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
         previous_frame->transmission_timestamp.timestamp = (frame->transmission_timestamp.timestamp 
                         + ((uint64_t)ccp->period << 16));
         ccp->idx++;
-        err =  os_sem_release(&ccp->sem);
-        assert(err == OS_OK);
+        err = dpl_sem_release(&ccp->sem);
+        assert(err == DPL_OK);
 
     }else if(mode == DWT_BLOCKING){
-        err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
-        assert(err == OS_OK);
-        err =  os_sem_release(&ccp->sem);
-        assert(err == OS_OK);
+        err = dpl_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
+        assert(err == DPL_OK);
+        err = dpl_sem_release(&ccp->sem);
+        assert(err == DPL_OK);
     }
     return ccp->status;
 }
@@ -911,8 +907,8 @@ dw1000_ccp_listen(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
     struct _dw1000_dev_instance_t * inst = ccp->dev_inst;
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_listen\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_phy_forcetrxoff(inst);
-    os_error_t err = os_sem_pend(&ccp->sem,  OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_sem_pend(&ccp->sem,  OS_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
 
     CCP_STATS_INC(listen);
 
@@ -922,13 +918,13 @@ dw1000_ccp_listen(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
     };
     ccp->status.start_rx_error = dw1000_start_rx(inst).start_rx_error;
     if (ccp->status.start_rx_error){
-        err = os_sem_release(&ccp->sem);
-        assert(err == OS_OK);
+        err = dpl_sem_release(&ccp->sem);
+        assert(err == DPL_OK);
     }else if(mode == DWT_BLOCKING){
-        err = os_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
-        assert(err == OS_OK);
-        err = os_sem_release(&ccp->sem);
-        assert(err == OS_OK);
+        err = dpl_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
+        assert(err == DPL_OK);
+        err = dpl_sem_release(&ccp->sem);
+        assert(err == DPL_OK);
     }
     return ccp->status;
 }

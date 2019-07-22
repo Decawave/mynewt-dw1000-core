@@ -67,7 +67,7 @@ typedef struct _tdma_status_t{
 typedef struct _tdma_slot_t{
     struct _tdma_instance_t * parent;  //!< Pointer to _tdma_instance_ti
     struct hal_timer timer;            //!< Timer
-    struct os_event event;             //!< Sturcture of event
+    struct dpl_event event;             //!< Sturcture of event
     uint16_t idx;                      //!< Slot number
     void * arg;                        //!< Optional argument
 }tdma_slot_t; 
@@ -83,19 +83,19 @@ typedef struct _tdma_instance_t{
 #endif
     tdma_status_t status;                    //!< Status of tdma 
     dw1000_mac_interface_t cbs;              //!< MAC Layer Callbacks
-    struct os_mutex mutex;                   //!< Structure of os_mutex
+    struct dpl_mutex mutex;                  //!< Structure of os_mutex
     uint16_t idx;                            //!< Slot number
     uint16_t nslots;                         //!< Number of slots 
     uint32_t os_epoch;                       //!< Epoch timestamp
-    struct os_event superframe_event;        //!< Structure of superframe_event
+    struct dpl_event superframe_event;        //!< Structure of superframe_event
 #ifdef TDMA_TASKS_ENABLE
-    struct os_eventq eventq;                 //!< Structure of os events
+    struct dpl_eventq eventq;                //!< Structure of os events
     struct os_task task_str;                 //!< Structure of os tasks
     uint8_t task_prio;                       //!< Priority of tasks
     os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]   //!< Stack size of each task
         __attribute__((aligned(OS_STACK_ALIGNMENT)));
 #if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
-    struct os_callout sanity_cb;             //!< Structure of sanity_cb
+    struct dpl_callout sanity_cb;            //!< Structure of sanity_cb
 #endif
 #endif
     struct _tdma_slot_t * slot[];           //!< Dynamically allocated slot
@@ -103,7 +103,7 @@ typedef struct _tdma_instance_t{
 
 struct _tdma_instance_t * tdma_init(struct _dw1000_dev_instance_t * inst, uint16_t nslots);
 void tdma_free(struct _tdma_instance_t * inst);
-void tdma_assign_slot(struct _tdma_instance_t * inst, void (* call_back )(struct os_event *), uint16_t idx, void * arg);
+void tdma_assign_slot(struct _tdma_instance_t * inst, void (* call_back )(struct dpl_event *), uint16_t idx, void * arg);
 void tdma_release_slot(struct _tdma_instance_t * inst, uint16_t idx);
 void tdma_stop(struct _tdma_instance_t * tdma);
 

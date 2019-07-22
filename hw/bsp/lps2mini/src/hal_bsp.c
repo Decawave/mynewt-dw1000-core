@@ -52,7 +52,7 @@ static struct mpu6500 mpu6500;
 #endif
 
 #if MYNEWT_VAL(SPI_0_MASTER)
-struct os_sem g_spi0_sem;
+struct dpl_sem g_spi0_sem;
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
 /* 
@@ -200,8 +200,8 @@ void hal_bsp_init(void)
 #endif
     
 #if MYNEWT_VAL(SPI_0_MASTER)
-    int rc = os_sem_init(&g_spi0_sem, 0x1);
-    assert(rc == 0);
+    dpl_error_t err = dpl_sem_init(&g_spi0_sem, 0x1);
+    assert(err == DPL_OK);
 #endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)

@@ -324,7 +324,7 @@ float dw1000_phy_read_read_wakeupvbat_SI(struct _dw1000_dev_instance_t * inst)
  */
 void dw1000_phy_rx_reset(struct _dw1000_dev_instance_t * inst)
 {
-    os_error_t err = os_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
+    os_error_t err = dpl_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
     assert(err == OS_OK);
 
     // Set RX reset
@@ -332,7 +332,7 @@ void dw1000_phy_rx_reset(struct _dw1000_dev_instance_t * inst)
     // Clear RX reset
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_SOFTRESET_OFFSET, PMSC_CTRL0_RESET_CLEAR, sizeof(uint8_t));
 
-    err = os_mutex_release(&inst->mutex);
+    err = dpl_mutex_release(&inst->mutex);
     assert(err == OS_OK);
 }
 
@@ -352,7 +352,7 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
     // event has just happened before the radio was disabled)
     // thus we need to disable interrupt during this operation
 
-    os_error_t err = os_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
+    os_error_t err = dpl_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
     assert(err == OS_OK);
     
     dw1000_write_reg(inst, SYS_MASK_ID, 0, 0, sizeof(uint32_t)) ; // Clear interrupt mask - so we don't get any unwanted events
@@ -373,14 +373,14 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
             }   
     }      
     // Enable/restore interrupts again...
-    err = os_mutex_release(&inst->mutex);
+    err = dpl_mutex_release(&inst->mutex);
     assert(err == OS_OK);
 
     inst->control.wait4resp_enabled = 0;
 
         /* Reset semaphore if needed */
-    if (inst->tx_sem.sem_tokens == 0) {
-        os_error_t err = os_sem_release(&inst->tx_sem);
+    if (inst->tx_sem.sem.sem_tokens == 0) {
+        os_error_t err = dpl_sem_release(&inst->tx_sem);
         assert(err == OS_OK);
         inst->status.sem_force_released = 1;
     }
@@ -407,8 +407,8 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
 void dw1000_phy_interrupt_mask(struct _dw1000_dev_instance_t * inst, uint32_t bitmask, uint8_t enable)
 {
     // Critical region, atomic lock with mutex
-    os_error_t err = os_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex, DPL_WAIT_FOREVER);
+    assert(err == DPL_OK);
 
     uint32_t mask = dw1000_read_reg(inst, SYS_MASK_ID, 0, sizeof(uint32_t)) ; // Read register
 
@@ -420,8 +420,8 @@ void dw1000_phy_interrupt_mask(struct _dw1000_dev_instance_t * inst, uint32_t bi
     dw1000_write_reg(inst, SYS_MASK_ID, 0, mask, sizeof(uint32_t));
 
     // Critical region, unlock mutex
-    err = os_mutex_release(&inst->mutex);
-    assert(err == OS_OK);
+    err = dpl_mutex_release(&inst->mutex);
+    assert(err == DPL_OK);
 }
 
 /**
