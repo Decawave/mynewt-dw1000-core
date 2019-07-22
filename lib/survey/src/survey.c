@@ -226,7 +226,6 @@ static void survey_complete_cb(struct dpl_event *ev) {
     assert(ev != NULL);
     assert(dpl_event_get_arg(ev) != NULL);
 
-
     survey_instance_t * survey = (survey_instance_t *) dpl_event_get_arg(ev);
     survey_encode(survey, survey->seq_num, survey->idx);    
 }
