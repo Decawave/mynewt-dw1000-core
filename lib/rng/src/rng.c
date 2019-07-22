@@ -931,7 +931,7 @@ complete_ev_cb(struct os_event *ev) {
     rng_encode(inst->rng);
 }
 
-struct os_callout rng_callout;
+struct os_event rng_event;
 
 /**
  * @fn complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
@@ -949,8 +949,9 @@ complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
 
-    os_callout_init(&rng_callout, os_eventq_dflt_get(), complete_ev_cb, (void*)rng);
-    os_eventq_put(os_eventq_dflt_get(), &rng_callout.c_ev);
+    rng_event.ev_cb  = complete_ev_cb;
+    rng_event.ev_arg = (void*) rng;
+    os_eventq_put(os_eventq_dflt_get(), &rng_event);
     return false;
 }
 #endif

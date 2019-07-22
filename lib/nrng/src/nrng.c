@@ -541,7 +541,7 @@ complete_ev_cb(struct os_event *ev) {
     nrng->slot_mask = 0; 
 }
 
-struct os_callout nrng_callout;
+struct os_event nrng_event;
 /**
  * @fn complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  * @brief API for nrng complete callback and put complete_event_cb in queue.
@@ -558,8 +558,9 @@ complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         return false;
     dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *)cbs->inst_ptr;
     if(os_sem_get_count(&nrng->sem) == 0){
-        os_callout_init(&nrng_callout, os_eventq_dflt_get(), complete_ev_cb, nrng);
-        os_eventq_put(os_eventq_dflt_get(), &nrng_callout.c_ev);
+        nrng_event.ev_cb  = complete_ev_cb;
+        nrng_event.ev_arg = (void*) nrng;
+        os_eventq_put(os_eventq_dflt_get(), &nrng_event);
     }
     return false;
 }

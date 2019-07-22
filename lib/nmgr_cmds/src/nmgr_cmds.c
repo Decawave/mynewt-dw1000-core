@@ -150,7 +150,7 @@ static void rx_post_process(struct os_event* ev);
 
 typedef struct _nmgr_cmd_instance_t {
     struct os_sem cmd_sem;
-    struct os_callout rx_callout;
+    struct os_event rx_event;
     struct mgmt_cbuf n_b;
     struct cbor_mbuf_writer writer;
     struct cbor_mbuf_reader reader;
@@ -210,8 +210,10 @@ void nmgr_cmds_pkg_init(void){
             OS_WAIT_FOREVER,
             nmgr_inst->pstack,
             OS_STACK_ALIGN(NMGR_CMD_STACK_SIZE));
-    os_callout_init(&nmgr_inst->rx_callout, &nmgr_inst->nmgr_eventq, rx_post_process, (void*)hal_dw1000_inst(0));
 
+    /* Prepare post process event */
+    nmgr_inst->rx_event.ev_cb  = rx_post_process;
+    nmgr_inst->rx_event.ev_arg = (void*)nmgr_inst;
 }
 
 
@@ -481,13 +483,15 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     if(inst->my_short_address != frame->dst_address){
         return true;
     }else{
-        os_eventq_put(&nmgr_inst->nmgr_eventq, &nmgr_inst->rx_callout.c_ev);
+        os_eventq_put(&nmgr_inst->nmgr_eventq, &nmgr_inst->rx_event);
     }
     return true;
 }
 
 static void
-rx_post_process(struct os_event* ev){
+rx_post_process(struct os_event* ev)
+{
+    // nmgr_inst = (struct _nmgr_cmd_instance_t*)ev->ev_arg;
     dw1000_dev_instance_t * inst = hal_dw1000_inst(0);
     nmgr_uwb_frame_t *frame = (nmgr_uwb_frame_t*)inst->rxbuf;
     

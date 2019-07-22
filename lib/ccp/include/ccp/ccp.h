@@ -161,7 +161,7 @@ typedef struct _dw1000_ccp_instance_t{
     dw1000_mac_interface_t cbs;                     //!< MAC Layer Callbacks
     uint64_t master_euid;                           //!< Clock Master EUID, used to reset wcs if master changes
     struct os_sem sem;                              //!< Structure containing os semaphores
-    struct os_callout callout_postprocess;          //!< Structure of callout_postprocess
+    struct os_event postprocess_event;              //!< Structure of callout_postprocess
     dw1000_ccp_status_t status;                     //!< DW1000 ccp status parameters
     dw1000_ccp_config_t config;                     //!< DW1000 ccp config parameters
     ccp_timestamp_t master_epoch;                   //!< ccp event referenced to master systime
@@ -174,7 +174,7 @@ typedef struct _dw1000_ccp_instance_t{
     uint8_t seq_num;                                //!< Clock Master reported sequence number
     struct hal_timer timer;                         //!< Timer structure
     struct os_eventq eventq;                        //!< Event queues
-    struct os_callout event_cb;                     //!< Event callback
+    struct os_event timer_event;                    //!< Event callback
     struct os_task task_str;                        //!< os_task structure  
     uint8_t task_prio;                              //!< Priority based task
     os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]

@@ -272,7 +272,7 @@ survey_slot_range_cb(struct os_event *ev)
  * @brief This callback is call from a TDMA slot (SURVEY_BROADCAST_SLOT) assigned in the toplevel main. 
  * The variable SURVEY_MASK is used to derive the sequencing of the node.
  */
-static struct os_callout survey_complete_callout;
+static struct os_event survey_complete_event;
 
 void 
 survey_slot_broadcast_cb(struct os_event *ev){
@@ -294,8 +294,9 @@ survey_slot_broadcast_cb(struct os_event *ev){
         survey_receiver(survey, dx_time);  
     }
     if(ccp->seq_num % survey->nnodes == survey->nnodes - 1 && survey->survey_complete_cb){
-        os_callout_init(&survey_complete_callout, os_eventq_dflt_get(), survey->survey_complete_cb, survey);
-        os_eventq_put(os_eventq_dflt_get(), &survey_complete_callout.c_ev);
+        survey_complete_event.ev_cb  = survey->survey_complete_cb;
+        survey_complete_event.ev_arg = (void*) survey;
+        os_eventq_put(os_eventq_dflt_get(), &survey_complete_event);
     }
 }
 

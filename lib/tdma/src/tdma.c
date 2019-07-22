@@ -143,11 +143,8 @@ tdma_init(struct _dw1000_dev_instance_t * inst, uint16_t nslots)
     assert(rc == 0);
 #endif
 
-#ifdef TDMA_TASKS_ENABLE
-    os_callout_init(&tdma->event_cb, &tdma->eventq, tdma_superframe_event_cb, (void *) tdma);
-#else
-    os_callout_init(&tdma->event_cb, &inst->eventq, tdma_superframe_event_cb, (void *) tdma);
-#endif
+    tdma->superframe_event.ev_cb  = tdma_superframe_event_cb;
+    tdma->superframe_event.ev_arg = (void *) tdma;
 
     tdma->status.initialized = true;
     tdma->os_epoch = os_cputime_get32();
@@ -292,9 +289,9 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         if (tdma != NULL && tdma->status.initialized){
             tdma->os_epoch = ccp->os_epoch;
 #ifdef TDMA_TASKS_ENABLE
-            os_eventq_put(&tdma->eventq, &tdma->event_cb.c_ev);
+            os_eventq_put(&tdma->eventq, &tdma->superframe_event);
 #else
-            os_eventq_put(&inst->eventq, &tdma->event_cb.c_ev);
+            os_eventq_put(&inst->eventq, &tdma->superframe_event);
 #endif
         }
         return false; // TDMA is an observer and should not return true
@@ -323,9 +320,9 @@ tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         if (tdma != NULL && tdma->status.initialized){
             tdma->os_epoch = ccp->os_epoch;
 #ifdef TDMA_TASKS_ENABLE
-            os_eventq_put(&tdma->eventq, &tdma->event_cb.c_ev);
+            os_eventq_put(&tdma->eventq, &tdma->superframe_event);
 #else
-            os_eventq_put(&inst->eventq, &tdma->event_cb.c_ev);
+            os_eventq_put(&inst->eventq, &tdma->superframe_event);
 #endif
         }
         return false;   // TDMA is an observer and should not return true
@@ -334,18 +331,18 @@ tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 }
 
 /**
- * @fn tdma_assign_slot(struct _tdma_instance_t * inst, void (* callout )(struct os_event *), uint16_t idx, void * arg)
+ * @fn tdma_assign_slot(struct _tdma_instance_t * inst, void (* call_back )(struct os_event *), uint16_t idx, void * arg)
  * @brief API to intialise slot instance for the slot.Also initialise a timer and assigns callback for each slot.
  *
  * @param inst       Pointer to _tdma_instance_t.
- * @param callout    Callback for the particular slot.
+ * @param call_back  Callback for the particular slot.
  * @param idx        Slot number.
  * @param arg        Argument to the callback.
  *
  * @return void
  */
 void
-tdma_assign_slot(struct _tdma_instance_t * inst, void (* callout )(struct os_event *), uint16_t idx, void * arg)
+tdma_assign_slot(struct _tdma_instance_t * inst, void (* call_back )(struct os_event *), uint16_t idx, void * arg)
 {
     assert(idx < inst->nslots);
 
@@ -362,13 +359,10 @@ tdma_assign_slot(struct _tdma_instance_t * inst, void (* callout )(struct os_eve
     inst->slot[idx]->idx = idx;
     inst->slot[idx]->parent = inst;
     inst->slot[idx]->arg = arg;
+    inst->slot[idx]->event.ev_cb  = call_back;
+    inst->slot[idx]->event.ev_arg = (void *) inst->slot[idx];
 
     os_cputime_timer_init(&inst->slot[idx]->timer, slot_timer_cb, (void *) inst->slot[idx]);
-#ifdef TDMA_TASKS_ENABLE
-    os_callout_init(&inst->slot[idx]->event_cb, &inst->eventq, callout, (void *) inst->slot[idx]);
-#else
-    os_callout_init(&inst->slot[idx]->event_cb, &inst->parent->eventq, callout, (void *) inst->slot[idx]);
-#endif
 }
 
 /**
@@ -455,9 +449,9 @@ slot_timer_cb(void * arg)
     TDMA_STATS_INC(slot_timer_cnt);
 
 #ifdef TDMA_TASKS_ENABLE
-    os_eventq_put(&tdma->eventq, &slot->event_cb.c_ev);
+    os_eventq_put(&tdma->eventq, &slot->event);
 #else
-    os_eventq_put(&tdma->dev_inst->eventq, &slot->event_cb.c_ev);
+    os_eventq_put(&tdma->dev_inst->eventq, &slot->event);
 #endif
 }
 

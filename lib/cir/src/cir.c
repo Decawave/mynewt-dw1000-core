@@ -49,7 +49,7 @@
 
 #if MYNEWT_VAL(PMEM_VERBOSE)
 
-struct os_callout pmem_callout;
+struct os_event pmem_event;
 
 static void
 pmem_complete_ev_cb(struct os_event *ev) {
@@ -92,7 +92,7 @@ pmem_enable(cir_instance_t * inst, bool mode){
 
 #if MYNEWT_VAL(CIR_VERBOSE) 
 
-struct os_callout cir_callout;
+struct os_event cir_event;
 static void
 cir_complete_ev_cb(struct os_event *ev) {
     assert(ev != NULL);
@@ -147,8 +147,9 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         //dw1000_read_accdata(inst, (uint8_t *)&cir->pmem, 4096 + MYNEWT_VAL(PMEM_OFFSET) * sizeof(cir_complex_t), sizeof(pmem_t));
         dw1000_read(inst, ACC_MEM_ID, 4096 + MYNEWT_VAL(PMEM_OFFSET) * sizeof(cir_complex_t), (uint8_t *)&cir->pmem, sizeof(pmem_t)); 
 #if MYNEWT_VAL(PMEM_VERBOSE)
-        os_callout_init(&pmem_callout, os_eventq_dflt_get(), pmem_complete_ev_cb,inst);
-        os_eventq_put(os_eventq_dflt_get(), &pmem_callout.c_ev);
+        pmem_event.ev_cb  = pmem_complete_ev_cb;
+        pmem_event.ev_arg = (void*)inst;
+        os_eventq_put(os_eventq_dflt_get(), &pmem_event);
 #endif
         status = true;
      }
@@ -172,8 +173,9 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
         cir->status.valid = 1;
     #if MYNEWT_VAL(CIR_VERBOSE)
-        os_callout_init(&cir_callout, os_eventq_dflt_get(), cir_complete_ev_cb,inst);
-        os_eventq_put(os_eventq_dflt_get(), &cir_callout.c_ev);
+        cir_event.ev_cb  = cir_complete_ev_cb;
+        cir_event.ev_arg = (void*) inst;
+        os_eventq_put(os_eventq_dflt_get(), &cir_event);
     #endif
         status |= true;
     }

@@ -145,10 +145,13 @@ ccp_timer_init(dw1000_ccp_instance_t *ccp, dw1000_ccp_role_t role)
 
     os_cputime_timer_init(&ccp->timer, ccp_timer_irq, (void *) ccp);
 
-    if (role == CCP_ROLE_MASTER)
-        os_callout_init(&ccp->event_cb, &ccp->eventq, ccp_master_timer_ev_cb, (void *) ccp);
-    else
-        os_callout_init(&ccp->event_cb, &ccp->eventq, ccp_slave_timer_ev_cb, (void *) ccp);
+    if (role == CCP_ROLE_MASTER) {
+        ccp->timer_event.ev_cb = ccp_master_timer_ev_cb;
+        ccp->timer_event.ev_arg = (void *) ccp;
+    } else {
+        ccp->timer_event.ev_cb = ccp_slave_timer_ev_cb;
+        ccp->timer_event.ev_arg = (void *) ccp;
+    }
 
     os_cputime_timer_relative(&ccp->timer, 0);
 }
@@ -165,7 +168,7 @@ ccp_timer_irq(void * arg){
     assert(arg);
 
     dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)arg;
-    os_eventq_put(&ccp->eventq, &ccp->event_cb.c_ev);
+    os_eventq_put(&ccp->eventq, &ccp->timer_event);
 }
 
 /**
@@ -188,11 +191,11 @@ ccp_master_timer_ev_cb(struct os_event *ev) {
     CCP_STATS_INC(master_cnt);
 
     if (dw1000_ccp_send(ccp, DWT_BLOCKING).start_tx_error){
-        hal_timer_start_at(&ccp->timer, ccp->os_epoch
+        os_cputime_timer_start(&ccp->timer, ccp->os_epoch
             + os_cputime_usecs_to_ticks((uint32_t)dw1000_dwt_usecs_to_usecs(ccp->period) << 1)
         );
     }else{
-        hal_timer_start_at(&ccp->timer, ccp->os_epoch
+        os_cputime_timer_start(&ccp->timer, ccp->os_epoch
             + os_cputime_usecs_to_ticks((uint32_t)dw1000_dwt_usecs_to_usecs(ccp->period))
         );
     }
@@ -255,7 +258,7 @@ ccp_slave_timer_ev_cb(struct os_event *ev) {
 
 reset_timer:
     // Schedule event
-    hal_timer_start_at(&ccp->timer, ccp->os_epoch
+    os_cputime_timer_start(&ccp->timer, ccp->os_epoch
         + os_cputime_usecs_to_ticks(
             - MYNEWT_VAL(OS_LATENCY)
             + (uint32_t)dw1000_dwt_usecs_to_usecs(ccp->period)
@@ -485,10 +488,11 @@ void ccp_pkg_init(void){
  * @return void
  */
 void
-dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, os_event_fn * postprocess){
-    os_callout_init(&inst->callout_postprocess, os_eventq_dflt_get(), postprocess, (void *) inst);
-//    os_callout_init(&inst->callout_postprocess, &inst->eventq,  postprocess, (void *) inst);
-    inst->config.postprocess = true;
+dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * ccp, os_event_fn * postprocess)
+{
+    ccp->postprocess_event.ev_cb = postprocess;
+    ccp->postprocess_event.ev_arg = (void *) ccp;
+    ccp->config.postprocess = true;
 }
 
 #if !MYNEWT_VAL(WCS_ENABLED)
@@ -678,9 +682,9 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         }
     }
 
-    if (ccp->config.postprocess && ccp->status.valid)
-        // os_eventq_put(&ccp->eventq, &ccp->callout_postprocess.c_ev);
-        os_eventq_put(os_eventq_dflt_get(), &ccp->callout_postprocess.c_ev);
+    if (ccp->config.postprocess && ccp->status.valid) {
+        os_eventq_put(os_eventq_dflt_get(), &ccp->postprocess_event);
+    }
 
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED)
     if (ccp->config.fs_xtalt_autotune && ccp->status.valid){
@@ -736,7 +740,7 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
     ccp->period = (frame->transmission_interval >> 16);
 
     if (ccp->status.timer_enabled){
-        hal_timer_start_at(&ccp->timer, ccp->os_epoch
+        os_cputime_timer_start(&ccp->timer, ccp->os_epoch
             - os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY))
             + os_cputime_usecs_to_ticks(dw1000_dwt_usecs_to_usecs(ccp->period))
         );
@@ -744,8 +748,7 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
     ccp->status.valid |= ccp->idx > 1;
     // Postprocess for tx_complete is used to generate tdma events on the clock master node.
     if (ccp->config.postprocess && ccp->status.valid)
-        //os_eventq_put(&ccp->eventq, &ccp->callout_postprocess.c_ev);
-        os_eventq_put(os_eventq_dflt_get(), &ccp->callout_postprocess.c_ev);
+        os_eventq_put(os_eventq_dflt_get(), &ccp->postprocess_event);
 
     if(os_sem_get_count(&ccp->sem) == 0){
         os_error_t err = os_sem_release(&ccp->sem);

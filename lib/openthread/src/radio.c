@@ -29,7 +29,7 @@ static bool gPromiscuous = false;
 static bool gTransmitdone = false;
 static bool gReceivedone = false;
 static uint8_t gChannel = 0;
-static struct os_callout dw1000_callout;
+static struct os_event dw1000_event;
 static ot_instance_t *g_ot_inst;
 
 static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
@@ -49,7 +49,9 @@ void RadioInit(dw1000_dev_instance_t* inst){
 
     dw1000_mac_append_interface(inst, &inst->ot->cbs);
 
-    os_callout_init(&dw1000_callout, &(inst->ot->eventq), dw1000_sched ,(void*)inst->ot);
+    dw1000_event.ev_cb  = dw1000_sched;
+    dw1000_event.ev_arg = (void*)inst->ot;
+
     gTransmitFrame.mLength  = 0;
     gTransmitFrame.mPsdu    = gTransmitPsdu;
     gReceiveFrame.mLength   = 0;
@@ -297,7 +299,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     gReceiveError = OT_ERROR_NONE;
     memcpy(gReceiveFrame.mPsdu, inst->rxbuf, gReceiveFrame.mLength);
     gReceivedone = true;
-    os_eventq_put(&inst->ot->eventq, &dw1000_callout.c_ev);
+    os_eventq_put(&inst->ot->eventq, &dw1000_event);
 	return true;
 }
 
@@ -310,7 +312,7 @@ static bool
 tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
     gTransmitdone = true;
     gTransmitError = OT_ERROR_NONE;
-    os_eventq_put(&inst->ot->eventq, &dw1000_callout.c_ev);
+    os_eventq_put(&inst->ot->eventq, &dw1000_event);
     return true;
 }
 
