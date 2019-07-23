@@ -324,8 +324,8 @@ typedef struct _dw1000_dev_instance_t{
     struct dpl_event interrupt_ev;          //!< Structure of os_event that tirgger interrupts 
     struct dpl_task task_str;     //!< Structure of os_task that has interrupt task 
     uint8_t task_prio;           //!< Priority of the interrupt task  
-    os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]  //!< Stack of the interrupt task 
-        __attribute__((aligned(OS_STACK_ALIGNMENT)));
+    dpl_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]  //!< Stack of the interrupt task 
+        __attribute__((aligned(DPL_STACK_ALIGNMENT)));
     uint8_t rxbuf[RX_BUFFER_LEN];            //!< local rxbuf  
 #if MYNEWT_VAL(CIR_ENABLED)
     struct _cir_instance_t * cir;                  //!< CIR instance
