@@ -16,8 +16,6 @@ include_directories(
     "${PROJECT_SOURCE_DIR}/../../../../bin/targets/syscfg/generated/include/"
 )
 
-list(REMOVE_ITEM ${PROJECT_NAME}_HEADERS os_cputime.h)
-list(REMOVE_ITEM ${PROJECT_NAME}_SOURCES os_cputime.c os_cputime_pwr2.c)
 
 source_group("include" FILES ${HEADERS})
 source_group("lib" FILES ${SOURCES})
@@ -35,6 +33,7 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(
     ${PROJECT_NAME} 
     dpl_linux
+    dpl_hal
 )
 install(
     TARGETS 

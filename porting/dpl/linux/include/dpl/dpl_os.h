@@ -31,7 +31,8 @@ extern "C" {
 #endif
 
 #define OS_WAIT_FOREVER (-1)
-#define DPL_OS_ALIGNMENT    4
+#define DPL_OS_ALIGNMENT 4
+
 #define SYSINIT_PANIC_MSG(msg) __assert_fail(msg, __FILE__, __LINE__, __func__)
 
 #define SYSINIT_PANIC_ASSERT_MSG(rc, msg) do \

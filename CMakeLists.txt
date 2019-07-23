@@ -12,7 +12,7 @@ set(CMAKE_BUILD_TYPE ${BUILD_TYPE})
 add_subdirectory(hw/drivers/dw1000)
 add_subdirectory(porting/dpl)
 add_subdirectory(porting/dpl_os)
-#add_subdirectory(porting/dpl_hal)
+add_subdirectory(porting/dpl_hal)
 
 #include_directories(include)
 
@@ -27,7 +27,7 @@ if(DOXYGEN_FOUND)
 	configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
     	message("Doxygen build started")
 
-	add_custom_target( doc_doxygen ALL
+	add_custom_target(doc_doxygen ALL
         COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "Generating API documentation with Doxygen"

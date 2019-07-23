@@ -233,7 +233,7 @@ dw1000_softreset(dw1000_dev_instance_t * inst)
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_SOFTRESET_OFFSET, PMSC_CTRL0_RESET_ALL, sizeof(uint8_t));// Reset HIF, TX, RX and PMSC
 
     // DW1000 needs a 10us sleep to let clk PLL lock after reset - the PLL will automatically lock after the reset
-    os_cputime_delay_usecs(10);
+    dpl_cputime_delay_usecs(10);
 
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_SOFTRESET_OFFSET, PMSC_CTRL0_RESET_CLEAR, sizeof(uint8_t)); // Clear reset
 }

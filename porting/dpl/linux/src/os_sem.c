@@ -51,6 +51,22 @@ dpl_sem_release(struct dpl_sem *sem)
     return (err) ? DPL_ERROR : DPL_OK;
 }
 
+
+uint16_t
+dpl_sem_get_count(struct dpl_sem *sem)
+{
+    int count;
+
+    assert(sem);
+    assert(&sem->lock);
+    sem_getvalue(&sem->lock, &count);
+
+    return count;
+}
+
+
+
+
 dpl_error_t
 dpl_sem_pend(struct dpl_sem *sem, dpl_time_t timeout)
 {
@@ -83,14 +99,4 @@ dpl_sem_pend(struct dpl_sem *sem, dpl_time_t timeout)
     return (err) ? DPL_ERROR : DPL_OK;
 }
 
-uint16_t
-dpl_sem_get_count(struct dpl_sem *sem)
-{
-    int count;
 
-    assert(sem);
-    assert(&sem->lock);
-    sem_getvalue(&sem->lock, &count);
-
-    return count;
-}

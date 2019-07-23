@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 #include <stdint.h>
 #include <assert.h>
 #include "os/mynewt.h"
@@ -361,3 +362,5 @@ hal_timer_stop(struct hal_timer *timer)
 
     return 0;
 }
+
+

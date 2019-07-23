@@ -43,13 +43,18 @@
 #define OS_STIME_MAX INT32_MAX
 
 /* Used to wait forever for events and mutexs */
-#define OS_TIMEOUT_NEVER (OS_TIME_MAX)
-#define DPL_WAIT_FOREVER (OS_TIMEOUT_NEVER)
+#define DPL_TIMEOUT_NEVER (OS_TIME_MAX)
+#define DPL_WAIT_FOREVER (DPL_TIMEOUT_NEVER)
 
 /* The highest and lowest task priorities */
 #define OS_TASK_PRI_HIGHEST (sched_get_priority_max(SCHED_RR))
 #define OS_TASK_PRI_LOWEST  (sched_get_priority_min(SCHED_RR))
 
+#ifndef OS_STACK_ALIGNMENT
+#define OS_STACK_ALIGNMENT              (8)
+#endif
+
+#define DPL_STACK_ALIGNMENT (OS_STACK_ALIGNMENT)
 
 //typedef uint32_t timer_t;
 
