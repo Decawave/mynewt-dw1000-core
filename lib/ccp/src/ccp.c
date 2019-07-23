@@ -295,10 +295,10 @@ ccp_tasks_init(struct _dw1000_ccp_instance_t * inst)
     {
         /* Use a dedicate event queue for tdma events */
         dpl_eventq_init(&inst->eventq);
-        os_task_init(&inst->task_str, "dw1000_ccp",
+        dpl_task_init(&inst->task_str, "dw1000_ccp",
                      ccp_task,
                      (void *) inst,
-                     inst->task_prio, OS_WAIT_FOREVER,
+                     inst->task_prio, DPL_WAIT_FOREVER,
                      inst->task_stack,
                      DW1000_DEV_TASK_STACK_SZ);
     }

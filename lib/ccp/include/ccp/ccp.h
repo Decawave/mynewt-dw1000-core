@@ -39,7 +39,6 @@
 extern "C" {
 #endif
 
-#include <hal/hal_spi.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_ftypes.h>
@@ -175,7 +174,7 @@ typedef struct _dw1000_ccp_instance_t{
     struct hal_timer timer;                         //!< Timer structure
     struct dpl_eventq eventq;                       //!< Event queues
     struct dpl_event timer_event;                   //!< Event callback
-    struct os_task task_str;                        //!< os_task structure  
+    struct dpl_task task_str;                       //!< Task structure  
     uint8_t task_prio;                              //!< Priority based task
     os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]
         __attribute__((aligned(OS_STACK_ALIGNMENT))); //!< Task stack size

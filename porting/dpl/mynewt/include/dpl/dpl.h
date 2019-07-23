@@ -24,6 +24,7 @@
 #include <string.h>
 #include "os/os.h"
 #include "os/os_eventq.h"
+#include "os/os_task.h"
 #include "dpl_error.h"
 
 #ifdef __cplusplus
@@ -32,6 +33,7 @@ extern "C" {
     
 struct dpl_event;
 typedef void dpl_event_fn(struct dpl_event *ev);
+typedef void (*dpl_task_func_t)(void *);
     
 #define DPL_TIME_FOREVER    (OS_TIMEOUT_NEVER)
 #define DPL_TIMEOUT_NEVER   (OS_TIMEOUT_NEVER)
@@ -63,6 +65,10 @@ struct dpl_mutex {
 
 struct dpl_sem {
     struct os_sem sem;
+};
+
+struct dpl_task {
+    struct os_task t;
 };
 
 static inline bool 
@@ -286,6 +292,26 @@ static inline void
 dpl_hw_exit_critical(uint32_t ctx)
 {
     os_arch_restore_sr(ctx);
+}
+
+static inline int dpl_task_init(struct dpl_task *t, const char *name, dpl_task_func_t func,
+		 void *arg, uint8_t prio, dpl_time_t sanity_itvl,
+		 os_stack_t * stack_bottom, uint16_t stack_size)
+{
+
+    return os_task_init((struct os_task *) t, name, (os_task_func_t) func, 
+        arg, prio, (os_time_t) sanity_itvl,
+        (os_stack_t *) stack_bottom, stack_size) ;
+}
+
+static inline int dpl_task_remove(struct dpl_task * t)
+{
+    return os_task_remove((struct os_task * ) t);
+}
+
+static inline uint8_t dpl_task_count(void)
+{
+    return os_task_count();
 }
 
 #ifdef __cplusplus

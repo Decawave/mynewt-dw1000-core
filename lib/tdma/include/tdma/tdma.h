@@ -41,8 +41,7 @@ extern "C" {
 #include <dw1000/dw1000_ftypes.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_phy.h>
-#include <os/queue.h>
-
+#include <os/os.h>
 #include <ccp/ccp.h>
 
 #define TDMA_TASKS_ENABLE
@@ -67,7 +66,7 @@ typedef struct _tdma_status_t{
 typedef struct _tdma_slot_t{
     struct _tdma_instance_t * parent;  //!< Pointer to _tdma_instance_ti
     struct hal_timer timer;            //!< Timer
-    struct dpl_event event;             //!< Sturcture of event
+    struct dpl_event event;            //!< Sturcture of event
     uint16_t idx;                      //!< Slot number
     void * arg;                        //!< Optional argument
 }tdma_slot_t; 
@@ -89,8 +88,8 @@ typedef struct _tdma_instance_t{
     uint32_t os_epoch;                       //!< Epoch timestamp
     struct dpl_event superframe_event;        //!< Structure of superframe_event
 #ifdef TDMA_TASKS_ENABLE
-    struct dpl_eventq eventq;                //!< Structure of os events
-    struct os_task task_str;                 //!< Structure of os tasks
+    struct dpl_eventq eventq;                //!< Structure of events
+    struct dpl_task task_str;                //!< Structure of tasks
     uint8_t task_prio;                       //!< Priority of tasks
     os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]   //!< Stack size of each task
         __attribute__((aligned(OS_STACK_ALIGNMENT)));
