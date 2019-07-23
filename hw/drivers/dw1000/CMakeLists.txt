@@ -1,12 +1,17 @@
 cmake_minimum_required(VERSION 3.2)
 project(dw1000)
 
-file(GLOB ${PROJECT_NAME}_SOURCES ./src/*.c)
+file(GLOB ${PROJECT_NAME}_SOURCES 
+    ./src/*.c
+)
 file(GLOB ${PROJECT_NAME}_HEADERS 
     ./include/dw1000/*.h 
     ./include/syscfg/*.h 
     ./include/sysflash/*.h 
 )
+file(GLOB remove_from_build "./src/dw1000_cli.c")
+
+list(REMOVE_ITEM ${PROJECT_NAME}_SOURCES ${remove_from_build})
 
 configure_file(dw1000.pc.in dw1000.pc @ONLY)
 message(WARNING "${PROJECT_SOURCE_DIR}/../../../porting/dpl_hal")
