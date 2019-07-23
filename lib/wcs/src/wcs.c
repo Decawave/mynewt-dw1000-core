@@ -41,7 +41,6 @@
 #include <os/os.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
-#include "bsp/bsp.h"
 #include <os/os_dev.h>
 
 #include <dw1000/dw1000_regs.h>

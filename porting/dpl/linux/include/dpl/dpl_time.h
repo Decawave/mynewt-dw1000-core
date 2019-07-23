@@ -23,6 +23,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <time.h>
 
 #include "dpl/dpl_error.h"
 
@@ -34,6 +35,8 @@ extern "C" {
  * Time functions
  */
 typedef uint32_t dpl_time_t;
+#define CLK_TCK 100 // TODOs::@pkettle, need to 
+#define DPL_TICKS_PER_SEC CLK_TCK
 
 dpl_time_t dpl_time_get(void);
 dpl_error_t dpl_time_ms_to_ticks(uint32_t ms, dpl_time_t *out_ticks);

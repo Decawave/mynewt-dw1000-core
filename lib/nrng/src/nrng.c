@@ -24,7 +24,6 @@
 #include <os/os.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
-#include "bsp/bsp.h"
 
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
@@ -46,8 +45,8 @@
 #if MYNEWT_VAL(WCS_ENABLED)
 #include <wcs/wcs.h>
 #endif
-#if MYNEWT_VAL(CCP_ENABLED)
-#include <ccp/ccp.h>
+#if MYNEWT_VAL(CIR_ENABLED)
+#include <cir/cir.h>
 #endif
 #include <rng/slots.h>
 #if MYNEWT_VAL(NRNG_VERBOSE)
@@ -100,8 +99,8 @@ dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1
         memset(nrng, 0, sizeof(dw1000_nrng_instance_t));
         nrng->status.selfmalloc = 1;
     }
-    os_error_t err = dpl_sem_init(&nrng->sem, 0x1); 
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_sem_init(&nrng->sem, 0x1); 
+    assert(err == DPL_OK);
 
     nrng->dev_inst = inst;
     nrng->nframes = nframes;
@@ -429,7 +428,7 @@ dw1000_nrng_request(dw1000_nrng_instance_t * nrng, uint16_t dst_address, dw1000_
             assert(err == DPL_OK);
         }
     }else{
-        err = dpl_sem_pend(&nrng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
+        err = dpl_sem_pend(&nrng->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions
         assert(err == DPL_OK);
         err = dpl_sem_release(&nrng->sem);
         assert(err == DPL_OK);

@@ -10,11 +10,10 @@ configure_file (
 set(CMAKE_BUILD_TYPE ${BUILD_TYPE})
 
 add_subdirectory(hw/drivers/dw1000)
+add_subdirectory(lib)
 add_subdirectory(porting/dpl)
 add_subdirectory(porting/dpl_os)
 add_subdirectory(porting/dpl_hal)
-
-#include_directories(include)
 
 option(BUILD_DOC "Build documentation" ON)
 

@@ -40,6 +40,7 @@ install(
     DESTINATION include
 )
 
+#[[
 # API Unit test
 add_executable(dpl_sem test/test_dpl_sem.c)
 
@@ -77,3 +78,5 @@ target_link_libraries(
 #    dpl_linux
 #    Threads::Threads
 #)
+
+]]

@@ -43,7 +43,9 @@ extern "C" {
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
+#if MYNEWT_VAL(PAN_VERSION_ENABLED)
 #include <bootutil/image.h>
+#endif
 
 //! Roles available for PAN
 typedef enum _dw1000_pan_role_t{
@@ -81,7 +83,9 @@ typedef union{
         uint16_t role;                       //!< Requested role in network
         uint16_t lease_time;                 //!< Requested lease time in seconds
         union {
+#if MYNEWT_VAL(PAN_VERSION_ENABLED)
             struct image_version fw_ver;     //!< Firmware version running
+#endif
             struct {
                 uint16_t pan_id;             //!< Assigned pan_id
                 uint16_t short_address;      //!< Assigned device_id

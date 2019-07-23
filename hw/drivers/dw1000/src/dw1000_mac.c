@@ -46,15 +46,6 @@
 #include <dw1000/dw1000_stats.h>
 #include <dw1000/dw1000_mac.h>
 
-#if MYNEWT_VAL(CCP_ENABLED)
-#include <ccp/ccp.h>
-#endif
-#if MYNEWT_VAL(RNG_ENABLED)
-#include <rng/rng.h>
-#endif
-#if MYNEWT_VAL(WCS_ENABLED)
-#include <wcs/wcs.h>
-#endif
 
 #if MYNEWT_VAL(DW1000_MAC_STATS)
 STATS_NAME_START(mac_stat_section)

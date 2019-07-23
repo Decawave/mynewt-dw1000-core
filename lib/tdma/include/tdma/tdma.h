@@ -75,7 +75,7 @@ typedef struct _tdma_slot_t{
 typedef struct _tdma_instance_t{
     struct _dw1000_dev_instance_t * dev_inst; //!< Pointer to _dw1000_dev_instance_t
 #if MYNEWT_VAL(CCP_ENABLED)
-    dw1000_ccp_instance_t *ccp;              //!< Pointer to ccp instance
+    dw1000_ccp_instance_t * ccp;              //!< Pointer to ccp instance
 #endif
 #if MYNEWT_VAL(TDMA_STATS)
     STATS_SECT_DECL(tdma_stat_section) stat;  //!< Stats instance
@@ -91,8 +91,8 @@ typedef struct _tdma_instance_t{
     struct dpl_eventq eventq;                //!< Structure of events
     struct dpl_task task_str;                //!< Structure of tasks
     uint8_t task_prio;                       //!< Priority of tasks
-    os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]   //!< Stack size of each task
-        __attribute__((aligned(OS_STACK_ALIGNMENT)));
+    dpl_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]   //!< Stack size of each task
+        __attribute__((aligned(DPL_STACK_ALIGNMENT)));
 #if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
     struct dpl_callout sanity_cb;            //!< Structure of sanity_cb
 #endif

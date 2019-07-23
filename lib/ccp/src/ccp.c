@@ -35,7 +35,6 @@
 #include <os/os.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
-#include <bsp/bsp.h>
 
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_phy.h>
@@ -127,7 +126,7 @@ static void ccp_master_timer_ev_cb(struct dpl_event *ev);
 static void ccp_slave_timer_ev_cb(struct dpl_event *ev);
 
 #if !MYNEWT_VAL(WCS_ENABLED)
-static void ccp_postprocess(struct os_event * ev);
+static void ccp_postprocess(struct dpl_event * ev);
 #endif
 
 /**
@@ -296,7 +295,7 @@ ccp_tasks_init(struct _dw1000_ccp_instance_t * inst)
         /* Use a dedicate event queue for tdma events */
         dpl_eventq_init(&inst->eventq);
         dpl_task_init(&inst->task_str, "dw1000_ccp",
-                     ccp_task,
+                     (dpl_task_func_t)ccp_task,
                      (void *) inst,
                      inst->task_prio, DPL_WAIT_FOREVER,
                      inst->task_stack,
@@ -461,7 +460,7 @@ dw1000_ccp_free(dw1000_ccp_instance_t * inst){
  */
 void ccp_pkg_init(void){
 #if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
-    printf("{\"utime\": %lu,\"msg\": \"ccp_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    printf("{\"utime\": %u,\"msg\": \"ccp_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
@@ -845,7 +844,7 @@ dw1000_ccp_send(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
 {
     assert(ccp);
     CCP_STATS_INC(send);
-    dpl_error_t err = dpl_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER);
+    dpl_error_t err = dpl_sem_pend(&ccp->sem, DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
     struct _dw1000_dev_instance_t * inst = ccp->dev_inst;
     
@@ -880,7 +879,7 @@ dw1000_ccp_send(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
         assert(err == DPL_OK);
 
     }else if(mode == DWT_BLOCKING){
-        err = dpl_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
+        err = dpl_sem_pend(&ccp->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions
         assert(err == DPL_OK);
         err = dpl_sem_release(&ccp->sem);
         assert(err == DPL_OK);
@@ -907,7 +906,7 @@ dw1000_ccp_listen(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
     struct _dw1000_dev_instance_t * inst = ccp->dev_inst;
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_listen\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     dw1000_phy_forcetrxoff(inst);
-    dpl_error_t err = dpl_sem_pend(&ccp->sem,  OS_TIMEOUT_NEVER);
+    dpl_error_t err = dpl_sem_pend(&ccp->sem,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
 
     CCP_STATS_INC(listen);
@@ -921,7 +920,7 @@ dw1000_ccp_listen(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
         err = dpl_sem_release(&ccp->sem);
         assert(err == DPL_OK);
     }else if(mode == DWT_BLOCKING){
-        err = dpl_sem_pend(&ccp->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
+        err = dpl_sem_pend(&ccp->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions
         assert(err == DPL_OK);
         err = dpl_sem_release(&ccp->sem);
         assert(err == DPL_OK);
