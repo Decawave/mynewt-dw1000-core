@@ -99,4 +99,18 @@ dpl_sem_pend(struct dpl_sem *sem, dpl_time_t timeout)
     return (err) ? DPL_ERROR : DPL_OK;
 }
 
+<<<<<<< HEAD
 
+=======
+uint16_t
+dpl_sem_get_count(struct dpl_sem *sem)
+{
+    int count;
+
+    assert(sem);
+    assert(&sem->lock);
+    sem_getvalue(&sem->lock, &count);
+
+    return count;
+}
+>>>>>>> e39c213... Added Decawave Porting Layer (DPL) for Linux. Added CMake build

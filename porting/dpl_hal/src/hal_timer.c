@@ -362,5 +362,3 @@ hal_timer_stop(struct hal_timer *timer)
 
     return 0;
 }
-
-
