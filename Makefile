@@ -30,14 +30,14 @@ cortex-m0:
 	cd build_cortex-m0 && cmake -G"Unix Makefiles"       \
 	$(COMMON_DEFINITIONS)                                \
 	-DCMAKE_TOOLCHAIN_FILE=../toolchain/cortex-m0.cmake ..
-	
+
 cortex-m3:
 	rm -R -f build_cortex-m3
 	mkdir build_cortex-m3
 	cd build_cortex-m3 && cmake -G"Unix Makefiles"       \
 	$(COMMON_DEFINITIONS)                                \
 	-DCMAKE_TOOLCHAIN_FILE=../toolchain/cortex-m3.cmake ..
-	
+
 cortex-m4:
 	rm -R -f build_cortex-m4
 	mkdir build_cortex-m4
@@ -102,7 +102,7 @@ clean:
 	rm -R -f build_*
 	rm -R -f ext_images
 	rm -R -f xcode
-	
+
 unpack_images:
 	rm -R -f ext_images
 	7z x ext_images.7z

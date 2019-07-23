@@ -18,7 +18,11 @@
  */
 
 #include "test_util.h"
+<<<<<<< HEAD
 #include "dpl/dpl.h"
+=======
+#include "linux/dpl.h"
+>>>>>>> e39c213... Added Decawave Porting Layer (DPL) for Linux. Added CMake build
 
 #include <pthread.h>
 
