@@ -232,7 +232,7 @@ tdma_tasks_init(struct _tdma_instance_t * inst)
     {
         /* Use a dedicate event queue for tdma events */
         dpl_eventq_init(&inst->eventq);
-        os_task_init(&inst->task_str, "dw1000_tdma",
+        dpl_task_init(&inst->task_str, "dw1000_tdma",
                      tdma_task,
                      (void *) inst,
                      inst->task_prio,

@@ -1205,10 +1205,10 @@ dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
         inst->interrupt_ev.ev.ev_cb = dw1000_interrupt_ev_cb;
         inst->interrupt_ev.ev.ev_arg = (void *)inst;
 
-        os_task_init(&inst->task_str, "dw1000_irq",
+        dpl_task_init(&inst->task_str, "dw1000_irq",
                      dw1000_interrupt_task,
                      (void *) inst,
-                     inst->task_prio, OS_WAIT_FOREVER,
+                     inst->task_prio, DPL_WAIT_FOREVER,
                      inst->task_stack,
                      DW1000_DEV_TASK_STACK_SZ);
         /* Enable pull-down on IRQ to not get spurious interrupts when dw1000 is sleeping */
