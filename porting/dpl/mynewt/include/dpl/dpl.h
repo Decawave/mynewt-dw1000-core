@@ -43,8 +43,6 @@ typedef void (* dpl_task_func_t)(void *);
 typedef os_time_t dpl_time_t;
 typedef os_stime_t dpl_stime_t;
 typedef os_stack_t dpl_stack_t;
-typedef os_time_t dpl_time_t;
-typedef os_stime_t dpl_stime_t;
 
 /*
  * This allows to cast between dpl_* and os_* structs to make DPL for Mynewt
