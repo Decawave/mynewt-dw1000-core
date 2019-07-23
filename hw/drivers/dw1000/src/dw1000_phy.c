@@ -324,7 +324,7 @@ float dw1000_phy_read_read_wakeupvbat_SI(struct _dw1000_dev_instance_t * inst)
  */
 void dw1000_phy_rx_reset(struct _dw1000_dev_instance_t * inst)
 {
-    os_error_t err = dpl_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
+    os_error_t err = dpl_mutex_pend(&inst->mutex, DPL_WAIT_FOREVER);
     assert(err == OS_OK);
 
     // Set RX reset
@@ -352,7 +352,7 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
     // event has just happened before the radio was disabled)
     // thus we need to disable interrupt during this operation
 
-    os_error_t err = dpl_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
+    os_error_t err = dpl_mutex_pend(&inst->mutex, DPL_WAIT_FOREVER);
     assert(err == OS_OK);
     
     dw1000_write_reg(inst, SYS_MASK_ID, 0, 0, sizeof(uint32_t)) ; // Clear interrupt mask - so we don't get any unwanted events
@@ -379,7 +379,7 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
     inst->control.wait4resp_enabled = 0;
 
         /* Reset semaphore if needed */
-    if (inst->tx_sem.sem.sem_tokens == 0) {
+    if (dpl_sem_get_count(&inst->tx_sem) == 0) {
         os_error_t err = dpl_sem_release(&inst->tx_sem);
         assert(err == OS_OK);
         inst->status.sem_force_released = 1;

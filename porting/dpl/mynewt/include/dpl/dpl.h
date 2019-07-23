@@ -33,14 +33,16 @@ extern "C" {
     
 struct dpl_event;
 typedef void dpl_event_fn(struct dpl_event *ev);
-typedef void (*dpl_task_func_t)(void *);
+typedef void (* dpl_task_func_t)(void *);
     
 #define DPL_TIME_FOREVER    (OS_TIMEOUT_NEVER)
 #define DPL_TIMEOUT_NEVER   (OS_TIMEOUT_NEVER)
 #define DPL_WAIT_FOREVER    (OS_TIMEOUT_NEVER)
+#define DPL_STACK_ALIGNMENT (OS_STACK_ALIGNMENT)
 
 typedef os_time_t dpl_time_t;
 typedef os_stime_t dpl_stime_t;
+typedef os_stack_t dpl_stack_t;
 
 /*
  * This allows to cast between dpl_* and os_* structs to make DPL for Mynewt

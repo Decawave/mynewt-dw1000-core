@@ -22,7 +22,7 @@
 */
 
 #include "test_util.h"
-#include "linux/dpl.h"
+#include "dpl/dpl.h"
 #include "os/os.h"
 
 #define TEST_ITERATIONS   100

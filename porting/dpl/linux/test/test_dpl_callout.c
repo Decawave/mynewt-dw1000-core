@@ -22,7 +22,7 @@
 */
 
 #include "test_util.h"
-#include "linux/dpl.h"
+#include "dpl/dpl.h"
 
 #define TEST_ARGS_VALUE  (55)
 #define TEST_INTERVAL    (100)

@@ -308,7 +308,7 @@ hal_dw1000_read(struct _dw1000_dev_instance_t * inst,
 {
     dpl_error_t err;
     assert(inst->spi_sem);
-    err = dpl_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
+    err = dpl_sem_pend(inst->spi_sem, DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
     hal_gpio_write(inst->ss_pin, 0);
 
@@ -337,7 +337,7 @@ hal_dw1000_spi_txrx_cb(void *arg, int len)
     assert(inst!=0);
 
     /* Check for longer nonblocking read/write op */
-    if (inst->spi_nb_sem.sem.sem_tokens == 0) {
+    if (dpl_sem_get_count(&inst->spi_nb_sem) == 0) {
         err = dpl_sem_release(&inst->spi_nb_sem);
         assert(err == DPL_OK);
     } else {
@@ -365,7 +365,7 @@ hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cm
     dpl_error_t err;
     assert(inst->spi_sem);
 
-    err = dpl_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
+    err = dpl_sem_pend(inst->spi_sem, DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
     
     hal_gpio_write(inst->ss_pin, 0);
@@ -384,7 +384,7 @@ hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cm
 
         /* Only use the spi_nb_sem if needed */
         if (bytes_left) {
-            err = dpl_sem_pend(&inst->spi_nb_sem, OS_TIMEOUT_NEVER);
+            err = dpl_sem_pend(&inst->spi_nb_sem, DPL_TIMEOUT_NEVER);
             assert(err == DPL_OK);
         }
    
@@ -399,7 +399,7 @@ hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cm
 
         /* Only wait for this round if there is more data to read */
         if (bytes_left) {
-            err = dpl_sem_pend(&inst->spi_nb_sem, OS_TIMEOUT_NEVER);
+            err = dpl_sem_pend(&inst->spi_nb_sem, DPL_TIMEOUT_NEVER);
             assert(err == DPL_OK);
 
             err = dpl_sem_release(&inst->spi_nb_sem);
@@ -408,7 +408,7 @@ hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cm
     }
 
     /* Reaquire semaphore after rx complete */
-    err = dpl_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
+    err = dpl_sem_pend(inst->spi_sem, DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
 
     err = dpl_sem_release(inst->spi_sem);
@@ -431,7 +431,7 @@ hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint
 {
     dpl_error_t err;
     assert(inst->spi_sem);
-    err = dpl_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
+    err = dpl_sem_pend(inst->spi_sem, DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
 
     hal_gpio_write(inst->ss_pin, 0);
@@ -463,7 +463,7 @@ hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * c
     dpl_error_t err;
     assert(length);
     assert(inst->spi_sem);
-    err = dpl_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
+    err = dpl_sem_pend(inst->spi_sem, DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
 
     hal_gpio_write(inst->ss_pin, 0);
@@ -479,7 +479,7 @@ hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * c
 
         /* Only use the spi_nb_sem if needed */
         if (bytes_left) {
-            err = dpl_sem_pend(&inst->spi_nb_sem, OS_TIMEOUT_NEVER);
+            err = dpl_sem_pend(&inst->spi_nb_sem, DPL_TIMEOUT_NEVER);
             assert(err == DPL_OK);
         }
 
@@ -495,7 +495,7 @@ hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * c
         /* Only wait for this round if there is more data to read */
         if (bytes_left) {
             /* Wait for this round of writing to complete */
-            err = dpl_sem_pend(&inst->spi_nb_sem, OS_TIMEOUT_NEVER);
+            err = dpl_sem_pend(&inst->spi_nb_sem, DPL_TIMEOUT_NEVER);
             assert(err == DPL_OK);
             
             err = dpl_sem_release(&inst->spi_nb_sem);
@@ -508,7 +508,7 @@ hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * c
  * API to wait for a DMA transfer
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
- * @param timeout  Time in os_ticks to wait, use OS_TIMEOUT_NEVER to wait indefinitely
+ * @param timeout  Time in os_ticks to wait, use DPL_TIMEOUT_NEVER to wait indefinitely
  * @return void
  */
 os_error_t
@@ -516,7 +516,7 @@ hal_dw1000_rw_noblock_wait(struct _dw1000_dev_instance_t * inst, os_time_t timeo
 {
     dpl_error_t err;
     err = dpl_sem_pend(inst->spi_sem, timeout);
-    if (inst->spi_sem->sem.sem_tokens == 0) {
+    if (dpl_sem_get_count(inst->spi_sem) == 0) {
         dpl_sem_release(inst->spi_sem);
     }
     return err;
@@ -535,7 +535,7 @@ hal_dw1000_wakeup(struct _dw1000_dev_instance_t * inst)
     dpl_error_t err;
     os_sr_t sr;
     assert(inst->spi_sem);
-    err = dpl_sem_pend(inst->spi_sem, OS_TIMEOUT_NEVER);
+    err = dpl_sem_pend(inst->spi_sem, DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
 
     OS_ENTER_CRITICAL(sr);

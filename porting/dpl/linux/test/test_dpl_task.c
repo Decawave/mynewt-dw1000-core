@@ -18,7 +18,7 @@
  */
 
 #include "test_util.h"
-#include "linux/dpl.h"
+#include "dpl/dpl.h"
 
 #include <pthread.h>
 
