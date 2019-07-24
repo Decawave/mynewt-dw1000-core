@@ -36,10 +36,8 @@
 #include <os/os.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
-#include "bsp/bsp.h"
 #include <stats/stats.h>
 
-#include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_mac.h>
@@ -70,6 +68,7 @@
 #if MYNEWT_VAL(CIR_ENABLED)
 #include <cir/cir.h>
 #endif
+
 
 #if MYNEWT_VAL(RNG_STATS)
 STATS_NAME_START(rng_stat_section)
@@ -524,7 +523,7 @@ dw1000_rng_listen(dw1000_rng_instance_t * rng, dw1000_dev_modes_t mode)
     }
 
     if (mode == DWT_BLOCKING){
-        err = dpl_sem_pend(&rng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
+        err = dpl_sem_pend(&rng->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions
         assert(err == DPL_OK);
         err = dpl_sem_release(&rng->sem);
         assert(err == DPL_OK);

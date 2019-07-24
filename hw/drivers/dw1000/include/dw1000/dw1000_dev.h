@@ -45,9 +45,6 @@ extern "C" {
 #include <hal/hal_spi.h>
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_stats.h>
-#if MYNEWT_VAL(CIR_ENABLED)
-#include <cir/cir.h>
-#endif
 #include <dpl/dpl.h>
 
 #define DWT_DEVICE_ID   (0xDECA0130) //!< Decawave Device ID 

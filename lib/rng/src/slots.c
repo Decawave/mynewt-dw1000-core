@@ -71,7 +71,7 @@ uint32_t BitPosition(uint32_t n) {
 }
 
 /**
- * @fn BitIndex(uint32_t nslots_mask, uint32_t n, uint8_t mode)
+ * @fn BitIndex(uint32_t nslots_mask, uint32_t n, slot_mode_t t mode)
  * @brief Help function to calculate the numerical ordering of a bit within a bitmask
  *
  * @param nslots_mask     number of slots mask parameter
@@ -81,7 +81,7 @@ uint32_t BitPosition(uint32_t n) {
  * @return numerical ordering of a bit witin bitmask.
  */
 uint32_t
-BitIndex(uint32_t nslots_mask, uint32_t n, uint8_t mode) {
+BitIndex(uint32_t nslots_mask, uint32_t n, slot_mode_t mode) {
 
     assert(n && (! (n & (n-1)) ));  // single bit set
     assert(n & nslots_mask);        // bit set is within ROI

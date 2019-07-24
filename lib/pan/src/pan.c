@@ -34,8 +34,6 @@
 #include <os/os.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
-#include "bsp/bsp.h"
-#include <imgmgr/imgmgr.h>
 
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
@@ -49,6 +47,9 @@
 #endif
 #if MYNEWT_VAL(TDMA_ENABLED)
 #include <tdma/tdma.h>
+#endif
+#if MYNEWT_VAL(PAN_VERSION_ENABLED)
+#include <imgmgr/imgmgr.h>
 #endif
 
 // #define DIAGMSG(s,u) printf(s,u)
@@ -618,7 +619,10 @@ dw1000_pan_blink(dw1000_pan_instance_t *pan, uint16_t role,
     frame->rpt_max = MYNEWT_VAL(PAN_RPT_MAX);
     frame->role = role;
     frame->lease_time = pan->config->lease_time;
+
+#if MYNEWT_VAL(PAN_VERSION_ENABLED)
     imgr_my_version(&frame->fw_ver);
+#endif
 
     dw1000_set_delay_start(inst, delay);
     dw1000_write_tx_fctrl(inst, sizeof(struct _pan_frame_t), 0);

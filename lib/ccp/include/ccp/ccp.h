@@ -176,8 +176,8 @@ typedef struct _dw1000_ccp_instance_t{
     struct dpl_event timer_event;                   //!< Event callback
     struct dpl_task task_str;                       //!< Task structure  
     uint8_t task_prio;                              //!< Priority based task
-    os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]
-        __attribute__((aligned(OS_STACK_ALIGNMENT))); //!< Task stack size
+    dpl_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]
+        __attribute__((aligned(DPL_STACK_ALIGNMENT))); //!< Task stack size
     ccp_frame_t * frames[];                          //!< Buffers to ccp frames
 }dw1000_ccp_instance_t; 
 

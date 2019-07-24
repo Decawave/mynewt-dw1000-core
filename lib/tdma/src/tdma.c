@@ -36,19 +36,14 @@
 #include "sysinit/sysinit.h"
 #include "os/os.h"
 #include "os/queue.h"
-#include "bsp/bsp.h"
-#include "hal/hal_gpio.h"
-#include "hal/hal_bsp.h"
-#ifdef ARCH_sim
-#include "mcu/mcu_sim.h"
-#endif
 
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_hal.h>
 #include <tdma/tdma.h>
 
+#if MYNEWT_VAL(CCP_ENABLED)
 #include <ccp/ccp.h>
-
+#endif
 #if MYNEWT_VAL(WCS_ENABLED)
 #include <wcs/wcs.h>
 #endif
@@ -212,7 +207,7 @@ sanity_feeding_cb(struct dpl_event * ev)
     assert(tdma);
 
     os_sanity_task_checkin(0);
-    dpl_callout_reset(&tdma->sanity_cb, OS_TICKS_PER_SEC);
+    dpl_callout_reset(&tdma->sanity_cb, DPL_TICKS_PER_SEC);
 }
 #endif
 
@@ -237,7 +232,7 @@ tdma_tasks_init(struct _tdma_instance_t * inst)
                      (void *) inst,
                      inst->task_prio,
 #if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
-                     OS_TICKS_PER_SEC * MYNEWT_VAL(TDMA_SANITY_INTERVAL),
+                     DPL_TICKS_PER_SEC * MYNEWT_VAL(TDMA_SANITY_INTERVAL),
 #else
                      DPL_WAIT_FOREVER,
 #endif
@@ -246,7 +241,7 @@ tdma_tasks_init(struct _tdma_instance_t * inst)
     }
 #if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
     dpl_callout_init(&inst->sanity_cb, &inst->eventq, sanity_feeding_cb, (void *) inst);
-    dpl_callout_reset(&inst->sanity_cb, OS_TICKS_PER_SEC);
+    dpl_callout_reset(&inst->sanity_cb, DPL_TICKS_PER_SEC);
 #endif
 }
 
