@@ -223,7 +223,7 @@ dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config, uin
  *
  * @return void
  */
-inline void
+void
 dw1000_pan_set_frames(dw1000_pan_instance_t *pan, pan_frame_t pan_f[], uint16_t nframes)
 {
     assert(nframes <= pan->nframes);
