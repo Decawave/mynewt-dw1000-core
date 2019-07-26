@@ -109,8 +109,10 @@ nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base){
             nrng_frame_t * frame = nrng->frames[(base + idx)%nrng->nframes];
             if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == seq_num){
                 float range = dw1000_rng_tof_to_meters(dw1000_nrng_twr_to_tof_frames(nrng->dev_inst, frame, frame));
-#if MYNEWT_VAL(NRNG_HUMAN_READABLE_RANGES)
-                JSON_VALUE_UINT(&value, (uint32_t)(range*1000));
+#if MYNEWT_VAL(FLOAT_USER)
+                char float_string[16];
+                sprintf(float_string,"%f",range);
+                JSON_VALUE_STRING(&value, float_string);
 #else
                 JSON_VALUE_UINT(&value, *(uint32_t *)&range);
 #endif
@@ -129,7 +131,9 @@ nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base){
             uint16_t idx = BitIndex(nrng->slot_mask , 1UL << i, SLOT_POSITION); 
             nrng_frame_t * frame = nrng->frames[(base + idx)%nrng->nframes];
             if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == seq_num){
-                JSON_VALUE_INT(&value, frame->dst_address);
+                char uuid[16];
+                sprintf(uuid,"%04u",frame->dst_address);
+                JSON_VALUE_STRINGN(&value, uuid,4);
                 rc |= json_encode_array_value(&encoder, &value);
                 if (i%64==0) _json_fflush();
                 frame->code = DWT_SS_TWR_NRNG_EXT_END;
