@@ -8,13 +8,10 @@ file(GLOB ${PROJECT_NAME}_HEADERS
     include/*.h
 )
 
-#file(GLOB remove_from_build "./src/dw1000_cli.c")
-#list(REMOVE_ITEM ${PROJECT_NAME}_SOURCES ${remove_from_build})
-
 #configure_file(${PROJECT_NAME}.pc.in ${PROJECT_NAME}.pc @ONLY)
 
 include_directories(
-    include
+    include/
     "${PROJECT_SOURCE_DIR}/../../../../bin/targets/syscfg/generated/include/"
     "${PROJECT_SOURCE_DIR}/../../../porting/dpl_hal/include"
 )
@@ -31,7 +28,7 @@ add_library(${PROJECT_NAME}
 target_include_directories(
     ${PROJECT_NAME} 
     PUBLIC 
-    include
+    include/
 )
 
 target_link_libraries(
@@ -44,14 +41,13 @@ target_link_libraries(
 # Install library
 install(
     TARGETS ${PROJECT_NAME} ARCHIVE 
-    DESTINATION lib/${PROJECT_NAME}
+    DESTINATION lib
+)
+install(
+    FILES ${${PROJECT_NAME}_HEADERS} 
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/include/${PROJECT_NAME}
 )
 
-install(
-    FILES 
-    ${${PROJECT_NAME}_HEADERS} 
-    DESTINATION include/${PROJECT_NAME}
-)
 #install(
 #    TARGETS ${PROJECT_NAME}
 #    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

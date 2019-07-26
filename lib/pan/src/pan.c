@@ -732,10 +732,11 @@ dw1000_pan_lease_remaining(dw1000_pan_instance_t * pan)
  * @return void
  */
 void 
-dw1000_pan_slot_timer_cb(struct os_event * ev)
+dw1000_pan_slot_timer_cb(struct dpl_event * ev)
 {
     assert(ev);
-    tdma_slot_t * slot = (tdma_slot_t *) ev->ev_arg;
+    tdma_slot_t * slot = (tdma_slot_t *) dpl_event_get_arg(ev);
+    
     tdma_instance_t * tdma = slot->parent;
     dw1000_ccp_instance_t *ccp = tdma->ccp;
     dw1000_dev_instance_t *inst = tdma->dev_inst;
