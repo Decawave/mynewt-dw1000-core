@@ -460,7 +460,7 @@ dw1000_ccp_free(dw1000_ccp_instance_t * inst){
  */
 void ccp_pkg_init(void){
 #if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
-    printf("{\"utime\": %u,\"msg\": \"ccp_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    printf("{\"utime\": %lu,\"msg\": \"ccp_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
