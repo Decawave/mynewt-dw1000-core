@@ -55,7 +55,6 @@ install (DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/docs/html DESTINATION ./)
 endif()
 
 include (CPack)
-
 include(CTest)
 
 # does the application run

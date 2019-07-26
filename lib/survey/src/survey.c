@@ -39,7 +39,6 @@
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
 #include <stats/stats.h>
-#include <bsp/bsp.h>
 
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_phy.h>
@@ -225,9 +224,10 @@ survey_pkg_init(void)
  */
 static void survey_complete_cb(struct dpl_event *ev) {
     assert(ev != NULL);
-    assert(ev->ev.ev_arg != NULL);
+    assert(dpl_event_get_arg(ev) != NULL);
 
-    survey_instance_t * survey = (survey_instance_t *) ev->ev.ev_arg;
+
+    survey_instance_t * survey = (survey_instance_t *) dpl_event_get_arg(ev);
     survey_encode(survey, survey->seq_num, survey->idx);    
 }
 #endif
@@ -355,9 +355,10 @@ survey_listen(survey_instance_t * survey, uint64_t dx_time){
  */
 survey_status_t  
 survey_broadcaster(survey_instance_t * survey, uint64_t dx_time){
+
     assert(survey);
 
-    dpl_error_t err = dpl_sem_pend(&survey->sem,  OS_TIMEOUT_NEVER);
+    dpl_error_t err = dpl_sem_pend(&survey->sem,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
     STATS_INC(survey->stat, broadcaster);
 
@@ -390,7 +391,7 @@ survey_broadcaster(survey_instance_t * survey, uint64_t dx_time){
         if (dpl_sem_get_count(&survey->sem) == 0) 
             dpl_sem_release(&survey->sem);
     }else{
-        err = dpl_sem_pend(&survey->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
+        err = dpl_sem_pend(&survey->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions 
         assert(err == DPL_OK);
         err = dpl_sem_release(&survey->sem);
         assert(err == DPL_OK);
@@ -411,7 +412,7 @@ survey_receiver(survey_instance_t * survey, uint64_t dx_time){
     assert(survey);
 
     dw1000_dev_instance_t * inst = survey->dev_inst;
-    dpl_error_t err = dpl_sem_pend(&survey->sem,  OS_TIMEOUT_NEVER);
+    dpl_error_t err = dpl_sem_pend(&survey->sem,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
     STATS_INC(survey->stat, receiver);
 
@@ -426,7 +427,7 @@ survey_receiver(survey_instance_t * survey, uint64_t dx_time){
         err = dpl_sem_release(&survey->sem);
         assert(err == DPL_OK); 
     }else{
-        err = dpl_sem_pend(&survey->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
+        err = dpl_sem_pend(&survey->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions 
         assert(err == DPL_OK);
         err = dpl_sem_release(&survey->sem);
         assert(err == DPL_OK);
