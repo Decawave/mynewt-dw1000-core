@@ -119,23 +119,26 @@ nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base){
             }
         }
     }
+ 
     rc |= json_encode_array_finish(&encoder);
-    rc |= json_encode_array_name(&encoder, "tdoa");
+ 
+    rc |= json_encode_array_name(&encoder, "uid");
     rc |= json_encode_array_start(&encoder);
     for (uint16_t i=0; i < 16; i++){
         if (valid_mask & 1UL << i){
             uint16_t idx = BitIndex(nrng->slot_mask , 1UL << i, SLOT_POSITION); 
-            nrng_frame_t * master = nrng->frames[(base)%nrng->nframes];
             nrng_frame_t * frame = nrng->frames[(base + idx)%nrng->nframes];
             if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == seq_num){
-                JSON_VALUE_INT(&value, (int32_t)(master->reception_timestamp - frame->reception_timestamp));
+                JSON_VALUE_INT(&value, frame->dst_address);
                 rc |= json_encode_array_value(&encoder, &value);
                 if (i%64==0) _json_fflush();
                 frame->code = DWT_SS_TWR_NRNG_EXT_END;
             }
         }
     }
+
     rc |= json_encode_array_finish(&encoder);
+
     rc |= json_encode_object_finish(&encoder);
     rc |= json_encode_object_finish(&encoder);
     assert(rc == 0);
