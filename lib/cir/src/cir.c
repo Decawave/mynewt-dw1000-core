@@ -163,8 +163,12 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         }
         cir->fp_idx = (float)fp_idx / 64.0f;
         fp_idx  = (uint16_t)floorf(cir->fp_idx + 0.5f);
+        cir->raw_ts = dw1000_read_rawrxtime(inst);
 
-        assert(cir->fp_idx > MYNEWT_VAL(CIR_OFFSET));
+        if(cir->fp_idx < MYNEWT_VAL(CIR_OFFSET)) {
+            /* Can't extract CIR from required offset, abort */
+            return status;
+        }
         dw1000_read_accdata(inst, (uint8_t *)&cir->cir, (fp_idx - MYNEWT_VAL(CIR_OFFSET)) * sizeof(cir_complex_t), sizeof(cir_t));
 
         float _rcphase = (float)((uint8_t)dw1000_read_reg(inst, RX_TTCKO_ID, 4, sizeof(uint8_t)) & 0x7F);

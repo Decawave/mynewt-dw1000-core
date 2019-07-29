@@ -67,6 +67,7 @@ typedef struct _cir_instance_t{
     float fp_power;
     float rcphase;
     float angle;
+    uint64_t raw_ts;
     cir_t cir;
     pmem_t pmem;
 }cir_instance_t; 

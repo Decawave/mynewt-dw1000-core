@@ -207,6 +207,7 @@ void dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev
 uint64_t dw1000_read_systime(struct _dw1000_dev_instance_t * inst);
 uint32_t dw1000_read_systime_lo(struct _dw1000_dev_instance_t * inst);
 uint64_t dw1000_read_rxtime(struct _dw1000_dev_instance_t * inst);
+uint64_t dw1000_read_rawrxtime(struct _dw1000_dev_instance_t * inst);
 uint64_t dw1000_read_txrawst(struct _dw1000_dev_instance_t * inst);
 uint32_t dw1000_read_rxtime_lo(struct _dw1000_dev_instance_t * inst);
 uint64_t dw1000_read_txtime(struct _dw1000_dev_instance_t * inst);

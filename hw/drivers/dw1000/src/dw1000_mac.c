@@ -1657,7 +1657,20 @@ inline uint32_t dw1000_read_systime_lo(struct _dw1000_dev_instance_t * inst){
 }
 
 /**
- * API to read receive time.
+ * API to read the anadjusted(raw) receive time.
+ *
+ * @param inst  Pointer to _dw1000_dev_instance_t.
+ *
+ * @return time
+ */
+
+uint64_t dw1000_read_rawrxtime(struct _dw1000_dev_instance_t * inst){
+    uint64_t time = (uint64_t)  dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_RAWST_OFFSET, RX_TIME_RX_STAMP_LEN) & 0x0FFFFFFFFFFULL;
+    return time;
+}
+
+/**
+ * API to read receive time. (As adjusted by the LDE)
  *
  * @param inst  Pointer to _dw1000_dev_instance_t.
  *
