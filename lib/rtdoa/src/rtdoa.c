@@ -245,12 +245,14 @@ rtdoa_tdoa_between_frames(struct _dw1000_rtdoa_instance_t *rtdoa,
 {
     int64_t tof;
     float diff_m = nanf("");
+    if (req_frame == NULL) {
+        return diff_m;
+    }
     switch(resp_frame->code){
         case DWT_RTDOA_RESP: {
             /* Invalidate this frame to avoid it being used more than once */
             resp_frame->code = DWT_TWR_INVALID;
 
-            assert(req_frame != NULL);
             if (resp_frame->tx_timestamp < req_frame->tx_timestamp) {
                 break;
             }
