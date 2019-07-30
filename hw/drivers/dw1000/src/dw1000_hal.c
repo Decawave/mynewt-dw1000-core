@@ -105,8 +105,9 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .sleep_enable = 1,
                 .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
                 .rxauto_enable = 1,        //!< On error re-enable
-                .cir_enable = 0,            //!< Default behavior for CIR interface
-                .pmem_enable = 0            //!< Default behavior for Preamble detection memory
+                .cir_enable = 0,           //!< Default behavior for CIR interface
+                .pmem_enable = 0,          //!< Default behavior for Preamble detection memory
+                .cir_pdoa_slave = 0        //!< First instance should not act as pdoa slave
             },
             .spi_sem = 0,
             .task_prio = 0x10
@@ -166,9 +167,10 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .LDO_enable = 0,
                 .sleep_enable = 1,
                 .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
-                .rxauto_enable = 1,        //!< On error re-enabl
-                .cir_enable = 0,            //!< Default behavior for CIR interface
-                .pmem_enable = 0            //!< Default behavior for Preamble detection memory
+                .rxauto_enable = 1,        //!< On error re-enable rx
+                .cir_enable = 0,           //!< Default behavior for CIR interface
+                .pmem_enable = 0,          //!< Default behavior for Preamble detection memory
+                .cir_pdoa_slave = 1        //!< Second instance should act as pdoa slave
             },
             .spi_sem = 0,
             .task_prio = 0x11
@@ -227,12 +229,13 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .LDE_enable = 1,
                 .LDO_enable = 0,
                 .sleep_enable = 1,
-                .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
+                .wakeup_rx_enable = 1,      //!< Wakeup to Rx state
                 .rxauto_enable = 1,
                 .cir_enable = 0,            //!< Default behavior for CIR interface
-                .pmem_enable = 0            //!< Default behavior for Preamble detection memory
+                .pmem_enable = 0,           //!< Default behavior for Preamble detection memory
+                .cir_pdoa_slave = 1         //!< Third instance should act as pdoa slave
             },
-            .spi_sem = 0
+            .spi_sem = 0,
             .task_prio = 0x12
     }
     #endif

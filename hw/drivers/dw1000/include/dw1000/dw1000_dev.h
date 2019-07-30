@@ -202,6 +202,7 @@ typedef struct _dw1000_dev_config_t{
     uint32_t sleep_enable:1;                //!< Enables sleep_enable bit
     uint32_t cir_enable:1;                  //!< Enables reading CIR as default
     uint32_t pmem_enable:1;                 //!< Enables reading Preamble memory as default behaviour
+    uint32_t cir_pdoa_slave:1;              //!< This instance is acting as a pdoa slave
 }dw1000_dev_config_t;
 
 //! DW1000 receiver diagnostics parameters.
@@ -209,7 +210,7 @@ typedef struct _dw1000_dev_rxdiag_t{
     union {
         struct _rx_time {
             uint32_t    fp_idx:16;          //!< First path index (10.6 bits fixed point integer)
-            uint32_t    fp_amp:16;          //!<  Amplitude at floor(index FP) + 1
+            uint32_t    fp_amp:16;          //!< Amplitude at floor(index FP) + 1
         };
         uint32_t rx_time;
     };

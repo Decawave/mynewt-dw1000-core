@@ -39,12 +39,13 @@ typedef struct _cir_status_t{
 typedef struct _cir_control_t{
     uint16_t cir_enable:1;
     uint16_t pmem_enable:1;
+    uint16_t pdoa_slave:1;
 }cir_control_t;
 
 typedef union{
     struct  _cir_complex_t{
-        int16_t real;           
-        int16_t imag;             
+        int16_t real;
+        int16_t imag;
     }__attribute__((__packed__));
     uint8_t array[sizeof(struct _cir_complex_t)];
 }cir_complex_t;
@@ -76,6 +77,7 @@ cir_instance_t * cir_init(cir_instance_t * inst);
 cir_instance_t * cir_enable(cir_instance_t * inst, bool mode);
 cir_instance_t * pmem_enable(cir_instance_t * inst, bool mode);
 void cir_free(cir_instance_t * inst);
+float cir_get_pdoa(cir_instance_t * master, cir_instance_t *slave);
 
 #ifdef __cplusplus
 }

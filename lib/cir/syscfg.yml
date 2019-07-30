@@ -32,6 +32,12 @@ syscfg.defs:
     CIR_VERBOSE:
         description: 'JSON print of CIR'
         value: 0
+    CIR_PDOA_SLAVE_MAX_LEAD:
+        description: <
+                     When an instance is slaving off another, discard it's pdoa info if it's detected a leading
+                     edge this many accumulator slots BEFORE the master instance. This indicates that the master
+                     instance is not detecting the direct path.
+        value: 1
     PMEM_ENABLED:
         description: 'Channel Impulse Response utils'
         value: 0

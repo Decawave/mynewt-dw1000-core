@@ -157,15 +157,34 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if (cir->control.cir_enable || inst->config.cir_enable){
         cir->control.cir_enable = inst->config.cir_enable; // restore defaults behavior
 
-        uint16_t fp_idx = inst->rxdiag.fp_idx;
-        if(!inst->config.rxdiag_enable) {
-            fp_idx = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
-        }
-        cir->fp_idx = (float)fp_idx / 64.0f;
-        fp_idx  = (uint16_t)floorf(cir->fp_idx + 0.5f);
         cir->raw_ts = dw1000_read_rawrxtime(inst);
+        uint16_t fp_idx;
+        uint16_t fp_idx_reg = inst->rxdiag.fp_idx;
+        if(!inst->config.rxdiag_enable) {
+            fp_idx_reg = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
+        }
+        cir->fp_idx = (float)fp_idx_reg / 64.0f;
+        fp_idx  = (uint16_t)floorf(cir->fp_idx + 0.5f);
 
-        if(cir->fp_idx < MYNEWT_VAL(CIR_OFFSET)) {
+        /* If we are acting as a pdoa slave, we don't trust our own LDE but instead just use the first path index
+         * of the master instance.  */
+        if (inst->config.cir_pdoa_slave) {
+            cir_instance_t * master_cir = hal_dw1000_inst(0)->cir;
+            /* Correct for possible different raw timestamp */
+            int64_t raw_ts_diff = ((int64_t)cir->raw_ts - (int64_t)master_cir->raw_ts)/64;
+
+            cir->fp_idx = master_cir->fp_idx;
+            int fp_idx_from_master  = floorf(master_cir->fp_idx + 0.5f - raw_ts_diff);
+
+            /* Check if our first path comes before the master's first path.
+             * If so, the master LDE probably did not select the direct wave and the 
+             * pdoa would not be correct */
+            if (fp_idx_from_master - fp_idx > MYNEWT_VAL(CIR_PDOA_SLAVE_MAX_LEAD)) {
+                return status;
+            }
+        }
+
+        if(fp_idx < MYNEWT_VAL(CIR_OFFSET) || (fp_idx + MYNEWT_VAL(CIR_SIZE)) > 1023) {
             /* Can't extract CIR from required offset, abort */
             return status;
         }
@@ -201,10 +220,29 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  */
 
 cir_instance_t * 
-cir_enable(cir_instance_t * inst, bool mode){
+cir_enable(cir_instance_t * inst, bool mode)
+{
     inst->status.valid = 0;
     inst->control.cir_enable = mode;
     return inst;
+}
+
+/*! 
+ * @fn cir_get_pdoa(cir_instance_t * master, cir_instance *slave)
+ *
+ * @brief Calculate the phase difference between receivers
+ * 
+ * @param master - cir_instance_t *
+ * @param slave  - cir_instance_t *
+ * 
+ * output parameters
+ *
+ * returns phase_difference - float 
+ */
+float
+cir_get_pdoa(cir_instance_t * master, cir_instance_t *slave)
+{
+    return fmodf((slave->angle - slave->rcphase) - (master->angle - master->rcphase) + 3*M_PI, 2*M_PI) - M_PI;
 }
 
 
