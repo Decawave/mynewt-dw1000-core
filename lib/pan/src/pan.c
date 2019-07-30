@@ -47,6 +47,9 @@
 #if MYNEWT_VAL(CCP_ENABLED)
 #include <ccp/ccp.h>
 #endif
+#if MYNEWT_VAL(TDMA_ENABLED)
+#include <tdma/tdma.h>
+#endif
 
 // #define DIAGMSG(s,u) printf(s,u)
 #ifndef DIAGMSG
@@ -127,7 +130,8 @@ static STATS_SECT_DECL(pan_stat_section) g_stat; //!< Stats instance
 static dw1000_pan_config_t g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(PAN_TX_HOLDOFF),         // Send Time delay in usec.
     .rx_timeout_period = MYNEWT_VAL(PAN_RX_TIMEOUT),        // Receive response timeout in usec.
-    .lease_time = MYNEWT_VAL(PAN_LEASE_TIME)                // Lease time in seconds
+    .lease_time = MYNEWT_VAL(PAN_LEASE_TIME),               // Lease time in seconds
+    .network_role = MYNEWT_VAL(PAN_NETWORK_ROLE)            // Role in the network (Anchor/Tag/...)
 };
 
 static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
@@ -675,13 +679,15 @@ dw1000_pan_reset(dw1000_pan_instance_t * pan, uint64_t delay)
  *
  * @param inst    Pointer to dw1000_dev_instance_t.
  * @param role    dw1000_pan_role_t of PAN_ROLE_MASTER, PAN_ROLE_SLAVE ,PAN_ROLE_RELAY.
+ * @param network_role network_role_t, The role in the network application (NETWORK_ROLE_ANCHOR, NETWORK_ROLE_TAG)
  *
  * @return void
  */
 void
-dw1000_pan_start(dw1000_pan_instance_t * pan, dw1000_pan_role_t role)
+dw1000_pan_start(dw1000_pan_instance_t * pan, dw1000_pan_role_t role, network_role_t network_role)
 {
     pan->config->role = role;
+    pan->config->network_role = network_role;
 
     if (pan->config->role == PAN_ROLE_MASTER) {
         /* Nothing for now */
@@ -712,5 +718,70 @@ dw1000_pan_lease_remaining(dw1000_pan_instance_t * pan)
     os_time_t rt = os_callout_remaining_ticks(&pan->pan_lease_callout_expiry, os_time_get());
     return os_time_ticks_to_ms32(rt);
 }
+
+
+#if MYNEWT_VAL(TDMA_ENABLED)
+/**
+ * @fn dw1000_pan_slot_timer_cb
+ * @brief tdma slot handler for pan slots
+ *
+ * @param struct os_event* event pointer with argument set to the pan instance
+ *
+ * @return void
+ */
+void 
+dw1000_pan_slot_timer_cb(struct os_event * ev)
+{
+    assert(ev);
+    tdma_slot_t * slot = (tdma_slot_t *) ev->ev_arg;
+    tdma_instance_t * tdma = slot->parent;
+    dw1000_ccp_instance_t *ccp = tdma->ccp;
+    dw1000_dev_instance_t *inst = tdma->dev_inst;
+    dw1000_pan_instance_t *pan = (dw1000_pan_instance_t*)slot->arg;
+    assert(pan);
+    uint16_t idx = slot->idx;
+
+    /* Check if we are to act as a Master Node in the network */
+    if (inst->role&DW1000_ROLE_PAN_MASTER) {
+        static uint8_t _pan_cycles = 0;
+
+        /* Broadcast an initial reset message to clear all leases */
+        if (_pan_cycles < 8) {
+            _pan_cycles++;
+            dw1000_pan_reset(pan, tdma_tx_slot_start(tdma, idx));
+        } else {
+            uint64_t dx_time = tdma_rx_slot_start(tdma, idx);
+            dw1000_set_rx_timeout(inst, 3*ccp->period/tdma->nslots/4);
+            dw1000_set_delay_start(inst, dx_time);
+            dw1000_set_on_error_continue(inst, true);
+            dw1000_pan_listen(pan, DWT_BLOCKING);
+        }
+    } else {
+        /* Act as a slave Node in the network */
+        if (pan->status.valid && dw1000_pan_lease_remaining(pan)>MYNEWT_VAL(PAN_LEASE_EXP_MARGIN)) {
+            /* Our lease is still valid - just listen */
+            uint16_t timeout;
+            if (pan->config->role == PAN_ROLE_RELAY) {
+                timeout = 3*ccp->period/tdma->nslots/4;
+            } else {
+                /* Only listen long enough to get any resets from master */
+                timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(sizeof(struct _pan_frame_t)))
+                    + MYNEWT_VAL(XTALT_GUARD);
+            }
+            dw1000_set_rx_timeout(inst, timeout);
+            dw1000_set_delay_start(inst, tdma_rx_slot_start(tdma, idx));
+            dw1000_set_on_error_continue(inst, true);
+            if (dw1000_pan_listen(pan, DWT_BLOCKING).start_rx_error) {
+                STATS_INC(g_stat, rx_error);
+            }
+        } else {
+            /* Subslot 0 is for master reset, subslot 1 is for sending requests */
+            uint64_t dx_time = tdma_tx_slot_start(tdma, (float)idx+1.0f/16);
+            dw1000_pan_blink(pan, pan->config->network_role, DWT_BLOCKING, dx_time);
+        }
+    }
+}
+#endif // MYNEWT_VAL(TDMA_ENABLED)
+
 
 #endif // PAN_ENABLED

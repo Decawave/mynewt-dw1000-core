@@ -12,7 +12,10 @@ syscfg.defs:
         description: 'TOA timeout delay for PAN (usec)'
         value: ((uint16_t)0x0600)
     PAN_LEASE_TIME:
-        description: 'PAN address requested lease time (ccp superframe periods)'
+        description: 'PAN address requested lease time (s)'
+        value: ((uint16_t)300)
+    PAN_NETWORK_ROLE:
+        description: 'PAN Network role (0=invalid, 1=Anchor, 2=Tag)'
         value: ((uint16_t)300)
     PAN_LEASE_EXP_MARGIN:
         description: 'Start requesting a new pan address when less than this many ms left of lease'

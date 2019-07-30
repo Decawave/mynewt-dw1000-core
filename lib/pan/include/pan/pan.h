@@ -53,6 +53,14 @@ typedef enum _dw1000_pan_role_t{
     PAN_ROLE_RELAY                          //!< Pan relay mode
 }dw1000_pan_role_t;
 
+//! Network Roles
+typedef enum {
+    NETWORK_ROLE_INVALID = 0x0,   /*!< Invalid role */
+    NETWORK_ROLE_ANCHOR,          /*!< Network Anchor */
+    NETWORK_ROLE_TAG              /*!< Network Tag */
+} network_role_t;
+
+
 //! Pan package codes.
 typedef enum _dw1000_pan_modes_t{
     DWT_PAN_INVALID = 0,             //!< Invalid Pan message
@@ -100,6 +108,7 @@ typedef struct _dw1000_pan_config_t{
     uint32_t tx_holdoff_delay:28;     //!< Delay between frames, in UWB usec.
     uint32_t role:4;                  //!< dw1000_pan_role_t
     uint16_t lease_time;              //!< Lease time in seconds
+    uint16_t network_role;            //!< Network application role (Anchor/Tag...)
 }dw1000_pan_config_t;
 
 //! Pan control parameters
@@ -125,11 +134,13 @@ typedef struct _dw1000_pan_instance_t{
 dw1000_pan_instance_t * dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config, uint16_t nframes);
 void dw1000_pan_free(dw1000_pan_instance_t *pan);
 void dw1000_pan_set_postprocess(dw1000_pan_instance_t *pan, os_event_fn * postprocess);
-void dw1000_pan_start(dw1000_pan_instance_t * pan, dw1000_pan_role_t role);
+void dw1000_pan_start(dw1000_pan_instance_t * pan, dw1000_pan_role_t role, network_role_t network_role);
 dw1000_dev_status_t dw1000_pan_listen(dw1000_pan_instance_t * pan, dw1000_dev_modes_t mode);
 dw1000_pan_status_t dw1000_pan_blink(dw1000_pan_instance_t * pan, uint16_t role, dw1000_dev_modes_t mode, uint64_t delay);
 dw1000_pan_status_t dw1000_pan_reset(dw1000_pan_instance_t * pan, uint64_t delay);
 uint32_t dw1000_pan_lease_remaining(dw1000_pan_instance_t * pan);
+
+void dw1000_pan_slot_timer_cb(struct os_event * ev);
 
 #ifdef __cplusplus
 }
