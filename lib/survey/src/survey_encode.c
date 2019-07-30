@@ -116,7 +116,13 @@ survey_encode(survey_instance_t * survey, uint16_t seq, uint16_t idx){
             rc |= json_encode_array_name(&encoder, "nrng");
             rc |= json_encode_array_start(&encoder);
             for (uint16_t j=0; j < NumberOfBits(nrngs->nrng[i]->mask); j++){
+#if MYNEWT_VAL(FLOAT_USER)
+                char float_string[16];
+                sprintf(float_string,"%f",nrngs->nrng[i]->rng[j]);
+                JSON_VALUE_STRING(&value, float_string);
+#else
                 JSON_VALUE_UINT(&value, *(uint32_t *)&nrngs->nrng[i]->rng[j]);
+#endif
                 rc |= json_encode_array_value(&encoder, &value); 
             }
             rc |= json_encode_array_finish(&encoder); 
