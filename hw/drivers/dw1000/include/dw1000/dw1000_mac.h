@@ -202,7 +202,6 @@ void dw1000_read_rxdiag(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev
 #define dw1000_set_address16(inst, shortAddress) dw1000_write_reg(inst ,PANADR_ID, PANADR_SHORT_ADDR_OFFSET, shortAddress, sizeof(uint16_t))
 #define dw1000_set_eui(inst, eui64) dw1000_write_reg(inst, EUI_64_ID, EUI_64_OFFSET, eui64, EUI_64_LEN)
 #define dw1000_get_eui(inst) (uint64_t) dw1000_read_reg(inst, EUI_64_ID, EUI_64_OFFSET, EUI_64_LEN)
-#define dw1000_checkoverrun(inst) (uint16_t) (dw1000_read_reg(inst, SYS_STATUS_ID, 2, sizeof(uint16_t)) & (SYS_STATUS_RXOVRR >> 16))
 
 uint64_t dw1000_read_systime(struct _dw1000_dev_instance_t * inst);
 uint32_t dw1000_read_systime_lo(struct _dw1000_dev_instance_t * inst);
