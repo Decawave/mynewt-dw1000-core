@@ -15,30 +15,6 @@ add_subdirectory(porting/dpl)
 add_subdirectory(porting/dpl_os)
 add_subdirectory(porting/dpl_hal)
 
-#[[
-# Introduce variables:
-# * CMAKE_INSTALL_LIBDIR
-# * CMAKE_INSTALL_BINDIR
-# * CMAKE_INSTALL_INCLUDEDIR
-include(GNUInstallDirs)
-
-# Targets:
-#   * <prefix>/lib/libbar.a
-#   * <prefix>/lib/libbaz.a
-#   * header location after install: <prefix>/include/foo/Bar.hpp
-#   * headers can be included by C++ code `#include <foo/Bar.hpp>`
-install(
-    TARGETS bar baz
-    EXPORT "${TARGETS_EXPORT_NAME}"
-    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
-    INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
-)
-]]
-
-
-
 option(BUILD_DOC "Build documentation" ON)
 
 if (CMAKE_BUILD_TYPE MATCHES "^[Rr]elease")
@@ -77,7 +53,7 @@ if(DOXYGEN_FOUND)
 install (DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/docs/html DESTINATION ./)
 endif()
 
-include (CPack)
+include(CPack)
 include(CTest)
 
 # does the application run

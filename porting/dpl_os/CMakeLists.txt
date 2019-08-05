@@ -35,14 +35,14 @@ target_link_libraries(
     dpl_linux
     dpl_hal
 )
+
+# Install library
 install(
-    TARGETS 
-    ${PROJECT_NAME} ARCHIVE 
+    TARGETS ${PROJECT_NAME} ARCHIVE 
     DESTINATION lib
 )
-install(
-    FILES 
-    ${${PROJECT_NAME}_HEADERS} 
-    DESTINATION include
+
+install(DIRECTORY include/ DESTINATION include/
+        FILES_MATCHING PATTERN "*.h"
 )
 

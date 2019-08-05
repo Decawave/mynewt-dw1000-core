@@ -29,7 +29,10 @@ add_library(${PROJECT_NAME}
     ${${PROJECT_NAME}_HEADERS}
 )
 
-target_include_directories(${PROJECT_NAME} PUBLIC include)
+target_include_directories(${PROJECT_NAME} 
+    PUBLIC 
+    include
+)
 
 target_link_libraries(
     ${PROJECT_NAME} 
@@ -42,14 +45,8 @@ install(
     TARGETS ${PROJECT_NAME} ARCHIVE 
     DESTINATION lib
 )
-install(
-    FILES 
-    ${${PROJECT_NAME}_HEADERS} 
-    DESTINATION include/${PROJECT_NAME}
+
+install(DIRECTORY include/ DESTINATION include/
+        FILES_MATCHING PATTERN "*.h"
 )
-#install(
-#    TARGETS ${PROJECT_NAME}
-#    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-#    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-#)
 

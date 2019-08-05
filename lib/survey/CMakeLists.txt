@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
-project(dsp)
+project(survey)
 
 file(GLOB ${PROJECT_NAME}_SOURCES 
     src/*.c
@@ -7,6 +7,9 @@ file(GLOB ${PROJECT_NAME}_SOURCES
 file(GLOB ${PROJECT_NAME}_HEADERS 
     include/*.h
 )
+
+#file(GLOB remove_from_build "./src/dw1000_cli.c")
+#list(REMOVE_ITEM ${PROJECT_NAME}_SOURCES ${remove_from_build})
 
 #configure_file(${PROJECT_NAME}.pc.in ${PROJECT_NAME}.pc @ONLY)
 
@@ -33,6 +36,11 @@ target_include_directories(
 
 target_link_libraries(
     ${PROJECT_NAME} 
+    dpl_os
+    dpl_hal
+    dw1000
+    nrng
+    tdma
 )
 
 # Install library
@@ -44,5 +52,3 @@ install(
 install(DIRECTORY include/ DESTINATION include/
         FILES_MATCHING PATTERN "*.h"
 )
-
-

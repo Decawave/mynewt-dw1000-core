@@ -29,15 +29,16 @@ target_link_libraries(
     ${PROJECT_NAME} 
     dpl_os
 )
+
+
+# Install library
 install(
-    TARGETS 
-    ${PROJECT_NAME} ARCHIVE 
+    TARGETS ${PROJECT_NAME} ARCHIVE 
     DESTINATION lib
 )
-install(
-    FILES 
-    ${${PROJECT_NAME}_HEADERS} 
-    DESTINATION include
+
+install(DIRECTORY include/ DESTINATION include/
+        FILES_MATCHING PATTERN "*.h"
 )
 
 #[[
