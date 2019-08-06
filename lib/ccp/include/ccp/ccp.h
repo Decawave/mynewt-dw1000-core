@@ -67,6 +67,11 @@ STATS_SECT_START(ccp_stat_section)
 STATS_SECT_END
 #endif
 
+/** @ingroup api_services
+ *  This is the dev base class which utilises the functions to perform initialization and necessary configurations on device.
+ *  @{
+ */
+
 // XXX This needs to be made bitfield-safe. Not sure the ifdefs below are enough
 typedef union _ccp_timestamp_t{
     struct {
@@ -188,6 +193,11 @@ void dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, dpl_event_fn * ccp
 void dw1000_ccp_set_tof_comp_cb(dw1000_ccp_instance_t * inst, dw1000_ccp_tof_compensation_cb_t tof_comp_cb);
 void dw1000_ccp_start(dw1000_ccp_instance_t *ccp, dw1000_ccp_role_t role);
 void dw1000_ccp_stop(dw1000_ccp_instance_t *ccp);
+
+/**
+ * @}
+ *
+ */
 
 #ifdef __cplusplus
 }
