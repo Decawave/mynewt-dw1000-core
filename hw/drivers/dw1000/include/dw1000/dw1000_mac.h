@@ -184,6 +184,7 @@ struct _dw1000_dev_status_t dw1000_enable_autoack(struct _dw1000_dev_instance_t 
 struct _dw1000_dev_status_t dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool flag);
 void dw1000_set_callbacks(struct _dw1000_dev_instance_t * inst, dw1000_dev_cb_t cb_TxDone, dw1000_dev_cb_t cb_RxOk, dw1000_dev_cb_t cb_RxTo, dw1000_dev_cb_t cb_RxErr);
 struct _dw1000_dev_status_t dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout);
+struct _dw1000_dev_status_t dw1000_adj_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout);
 
 float dw1000_calc_rssi(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag);
 float dw1000_get_rssi(struct _dw1000_dev_instance_t * inst);
