@@ -17,7 +17,7 @@ add_subdirectory(porting/dpl_hal)
 
 option(BUILD_DOC "Build documentation" ON)
 
-if (CMAKE_BUILD_TYPE MATCHES "^[Rr]elease")
+#if (CMAKE_BUILD_TYPE MATCHES "^[Rr]elease")
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
 	option(BUILD_DOC "Build documentation" ON)
@@ -32,7 +32,7 @@ if(DOXYGEN_FOUND)
         COMMENT "Generating API documentation with Doxygen"
         VERBATIM )
 endif()
-endif()
+#endif()
 
 # build a CPack driven installer package
 include (InstallRequiredSystemLibraries)
@@ -50,7 +50,7 @@ set (CPACK_COMPONENT_DOCS_DESCRIPTION "C++ API HTML files describing the API for
 
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
-install (DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/docs/html DESTINATION ./)
+install (DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION ./)
 endif()
 
 include(CPack)

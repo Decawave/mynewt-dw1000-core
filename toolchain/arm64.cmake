@@ -3,12 +3,12 @@ set(CMAKE_SYSTEM_PROCESSOR generic)
 
 # Toolchain settings
 set(CMAKE_C_COMPILER    aarch64-linux-gnu-gcc)
-set(CMAKE_CXX_COMPILER  g++)
-set(AS                  as)
-set(AR                  ar)
-set(OBJCOPY             objcopy)
-set(OBJDUMP             objdump)
-set(SIZE                size)
+set(CMAKE_CXX_COMPILER  aarch64-linux-gnu-g++)
+set(AS                  aarch64-linux-gnu-as)
+set(AR                  aarch64-linux-gnu-ar)
+set(OBJCOPY             aarch64-linux-gnu-objcopy)
+set(OBJDUMP             aarch64-linux-gnu-objdump)
+set(SIZE                aarch64-linux-gnu-size)
 
 set(CMAKE_C_FLAGS   "-D_GNU_SOURCE -D_POSIX_C_SOURCE=200809 -std=gnu11 -fms-extensions -fdata-sections -ffunction-sections -Wno-missing-declarations" CACHE INTERNAL "c compiler flags")
 set(CMAKE_CXX_FLAGS "-D_GNU_SOURCE -D_POSIX_C_SOURCE=200809 -std=gnu++11 -fms-extensions -fdata-sections -ffunction-sections" CACHE INTERNAL "cxx compiler flags")
