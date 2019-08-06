@@ -29,6 +29,11 @@
  *
  */
 
+/** @ingroup api_dw1000
+ *  This is the dev base class which utilises the functions to perform initialization and necessary configurations on device.
+ *  @{
+ */
+
  
 #ifndef _DW1000_DEV_H_
 #define _DW1000_DEV_H_
@@ -359,6 +364,11 @@ dw1000_dev_status_t dw1000_dev_enter_sleep_after_rx(dw1000_dev_instance_t * inst
     
 #define dw1000_dwt_usecs_to_usecs(_t) (double)( (_t) * (0x10000UL/(128*499.2)))
 #define dw1000_usecs_to_dwt_usecs(_t) (double)( (_t) / dw1000_dwt_usecs_to_usecs(1.0))
+
+/**
+ * @}
+ *
+ */
 
 #ifdef __cplusplus
 }
