@@ -77,7 +77,10 @@ dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uin
     };
 
     uint8_t len = cmd.subaddress?(cmd.extended?3:2):1;
-    if (length < 8) {
+    /* Possible issue here when reading shorter amounts of data
+     * using the nonblocking read with double buffer. Asserts on 
+     * mutex releases seen in calling function when reading frames of length 8 */
+    if (length < MYNEWT_VAL(DW1000_DEVICE_SPI_RD_MAX_NOBLOCK)) {
         hal_dw1000_read(inst, header, len, buffer, length);
     } else {
         hal_dw1000_read_noblock(inst, header, len, buffer, length);
