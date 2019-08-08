@@ -235,7 +235,7 @@ dw1000_rtdoa_listen(dw1000_rtdoa_instance_t * rtdoa, dw1000_dev_modes_t mode, ui
         err = os_sem_release(&rtdoa->sem);
         assert(err == OS_OK);
     }
-   return rtdoa->dev_inst->status;
+    return rtdoa->dev_inst->status;
 }
 
 

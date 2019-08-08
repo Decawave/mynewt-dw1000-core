@@ -213,6 +213,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             if (inst->frame_len < sizeof(rtdoa_request_frame_t)) {
                 break;
             }
+            RTDOA_STATS_INC(rtdoa_request);
             
             rtdoa_frame_t * frame = (rtdoa_frame_t *) rtdoa->frames[(++rtdoa->idx)%rtdoa->nframes];
             rtdoa->req_frame = frame;
@@ -244,7 +245,13 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 os_sem_release(&rtdoa->sem);
                 RTDOA_STATS_INC(start_rx_error);
             }
-            goto adj_to_return;
+
+            /* Set new timeout */
+            new_timeout = ((int64_t)rtdoa->timeout - (int64_t)inst->rxtimestamp) >> 16;
+            if (new_timeout < 1) new_timeout = 1;
+            dw1000_set_rx_timeout(inst, (uint16_t)new_timeout);
+            /* Early return as we don't need to adjust timeout again */
+            return true;
             break;
         }
         case DWT_RTDOA_RESP:
@@ -253,6 +260,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             if (inst->frame_len < sizeof(rtdoa_response_frame_t)) {
                 break;
             }
+            RTDOA_STATS_INC(rtdoa_response);
             
             rtdoa_frame_t * frame = (rtdoa_frame_t *) rtdoa->frames[(++rtdoa->idx)%rtdoa->nframes];
             memcpy(frame->array, inst->rxbuf, sizeof(rtdoa_request_frame_t));
@@ -263,13 +271,12 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         default:
             return false;
             break;
-        }
-    return true;
+    }
 
-adj_to_return:
-    new_timeout = (int64_t)rtdoa->timeout - (int64_t)inst->rxtimestamp;
-    if (new_timeout < 0) new_timeout = 1;
-    dw1000_set_rx_timeout(inst, (uint16_t)(new_timeout>>16));
+    /* Adjust existing timeout instead of resetting it (faster) */
+    new_timeout = ((int64_t)rtdoa->timeout - (int64_t)inst->rxtimestamp) >> 16;
+    if (new_timeout < 1) new_timeout = 1;
+    dw1000_write_reg(inst, RX_FWTO_ID, RX_FWTO_OFFSET, (uint16_t)new_timeout, sizeof(uint16_t));
     return true;
 }
 
