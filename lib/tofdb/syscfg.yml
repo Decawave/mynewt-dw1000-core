@@ -27,6 +27,6 @@ syscfg.defs:
     TOFDB_CLI:
         description: 'Enable command line interface'
         value: 1
-    TOFDB_LP_FILTER:
-        description: 'How much to trust each new measurement'
-        value: 0.1f
+    TOFDB_MAXNUM_UPDATES:
+        description: 'Max number of measurements to use to estimate the distances. 0=infinite'
+        value: 100

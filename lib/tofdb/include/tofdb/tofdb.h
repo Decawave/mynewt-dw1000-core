@@ -28,6 +28,8 @@ struct tofdb_node {
     uint16_t addr;           /*!< Local id, 16bit */
     uint32_t last_updated;
     float tof;
+    float sum;
+    float sum_sq;
     uint32_t num;
 };
 

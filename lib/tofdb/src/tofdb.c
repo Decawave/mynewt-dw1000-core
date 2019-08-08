@@ -1,4 +1,5 @@
 #include <string.h>
+#include <math.h>
 #include <os/mynewt.h>
 #include <syscfg/syscfg.h>
 #if MYNEWT_VAL(CCP_ENABLED)
@@ -36,16 +37,26 @@ ret:
 int tofdb_set_tof(uint16_t addr, uint32_t tof)
 {
     int i;
+
     /* See if this entry exist in our database already */
     for (i=0;i<MYNEWT_VAL(TOFDB_MAXNUM_NODES);i++) {
         if (addr && addr == nodes[i].addr) {
-            if (nodes[i].num) {
-                nodes[i].tof = (1.0f-MYNEWT_VAL(TOFDB_LP_FILTER))*nodes[i].tof + MYNEWT_VAL(TOFDB_LP_FILTER)*tof;
-            } else {
-                nodes[i].tof = tof;
+            float d = tof - nodes[i].tof;
+            if (fabsf(d) > (2.0f/0.047f)) {
+                /* Filter out measurements more than 2m from previous average */
+                goto ret;
             }
-            nodes[i].last_updated = os_cputime_get32();
+#if MYNEWT_VAL(TOFDB_MAXNUM_UPDATES) > 1
+            if (nodes[i].num > (MYNEWT_VAL(TOFDB_MAXNUM_UPDATES)-1)) {
+                goto ret;
+            }
+#endif
             nodes[i].num++;
+            nodes[i].sum += tof;
+            nodes[i].sum_sq += (float)tof*(float)tof;
+            nodes[i].tof = nodes[i].sum/nodes[i].num;
+
+            nodes[i].last_updated = os_cputime_get32();
             goto ret;
         }
     }
@@ -59,7 +70,9 @@ int tofdb_set_tof(uint16_t addr, uint32_t tof)
         nodes[i].addr = addr;
         nodes[i].last_updated = os_cputime_get32();
         nodes[i].tof = tof;
-        nodes[i].num = 0;
+        nodes[i].sum = tof;
+        nodes[i].sum_sq = (float)tof*(float)tof;
+        nodes[i].num = 1;
         goto ret;
     }
 
