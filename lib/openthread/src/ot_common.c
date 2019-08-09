@@ -222,37 +222,40 @@ ot_instance_t *
 ot_init(dw1000_dev_instance_t * inst){
 
 	assert(inst);
+    ot_instance_t *ot = (ot_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_OT);
 
-	if (inst->ot == NULL ){
-		inst->ot  = (ot_instance_t *) malloc(sizeof(ot_instance_t));
-		assert(inst->ot);
-        memset(inst->ot, 0x00, sizeof(ot_instance_t));
-		inst->ot->status.selfmalloc = 1;
+	if (ot == NULL ){
+		ot  = (ot_instance_t *) malloc(sizeof(ot_instance_t));
+		assert(ot);
+        memset(ot, 0x00, sizeof(ot_instance_t));
+        ot->status.selfmalloc = 1;
 	}
-	inst->ot->dev = inst;
-    inst->ot->task_prio = inst->task_prio + 0x7;
+	ot->dev_inst = inst;
+    ot->task_prio = inst->task_prio + 0x7;
 
-	os_error_t err = os_sem_init(&inst->ot->sem, 0x01);
+	os_error_t err = os_sem_init(&ot->sem, 0x01);
 	assert(err == OS_OK);
 	
-    ot_global_inst = inst->ot;
+    ot_global_inst = ot;
 
-    os_eventq_init(&inst->ot->eventq);
-    os_task_init(&inst->ot->task_str, "ot_task",
+    os_eventq_init(&ot->eventq);
+    os_task_init(&ot->task_str, "ot_task",
             ot_task,
-            (void *)inst->ot,
-            inst->ot->task_prio,
+            (void *)ot,
+            ot->task_prio,
             OS_WAIT_FOREVER,
-            inst->ot->task_stack,
+            ot->task_stack,
             DW1000_DEV_TASK_STACK_SZ * 4);
-    os_callout_init(&task_callout, &inst->ot->eventq, tasklet_sched , (void*)inst->ot);
-    RadioInit(inst);
+    os_callout_init(&task_callout, &ot->eventq, tasklet_sched , (void*)ot);
+    RadioInit(ot);
 
-    return inst->ot;
+    return ot;
 }
 
 void ot_post_init(dw1000_dev_instance_t* inst, otInstance *aInstance){
-    ot_global_inst = inst->ot;
-    inst->ot->sInstance = aInstance;
-	inst->ot->status.initialized = 1;
+    ot_instance_t *ot = (ot_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_OT);
+    assert(ot);
+    ot_global_inst = ot;
+    ot->sInstance = aInstance;
+    ot->status.initialized = 1;
 }

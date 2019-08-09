@@ -63,7 +63,7 @@ typedef struct _ot_status_t{
 }ot_status_t;
 
 typedef struct _ot_instance_t{
-    struct _dw1000_dev_instance_t * dev;               //!< Structure for DW1000 instance 
+    struct _dw1000_dev_instance_t * dev_inst;          //!< Structure for DW1000 instance 
     dw1000_mac_interface_t cbs;                        //!< OT mac interface callbacks
     struct os_sem sem;                                 //!< Structure for OS semaphores
     otInstance *sInstance;                             //!< Instance to OT stack
@@ -83,7 +83,7 @@ void ot_post_init(dw1000_dev_instance_t * inst, otInstance *aInstance);
 void
 ot_free(ot_instance_t * inst);
 
-void RadioInit(dw1000_dev_instance_t* inst);
+void RadioInit(ot_instance_t* inst);
 void PlatformInit(dw1000_dev_instance_t* inst);
 
 #ifdef __cplusplus
