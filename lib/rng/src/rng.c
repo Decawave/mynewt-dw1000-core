@@ -928,7 +928,7 @@ complete_ev_cb(struct os_event *ev) {
     assert(ev->ev_arg != NULL);
 
     dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)ev->ev_arg;
-    rng_encode(inst->rng);
+    rng_encode(rng);
 }
 
 struct os_event rng_event;
