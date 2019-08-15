@@ -68,7 +68,7 @@ json_write(void *buf, char* data, int len) {
  * @fn rng_encodestruct os_event * ev)
  *
  * @brief JSON encoding of range
- *
+ * {"utime": 208317053, "twr": {"rng": "0.703","uid": "1234"},"uid": "55a6", "diag": {"rssi": "-79.675","los": "1.000"}}
  * input parameters
  * @param rng     Pointer of dw1000_rng_instance_t.
  * output parameters
@@ -100,20 +100,21 @@ rng_encode(dw1000_rng_instance_t * rng) {
 #endif
     rc |= json_encode_object_entry(&encoder, "utime", &value);
     _json_fflush();
-    printf(", ");
 
     if (frame->code == DWT_SS_TWR_FINAL || frame->code == DWT_DS_TWR_FINAL) {
+        printf(", ");
         _twr_encode(frame);
     }
     else if (frame->code == DWT_DS_TWR_EXT_FINAL) {
+        printf(", ");
         _raz_encode(frame);
     }
     _json_fflush();
-    printf(", ");
 
 #if MYNEWT_VAL(RNG_VERBOSE) == 2 
     dw1000_dev_instance_t * inst = rng->dev_inst; //!< Structure of DW1000_dev_instance
     if(inst->config.rxdiag_enable){
+        printf(", ");
         _diag_encode(inst);
     }
 #endif
@@ -273,12 +274,12 @@ raz_encode(twr_frame_t * frame){
 
 
 /*!
- * @fn twr_encode(twr_frame_t * frame) {
+ * @fn diag_encode(struct _dw1000_dev_instance_t * inst) {
  *
  * @brief JSON encoding twr_frames support the folowing json objects: 
- * {"twr": {"rng": "1.100","uid": "1234"},"uid": "4321"}
- * input parameters
- * @param frame twr_frame_t *
+ * {"diag": {"rssi": "-79.906","nlos": "0.836"}}
+ * input parameters 
+ * @param inst struct _dw1000_dev_instance_t *
  * output parameters
  * returns void
  */
@@ -297,6 +298,9 @@ _diag_encode(struct _dw1000_dev_instance_t * inst) {
     rc |= json_encode_object_start(&encoder);  
 
     float rssi = dw1000_get_rssi(inst);
+    float fppl = dw1000_get_fppl(inst);
+    float nlos = dw1000_estimate_los(rssi, fppl);
+
 #if MYNEWT_VAL(FLOAT_USER)
     char float_string[32]={0};
     sprintf(float_string,"%f",rssi);
@@ -305,6 +309,14 @@ _diag_encode(struct _dw1000_dev_instance_t * inst) {
     JSON_VALUE_UINT(&value, *(uint32_t *)&rssi);
 #endif
     rc |= json_encode_object_entry(&encoder, "rssi", &value);
+
+#if MYNEWT_VAL(FLOAT_USER)
+sprintf(float_string,"%f",nlos);
+    JSON_VALUE_STRING(&value, float_string);
+#else
+    JSON_VALUE_UINT(&value, *(uint32_t *)&nlos);
+#endif
+    rc |= json_encode_object_entry(&encoder, "los", &value);
     rc |= json_encode_object_finish(&encoder);
 
     assert(rc == 0);
