@@ -101,20 +101,22 @@ rng_encode(dw1000_rng_instance_t * rng) {
     rc |= json_encode_object_entry(&encoder, "utime", &value);
     _json_fflush();
     printf(", ");
-    
-    frame->code = DWT_SS_TWR_FINAL;
-    if (frame->code == DWT_SS_TWR_FINAL) {
+
+    if (frame->code == DWT_SS_TWR_FINAL || frame->code == DWT_DS_TWR_FINAL) {
         _twr_encode(frame);
-        frame->code = DWT_SS_TWR_END;
-    }
-    else if (frame->code == DWT_DS_TWR_FINAL) {
-        _twr_encode(frame);
-        frame->code = DWT_DS_TWR_END;
     }
     else if (frame->code == DWT_DS_TWR_EXT_FINAL) {
         _raz_encode(frame);
-        frame->code = DWT_DS_TWR_END;
     }
+    _json_fflush();
+    printf(", ");
+
+#if MYNEWT_VAL(RNG_VERBOSE) == 2 
+    dw1000_dev_instance_t * inst = rng->dev_inst; //!< Structure of DW1000_dev_instance
+    if(inst->config.rxdiag_enable){
+        _diag_encode(inst);
+    }
+#endif
 
     rc |= json_encode_object_finish(&encoder);
     assert(rc == 0);
@@ -264,6 +266,64 @@ raz_encode(twr_frame_t * frame){
         
     rc = json_encode_object_start(&encoder); 
     _raz_encode(frame);
+    rc |= json_encode_object_finish(&encoder);
+    _json_fflush();
+    printf(" \n");
+}
+
+
+/*!
+ * @fn twr_encode(twr_frame_t * frame) {
+ *
+ * @brief JSON encoding twr_frames support the folowing json objects: 
+ * {"twr": {"rng": "1.100","uid": "1234"},"uid": "4321"}
+ * input parameters
+ * @param frame twr_frame_t *
+ * output parameters
+ * returns void
+ */
+
+void
+_diag_encode(struct _dw1000_dev_instance_t * inst) {
+    struct json_encoder encoder;
+    struct json_value value;
+    int rc;
+
+    memset(&encoder, 0, sizeof(encoder));
+    encoder.je_write = json_write;
+    encoder.je_arg= NULL;
+
+    rc = json_encode_object_key(&encoder, "diag");  
+    rc |= json_encode_object_start(&encoder);  
+
+    float rssi = dw1000_get_rssi(inst);
+#if MYNEWT_VAL(FLOAT_USER)
+    char float_string[32]={0};
+    sprintf(float_string,"%f",rssi);
+    JSON_VALUE_STRING(&value, float_string);
+#else
+    JSON_VALUE_UINT(&value, *(uint32_t *)&rssi);
+#endif
+    rc |= json_encode_object_entry(&encoder, "rssi", &value);
+    rc |= json_encode_object_finish(&encoder);
+
+    assert(rc == 0);
+    _json_fflush();
+   
+}
+
+void
+diag_encode(struct _dw1000_dev_instance_t * inst){
+
+    struct json_encoder encoder;
+    int rc;
+
+    memset(&encoder, 0, sizeof(encoder));
+    encoder.je_write = json_write;
+    encoder.je_arg= NULL;
+        
+    rc = json_encode_object_start(&encoder); 
+    _diag_encode(inst);
     rc |= json_encode_object_finish(&encoder);
     _json_fflush();
     printf(" \n");
