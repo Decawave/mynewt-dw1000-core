@@ -142,6 +142,7 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     cir_instance_t * cir = inst->cir;
     cir->status.valid = 0;
 
+#if MYNEWT_VAL(PMEM_ENABLED)
     if (cir->control.pmem_enable || inst->config.pmem_enable){
         cir->control.pmem_enable = inst->config.pmem_enable; // restore defaults behavior
         //dw1000_read_accdata(inst, (uint8_t *)&cir->pmem, 4096 + MYNEWT_VAL(PMEM_OFFSET) * sizeof(cir_complex_t), sizeof(pmem_t));
@@ -153,7 +154,8 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 #endif
         status = true;
      }
-    
+#endif
+
     if (cir->control.cir_enable || inst->config.cir_enable){
         cir->control.cir_enable = inst->config.cir_enable; // restore defaults behavior
 

@@ -55,10 +55,12 @@ typedef struct _cir_t{
     struct _cir_complex_t array[MYNEWT_VAL(CIR_SIZE)]; 
 } __attribute__((packed, aligned(1))) cir_t;
 
+#if MYNEWT_VAL(PMEM_ENABLED)
 typedef struct _pmem_t{
     uint8_t dummy;  //Errata
     struct _cir_complex_t array[MYNEWT_VAL(PMEM_SIZE)]; 
 }pmem_t;
+#endif
 
 typedef struct _cir_instance_t{
     cir_status_t status;
@@ -70,7 +72,9 @@ typedef struct _cir_instance_t{
     float angle;
     uint64_t raw_ts;
     cir_t cir;
+#if MYNEWT_VAL(PMEM_ENABLED)
     pmem_t pmem;
+#endif
 }cir_instance_t; 
 
 cir_instance_t * cir_init(cir_instance_t * inst);
