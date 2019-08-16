@@ -1399,7 +1399,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
             if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
                 SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
                 if (cbs != NULL && cbs->cir_complete_cb) 
-                    if(cbs->cir_complete_cb(inst,cbs)) break;
+                    if(cbs->cir_complete_cb(inst,cbs)) continue;
                 }   
             }  
 #endif
