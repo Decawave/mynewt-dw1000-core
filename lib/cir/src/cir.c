@@ -36,6 +36,7 @@
 #include <os/os.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
+#include <stats/stats.h>
 #include "bsp/bsp.h"
 
 #include <dw1000/dw1000_regs.h>
@@ -44,8 +45,19 @@
 #include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_ftypes.h>
+#include <dw1000/dw1000_stats.h>
 #include <cir/cir.h>
 #include <cir/cir_encode.h>
+
+#if MYNEWT_VAL(CIR_STATS)
+STATS_NAME_START(cir_stat_section)
+    STATS_NAME(cir_stat_section, complete)
+STATS_NAME_END(cir_stat_section)
+#define CIR_STATS_INC(__X) STATS_INC(cir->stat, __X)
+#else
+#define CIR_STATS_INC(__X) {}
+#endif
+
 
 #if MYNEWT_VAL(PMEM_VERBOSE)
 
@@ -139,8 +151,12 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     bool status = false;
 #if MYNEWT_VAL(CIR_ENABLED)
-    cir_instance_t * cir = inst->cir;
+
+//    cir_instance_t * cir = inst->cir;
+    cir_instance_t * cir = (cir_instance_t *)cbs->inst_ptr;
+
     cir->status.valid = 0;
+    CIR_STATS_INC(complete);
 
 #if MYNEWT_VAL(PMEM_ENABLED)
     if (cir->control.pmem_enable || inst->config.pmem_enable){
@@ -261,15 +277,35 @@ cir_get_pdoa(cir_instance_t * master, cir_instance_t *slave)
  */
 
 cir_instance_t * 
-cir_init(cir_instance_t * inst){
+cir_init(struct _dw1000_dev_instance_t * inst, struct _cir_instance_t * cir){
 
-    if (inst == NULL) {
-        inst = (cir_instance_t *) malloc(sizeof(cir_instance_t)); 
-        assert(inst);
-        memset(inst, 0, sizeof(cir_instance_t));
-        inst->status.selfmalloc = 1;
+    if (cir == NULL) {
+        cir = (cir_instance_t *) malloc(sizeof(cir_instance_t)); 
+        assert(cir);
+        memset(cir, 0, sizeof(cir_instance_t));
+        cir->status.selfmalloc = 1;
     }
-    return inst;
+    cir->dev_inst = inst;
+
+#if MYNEWT_VAL(CIR_STATS)
+    int rc = stats_init(
+                STATS_HDR(cir->stat),
+                STATS_SIZE_INIT_PARMS(cir->stat, STATS_SIZE_32),
+                STATS_NAME_INIT_PARMS(cir_stat_section)
+            );
+
+#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
+        rc |= stats_register("cir", STATS_HDR(cir->stat));
+#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
+    if (inst == hal_dw1000_inst(0))
+        rc |= stats_register("cir0", STATS_HDR(cir->stat));
+    else
+        rc |= stats_register("cir1", STATS_HDR(cir->stat));
+#endif
+    assert(rc == 0);
+#endif
+
+    return cir;
 }
 
 /*! 
@@ -323,17 +359,17 @@ void cir_pkg_init(void)
     printf("{\"utime\": %lu,\"msg\": \"cir_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
     dw1000_dev_instance_t * inst = hal_dw1000_inst(0);
-    inst->cir = cir_init(NULL);
+    cbs[0].inst_ptr = inst->cir = cir_init(inst, NULL);
     dw1000_mac_append_interface(inst, &cbs[0]);
 
 #if MYNEWT_VAL(DW1000_DEVICE_1)
     inst = hal_dw1000_inst(1);
-    inst->cir = cir_init(NULL);
+    cbs[1].inst_ptr = inst->cir = cir_init(inst, NULL);
     dw1000_mac_append_interface(inst, &cbs[1]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
     inst = hal_dw1000_inst(2);
-    inst->cir = cir_init(NULL);
+    cbs[2].inst_ptr = inst->cir = cir_init(inst, NULL);
     dw1000_mac_append_interface(inst, &cbs[2]);
 #endif
 

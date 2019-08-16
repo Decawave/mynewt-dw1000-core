@@ -32,6 +32,9 @@ syscfg.defs:
     CIR_VERBOSE:
         description: 'JSON print of CIR'
         value: 0
+    CIR_STATS:
+        description: 'Enable statistics for the cir module'
+        value: 1
     CIR_PDOA_SLAVE_MAX_LEAD:
         description: <
                      When an instance is slaving off another, discard it's pdoa info if it's detected a leading

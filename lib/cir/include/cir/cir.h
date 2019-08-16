@@ -25,9 +25,16 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <os/os.h>
+#include <stats/stats.h>
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#if MYNEWT_VAL(CIR_STATS)
+STATS_SECT_START(cir_stat_section)
+    STATS_SECT_ENTRY(complete)
+STATS_SECT_END
 #endif
 
 typedef struct _cir_status_t{
@@ -63,6 +70,10 @@ typedef struct _pmem_t{
 #endif
 
 typedef struct _cir_instance_t{
+    struct _dw1000_dev_instance_t * dev_inst; //!< Structure of DW1000_dev_instance
+#if MYNEWT_VAL(CIR_STATS)
+    STATS_SECT_DECL(cir_stat_section) stat; //!< Stats instance
+#endif
     cir_status_t status;
     cir_control_t control;
     uint16_t fp_amp1;
@@ -77,7 +88,7 @@ typedef struct _cir_instance_t{
 #endif
 }cir_instance_t; 
 
-cir_instance_t * cir_init(cir_instance_t * inst);
+cir_instance_t * cir_init(struct _dw1000_dev_instance_t * inst, struct _cir_instance_t * cir);
 cir_instance_t * cir_enable(cir_instance_t * inst, bool mode);
 cir_instance_t * pmem_enable(cir_instance_t * inst, bool mode);
 void cir_free(cir_instance_t * inst);

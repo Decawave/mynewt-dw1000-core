@@ -25,6 +25,11 @@
 #include <cir/cir_encode.h>
 #include <cir/cir.h>
 
+
+#if MYNEWT_VAL(WCS_ENABLED)
+#include <wcs/wcs.h>
+#endif
+
 #if MYNEWT_VAL(CIR_VERBOSE)
 
 #define JSON_BUF_SIZE (1024)
@@ -65,7 +70,6 @@ cir_encode(cir_instance_t * cir, char * name, uint16_t nsize){
     struct json_encoder encoder;
     struct json_value value;
     int rc;
-    uint32_t utime = os_cputime_ticks_to_usecs(os_cputime_get32());
 
     /* reset the state of the internal test */
     memset(&encoder, 0, sizeof(encoder));
@@ -73,7 +77,11 @@ cir_encode(cir_instance_t * cir, char * name, uint16_t nsize){
     encoder.je_arg= NULL;
 
     rc = json_encode_object_start(&encoder); 
-    JSON_VALUE_INT(&value,  utime);
+//#if MYNEWT_VAL(WCS_ENABLED)
+//    JSON_VALUE_UINT(&value, wcs_read_systime_master64(rng->dev_inst));   
+//#else
+    JSON_VALUE_UINT(&value, os_cputime_ticks_to_usecs(os_cputime_get32()));
+//#endif
     rc |= json_encode_object_entry(&encoder, "utime", &value);   
   
     rc |= json_encode_object_key(&encoder, name);
