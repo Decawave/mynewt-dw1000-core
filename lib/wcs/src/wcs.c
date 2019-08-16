@@ -210,8 +210,8 @@ wcs_postprocess(struct os_event * ev){
     timescale_instance_t * timescale = wcs->timescale; 
     timescale_states_t * x = (timescale_states_t *) (timescale->eke->x); 
 
-    printf("{\"utime\": %lu,\"wcs\": [%llu,%llu,%llu,%llu],\"skew\": %llu}\n",
-        os_cputime_ticks_to_usecs(os_cputime_get32()),
+        printf("{\"utime\": %llu, \"wcs\": [%llu,%llu,%llu,%llu], \"skew\": %llu}\n",
+        wcs_read_systime_master64(wcs->ccp->dev_inst),
         (uint64_t) wcs->master_epoch.timestamp,
         (uint64_t) wcs_local_to_master(wcs, wcs->local_epoch.lo),
         (uint64_t) wcs->local_epoch.timestamp,
@@ -412,6 +412,20 @@ uint64_t wcs_read_systime_master(struct _dw1000_dev_instance_t * inst){
     return wcs_local_to_master(wcs, dw1000_read_systime(inst));
 }
 
+
+/**
+ * 
+ * With WCS_ENABLED the wsc_ timer API transforms all local systime to the master clock timedomain, effectivly compensating for offset and drift. 
+ *
+ * @param inst  Pointer to _dw1000_dev_instance_t. 
+ * @return time
+ */
+
+uint64_t wcs_read_systime_master64(struct _dw1000_dev_instance_t * inst){
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    wcs_instance_t * wcs = ccp->wcs;
+    return wcs_local_to_master64(wcs, dw1000_read_systime(inst));
+}
 
 /**
  * API to read system time at lower offset address.
