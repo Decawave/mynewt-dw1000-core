@@ -181,7 +181,8 @@ typedef struct _dw1000_rng_instance_t{
     dw1000_rng_config_t config;             //!< Structure of range config
     dw1000_rng_control_t control;           //!< Structure of range control
     dw1000_rng_status_t status;             //!< Structure of range status
-    uint16_t idx;                           //!< Indicates number of instances for the chosen bsp
+    uint16_t idx;                           //!< Input index to circular buffer 
+    uint16_t idx_current;                     //!< Output index to circular buffer 
     uint16_t nframes;                       //!< Number of buffers defined to store the ranging data
     twr_frame_t * frames[];                 //!< Pointer to twr buffers
 }dw1000_rng_instance_t;

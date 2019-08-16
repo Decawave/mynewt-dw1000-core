@@ -33,7 +33,7 @@
 
 #if MYNEWT_VAL(RNG_VERBOSE)
 
-#define JSON_BUF_SIZE (128)
+#define JSON_BUF_SIZE (1024)
 static char _buf[JSON_BUF_SIZE];
 static uint16_t idx=0;
 
@@ -85,33 +85,34 @@ rng_encode(dw1000_rng_instance_t * rng) {
     encoder.je_write = json_write;
     encoder.je_arg= NULL;
     
-    uint16_t idx = (rng->idx)%rng->nframes;
-    twr_frame_t * frame = rng->frames[idx];
+    twr_frame_t * frame = rng->frames[rng->idx_current];
     
-    float time_of_flight = dw1000_rng_twr_to_tof(rng, idx);
+    float time_of_flight = dw1000_rng_twr_to_tof(rng, rng->idx_current);
     frame->spherical.range = dw1000_rng_tof_to_meters(time_of_flight);
 
     rc = json_encode_object_start(&encoder);
 #if MYNEWT_VAL(WCS_ENABLED)
-    wcs_instance_t * wcs = (wcs_instance_t *)dw1000_mac_find_cb_inst_ptr(rng->dev_inst, DW1000_WCS);
-    JSON_VALUE_UINT(&value, wcs_local_to_master(wcs, frame->reception_timestamp));
+    JSON_VALUE_UINT(&value, wcs_read_systime_master64(rng->dev_inst));   
+//    JSON_VALUE_UINT(&value, os_cputime_ticks_to_usecs(os_cputime_get32())); 
 #else
     JSON_VALUE_UINT(&value, os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
     rc |= json_encode_object_entry(&encoder, "utime", &value);
     _json_fflush();
-
-    if (frame->code == DWT_SS_TWR_FINAL || frame->code == DWT_DS_TWR_FINAL) {
-        printf(", ");
+    switch(frame->code){
+        case DWT_SS_TWR_FINAL:
+        case DWT_DS_TWR_FINAL:
+         printf(", ");
         _twr_encode(frame);
-    }
-    else if (frame->code == DWT_DS_TWR_EXT_FINAL) {
-        printf(", ");
+        break;
+        case DWT_SS_TWR_EXT_FINAL:
+        case DWT_DS_TWR_EXT_FINAL:
+         printf(", ");
         _raz_encode(frame);
+        break;
+        default: printf(",error: \"Unknown Frame Code\"");
     }
-    _json_fflush();
-
-#if MYNEWT_VAL(RNG_VERBOSE) == 2 
+#if MYNEWT_VAL(RNG_VERBOSE) > 1 
     dw1000_dev_instance_t * inst = rng->dev_inst; //!< Structure of DW1000_dev_instance
     if(inst->config.rxdiag_enable){
         printf(", ");
@@ -185,8 +186,7 @@ twr_encode(twr_frame_t * frame){
     rc = json_encode_object_start(&encoder); 
     _twr_encode(frame);
     rc |= json_encode_object_finish(&encoder);
-    _json_fflush();
-    printf(" \n");
+    json_fflush();
 }
 
 /*!
@@ -268,8 +268,7 @@ raz_encode(twr_frame_t * frame){
     rc = json_encode_object_start(&encoder); 
     _raz_encode(frame);
     rc |= json_encode_object_finish(&encoder);
-    _json_fflush();
-    printf(" \n");
+    json_fflush();
 }
 
 
@@ -337,8 +336,7 @@ diag_encode(struct _dw1000_dev_instance_t * inst){
     rc = json_encode_object_start(&encoder); 
     _diag_encode(inst);
     rc |= json_encode_object_finish(&encoder);
-    _json_fflush();
-    printf(" \n");
+    json_fflush();
 }
 
 #endif
