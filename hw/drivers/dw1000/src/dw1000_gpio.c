@@ -255,7 +255,7 @@ int
 dw1000_gpio_read(struct _dw1000_dev_instance_t * inst, uint8_t gpioNum)
 {
     uint32_t reg = dw1000_gpio_get_values(inst);
-    return (reg&(1<<gpioNum));
+    return (reg&(1<<gpioNum)) ? 1:0;
 }
 
 /**
