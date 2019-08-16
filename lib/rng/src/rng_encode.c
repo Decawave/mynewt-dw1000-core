@@ -93,7 +93,6 @@ rng_encode(dw1000_rng_instance_t * rng) {
     rc = json_encode_object_start(&encoder);
 #if MYNEWT_VAL(WCS_ENABLED)
     JSON_VALUE_UINT(&value, wcs_read_systime_master64(rng->dev_inst));   
-//    JSON_VALUE_UINT(&value, os_cputime_ticks_to_usecs(os_cputime_get32())); 
 #else
     JSON_VALUE_UINT(&value, os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
