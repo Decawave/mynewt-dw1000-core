@@ -50,6 +50,10 @@
 
 #if MYNEWT_VAL(SPI_0_MASTER)
 struct os_sem g_spi0_sem;
+#endif
+#if MYNEWT_VAL(SPI_3_MASTER)
+struct os_sem g_spi3_sem;
+#endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
 /* 
@@ -57,8 +61,12 @@ struct os_sem g_spi0_sem;
  */
 static struct _dw1000_dev_instance_t * dw1000_0 = 0;
 static const struct dw1000_dev_cfg dw1000_0_cfg = {
+#if MYNEWT_VAL(DW1000_DEVICE_SPI_IDX)==0
     .spi_sem = &g_spi0_sem,
-    .spi_num = 0,
+#else
+    .spi_sem = &g_spi3_sem,
+#endif
+    .spi_num = MYNEWT_VAL(DW1000_DEVICE_SPI_IDX),
 };
 #endif
 
@@ -68,12 +76,15 @@ static const struct dw1000_dev_cfg dw1000_0_cfg = {
  */
 static struct _dw1000_dev_instance_t *dw1000_1 = 0;
 static const struct dw1000_dev_cfg dw1000_1_cfg = {
+#if MYNEWT_VAL(DW1000_DEVICE_SPI_IDX)==0
     .spi_sem = &g_spi0_sem,
+#else
+    .spi_sem = &g_spi3_sem,
+#endif
     .spi_num = 0,
 };
 #endif
 
-#endif
 
 
 #if MYNEWT_VAL(SPI_2_MASTER)
@@ -424,6 +435,11 @@ void hal_bsp_init(void)
     assert(rc == 0);
 #endif
 
+#if MYNEWT_VAL(SPI_3_MASTER)
+    rc = os_sem_init(&g_spi3_sem, 0x1);
+    assert(rc == 0);
+#endif
+
 #if MYNEWT_VAL(DW1000_DEVICE_0)
     dw1000_0 = hal_dw1000_inst(0);
     rc = os_dev_create((struct os_dev *) dw1000_0, "dw1000_0",
@@ -458,6 +474,17 @@ void hal_bsp_init(void)
 }
 
 #if MYNEWT_VAL(DW1000_DEVICE_0) || MYNEWT_VAL(DW1000_DEVICE_1)
+
+struct os_event dw1000_sync_ev;
+bool (* hal_sync_complete_cb) (struct _dw1000_dev_instance_t *) = 0;
+
+void
+hal_bsp_dw_sync_set_cb(bool (* cb) (struct _dw1000_dev_instance_t *))
+{
+    hal_sync_complete_cb = cb;
+}
+
+
 void
 hal_bsp_dw_clk_sync(dw1000_dev_instance_t * inst[], uint8_t n)
 {
@@ -486,5 +513,10 @@ hal_bsp_dw_clk_sync(dw1000_dev_instance_t * inst[], uint8_t n)
 
     hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC_CLR), 0);
     hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC_EN), 0);
+
+    if (hal_sync_complete_cb) {
+        hal_sync_complete_cb(inst[0]);
+    }
 }
+
 #endif

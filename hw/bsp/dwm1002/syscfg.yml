@@ -18,60 +18,6 @@
 
 # Package: hw/bsp/dwm1002
 
-syscfg.vals:
-    MCU_NRF52840: 1
-    XTAL_32768: 1
-    MCU_DCDC_ENABLED: 1
-
-    UART_0: 1
-    UART_0_PIN_TX: 31   # Eval kit /dev/ttyACMx port
-    UART_0_PIN_RX: 5
-    UART_0_PIN_RTS: -1
-    UART_0_PIN_CTS: -1
-
-    UART_1: 0
-    UART_1_PIN_TX: -1
-    UART_1_PIN_RX: -1
-
-    SPI_0_MASTER: 0
-    SPI_0_MASTER_PIN_SCK: 16
-    SPI_0_MASTER_PIN_MOSI: 20
-    SPI_0_MASTER_PIN_MISO: 21
-
-    SPI_2_MASTER: 0
-    SPI_2_MASTER_PIN_SCK:  28
-    SPI_2_MASTER_PIN_MOSI: 29
-    SPI_2_MASTER_PIN_MISO:  8
-
-    I2C_1_PIN_SCL: 28
-    I2C_1_PIN_SDA: 29
-    I2C_1_FREQ_KHZ: 400
-
-    CONFIG_FCB_FLASH_AREA: FLASH_AREA_NFFS
-    REBOOT_LOG_FLASH_AREA: FLASH_AREA_REBOOT_LOG
-    NFFS_FLASH_AREA: FLASH_AREA_NFFS
-    COREDUMP_FLASH_AREA: FLASH_AREA_IMAGE_1
-    BOOT_SERIAL_DETECT_PIN: 2  # Button 1
-    # Enable the shell task.
-    SHELL_TASK: 1
-    SHELL_PROMPT_MODULE: 1
-
-syscfg.vals.BLE_LP_CLOCK:
-    TIMER_0: 0
-    TIMER_5: 1
-    OS_CPUTIME_FREQ: 32768
-    OS_CPUTIME_TIMER_NUM: 5
-    BLE_XTAL_SETTLE_TIME: 1500
-
-syscfg.vals.DW1000_DEVICE_0:
-    SPI_0_MASTER: 1
-
-syscfg.vals.DW1000_DEVICE_1:
-    SPI_0_MASTER: 1
-
-syscfg.vals.CONSOLE_UART:
-    UART_0: 1
-
 syscfg.defs:
     BSP_NRF52:
         description: 'Set to indicate that BSP has NRF52'
@@ -80,8 +26,10 @@ syscfg.defs:
     DW1000_DEVICE_0:
         description: '1st DW1000 Device Enable'
         value:  0
-    DW1000_DEVICE_0_SPI_IDX:
-        description: 'Using SPI0'
+    DW1000_DEVICE_SPI_IDX:
+        description:
+          < Using SPI_0 by default even though SPI_3 is preferred as it can handle 16MHz.
+          SPI_3 is not supported by mynewt yet.
         value:  0
     DW1000_DEVICE_0_SS:
         description: 'Slave Select Pin, DW_CS_A, P0.25'
@@ -97,7 +45,6 @@ syscfg.defs:
         value: 2000
     DW1000_DEVICE_BAUDRATE_HIGH:
         description: 'BAUDRATE_HIGH 8MHz'
-        # Change below to 16000 once upstream mynewt supports it
         value: 8000
     DW1000_DEVICE_0_TX_ANT_DLY:
         description: 'TX_ANT_DLY'
@@ -108,9 +55,6 @@ syscfg.defs:
 
     DW1000_DEVICE_1:
         description: '2nd DW1000 Device Enable'
-        value:  0
-    DW1000_DEVICE_1_SPI_IDX:
-        description: 'Using SPI0'
         value:  0
     DW1000_DEVICE_1_SS:
         description: 'Slave Select Pin, DW_CS_B, P1.01 = 32+1'
@@ -154,10 +98,72 @@ syscfg.defs:
         description: 'lps22hb barometer'
         value:  0
 
-        
+
+syscfg.vals:
+    MCU_NRF52840: 1
+    XTAL_32768: 1
+    MCU_DCDC_ENABLED: 1
+
+    UART_0: 1
+    UART_0_PIN_TX: 31   # Eval kit /dev/ttyACMx port
+    UART_0_PIN_RX: 5
+    UART_0_PIN_RTS: -1
+    UART_0_PIN_CTS: -1
+
+    UART_1: 0
+    UART_1_PIN_TX: -1
+    UART_1_PIN_RX: -1
+
+    SPI_0_MASTER: 0
+    SPI_0_MASTER_PIN_SCK: 16
+    SPI_0_MASTER_PIN_MOSI: 20
+    SPI_0_MASTER_PIN_MISO: 21
+
+    SPI_3_MASTER: 0
+    SPI_3_MASTER_PIN_SCK:  16
+    SPI_3_MASTER_PIN_MISO: 20
+    SPI_3_MASTER_PIN_MOSI: 21
+
+    SPI_2_MASTER: 0
+    SPI_2_MASTER_PIN_SCK:  28
+    SPI_2_MASTER_PIN_MOSI: 29
+    SPI_2_MASTER_PIN_MISO:  8
+
+    I2C_1_PIN_SCL: 28
+    I2C_1_PIN_SDA: 29
+    I2C_1_FREQ_KHZ: 400
+
+    CONFIG_FCB_FLASH_AREA: FLASH_AREA_NFFS
+    REBOOT_LOG_FLASH_AREA: FLASH_AREA_REBOOT_LOG
+    NFFS_FLASH_AREA: FLASH_AREA_NFFS
+    COREDUMP_FLASH_AREA: FLASH_AREA_IMAGE_1
+    BOOT_SERIAL_DETECT_PIN: 2  # Button 1
+
+
+syscfg.vals.BLE_LP_CLOCK:
+    TIMER_0: 0
+    TIMER_5: 1
+    OS_CPUTIME_FREQ: 32768
+    OS_CPUTIME_TIMER_NUM: 5
+    BLE_XTAL_SETTLE_TIME: 1500
+
+
+syscfg.vals.CONSOLE_UART:
+    UART_0: 1
+
 syscfg.vals.MEMS_ON_SPI:
     LSM6DSL_USE_SPI: 1
     LIS2MDL_USE_SPI: 1
     LPS22HB_USE_SPI: 1
     SPI_2_MASTER: 1
  
+syscfg.vals.'DW1000_DEVICE_SPI_IDX==3 && (DW1000_DEVICE_0 || DW1000_DEVICE_1)':
+    SPI_0_MASTER: 0
+    SPI_3_MASTER: 1
+    DW1000_DEVICE_BAUDRATE_HIGH: 16000
+
+syscfg.vals.'DW1000_DEVICE_SPI_IDX==0 && (DW1000_DEVICE_0 || DW1000_DEVICE_1)':
+    SPI_0_MASTER: 1
+    SPI_3_MASTER: 0
+    DW1000_DEVICE_BAUDRATE_HIGH: 8000
+

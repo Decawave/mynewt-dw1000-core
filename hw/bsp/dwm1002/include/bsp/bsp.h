@@ -74,6 +74,7 @@ extern uint8_t _ram_start;
 #if MYNEWT_VAL(DW1000_DEVICE_0) || MYNEWT_VAL(DW1000_DEVICE_1)
 #include <dw1000/dw1000_dev.h>
 void hal_bsp_dw_clk_sync(dw1000_dev_instance_t * inst[], uint8_t n);
+void hal_bsp_dw_sync_set_cb(bool (* cb) (struct _dw1000_dev_instance_t *));
 #endif
 
 #ifdef __cplusplus
