@@ -152,10 +152,10 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 },
                 .txrf={
                     .PGdly = TC_PGDELAY_CH5,
-                    .BOOSTNORM = dw1000_power_value(DW1000_txrf_config_0db, 0),
-                    .BOOSTP500 = dw1000_power_value(DW1000_txrf_config_0db, 0),
-                    .BOOSTP250 = dw1000_power_value(DW1000_txrf_config_0db, 0),
-                    .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_0db, 0)
+                    .BOOSTNORM = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
+                    .BOOSTP500 = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
+                    .BOOSTP250 = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
+                    .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_9db, 2.5)  
                 }, 
                 .trxoff_enable = 1,
                 .rxdiag_enable = 1,
