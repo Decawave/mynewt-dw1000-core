@@ -58,50 +58,6 @@ STATS_NAME_END(cir_stat_section)
 #define CIR_STATS_INC(__X) {}
 #endif
 
-
-#if MYNEWT_VAL(PMEM_VERBOSE)
-
-struct os_event pmem_event;
-
-static void
-pmem_complete_ev_cb(struct os_event *ev) {
-    assert(ev != NULL);
-    assert(ev->ev_arg != NULL);
-
-    dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
-
-#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
-    pmem_encode(inst->cir, "pmem", MYNEWT_VAL(PMEM_SIZE));
-#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
-    if (inst->idx == 0)
-        pmem_encode(inst->cir, "pmem0", MYNEWT_VAL(PMEM_SIZE));   
-    else     
-        pmem_encode(inst->cir, "pmem1", MYNEWT_VAL(PMEM_SIZE)); 
-#endif
-}
-#endif //PMEM_VERBOSE
-
-
-/*! 
- * @fn pre_enable(cir_instance_t * inst, bool mode){
- *
- * @brief Enable Reading of Preamble detect memory. 
- * 
- * @param inst - cir_instance_t *
- * @param mode - bool
- * 
- * output parameters
- *
- * returns cir_instance_t * 
- */
-
-cir_instance_t * 
-pmem_enable(cir_instance_t * inst, bool mode){
-    inst->status.valid = 0;
-    inst->control.pmem_enable = mode;
-    return inst;
-}
-
 #if MYNEWT_VAL(CIR_VERBOSE) 
 
 struct os_event cir_event;
@@ -149,32 +105,13 @@ cir_complete_ev_cb(struct os_event *ev) {
 static bool
 cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-    bool status = false;
 #if MYNEWT_VAL(CIR_ENABLED)
-
-//    cir_instance_t * cir = inst->cir;
     cir_instance_t * cir = (cir_instance_t *)cbs->inst_ptr;
 
     cir->status.valid = 0;
     CIR_STATS_INC(complete);
-
-#if MYNEWT_VAL(PMEM_ENABLED)
-    if (cir->control.pmem_enable || inst->config.pmem_enable){
-        cir->control.pmem_enable = inst->config.pmem_enable; // restore defaults behavior
-        //dw1000_read_accdata(inst, (uint8_t *)&cir->pmem, 4096 + MYNEWT_VAL(PMEM_OFFSET) * sizeof(cir_complex_t), sizeof(pmem_t));
-        dw1000_read(inst, ACC_MEM_ID, 4096 + MYNEWT_VAL(PMEM_OFFSET) * sizeof(cir_complex_t), (uint8_t *)&cir->pmem, sizeof(pmem_t)); 
-#if MYNEWT_VAL(PMEM_VERBOSE)
-        pmem_event.ev_cb  = pmem_complete_ev_cb;
-        pmem_event.ev_arg = (void*)inst;
-        os_eventq_put(os_eventq_dflt_get(), &pmem_event);
-#endif
-        status = true;
-     }
-#endif
-
-    if (cir->control.cir_enable || inst->config.cir_enable){
-        cir->control.cir_enable = inst->config.cir_enable; // restore defaults behavior
-
+    
+    if (inst->config.cir_enable || inst->control.cir_enable ){
         cir->raw_ts = dw1000_read_rawrxtime(inst);
         uint16_t fp_idx;
         uint16_t fp_idx_reg = inst->rxdiag.fp_idx;
@@ -198,13 +135,13 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
              * If so, the master LDE probably did not select the direct wave and the 
              * pdoa would not be correct */
             if (fp_idx_from_master - fp_idx > MYNEWT_VAL(CIR_PDOA_SLAVE_MAX_LEAD)) {
-                return status;
+                return true;
             }
         }
 
         if(fp_idx < MYNEWT_VAL(CIR_OFFSET) || (fp_idx + MYNEWT_VAL(CIR_SIZE)) > 1023) {
             /* Can't extract CIR from required offset, abort */
-            return status;
+            return true;
         }
         dw1000_read_accdata(inst, (uint8_t *)&cir->cir, (fp_idx - MYNEWT_VAL(CIR_OFFSET)) * sizeof(cir_complex_t), sizeof(cir_t));
 
@@ -218,10 +155,10 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         cir_event.ev_arg = (void*) inst;
         os_eventq_put(os_eventq_dflt_get(), &cir_event);
     #endif
-        status |= true;
+       return false;  
     }
 #endif // MYNEWT_VAL(CIR_ENABLED)
-    return status;
+    return true;
 }
 
 /*! 
@@ -229,20 +166,20 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  *
  * @brief Enable CIR reading of CIR. 
  * 
- * @param inst - cir_instance_t *
+ * @param cir - dw1000_dev_instance_t *
  * @param mode - bool
  * 
  * output parameters
  *
- * returns cir_instance_t * 
+ * returns void
  */
 
-cir_instance_t * 
-cir_enable(cir_instance_t * inst, bool mode)
+void  
+cir_enable(struct _cir_instance_t * cir, bool mode)
 {
-    inst->status.valid = 0;
+    dw1000_dev_instance_t * inst = cir->dev_inst;
+    cir->status.valid = 0;
     inst->control.cir_enable = mode;
-    return inst;
 }
 
 /*! 
@@ -304,7 +241,6 @@ cir_init(struct _dw1000_dev_instance_t * inst, struct _cir_instance_t * cir){
 #endif
     assert(rc == 0);
 #endif
-
     return cir;
 }
 

@@ -31,6 +31,5 @@
 #include <cir/cir.h>
 
 void cir_encode(cir_instance_t * cir, char * name, uint16_t nsize);
-void pmem_encode(cir_instance_t * cir, char * name, uint16_t nsize);
 
 #endif

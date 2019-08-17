@@ -41,17 +41,4 @@ syscfg.defs:
                      edge this many accumulator slots BEFORE the master instance. This indicates that the master
                      instance is not detecting the direct path.
         value: 1
-    PMEM_ENABLED:
-        description: 'Channel Impulse Response utils'
-        value: 0
-        restrictions: PMEM_ENABLED
-    PMEM_SIZE:
-        description: 'Number of samples'
-        value: 64
-    PMEM_OFFSET:
-        description: 'offsert in Preamble readout'
-        value: 0
-    PMEM_VERBOSE:
-        description: 'JSON print of PMEM'
-        value: 0
-
+  
