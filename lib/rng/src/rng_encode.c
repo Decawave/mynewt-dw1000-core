@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 #include <json/json.h>
 #include <rng/rng.h>
 #include <dw1000/dw1000_mac.h>
@@ -225,7 +226,7 @@ _raz_encode(twr_frame_t * frame) {
 
     for (uint16_t i=0; i < 3; i++){
 #if MYNEWT_VAL(FLOAT_USER)
-        if ((float)frame->spherical.array[i] == 0.0f/0.0f){
+        if (isnan(frame->spherical.array[i])){
             JSON_VALUE_STRING(&value, "null");
         }else{
             char float_string[32];
