@@ -358,11 +358,12 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     frame->rx_timestamp -= ccp->tof_comp_cb(frame->src_address)*(1.0l - wcs->skew);
                 }
 
-                /* Compensate for relays */
+                /* Compensate for relays, TODO: Compensate more accurately as
+                 * tx time is locked down to 125MHz clock */
                 if (frame->rpt_count != 0) {
                     RTDOA_STATS_INC(rx_relayed);
                     uint32_t repeat_dly = frame->rpt_count*rtdoa->config.tx_holdoff_delay;
-                    frame->rx_timestamp -= (repeat_dly << 16)*(1.0l - wcs->skew);
+                    frame->rx_timestamp -= ((uint64_t)repeat_dly << 16)*(1.0l - wcs->skew);
                 }
 
                 /* Send a cascade relay if this is an ok relay */
