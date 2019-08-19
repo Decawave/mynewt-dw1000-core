@@ -1470,6 +1470,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t)SYS_CTRL_TRXOFF, sizeof(uint16_t)) ; // Disable the radio
         dw1000_phy_rx_reset(inst);
 
+        inst->control.cir_enable = false;
         // Call the corresponding frame services callback if present
         dw1000_mac_interface_t * cbs = NULL;
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
@@ -1493,7 +1494,8 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         // Restart the receiver in the event if rxauto is not enabled. Timeout remain active if set.
         if (inst->config.rxauto_enable == 0) //&& (inst->sys_status & SYS_STATUS_RXPHE))
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
-
+        
+        inst->control.cir_enable = false;
         // Call the corresponding frame services callback if present
         dw1000_mac_interface_t * cbs = NULL;
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
