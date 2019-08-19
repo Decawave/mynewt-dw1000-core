@@ -19,20 +19,15 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <log/log.h>
 
 #include <os/mynewt.h>
 #include <config/config.h>
 
 #include <uwbcfg/uwbcfg.h>
+#include "uwbcfg_priv.h"
 #include <dw1000/dw1000_hal.h>
 
-#define LOG_MODULE_UWBCFG (92)
-#define UC_INFO(...)     LOG_INFO(&_log, LOG_MODULE_UWBCFG, __VA_ARGS__)
-#define UC_DEBUG(...)    LOG_DEBUG(&_log, LOG_MODULE_UWBCFG, __VA_ARGS__)
-#define UC_WARN(...)     LOG_WARN(&_log, LOG_MODULE_UWBCFG, __VA_ARGS__)
-#define UC_ERR(...)      LOG_ERROR(&_log, LOG_MODULE_UWBCFG, __VA_ARGS__)
-static struct log _log;
+struct log _uwbcfg_log;
 
 /** Differing from dw1000_power_value in that fine is interpreted as integer steps
  *  Thus to get 15.5dB from fine, set FINE to 31 */
@@ -42,29 +37,11 @@ static struct uwbcfg_cbs_head uwbcfg_callbacks;
 
 static char *uwbcfg_get(int argc, char **argv, char *val, int val_len_max);
 static int uwbcfg_set(int argc, char **argv, char *val);
-static int uwbcfg_commit(void);
+int uwbcfg_commit(void);
 static int uwbcfg_export(void (*export_func)(char *name, char *val),
   enum conf_export_tgt tgt);
 
-enum {
-    CFGSTR_CH=0,
-    CFGSTR_PRF,
-    CFGSTR_DATARATE,
-    CFGSTR_RX_PACLEN,
-    CFGSTR_RX_PREAM_CIDX,
-    CFGSTR_RX_SFDTYPE,
-    CFGSTR_RX_PHRMODE,
-    CFGSTR_TX_PREAM_CIDX,
-    CFGSTR_TX_PREAM_LEN,
-    CFGSTR_TXRF_PWR_COARSE,
-    CFGSTR_TXRF_PWR_FINE,
-    CFGSTR_RX_ANTDLY,
-    CFGSTR_TX_ANTDLY,
-    CFGSTR_ROLE,
-    CFGSTR_MAX
-};
-
-static char uwb_config[CFGSTR_MAX][7] = {
+static char uwb_config[CFGSTR_MAX][CFGSTR_STRLEN] = {
     MYNEWT_VAL(UWBCFG_DEF_CH),                /* channel */
     MYNEWT_VAL(UWBCFG_DEF_PRF),               /* prf */
     MYNEWT_VAL(UWBCFG_DEF_DATARATE),          /* datarate */
@@ -81,11 +58,21 @@ static char uwb_config[CFGSTR_MAX][7] = {
     MYNEWT_VAL(UWBCFG_DEF_ROLE),              /* role */
 };
 
-static const char* _uwbcfg_str[] = {
-    "channel", "prf", "datarate",
-    "rx_paclen", "rx_pream_cidx", "rx_sfdtype", "rx_phrmode",
-    "tx_pream_cidx", "tx_pream_len", "txrf_power_coarse", "txrf_power_fine",
-    "rx_antdly", "tx_antdly", "role"
+const char* _uwbcfg_str[] = {
+    "channel",
+    "prf",
+    "datarate",
+    "rx_paclen",
+    "rx_pream_cidx",
+    "rx_sfdtype",
+    "rx_phrmode",
+    "tx_pream_cidx",
+    "tx_pream_len",
+    "txrf_power_coarse",
+    "txrf_power_fine",
+    "rx_antdly",
+    "tx_antdly",
+    "role"
 };
 
 static struct conf_handler uwbcfg_handler = {
@@ -119,6 +106,25 @@ uwbcfg_set(int argc, char **argv, char *val)
     return OS_ENOENT;
 }
 
+char*
+uwbcfg_internal_get(int idx)
+{
+    if (idx < CFGSTR_MAX) {
+        return uwb_config[idx];
+    }
+    return 0;
+}
+
+int
+uwbcfg_internal_set(int idx, char* val)
+{
+    if (idx < CFGSTR_MAX && strlen(val) < sizeof(uwb_config[0])) {
+        memcpy(uwb_config[idx], val, strlen(val));
+        return 0;
+    }
+    return -1;
+}
+
 static void
 check_preamble_code(dw1000_dev_instance_t * inst, uint8_t *arg_code)
 {
@@ -144,13 +150,13 @@ check_preamble_code(dw1000_dev_instance_t * inst, uint8_t *arg_code)
     }
 }
 
-static int
-uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst)
+int
+uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst, char cfg[CFGSTR_MAX][CFGSTR_STRLEN])
 {
     uint8_t coarse, fine, txpwr, paclen;
     int sfd_len=0;
 
-    conf_value_from_str(uwb_config[CFGSTR_CH], CONF_INT8, (void*)&(inst->config.channel), 0);
+    conf_value_from_str(cfg[CFGSTR_CH], CONF_INT8, (void*)&(inst->config.channel), 0);
     switch (inst->config.channel) {
     case (1): inst->config.txrf.PGdly = TC_PGDELAY_CH1;break;
     case (2): inst->config.txrf.PGdly = TC_PGDELAY_CH2;break;
@@ -164,22 +170,22 @@ uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst)
     }
     
     /* Set the PRF */
-    if (!strcmp(uwb_config[CFGSTR_PRF], "16")) {
+    if (!strcmp(cfg[CFGSTR_PRF], "16")) {
         inst->config.prf = DWT_PRF_16M;
-    } else if (!strcmp(uwb_config[CFGSTR_PRF], "64")) {
+    } else if (!strcmp(cfg[CFGSTR_PRF], "64")) {
         inst->config.prf = DWT_PRF_64M;
     } else {
         UC_WARN("inv prf\n");
     }
 
     /* Data rate */
-    if (!strcmp(uwb_config[CFGSTR_DATARATE], "6m8")) {
+    if (!strcmp(cfg[CFGSTR_DATARATE], "6m8")) {
         inst->config.dataRate = DWT_BR_6M8;
         sfd_len = 8;
-    } else if (!strcmp(uwb_config[CFGSTR_DATARATE], "850k")) {
+    } else if (!strcmp(cfg[CFGSTR_DATARATE], "850k")) {
         inst->config.dataRate = DWT_BR_850K;
         sfd_len = 8;
-    } else if (!strcmp(uwb_config[CFGSTR_DATARATE], "110k")) {
+    } else if (!strcmp(cfg[CFGSTR_DATARATE], "110k")) {
         inst->config.dataRate = DWT_BR_110K;
         sfd_len = 64;
     } else {
@@ -187,7 +193,7 @@ uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst)
     }
     
     /* PAC length */
-    conf_value_from_str(uwb_config[CFGSTR_RX_PACLEN], CONF_INT8, (void*)&paclen, 0);
+    conf_value_from_str(cfg[CFGSTR_RX_PACLEN], CONF_INT8, (void*)&paclen, 0);
     switch (paclen) {
     case (8):  inst->config.rx.pacLength = DWT_PAC8;break;
     case (16): inst->config.rx.pacLength = DWT_PAC16;break;
@@ -197,20 +203,20 @@ uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst)
         UC_WARN("inv paclen\n");
     }
 
-    inst->config.rx.sfdType = (uwb_config[CFGSTR_RX_SFDTYPE][0] == '1');
-    inst->config.rx.phrMode = (uwb_config[CFGSTR_RX_PHRMODE][0] == 's')? DWT_PHRMODE_STD : DWT_PHRMODE_EXT;
+    inst->config.rx.sfdType = (cfg[CFGSTR_RX_SFDTYPE][0] == '1');
+    inst->config.rx.phrMode = (cfg[CFGSTR_RX_PHRMODE][0] == 's')? DWT_PHRMODE_STD : DWT_PHRMODE_EXT;
 
     /* Check that the rx and tx preamble codes are legal for the ch+prf combo */
-    conf_value_from_str(uwb_config[CFGSTR_RX_PREAM_CIDX], CONF_INT8,
+    conf_value_from_str(cfg[CFGSTR_RX_PREAM_CIDX], CONF_INT8,
                         (void*)&(inst->config.rx.preambleCodeIndex), 0);
     check_preamble_code(inst, &inst->config.rx.preambleCodeIndex);
-    conf_value_from_str(uwb_config[CFGSTR_TX_PREAM_CIDX], CONF_INT8,
+    conf_value_from_str(cfg[CFGSTR_TX_PREAM_CIDX], CONF_INT8,
                         (void*)&(inst->config.tx.preambleCodeIndex), 0);
     check_preamble_code(inst, &inst->config.tx.preambleCodeIndex);
 
     /* Tx Power */
-    conf_value_from_str(uwb_config[CFGSTR_TXRF_PWR_COARSE], CONF_INT8, (void*)&coarse, 0);
-    conf_value_from_str(uwb_config[CFGSTR_TXRF_PWR_FINE], CONF_INT8, (void*)&fine, 0);
+    conf_value_from_str(cfg[CFGSTR_TXRF_PWR_COARSE], CONF_INT8, (void*)&coarse, 0);
+    conf_value_from_str(cfg[CFGSTR_TXRF_PWR_FINE], CONF_INT8, (void*)&fine, 0);
 
     txpwr = inst->config.txrf.BOOSTNORM;
     switch (coarse) {
@@ -230,17 +236,17 @@ uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst)
     inst->config.txrf.BOOSTP125 = txpwr;
 
     /* Antenna dlys will be updated in dw1000 automatically next time it wakes up */
-    conf_value_from_str(uwb_config[CFGSTR_RX_ANTDLY], CONF_INT16, (void*)&inst->rx_antenna_delay, 0);
-    conf_value_from_str(uwb_config[CFGSTR_TX_ANTDLY], CONF_INT16, (void*)&inst->tx_antenna_delay, 0);
+    conf_value_from_str(cfg[CFGSTR_RX_ANTDLY], CONF_INT16, (void*)&inst->rx_antenna_delay, 0);
+    conf_value_from_str(cfg[CFGSTR_TX_ANTDLY], CONF_INT16, (void*)&inst->tx_antenna_delay, 0);
 
     /* Role */
-    conf_value_from_str(uwb_config[CFGSTR_ROLE], CONF_INT16, (void*)&inst->role, 0);
+    conf_value_from_str(cfg[CFGSTR_ROLE], CONF_INT16, (void*)&inst->role, 0);
 
     /* Preamble */
     uint16_t preamble_len;
     uint8_t  txP = inst->config.tx.preambleLength;
     uint16_t sfd_timeout = inst->config.rx.sfdTimeout;
-    conf_value_from_str(uwb_config[CFGSTR_TX_PREAM_LEN], CONF_INT16,
+    conf_value_from_str(cfg[CFGSTR_TX_PREAM_LEN], CONF_INT16,
                         (void*)&preamble_len, 0);
 
     switch (preamble_len)
@@ -274,21 +280,21 @@ uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst)
     return 0;
 }
 
-static int
+int
 uwbcfg_commit(void)
 {
     dw1000_dev_instance_t * inst;
 #if  MYNEWT_VAL(DW1000_DEVICE_0)
     inst = hal_dw1000_inst(0);
-    uwbcfg_commit_to_inst(inst);
+    uwbcfg_commit_to_inst(inst, uwb_config);
 #endif
 #if  MYNEWT_VAL(DW1000_DEVICE_1)
     inst = hal_dw1000_inst(1);
-    uwbcfg_commit_to_inst(inst);
+    uwbcfg_commit_to_inst(inst, uwb_config);
 #endif
 #if  MYNEWT_VAL(DW1000_DEVICE_2)
     inst = hal_dw1000_inst(2);
-    uwbcfg_commit_to_inst(inst);
+    uwbcfg_commit_to_inst(inst, uwb_config);
 #endif
     return 0;
 }
@@ -326,10 +332,19 @@ uwbcfg_pkg_init()
     SYSINIT_PANIC_ASSERT(rc == 0);
 
     /* Init log and Config */
-    log_register("uwbcfg", &_log, &log_console_handler,
+    log_register("uwbcfg", &_uwbcfg_log, &log_console_handler,
                  NULL, LOG_SYSLEVEL);
     
     SLIST_INIT(&uwbcfg_callbacks);
+
+#if MYNEWT_VAL(UWBCFG_NMGR)
+    uwbcfg_nmgr_module_init();
+#endif
+
+#if MYNEWT_VAL(UWBCFG_CLI)
+    uwbcfg_cli_register();
+#endif
+
 #if MYNEWT_VAL(UWBCFG_APPLY_AT_INIT)
     uwbcfg_commit();
 #endif

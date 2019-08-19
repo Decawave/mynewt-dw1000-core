@@ -37,6 +37,8 @@
 extern "C" {
 #endif
 
+#define MGMT_GROUP_ID_UWBCFG   (0x103)
+
 typedef int (*uwbcfg_update_handler_t)(void);    
     
 struct uwbcfg_cbs {

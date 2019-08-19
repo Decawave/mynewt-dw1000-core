@@ -2,8 +2,11 @@ syscfg.defs:
     UWBCFG_ENABLED:
         description: 'UWB Configuration manager enabled'
         value: 1
-    UWBCFG_APPLY_AT_INIT:
-        description: 'Apply stored uwbcfg at package init'
+    UWBCFG_NMGR:
+        description: 'Enable Newtmgr interface'
+        value: 0
+    UWBCFG_CLI:
+        description: 'Enable CLI interface'
         value: 0
     UWBCFG_DEF_CH:
         description: 'Default UWB Channel'
