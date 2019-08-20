@@ -100,12 +100,10 @@ cir_complete_ev_cb(struct os_event *ev) {
  *
  * returns none 
  */
-
-
+#if MYNEWT_VAL(CIR_ENABLED)
 static bool
 cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
-#if MYNEWT_VAL(CIR_ENABLED)
     cir_instance_t * cir = (cir_instance_t *)cbs->inst_ptr;
 
     cir->status.valid = 0;
@@ -155,9 +153,8 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     os_eventq_put(os_eventq_dflt_get(), &cir_event);
 #endif
     return false;
-#endif // MYNEWT_VAL(CIR_ENABLED)
-    return true;
 }
+#endif // MYNEWT_VAL(CIR_ENABLED)
 
 /*! 
  * @fn cir_enable(cir_instance_t * inst, bool mode){
@@ -175,9 +172,11 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 void  
 cir_enable(struct _cir_instance_t * cir, bool mode)
 {
+#if MYNEWT_VAL(CIR_ENABLED)
     dw1000_dev_instance_t * inst = cir->dev_inst;
     cir->status.valid = 0;
     inst->control.cir_enable = mode;
+#endif
 }
 
 /*! 
@@ -284,6 +283,7 @@ cir_free(cir_instance_t * inst){
         inst->status.initialized = 0;
 }
 
+#if MYNEWT_VAL(CIR_ENABLED)
 dw1000_mac_interface_t cbs[] = {
     [0] = {
             .id =  DW1000_CIR,
@@ -302,12 +302,13 @@ dw1000_mac_interface_t cbs[] = {
     }
 #endif
 };
+#endif // MYNEWT_VAL(CIR_ENABLED)
+
 
 /**
- * API to initialise the cip package.
+ * API to initialise the cir package.
  * @return void
  */
-
 void cir_pkg_init(void)
 {
 #if MYNEWT_VAL(CIR_ENABLED)

@@ -295,7 +295,9 @@ struct _dw1000_dev_status_t dw1000_mac_config(struct _dw1000_dev_instance_t * in
     inst->sys_cfg_reg |= (SYS_CFG_PHR_MODE_11 & (((uint32_t)config->rx.phrMode) << SYS_CFG_PHR_MODE_SHFT));
     
     if (inst->config.rxauto_enable) 
-        inst->sys_cfg_reg |=SYS_CFG_RXAUTR; 
+        inst->sys_cfg_reg |=SYS_CFG_RXAUTR;
+    else
+        inst->sys_cfg_reg &= (~SYS_CFG_RXAUTR);
     
     dw1000_write_reg(inst, SYS_CFG_ID, 0, inst->sys_cfg_reg, sizeof(uint32_t));
     /* Set the lde_replicaCoeff */
@@ -734,6 +736,33 @@ dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable)
 
 
 /**
+ * API to adjust RX Wait Timeout period.
+ *
+ * @param inst      pointer to _dw1000_dev_instance_t.
+ * @param timeout   Indicates how long the receiver remains on from the RX enable command.The time parameter used here is in 1.0256 
+ * us (512/499.2MHz) units If set to 0 the timeout is disabled.
+ * @return dw1000_dev_status_t
+ * @brief The Receive Frame Wait Timeout period is a 16-bit field. The units for this parameter are roughly 1μs, 
+ * (the exact unit is 512 counts of the fundamental 499.2 MHz UWB clock, or 1.026 μs). When employing the frame wait timeout, 
+ * RXFWTO should be set to a value greater than the expected RX frame duration and include an allowance for any uncertainly 
+ * attaching to the expected transmission start time of the awaited frame. 
+ * When using .rxauto_enable feature it is important to understand the role of rx_timeout, in this situation it is the timeout 
+ * that actually turns-off the receiver and returns the transeiver to the idle state. 
+ */
+struct _dw1000_dev_status_t 
+dw1000_adj_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
+{
+    dw1000_dev_control_t control = inst->control;
+    if (control.rx_timeout_enabled) {
+        dw1000_write_reg(inst, RX_FWTO_ID, RX_FWTO_OFFSET, timeout, sizeof(uint16_t));
+    } else {
+        /* error, need timeout to be enabled */
+    }
+    return inst->status;
+} 
+
+
+/**
  * API to set Wait Timeout period.
  *
  * @param inst      pointer to _dw1000_dev_instance_t.
@@ -752,7 +781,6 @@ dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
 {
     os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
     assert(err == OS_OK);
-
     inst->status.rx_timeout_error = 0;
 
     uint32_t  sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)); 
@@ -772,6 +800,7 @@ dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
 
     return inst->status;
 } 
+
 
 /**
  * API to synchronize rx buffer pointers to make sure that the host/IC buffer pointers are aligned before starting RX.
@@ -1171,7 +1200,7 @@ dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
         hal_gpio_irq_enable(inst->irq_pin);
     }    
     dw1000_phy_interrupt_mask(inst,          SYS_MASK_MCPLOCK | SYS_MASK_MRXDFR | SYS_MASK_MLDEERR |  SYS_MASK_MTXFRS  | SYS_MASK_ALL_RX_TO   | SYS_MASK_ALL_RX_ERR | SYS_MASK_MTXBERR, false);
-    dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_CPLOCK| SYS_STATUS_RXDFR | SYS_STATUS_LDEERR | SYS_STATUS_TXFRS | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR | SYS_STATUS_TXBERR, sizeof(uint32_t)); // Clear SLP2INIT event bits
+    dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_SLP2INIT | SYS_STATUS_CPLOCK| SYS_STATUS_RXDFR | SYS_STATUS_LDEERR | SYS_STATUS_TXFRS | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR | SYS_STATUS_TXBERR, sizeof(uint32_t));
     dw1000_phy_interrupt_mask(inst,          SYS_MASK_MCPLOCK | SYS_MASK_MRXDFR | SYS_MASK_MLDEERR | SYS_MASK_MTXFRS  | SYS_MASK_ALL_RX_TO   | SYS_MASK_ALL_RX_ERR | SYS_MASK_MTXBERR, true);
 }
 
@@ -1275,7 +1304,36 @@ dw1000_mac_get_interface(dw1000_dev_instance_t * inst, dw1000_extension_id_t id)
     }
     return cbs;
 }
- 
+
+
+/**
+ * Check for double buffer overrun error
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @return uint8_t 1 = overrun error has occured, 0 otherwise
+ */
+static uint8_t
+dw1000_checkoverrun(dw1000_dev_instance_t * inst)
+{
+    uint8_t ov = dw1000_read_reg(inst, SYS_STATUS_ID, 2, sizeof(uint8_t)) & (SYS_STATUS_RXOVRR >> 16);
+    return (ov!=0);
+}
+
+/**
+ * Check if IC and Host pointers are equal
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @return uint8_t 1 = overrun error has occured, 0 otherwise
+ */
+uint8_t
+dw1000_ic_and_host_ptrs_equal(dw1000_dev_instance_t * inst)
+{
+    uint8_t b = dw1000_read_reg(inst, SYS_STATUS_ID, 3, sizeof(uint8_t));
+    /* Check where the receiver is at, and if it's in the same buffer as the host */
+    return (uint8_t)((b & (SYS_STATUS_ICRBP >> 24)) == ((b & (SYS_STATUS_HSRBP >> 24)) << 1));
+}
+
+
 /**
  * This is the DW1000's general Interrupt Service Routine. It will process/report the following events:
  *          - RXFCG (through rx_complete_cb callback)
@@ -1310,21 +1368,18 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
             assert(err == OS_OK); 
     }
     
-      // leading edge detection complete
+    // leading edge detection complete
     if((inst->sys_status & SYS_STATUS_RXFCG)){
         MAC_STATS_INC(DFR_cnt);
 
-        uint16_t finfo = dw1000_read_reg(inst, RX_FINFO_ID, RX_FINFO_OFFSET, sizeof(uint16_t));     // Read frame info - Only the first two bytes of the register are used here.
-        inst->frame_len = (finfo & RX_FINFO_RXFL_MASK_1023) - 2;          // Report frame length - Standard frame length up to 127, extended frame length up to 1023 bytes
-        
         if (inst->status.overrun_error){
             MAC_STATS_INC(ROV_err);
             /* Overrun flag has been set */
-            dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_RXOVRR, sizeof(uint32_t));
+            dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_RXOVRR |SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR), sizeof(uint32_t));
             dw1000_phy_forcetrxoff(inst);
             dw1000_phy_rx_reset(inst);
-            if (inst->control.on_error_continue_enabled) 
-                dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
+            dw1000_sync_rxbufptrs(inst);
+            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET+1, SYS_CTRL_RXENAB>>8, sizeof(uint8_t));
             return;
         }
 
@@ -1332,8 +1387,16 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         // Consequently, we reenable the transeiver in the MAC-layer as early as possable. Note: The default behavior of MAC-Layer 
         // is that the transceiver only returns to the IDLE state with a timeout event occured. The MAC-layer should otherwise reenable.
 
-        if (inst->config.rxauto_enable == 0 && inst->config.dblbuffon_enabled) 
-            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
+        if (inst->config.rxauto_enable == 0 && inst->config.dblbuffon_enabled) {
+            /* Clearing the Status flags here makes doublebuffring with explicit rx-enable work, 
+             * not entirely sure why though? */
+            dw1000_write_reg(inst, SYS_STATUS_ID, 1, (inst->sys_status&(SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR))>>8, sizeof(uint8_t));
+            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET+1, SYS_CTRL_RXENAB>>8, sizeof(uint8_t));
+        }
+
+        uint16_t finfo = dw1000_read_reg(inst, RX_FINFO_ID, RX_FINFO_OFFSET, sizeof(uint16_t));     // Read frame info - Only the first two bytes of the register are used here.
+        inst->frame_len = (finfo & RX_FINFO_RXFL_MASK_1023) - 2;          // Report frame length - Standard frame length up to 127, extended frame length up to 1023 bytes
+
         
         assert(inst->frame_len < sizeof(inst->rxbuf));
         if (inst->frame_len < sizeof(inst->rxbuf))
@@ -1347,7 +1410,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
             MAC_STATS_INC(LDE_err);
         
         inst->rxtimestamp = dw1000_read_rxtime(inst);  
-       
+
         // Because of a previous frame not being received properly, AAT bit can be set upon the proper reception of a frame not requesting for
         // acknowledgement (ACK frame is not actually sent though). If the AAT bit is set, check ACK request bit in frame control to confirm (this
         // implementation works only for IEEE802.15.4-2011 compliant frames).
@@ -1357,32 +1420,43 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
             dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_AAT, sizeof(uint8_t));     // Clear AAT status bit in register
             inst->sys_status &= ~SYS_STATUS_AAT; // Clear AAT status bit in callback data register copy
         }
+
         // Collect RX Frame Quality diagnositics
         if(inst->config.rxdiag_enable)  
             dw1000_read_rxdiag(inst, &inst->rxdiag);
         
-          // Toggle the Host side Receive Buffer Pointer
+        // Toggle the Host side Receive Buffer Pointer
         if (inst->config.dblbuffon_enabled) {
             // The rxttcko is a poor replacement for the carrier_integrator but
             // better than nothing
             if (inst->config.rxttcko_enable) {
                 inst->rxttcko = dw1000_read_time_tracking_offset(inst);
             }
+
             inst->status.overrun_error = dw1000_checkoverrun(inst);
-            if (inst->status.overrun_error == 0){ 
-                 uint8_t mask = dw1000_read_reg(inst, SYS_MASK_ID, 1 , sizeof(uint8_t)) ;  
-                 dw1000_write_reg(inst, SYS_MASK_ID, 1, 0, sizeof(uint8_t));       
-                 dw1000_write_reg(inst, SYS_STATUS_ID, 1, (SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR)>>8, sizeof(uint8_t)); 
-                 dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET , 0b1, sizeof(uint8_t)); 
-                 dw1000_write_reg(inst, SYS_MASK_ID, 1, mask, sizeof(uint8_t)); 
+            if (inst->status.overrun_error == 0) {
+                /* Check where the receiver is at, and if it's in the same buffer as we are,
+                 * mask out interrupt flags to avoid spurious interrupts when clearing status bits */
+                if (inst->config.rxauto_enable) {
+                    if (dw1000_ic_and_host_ptrs_equal(inst)) {
+                        uint8_t mask = dw1000_read_reg(inst, SYS_MASK_ID, 1 , sizeof(uint8_t));
+                        dw1000_write_reg(inst, SYS_MASK_ID, 1, 0, sizeof(uint8_t));
+                        dw1000_write_reg(inst, SYS_STATUS_ID, 1, (inst->sys_status&(SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR))>>8, sizeof(uint8_t));
+                        dw1000_write_reg(inst, SYS_MASK_ID, 1, mask, sizeof(uint8_t));
+                    } else {
+                        dw1000_write_reg(inst, SYS_STATUS_ID, 1, (inst->sys_status&(SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR))>>8, sizeof(uint8_t));
+                    }
+                }
+                /* Swap buffers */
+                dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET , 0b1, sizeof(uint8_t));
             }else{
                 MAC_STATS_INC(ROV_err);
-                /* Overrun flag has been set */
+                /* Overrun flag has been set, reset receiver and realign buffers */
                 dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_RXOVRR, sizeof(uint32_t));
                 dw1000_phy_forcetrxoff(inst);
                 dw1000_phy_rx_reset(inst);
-                if (inst->control.on_error_continue_enabled) 
-                    dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
+                dw1000_sync_rxbufptrs(inst);
+                dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET+1, SYS_CTRL_RXENAB>>8, sizeof(uint8_t));
             }
         }else{
             // carrier_integrator only avilable while in single buffer mode.
@@ -1483,20 +1557,29 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
     }
 
     // Handle RX errors events
-    if(inst->status.rx_error){
+    if(inst->status.rx_error) {
         MAC_STATS_INC(RX_err);
-        dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_ALL_RX_ERR), sizeof(uint32_t)); // Clear RX error event bits
+
         // Because of an issue with receiver restart after error conditions, an RX reset must be applied after any error or timeout event to ensure
         // the next good frame's timestamp is computed correctly.
         // See section "RX Message timestamp" in DW1000 User Manual.
-        dw1000_phy_forcetrxoff(inst);
-        dw1000_phy_rx_reset(inst);
 
-        // Restart the receiver in the event if rxauto is not enabled. Timeout remain active if set.
-        if (inst->config.rxauto_enable == 0) //&& (inst->sys_status & SYS_STATUS_RXPHE))
-            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
-        
-        inst->control.cir_enable = false;
+        dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_ALL_RX_ERR), sizeof(uint32_t)); // Clear RX error event bits
+
+        if (inst->config.dblbuffon_enabled && inst->status.overrun_error) {
+            MAC_STATS_INC(ROV_err);
+            dw1000_phy_rx_reset(inst);
+            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 0b1, sizeof(uint8_t));
+            dw1000_sync_rxbufptrs(inst);
+        } else {
+            dw1000_phy_forcetrxoff(inst);
+            dw1000_phy_rx_reset(inst);
+        }
+        /* Restart the receiver even if rxauto is not enabled. Timeout remain active if set.
+         * NOTE: Because we reset the receiver explicitly above we will need to reenable
+         * the receiver even though the auto-enable is on. */
+        dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET+1, SYS_CTRL_RXENAB>>8, sizeof(uint8_t));
+
         // Call the corresponding frame services callback if present
         dw1000_mac_interface_t * cbs = NULL;
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
@@ -1504,16 +1587,21 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
             if (cbs!=NULL && cbs->rx_error_cb) 
                 if(cbs->rx_error_cb(inst,cbs)) continue;         
             }   
-        }      
+        }
     }
 
-     // Handle sleep timer event
+    /* Clear SLP2INIT event bits */
+    if(inst->sys_status & SYS_STATUS_SLP2INIT){
+        dw1000_write_reg(inst, SYS_STATUS_ID, 2, SYS_STATUS_SLP2INIT>>16, 1);
+    }
+
+    // Handle sleep timer event
     if(inst->sys_status & SYS_STATUS_CLKPLL_LL){
-        dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_CLKPLL_LL, sizeof(uint32_t)); // Clear SLP2INIT event bits
+        dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_CLKPLL_LL, sizeof(uint32_t));
     }
     // Handle sleep timer event
     if(inst->sys_status & SYS_MASK_MCPLOCK){
-        dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_MASK_MCPLOCK, sizeof(uint32_t)); // Clear SLP2INIT event bits
+        dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_MASK_MCPLOCK, sizeof(uint32_t));
 
         // restore antenna delay value, these are not preserved during sleep/deepsleep */
         dw1000_phy_set_rx_antennadelay(inst, inst->rx_antenna_delay);
@@ -1565,7 +1653,7 @@ dw1000_calc_fppl(struct _dw1000_dev_instance_t * inst,
  *
  * @param inst  Pointer to _dw1000_dev_instance_t.
  *
- * @return rssi on success
+ * @return fppl on success
  */
 float
 dw1000_get_fppl(struct _dw1000_dev_instance_t * inst)
