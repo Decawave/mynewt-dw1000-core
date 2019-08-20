@@ -41,4 +41,3 @@ syscfg.defs:
                      edge this many accumulator slots BEFORE the master instance. This indicates that the master
                      instance is not detecting the direct path.
         value: 1
-  

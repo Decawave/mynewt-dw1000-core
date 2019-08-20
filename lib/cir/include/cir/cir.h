@@ -77,6 +77,7 @@ cir_instance_t * cir_init(struct _dw1000_dev_instance_t * inst, struct _cir_inst
 void cir_enable(struct _cir_instance_t * inst, bool mode);
 void cir_free(struct _cir_instance_t * inst);
 float cir_get_pdoa(struct _cir_instance_t * master, struct _cir_instance_t *slave);
+float cir_calc_aoa(float pdoa, float wavelength, float antenna_separation);
 
 #ifdef __cplusplus
 }
