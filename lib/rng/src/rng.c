@@ -770,21 +770,6 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     return true;
                 }
                 break;    
- /*                  
-            case DWT_SS_TWR_NRNG ... DWT_SS_TWR_NRNG_FINAL:
-                {
-                    // In the case of a NRNG timeout is used to mark the end of the request and is used to call the completion callback  
-                    RNG_STATS_INC(rx_complete);
-                    if(!(SLIST_EMPTY(&inst->interface_cbs))){
-                        SLIST_FOREACH(cbs, &inst->interface_cbs, next){
-                            if (cbs!=NULL && cbs->complete_cb)
-                                if(cbs->complete_cb(inst, cbs)) continue;
-                        }
-                    }
-                    return true;
-                }
-                break;   
-*/
             default:
                 return false;
         }
@@ -859,22 +844,6 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 }
             }
             break;
-#if 0//MYNEWT_VAL(NRNG_ENABLED)
-        case DWT_SS_TWR_NRNG ... DWT_DS_TWR_NRNG_EXT_END:
-            {   
-                dw1000_nrng_instance_t * nrng = inst->nrng; 
-                nrng_frame_t * frame = (nrng_frame_t *) inst->rxbuf; 
-                if (inst->frame_len < sizeof(nrng_request_frame_t)) 
-                    return false;
-                if (frame->dst_address != inst->my_short_address && (frame->dst_address != BROADCAST_ADDRESS || nrng->device_type == DWT_NRNG_INITIATOR)){
-                    return true;
-                }else{
-                    RNG_STATS_INC(rx_complete); 
-                    return false;   // Allow sub extensions to handle event
-                }
-            }
-            break;
-#endif //MYNEWT_VAL(NRNG_ENABLED)
         default:
             return false;
     }
@@ -926,12 +895,11 @@ static void
 complete_ev_cb(struct os_event *ev) {
     assert(ev != NULL);
     assert(ev->ev_arg != NULL);
-
     dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)ev->ev_arg;
-    rng_encode(inst->rng);
+    rng_encode(rng);
 }
 
-struct os_event rng_event;
+static struct os_event rng_event;
 
 /**
  * @fn complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
@@ -949,6 +917,7 @@ complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
 
+    rng->idx_current = (rng->idx)%rng->nframes;
     rng_event.ev_cb  = complete_ev_cb;
     rng_event.ev_arg = (void*) rng;
     os_eventq_put(os_eventq_dflt_get(), &rng_event);

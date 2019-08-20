@@ -590,13 +590,11 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
         }
     }
 
-    inst->control = (dw1000_dev_control_t){
-        .wait4resp_enabled=0,
-        .wait4resp_delay_enabled=0,
-        .delay_start_enabled=0,
-        .autoack_delay_enabled=0,
-        .on_error_continue_enabled=0
-    };
+    inst->control.wait4resp_enabled = false;
+    inst->control.wait4resp_delay_enabled = false;
+    inst->control.delay_start_enabled = false;
+    inst->control.autoack_delay_enabled = false;
+    inst->control.on_error_continue_enabled = false;
 
     return inst->status;
 } 
@@ -667,15 +665,13 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
         inst->status.start_rx_error = 0;
     }
 
-    inst->control = (dw1000_dev_control_t){
-        .wait4resp_enabled=0,
-        .wait4resp_delay_enabled=0,
-        .delay_start_enabled=0,
-        .autoack_delay_enabled=0,
-        .start_rx_syncbuf_enabled=0,
-        .rx_timeout_enabled=0,
-        .on_error_continue_enabled=0
-    };
+    inst->control.wait4resp_enabled = false;
+    inst->control.wait4resp_delay_enabled = false;
+    inst->control.delay_start_enabled = false;
+    inst->control.autoack_delay_enabled = false;
+    inst->control.start_rx_syncbuf_enabled = false;
+    inst->control.rx_timeout_enabled = false;
+    inst->control.on_error_continue_enabled = false;
 
     err = os_mutex_release(&inst->mutex); 
     assert(err == OS_OK); 
@@ -754,7 +750,6 @@ dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable)
 struct _dw1000_dev_status_t 
 dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
 {
-    dw1000_dev_control_t control = inst->control;
     os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
     assert(err == OS_OK);
 
@@ -762,13 +757,12 @@ dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
 
     uint32_t  sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)); 
 
-    control.rx_timeout_enabled = timeout > 0;
-    if(control.rx_timeout_enabled){  
+    inst->control.rx_timeout_enabled = timeout > 0;
+    if(inst->control.rx_timeout_enabled) {
         dw1000_write_reg(inst, RX_FWTO_ID, RX_FWTO_OFFSET, timeout, sizeof(uint16_t));
         sys_cfg_reg |= SYS_CFG_RXWTOE;
         dw1000_write_reg(inst, SYS_CFG_ID, 0, sys_cfg_reg, sizeof(uint32_t));
     }else{
-        control.on_error_continue_enabled = 1; 
         sys_cfg_reg &= ~SYS_CFG_RXWTOE;
         dw1000_write_reg(inst, SYS_CFG_ID, 0, sys_cfg_reg, sizeof(uint32_t));
     }
@@ -890,6 +884,7 @@ dw1000_set_autoack(struct _dw1000_dev_instance_t * inst, bool enable)
     assert(err == OS_OK);
 
     uint32_t sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)); // Read sysconfig register
+
     inst->config.autoack_enabled = enable > 0;    
     if(inst->config.autoack_enabled){
         sys_cfg_reg |= SYS_CFG_AUTOACK;
@@ -953,12 +948,11 @@ dw1000_set_autoack_delay(struct _dw1000_dev_instance_t * inst, uint8_t delay)
 struct _dw1000_dev_status_t 
 dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay)
 {    
-    dw1000_dev_control_t control = inst->control;
     os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
     assert(err == OS_OK);
     
-    control.wait4resp_delay_enabled = delay > 0;
-    if (control.wait4resp_delay_enabled){
+    inst->control.wait4resp_delay_enabled = delay > 0;
+    if (inst->control.wait4resp_delay_enabled) {
         uint32_t ack_resp_reg = dw1000_read_reg(inst, ACK_RESP_T_ID, 0, sizeof(uint32_t)) ; // Read ACK_RESP_T_ID register
         ack_resp_reg &= ~(ACK_RESP_T_W4R_TIM_MASK) ;        // Clear the timer (19:0)
         ack_resp_reg |= (delay & ACK_RESP_T_W4R_TIM_MASK) ; // In UWB microseconds (e.g. turn the receiver on 20uus after TX)
@@ -1393,15 +1387,19 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         }else{
             // carrier_integrator only avilable while in single buffer mode.
             inst->carrier_integrator = dw1000_read_carrier_integrator(inst);
-#if MYNEWT_VAL(CIR_ENABLED) || MYNEWT_VAL(PMEM_ENABLED) 
+#if MYNEWT_VAL(CIR_ENABLED)
             // Call CIR complete calbacks if present
-            dw1000_mac_interface_t * cbs = NULL;
-            if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
-                SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
-                if (cbs != NULL && cbs->cir_complete_cb) 
-                    if(cbs->cir_complete_cb(inst,cbs)) continue;
-                }   
-            }  
+            if(inst->config.cir_enable || inst->control.cir_enable) {
+                dw1000_mac_interface_t * cbs = NULL;
+                if(!(SLIST_EMPTY(&inst->interface_cbs))) {
+                    SLIST_FOREACH(cbs, &inst->interface_cbs, next) {
+                        if (cbs != NULL && cbs->cir_complete_cb) {
+                            if(cbs->cir_complete_cb(inst,cbs)) continue;
+                        }
+                    }   
+                }  
+                inst->control.cir_enable = false;
+            }
 #endif
             dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR), sizeof(uint16_t)); 
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
@@ -1473,6 +1471,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint16_t)SYS_CTRL_TRXOFF, sizeof(uint16_t)) ; // Disable the radio
         dw1000_phy_rx_reset(inst);
 
+        inst->control.cir_enable = false;
         // Call the corresponding frame services callback if present
         dw1000_mac_interface_t * cbs = NULL;
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
@@ -1496,7 +1495,8 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         // Restart the receiver in the event if rxauto is not enabled. Timeout remain active if set.
         if (inst->config.rxauto_enable == 0) //&& (inst->sys_status & SYS_STATUS_RXPHE))
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
-
+        
+        inst->control.cir_enable = false;
         // Call the corresponding frame services callback if present
         dw1000_mac_interface_t * cbs = NULL;
         if(!(SLIST_EMPTY(&inst->interface_cbs))){ 

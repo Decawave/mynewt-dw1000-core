@@ -26,9 +26,13 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <unistd.h>
-
 #include <rng/rng.h>
 
 void rng_encode(dw1000_rng_instance_t * rng);
-
+void twr_encode(twr_frame_t * frame);
+void _twr_encode(twr_frame_t * frame);
+void raz_encode(twr_frame_t * frame);
+void _raz_encode(twr_frame_t * frame);
+void diag_encode(struct _dw1000_dev_instance_t * inst);
+void _diag_encode(struct _dw1000_dev_instance_t * inst);
 #endif

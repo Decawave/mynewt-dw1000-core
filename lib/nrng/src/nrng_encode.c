@@ -120,8 +120,7 @@ nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base){
                 if (i%64==0) _json_fflush();
             }
         }
-    }
- 
+    } 
     rc |= json_encode_array_finish(&encoder);
  
     rc |= json_encode_array_name(&encoder, "uid");
@@ -142,7 +141,6 @@ nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base){
     }
 
     rc |= json_encode_array_finish(&encoder);
-
     rc |= json_encode_object_finish(&encoder);
     rc |= json_encode_object_finish(&encoder);
     assert(rc == 0);
