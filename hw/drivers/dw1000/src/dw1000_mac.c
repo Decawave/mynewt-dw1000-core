@@ -1557,7 +1557,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
     }
 
     // Handle RX errors events
-    if(inst->status.rx_error){
+    if(inst->status.rx_error) {
         MAC_STATS_INC(RX_err);
 
         // Because of an issue with receiver restart after error conditions, an RX reset must be applied after any error or timeout event to ensure
@@ -1573,13 +1573,12 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
             dw1000_sync_rxbufptrs(inst);
         } else {
             dw1000_phy_forcetrxoff(inst);
+            dw1000_phy_rx_reset(inst);
         }
-        // Restart the receiver in the event if rxauto is not enabled. Timeout remain active if set.
-        if (inst->config.rxauto_enable == 0) {
-            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
-        }
-
-        inst->control.cir_enable = false;
+        /* Restart the receiver even if rxauto is not enabled. Timeout remain active if set.
+         * NOTE: Because we reset the receiver explicitly above we will need to reenable
+         * the receiver even though the auto-enable is on. */
+        dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET+1, SYS_CTRL_RXENAB>>8, sizeof(uint8_t));
 
         // Call the corresponding frame services callback if present
         dw1000_mac_interface_t * cbs = NULL;
@@ -1598,11 +1597,11 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
 
     // Handle sleep timer event
     if(inst->sys_status & SYS_STATUS_CLKPLL_LL){
-        dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_CLKPLL_LL, sizeof(uint32_t)); // Clear SLP2INIT event bits
+        dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_CLKPLL_LL, sizeof(uint32_t));
     }
     // Handle sleep timer event
     if(inst->sys_status & SYS_MASK_MCPLOCK){
-        dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_MASK_MCPLOCK, sizeof(uint32_t)); // Clear SLP2INIT event bits
+        dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_MASK_MCPLOCK, sizeof(uint32_t));
 
         // restore antenna delay value, these are not preserved during sleep/deepsleep */
         dw1000_phy_set_rx_antennadelay(inst, inst->rx_antenna_delay);
