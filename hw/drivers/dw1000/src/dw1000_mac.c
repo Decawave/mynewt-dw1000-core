@@ -758,7 +758,7 @@ dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
     uint32_t  sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)); 
 
     inst->control.rx_timeout_enabled = timeout > 0;
-    if(inst->control.rx_timeout_enabled){  
+    if(inst->control.rx_timeout_enabled) {
         dw1000_write_reg(inst, RX_FWTO_ID, RX_FWTO_OFFSET, timeout, sizeof(uint16_t));
         sys_cfg_reg |= SYS_CFG_RXWTOE;
         dw1000_write_reg(inst, SYS_CFG_ID, 0, sys_cfg_reg, sizeof(uint32_t));
@@ -952,7 +952,7 @@ dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay)
     assert(err == OS_OK);
     
     inst->control.wait4resp_delay_enabled = delay > 0;
-    if (inst->control.wait4resp_delay_enabled){
+    if (inst->control.wait4resp_delay_enabled) {
         uint32_t ack_resp_reg = dw1000_read_reg(inst, ACK_RESP_T_ID, 0, sizeof(uint32_t)) ; // Read ACK_RESP_T_ID register
         ack_resp_reg &= ~(ACK_RESP_T_W4R_TIM_MASK) ;        // Clear the timer (19:0)
         ack_resp_reg |= (delay & ACK_RESP_T_W4R_TIM_MASK) ; // In UWB microseconds (e.g. turn the receiver on 20uus after TX)
@@ -1387,14 +1387,15 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
         }else{
             // carrier_integrator only avilable while in single buffer mode.
             inst->carrier_integrator = dw1000_read_carrier_integrator(inst);
-#if MYNEWT_VAL(CIR_ENABLED) || MYNEWT_VAL(PMEM_ENABLED) 
+#if MYNEWT_VAL(CIR_ENABLED)
             // Call CIR complete calbacks if present
-             if(inst->config.cir_enable || inst->control.cir_enable) {  
+            if(inst->config.cir_enable || inst->control.cir_enable) {
                 dw1000_mac_interface_t * cbs = NULL;
-                if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
-                    SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
-                    if (cbs != NULL && cbs->cir_complete_cb) 
-                        if(cbs->cir_complete_cb(inst,cbs)) continue;
+                if(!(SLIST_EMPTY(&inst->interface_cbs))) {
+                    SLIST_FOREACH(cbs, &inst->interface_cbs, next) {
+                        if (cbs != NULL && cbs->cir_complete_cb) {
+                            if(cbs->cir_complete_cb(inst,cbs)) continue;
+                        }
                     }   
                 }  
                 inst->control.cir_enable = false;
