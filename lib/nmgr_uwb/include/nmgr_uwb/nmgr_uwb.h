@@ -47,6 +47,7 @@ extern "C" {
 
 #define NMGR_UWB_MTU_STD (128 -  sizeof(struct _ieee_std_frame_t) - sizeof(uint16_t) - 2/*CRC*/)
 #define NMGR_UWB_MTU_EXT (1023 - sizeof(struct _ieee_std_frame_t) - sizeof(uint16_t) - 2/*CRC*/)
+#define NMGR_UWB_FCTRL (0x4d4e)
 
 //! IEEE 802.15.4 standard data frame.
 typedef union {

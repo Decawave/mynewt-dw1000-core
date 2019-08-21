@@ -261,7 +261,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     static uint16_t last_rpt_src=0;
     static uint8_t last_rpt_seq_num=0;
 
-    if(strncmp((char *)&inst->fctrl, "NM",2)) {
+    if(inst->fctrl != NMGR_UWB_FCTRL) {
         goto early_ret;
     }
 
@@ -414,7 +414,7 @@ nmgr_uwb_tx(struct _nmgr_uwb_instance_t *nmgruwb, uint16_t dst_addr, uint16_t co
     uwb_hdr.rpt_max = MYNEWT_VAL(CCP_MAX_CASCADE_RPTS);
 
     /* TODO:BELOW IS UGLY, change to use code as identifier instead */
-    strncpy((char*)&uwb_hdr.fctrl, "NM", 2);
+    uwb_hdr.fctrl = NMGR_UWB_FCTRL;
 
     /* If fx_time provided, delay until then with tx */
     if (dx_time) {
