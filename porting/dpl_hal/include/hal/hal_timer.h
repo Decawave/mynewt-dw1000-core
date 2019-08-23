@@ -37,7 +37,6 @@ extern "C" {
 
 /* HAL timer callback */
 typedef void (*hal_timer_cb)(void *arg);
-
 /**
  * The HAL timer structure. The user can declare as many of these structures
  * as desired. They are enqueued on a particular HW timer queue when the user
@@ -59,7 +58,6 @@ struct hal_timer {
     uint32_t            expiry;
     TAILQ_ENTRY(hal_timer) link;    /* Queue linked list structure */
 };
-
 /**
  * Initialize a HW timer.
  *

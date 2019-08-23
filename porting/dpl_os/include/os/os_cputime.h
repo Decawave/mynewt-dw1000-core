@@ -172,7 +172,6 @@ uint32_t os_cputime_ticks_to_usecs(uint32_t ticks);
  * @param ticks The number of ticks to wait.
  */
 void os_cputime_delay_ticks(uint32_t ticks);
-
 /**
  * Wait until 'usecs' microseconds has elapsed. This is a blocking delay.
  *

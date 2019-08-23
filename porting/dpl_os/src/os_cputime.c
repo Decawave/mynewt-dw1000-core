@@ -72,17 +72,18 @@ void
 os_cputime_delay_usecs(uint32_t usecs)
 {
     uint32_t ticks;
-
+    ticks = os_cputime_usecs_to_ticks(usecs);
     ticks = os_cputime_usecs_to_ticks(usecs);
     os_cputime_delay_ticks(ticks);
+    ticks = os_cputime_usecs_to_ticks(usecs);
 }
+
 
 void
 os_cputime_timer_init(struct hal_timer *timer, hal_timer_cb fp, void *arg)
 {
     assert(timer != NULL);
     assert(fp != NULL);
-
     hal_timer_set_cb(MYNEWT_VAL(OS_CPUTIME_TIMER_NUM), timer, fp, arg);
 }
 
@@ -121,6 +122,6 @@ os_cputime_get32(void)
     uint32_t cpu_time;
 
     cpu_time = hal_timer_read(MYNEWT_VAL(OS_CPUTIME_TIMER_NUM));
-    return cpu_time;
+return cpu_time;
 }
 

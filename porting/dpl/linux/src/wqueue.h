@@ -24,6 +24,7 @@
 
 #include <pthread.h>
 #include <list>
+#include<stdio.h>
 
 using namespace std;
 
@@ -62,9 +63,7 @@ public:
                 pthread_cond_wait(&m_condv, &m_mutex);
             }
         }
-
         T item = NULL;
-
         if (m_queue.size() != 0) {
             item = m_queue.front();
             m_queue.pop_front();

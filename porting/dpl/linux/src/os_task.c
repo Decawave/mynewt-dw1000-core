@@ -54,7 +54,6 @@ dpl_task_init(struct dpl_task *t, const char *name, dpl_task_func_t func,
     if ((t == NULL) || (func == NULL)) {
         return OS_INVALID_PARM;
     }
-
     err = pthread_attr_init(&t->attr);
     if (err) return err;
     err = pthread_attr_getschedparam (&t->attr, &t->param);
@@ -64,7 +63,6 @@ dpl_task_init(struct dpl_task *t, const char *name, dpl_task_func_t func,
     t->param.sched_priority = prio;
     err = pthread_attr_setschedparam (&t->attr, &t->param);
     if (err) return err;
-
     t->name = name;
     err = pthread_create(&t->handle, &t->attr, func, arg);
 

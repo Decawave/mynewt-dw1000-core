@@ -17,38 +17,39 @@
  * under the License.
  */
 
-#ifdef REMOVE
+//#ifdef REMOVE
 #include <stdint.h>
 #include <assert.h>
-#include "os/mynewt.h"
-
+#include"dpl/dpl.h"
 #include "hal/hal_timer.h"
+#include"os/os.h"
 
 /*
  * For native cpu implementation.
  */
 static uint8_t native_timer_task_started;
 #define NATIVE_TIMER_STACK_SIZE   (1024)
-static os_stack_t native_timer_stack[NATIVE_TIMER_STACK_SIZE];
-static struct os_task native_timer_task_struct;
-static struct os_eventq native_timer_evq;
+static dpl_stack_t native_timer_stack[NATIVE_TIMER_STACK_SIZE];
+static struct dpl_task native_timer_task_struct;
+static struct dpl_eventq native_timer_evq;
+#define OS_TICKS_PER_SEC    (128)
 
 struct native_timer {
-    struct os_callout callout;
+    struct dpl_callout callout;
     uint32_t ticks_per_ostick;
     uint32_t cnt;
     uint32_t last_ostime;
     int num;
     TAILQ_HEAD(hal_timer_qhead, hal_timer) timers;
 } native_timers[1];
-
 /**
  * This is the function called when the timer fires.
  *
  * @param arg
  */
+
 static void
-native_timer_cb(struct os_event *ev)
+native_timer_cb(struct dpl_event *ev)
 {
     struct native_timer *nt = (struct native_timer *)ev->ev_arg;
     uint32_t cnt;
@@ -68,19 +69,21 @@ native_timer_cb(struct os_event *ev)
     }
     ht = TAILQ_FIRST(&nt->timers);
     if (ht) {
-        os_callout_reset(&nt->callout,
+        dpl_callout_reset(&nt->callout,
           (ht->expiry - hal_timer_read(nt->num)) / nt->ticks_per_ostick);
     }
     OS_EXIT_CRITICAL(sr);
 }
 
+
 static void
 native_timer_task(void *arg)
 {
     while (1) {
-        os_eventq_run(&native_timer_evq);
+        dpl_eventq_run(&native_timer_evq);
     }
 }
+
 
 int
 hal_timer_init(int num, void *cfg)
@@ -97,7 +100,6 @@ hal_timer_config(int num, uint32_t clock_freq)
         return -1;
     }
     nt = &native_timers[num];
-
     /* Set the clock frequency */
     nt->ticks_per_ostick = clock_freq / OS_TICKS_PER_SEC;
     if (!nt->ticks_per_ostick) {
@@ -105,19 +107,21 @@ hal_timer_config(int num, uint32_t clock_freq)
     }
     nt->num = num;
     nt->cnt = 0;
-    nt->last_ostime = os_time_get();
+
+    nt->last_ostime = dpl_time_get();
+        dpl_eventq_init(&native_timer_evq);
     if (!native_timer_task_started) {
-        os_task_init(&native_timer_task_struct, "native_timer",
+        dpl_task_init(&native_timer_task_struct, "native_timer",
           native_timer_task, NULL, OS_TASK_PRI_HIGHEST, OS_WAIT_FOREVER,
           native_timer_stack, NATIVE_TIMER_STACK_SIZE);
 
         /* Initialize the eventq and task */
-        os_eventq_init(&native_timer_evq);
+        dpl_eventq_init(&native_timer_evq);
         native_timer_task_started = 1;
     }
 
     /* Initialize the callout function */
-    os_callout_init(&nt->callout, &native_timer_evq, native_timer_cb, nt);
+    dpl_callout_init(&nt->callout, &native_timer_evq, native_timer_cb, nt);
 
     return 0;
 }
@@ -132,7 +136,7 @@ hal_timer_deinit(int num)
     }
     nt = &native_timers[num];
 
-    os_callout_stop(&nt->callout);
+    dpl_callout_stop(&nt->callout);
     return 0;
 }
 
@@ -175,9 +179,11 @@ hal_timer_read(int num)
     if (num != 0) {
         return -1;
     }
+
+
     nt = &native_timers[num];
     OS_ENTER_CRITICAL(sr);
-    ostime = os_time_get();
+    ostime = dpl_time_get();
     delta_osticks = (uint32_t)(ostime - nt->last_ostime);
     if (delta_osticks) {
         nt->last_ostime = ostime;
@@ -238,7 +244,6 @@ hal_timer_set_cb(int num, struct hal_timer *timer, hal_timer_cb cb_func,
     timer->cb_arg = arg;
     timer->bsp_timer = nt;
     timer->link.tqe_prev = NULL;
-
     return 0;
 }
 
@@ -308,11 +313,11 @@ hal_timer_start_at(struct hal_timer *timer, uint32_t tick)
         /*
          * Event in the past (should be the case if it was just inserted).
          */
-        os_callout_reset(&nt->callout, 0);
+        dpl_callout_reset(&nt->callout, 0);
     } else {
         if (timer == TAILQ_FIRST(&nt->timers)) {
             osticks = (tick - curtime) / nt->ticks_per_ostick;
-            os_callout_reset(&nt->callout, osticks);
+            dpl_callout_reset(&nt->callout, osticks);
         }
     }
     OS_EXIT_CRITICAL(sr);
@@ -351,11 +356,11 @@ hal_timer_stop(struct hal_timer *timer)
         timer->link.tqe_prev = NULL;
         if (reset_ocmp) {
             if (ht) {
-                os_callout_reset(&nt->callout,
+                dpl_callout_reset(&nt->callout,
                   (ht->expiry - hal_timer_read(nt->num)) /
                     nt->ticks_per_ostick);
             } else {
-                os_callout_stop(&nt->callout);
+                dpl_callout_stop(&nt->callout);
             }
         }
     }
@@ -364,5 +369,5 @@ hal_timer_stop(struct hal_timer *timer)
     return 0;
 }
 
-#endif
+//#endif
 

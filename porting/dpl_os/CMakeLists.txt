@@ -15,6 +15,8 @@ include_directories(
     include
     "${PROJECT_SOURCE_DIR}/../../../../bin/targets/syscfg/generated/include/"
 )
+include_directories(
+)
 
 
 source_group("include" FILES ${HEADERS})

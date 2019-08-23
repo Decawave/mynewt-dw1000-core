@@ -96,7 +96,6 @@ void
 dpl_eventq_run(struct dpl_eventq *evq)
 {
     struct dpl_event *ev;
-
     ev = dpl_eventq_get(evq);
     dpl_event_run(ev);
 }
@@ -136,8 +135,9 @@ dpl_event_set_arg(struct dpl_event *ev, void *arg)
 void
 dpl_event_run(struct dpl_event *ev)
 {
+    if(ev == NULL)
+	return;
     assert(ev->ev_cb != NULL);
-
     ev->ev_cb(ev);
 }
 
