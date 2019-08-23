@@ -72,7 +72,6 @@ dpl_sem_pend(struct dpl_sem *sem, dpl_time_t timeout)
 {
     int err = 0;
     struct timespec wait;
-
     if (!sem) {
         return DPL_INVALID_PARAM;
     }
