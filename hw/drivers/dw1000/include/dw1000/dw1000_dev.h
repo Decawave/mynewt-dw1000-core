@@ -143,6 +143,7 @@ typedef struct _dw1000_dev_control_t{
     uint32_t sleep_after_tx:1;              //!< Enables to load LDE microcode on wake up
     uint32_t sleep_after_rx:1;              //!< Enables to load LDO tune value on wake up
     uint32_t cir_enable:1;                  //!< Enables reading CIR on this operation
+    uint32_t rxauto_disable:1;              //!< Disable auto receive parameter
 }dw1000_dev_control_t;
 
 //! DW1000 receiver configuration parameters.
