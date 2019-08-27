@@ -457,6 +457,7 @@ dw1000_rng_request(dw1000_rng_instance_t * rng, uint16_t dst_address, dw1000_rng
     dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_rng_request_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_request_frame_t), 0);
     dw1000_set_wait4resp(inst, true); 
+    
     uint16_t frame_duration = dw1000_phy_frame_duration(&inst->attrib,sizeof(ieee_rng_response_frame_t));
     uint16_t shr_duration  = dw1000_phy_SHR_duration(&inst->attrib);
     uint16_t data_duration = frame_duration - shr_duration;
@@ -466,9 +467,16 @@ dw1000_rng_request(dw1000_rng_instance_t * rng, uint16_t dst_address, dw1000_rng
     // and start the receiver in time for the preamble by subtracting the SHR duration.
 
     dw1000_set_wait4resp_delay(inst, config->tx_holdoff_delay - data_duration - shr_duration);
-    uint16_t timeout = frame_duration + config->rx_timeout_delay; // At least 2 * ToF, 1us ~= 300m
-                
-    dw1000_set_rx_timeout(inst, timeout);
+
+    // The timeout counter starts when the receiver in re-enabled. The timeout event 
+    // should occuring just after the inbound frame is received
+if (code == DWT_SS_TWR_EXT){
+    uint16_t frame_duration = dw1000_phy_frame_duration(&inst->attrib,sizeof(twr_frame_t));
+    dw1000_set_rx_timeout(inst, frame_duration + config->rx_timeout_delay); 
+} 
+else{
+    dw1000_set_rx_timeout(inst, frame_duration + config->rx_timeout_delay); 
+}   
     dw1000_set_rxauto_disable(inst, true);
 
     if (rng->control.delay_start_enabled)
