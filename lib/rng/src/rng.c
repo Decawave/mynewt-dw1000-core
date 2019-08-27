@@ -456,13 +456,20 @@ dw1000_rng_request(dw1000_rng_instance_t * rng, uint16_t dst_address, dw1000_rng
 
     dw1000_write_tx(inst, frame->array, 0, sizeof(ieee_rng_request_frame_t));
     dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_request_frame_t), 0);
-    dw1000_set_wait4resp(inst, true);    
-   // dw1000_set_wait4resp_delay(inst, config->tx_holdoff_delay - dw1000_phy_SHR_duration(&inst->attrib));
-    uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_rng_response_frame_t))
-                    + config->rx_timeout_delay // At least 2 * ToF, 1us ~= 300m
-                    + config->tx_holdoff_delay;
+    dw1000_set_wait4resp(inst, true); 
+    uint16_t frame_duration = dw1000_phy_frame_duration(&inst->attrib,sizeof(ieee_rng_response_frame_t));
+    uint16_t shr_duration  = dw1000_phy_SHR_duration(&inst->attrib);
+    uint16_t data_duration = frame_duration - shr_duration;
+ 
+    // The wait for response counter starts on the completion of the entire outgoing frame. 
+    // To relate the delay to the RMARKER we remove the data-duration of the outbound frame
+    // and start the receiver in time for the preamble by subtracting the SHR duration.
 
+    dw1000_set_wait4resp_delay(inst, config->tx_holdoff_delay - data_duration - shr_duration);
+    uint16_t timeout = frame_duration + config->rx_timeout_delay; // At least 2 * ToF, 1us ~= 300m
+                
     dw1000_set_rx_timeout(inst, timeout);
+    dw1000_set_rxauto_disable(inst, true);
 
     if (rng->control.delay_start_enabled)
         dw1000_set_delay_start(inst, rng->delay);
@@ -499,7 +506,8 @@ dw1000_rng_listen(dw1000_rng_instance_t * rng, dw1000_dev_modes_t mode)
 #if MYNEWT_VAL(CIR_ENABLED)   
     cir_enable(rng->dev_inst->cir, true);
 #endif 
-    
+    dw1000_set_rxauto_disable(rng->dev_inst, true);
+
     RNG_STATS_INC(rng_listen);
     if(dw1000_start_rx(rng->dev_inst).start_rx_error){
         err = os_sem_release(&rng->sem);
