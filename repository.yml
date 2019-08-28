@@ -19,8 +19,43 @@
 
 repo.name: mynewt-dw1000-core
 repo.versions:
-    "1.0.0": "master"
-    "1.0.0": "master"
+    "0.0.0": "master"
+    "1.0.0": "mynewt_dw1000_1_0_0_tag"
+    "1.1.0": "mynewt_dw1000_1_1_0_tag"
+    "1.2.0": "mynewt_dw1000_1_2_0_tag"
 
-    "0-latest": "1.0.0"    # 0.0.1
-    "0-dev": "1.0.0"       # master
+    "0-latest": "1.2.0"
+    "0-dev": "0.0.0"       # master
+
+repo.newt_compatibility:
+    # Allow all versions for 0.0.0.  This is a workaround to prevent a warning
+    # from being displayed when newt doesn't know which version of the repo is
+    # present.
+    0.0.0:
+        0.0.0: good
+    1.0.0:
+        1.4.0: good
+    1.1.0:
+        1.4.0: good
+    1.2.0:
+        1.5.0: good
+
+repo.deps:
+    apache-mynewt-core:
+        type: github
+        user: apache
+        repo: mynewt-core
+        vers:
+            master: 0-dev
+            mynewt_dw1000_1_0_0_tag: 1.4.0
+            mynewt_dw1000_1_1_0_tag: 1.4.0
+            mynewt_dw1000_1_2_0_tag: 1.5.0
+    mynewt-timescale-lib:
+        type: github
+        user: decawave
+        repo: mynewt-timescale-lib
+        vers:
+            master: 0-dev
+            mynewt_dw1000_1_0_0_tag: 1.0.0
+            mynewt_dw1000_1_1_0_tag: 1.0.0
+            mynewt_dw1000_1_2_0_tag: 1.0.0
