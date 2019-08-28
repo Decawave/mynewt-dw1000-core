@@ -734,6 +734,21 @@ dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable)
     return inst->status;
 }
 
+/**
+ * API to set rxauto disable 
+ * 
+ * @param inst    Pointer to _dw1000_dev_instance_t.
+ * @param disable  Disable mac-layer auto rx-reenable feature. The default behavior is rxauto enable, this API overrides default behavior
+ * on an individual transaction such as in dw1000_rng_request or dw1000_rng_listen
+ *
+ */
+inline struct _dw1000_dev_status_t 
+dw1000_set_rxauto_disable(struct _dw1000_dev_instance_t * inst, bool disable)
+{
+    inst->control.rxauto_disable = disable;
+    return inst->status;
+}
+
 
 /**
  * API to adjust RX Wait Timeout period.
@@ -1476,7 +1491,11 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
             }
 #endif
             dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR), sizeof(uint16_t)); 
-            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
+            if (inst->control.rxauto_disable == false){
+                dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
+            }
+            inst->control.rxauto_disable = false;
+
         }
         
         // Call the corresponding frame services callback if present
@@ -1492,6 +1511,7 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
     // Handle TX confirmation event
     if(inst->sys_status & SYS_STATUS_TXFRS){
         MAC_STATS_INC(TFG_cnt);
+
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_TX, sizeof(uint32_t)); // Clear TX event bits
         // In the case where this TXFRS interrupt is due to the automatic transmission of an ACK solicited by a response (with ACK request bit set)
         // that we receive through using wait4resp to a previous TX (and assuming that the IRQ processing of that TX has already been handled), then

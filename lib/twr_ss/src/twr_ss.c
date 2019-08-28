@@ -256,17 +256,20 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 #else
                 frame->carrier_integrator  = - inst->carrier_integrator;
 #endif
-               // Write the second part of the response
+                // Write the second part of the response
                 dw1000_write_tx(inst, frame->array ,0 ,sizeof(ieee_rng_response_frame_t));
                 dw1000_write_tx_fctrl(inst, sizeof(ieee_rng_response_frame_t), 0);
-                dw1000_set_wait4resp(inst, true);   
-
-                uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ieee_rng_response_frame_t))
-                                        + g_config.rx_timeout_delay
-                                        + g_config.tx_holdoff_delay;         // Remote side turn arroud time.
-
+                dw1000_set_wait4resp(inst, true); 
+                 
+                uint16_t frame_duration = dw1000_phy_frame_duration(&inst->attrib,sizeof(ieee_rng_response_frame_t));
+                uint16_t shr_duration  = dw1000_phy_SHR_duration(&inst->attrib);
+                uint16_t data_duration = frame_duration - shr_duration;
+                dw1000_set_wait4resp_delay(inst, g_config.tx_holdoff_delay - data_duration - shr_duration);
                 dw1000_set_delay_start(inst, response_tx_delay);
-                dw1000_set_rx_timeout(inst, timeout);
+                dw1000_set_rx_timeout(inst, frame_duration + g_config.rx_timeout_delay);
+
+                // Disable default behavor, do not RXENAB on RXFCG thereby avoiding rx timeout events on sucess  
+                dw1000_set_rxauto_disable(inst, true);
 
                 if (dw1000_start_tx(inst).start_tx_error){
                     STATS_INC(g_stat, tx_error);
@@ -281,7 +284,6 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 // This code executes on the device that initiated a request, and is now preparing the final timestamps
                 if (inst->frame_len != sizeof(ieee_rng_response_frame_t))
                     break;
-
                 if(inst->status.lde_error)
                     break;
 
@@ -305,6 +307,9 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                 // Transmit timestamp final report
                 dw1000_write_tx(inst, frame->array, 0,  sizeof(twr_frame_final_t));
                 dw1000_write_tx_fctrl(inst, sizeof(twr_frame_final_t), 0);
+                uint64_t final_tx_delay = response_timestamp + ((uint64_t) g_config.tx_holdoff_delay << 16);
+                dw1000_set_delay_start(inst, final_tx_delay);
+                
                 if (dw1000_start_tx(inst).start_tx_error){
                     os_sem_release(&rng->sem);
                     if (cbs!=NULL && cbs->start_tx_error_cb)
@@ -319,8 +324,8 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                             if (cbs!=NULL && cbs->complete_cb)
                                 if(cbs->complete_cb(inst, cbs)) continue;
                             }
-                        }
                     }
+                }
                 break;
             }
         case  DWT_SS_TWR_FINAL:
