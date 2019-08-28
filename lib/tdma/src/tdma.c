@@ -512,6 +512,7 @@ uint64_t
 tdma_rx_slot_start(struct _tdma_instance_t * tdma, float idx)
 {
     uint64_t dx_time = tdma_tx_slot_start(tdma, idx);
-    dx_time = (dx_time - ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&tdma->dev_inst->attrib))) << 16));
+    uint64_t rx_stable =  MYNEWT_VAL(TIME_TO_RX_STABLE);
+    dx_time = (dx_time - ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&tdma->dev_inst->attrib) + rx_stable)) << 16));
     return dx_time;
 }

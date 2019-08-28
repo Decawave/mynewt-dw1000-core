@@ -34,6 +34,9 @@ syscfg.defs:
     DW1000_RXTX_LEDS:
         description: 'Enable showing rx and tx activity on gpios'
         value: 1
+    DW1000_RXTX_GPIO:
+        description: 'Enable showing rx and tx activity on gpios'
+        value: 0
     DW1000_RNG_INDICATE_LED:
         description: 'Toggle LED_1 for every range packet received'
         value: 0
@@ -90,3 +93,6 @@ syscfg.defs:
     DW1000_PKG_INIT_LOG:
         description: 'Enable init messages showing each package has been initialised'
         value:  1
+    TIME_TO_RX_STABLE:
+        description: 'Idle to RX-RF-Block stable in us'
+        value:  ((uint64_t)6)
