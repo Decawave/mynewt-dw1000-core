@@ -13,10 +13,9 @@ file(GLOB ${PROJECT_NAME}_HEADERS
 
 include_directories(
     include
-    "${PROJECT_SOURCE_DIR}/../../../../bin/targets/syscfg/generated/include/"
+    "${PROJECT_SOURCE_DIR}/../../bin/targets/syscfg/generated/include/"
 )
-include_directories(
-)
+#    message(FATAL_ERROR  "${PROJECT_SOURCE_DIR}/../../bin/targets/syscfg/generated/include/")
 
 
 source_group("include" FILES ${HEADERS})

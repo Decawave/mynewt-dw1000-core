@@ -15,7 +15,7 @@ file(GLOB ${PROJECT_NAME}_HEADERS
 
 include_directories(
     include
-    "${PROJECT_SOURCE_DIR}/../../../../bin/targets/syscfg/generated/include/"
+    "${PROJECT_SOURCE_DIR}/../../bin/targets/syscfg/generated/include/"
     "${PROJECT_SOURCE_DIR}/../../../porting/dpl_hal/include"
 )
 

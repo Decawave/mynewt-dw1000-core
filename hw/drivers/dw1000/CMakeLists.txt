@@ -16,7 +16,7 @@ configure_file(dw1000.pc.in dw1000.pc @ONLY)
 message(WARNING "${PROJECT_SOURCE_DIR}/../../../porting/dpl_hal")
 include_directories(
     include
-    "${PROJECT_SOURCE_DIR}/../../../../../bin/targets/syscfg/generated/include/"
+    "${PROJECT_SOURCE_DIR}/../../../bin/targets/syscfg/generated/include/"
     "${PROJECT_SOURCE_DIR}/../../../porting/dpl_hal/include"
 )
 

@@ -13,7 +13,7 @@ add_library(${PROJECT_NAME}
 
 include_directories(
     include
-    "${PROJECT_SOURCE_DIR}/../../../../../bin/targets/syscfg/generated/include/"
+    "${PROJECT_SOURCE_DIR}/../../../bin/targets/syscfg/generated/include/"
 )
 
 target_include_directories(

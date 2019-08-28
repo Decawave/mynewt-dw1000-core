@@ -270,7 +270,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
                     if (cbs!=NULL && cbs->start_tx_error_cb)
                         cbs->start_tx_error_cb(inst, cbs);
                 }
-                os_sem_release(&rng->sem);
+                dpl_sem_release(&rng->sem);
                 break;
             }
         case DWT_SS_TWR_EXT_T1:

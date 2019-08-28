@@ -9,6 +9,7 @@ configure_file (
   )
 set(CMAKE_BUILD_TYPE ${BUILD_TYPE})
 
+add_subdirectory(apps/syscfg)
 add_subdirectory(hw/drivers/dw1000)
 add_subdirectory(lib)
 add_subdirectory(porting/dpl)

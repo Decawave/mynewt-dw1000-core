@@ -1,5 +1,5 @@
 # Name of the target
-set(CMAKE_SYSTEM_PROCESSOR generic)
+set(CMAKE_SYSTEM_PROCESSOR aarch64)
 
 # Toolchain settings
 set(CMAKE_C_COMPILER    aarch64-linux-gnu-gcc)

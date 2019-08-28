@@ -1,6 +1,6 @@
 add_subdirectory(ccp)
 add_subdirectory(tdma)
-#add_subdirectory(cir)
+add_subdirectory(cir)
 #add_subdirectory(pan)
 add_subdirectory(survey)
 add_subdirectory(dsp)
@@ -15,6 +15,9 @@ add_subdirectory(twr_ss_nrng)
 
 # Install syscfg
 
-install(DIRECTORY  "${PROJECT_SOURCE_DIR}/../../bin/targets/syscfg/generated/include/" DESTINATION include/
+   
+
+install(DIRECTORY "${PROJECT_BINARY_DIR}/../bin/targets/syscfg/generated/include" DESTINATION include/
+
         FILES_MATCHING PATTERN "*.h"
 )
