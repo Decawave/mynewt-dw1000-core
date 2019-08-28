@@ -15,7 +15,6 @@ include_directories(
     include
     "${PROJECT_SOURCE_DIR}/../../bin/targets/syscfg/generated/include/"
 )
-#    message(FATAL_ERROR  "${PROJECT_SOURCE_DIR}/../../bin/targets/syscfg/generated/include/")
 
 
 source_group("include" FILES ${HEADERS})
