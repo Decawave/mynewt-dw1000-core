@@ -915,7 +915,7 @@ complete_ev_cb(struct dpl_event *ev) {
     rng_encode(rng);
 }
 
-static struct os_event rng_event;
+static struct dpl_event rng_event;
 
 /**
  * @fn complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
@@ -934,9 +934,8 @@ complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         return false;
 
     rng->idx_current = (rng->idx)%rng->nframes;
-    rng_event.ev_cb  = complete_ev_cb;
-    rng_event.ev_arg = (void*) rng;
-    os_eventq_put(os_eventq_dflt_get(), &rng_event);
+    dpl_event_init(&rng_event, complete_ev_cb, (void*) rng);
+    dpl_eventq_put(dpl_eventq_dflt_get(), &rng_event);
     return false;
 }
 #endif
