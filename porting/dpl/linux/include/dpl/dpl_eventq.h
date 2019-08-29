@@ -43,6 +43,7 @@ typedef void dpl_event_fn(struct dpl_event *ev);
 void dpl_eventq_init(struct dpl_eventq *evq);
 int dpl_eventq_inited(struct dpl_eventq *evq);
 struct dpl_event * dpl_eventq_get(struct dpl_eventq *evq);
+#define dpl_eventq_get_no_wait(__A) dpl_eventq_get(__A)
 void dpl_eventq_put(struct dpl_eventq *evq, struct dpl_event *ev);
 void dpl_eventq_remove(struct dpl_eventq *evq, struct dpl_event *ev);
 void dpl_eventq_run(struct dpl_eventq *evq);

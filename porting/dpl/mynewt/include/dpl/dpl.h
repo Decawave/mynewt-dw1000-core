@@ -122,6 +122,12 @@ dpl_eventq_remove(struct dpl_eventq *evq, struct dpl_event *ev)
     os_eventq_remove((struct os_eventq *) evq, (struct os_event *) ev);
 }
 
+static inline struct dpl_event *
+dpl_eventq_get_no_wait(struct dpl_eventq *evq)
+{
+    return (struct dpl_event *) os_eventq_get_no_wait((struct os_eventq *) evq);
+}
+
 static inline void
 dpl_eventq_run(struct dpl_eventq *evq)
 { 
@@ -153,6 +159,12 @@ static inline void *
 dpl_event_get_arg(struct dpl_event *ev)
 {
     return ev->ev.ev_arg;
+}
+
+static inline void
+dpl_event_run(struct dpl_event *ev)
+{
+    return ((struct os_event*)ev)->ev_cb((struct os_event*)ev);
 }
 
 static inline void
