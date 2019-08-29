@@ -93,6 +93,9 @@ before_script:
   # Intentionally use the targets from the apps directory here too
   - cp -R $HOME/ci/mynewt-dw1000-apps-targets targets
   - newt install
+    # Manually install the apps repo to avoid circular references
+  - git clone https://github.com/decawave/mynewt-dw1000-apps repos/mynewt-dw1000-apps
+  - sed -i "s/^#XX//g" project.yml
     # pass in the number of target sets
   - $HOME/ci/prepare_test.sh $VM_AMOUNT
 
