@@ -52,7 +52,7 @@ static const struct uart_bitbang_conf os_bsp_uartbb0_cfg = {
 #endif
 
 #if MYNEWT_VAL(SPI_0_MASTER)
-struct os_sem g_spi0_sem;
+struct dpl_sem g_spi0_sem;
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
 /* 
@@ -317,12 +317,12 @@ void hal_bsp_init(void)
     nrf52_periph_create();
 
 #if MYNEWT_VAL(I2C_1)
-    rc = os_mutex_init(&g_i2c1_mutex);
+    rc = dpl_mutex_init(&g_i2c1_mutex);
     assert(rc == 0);
 #endif
 
 #if MYNEWT_VAL(SPI_0_MASTER)
-    rc = os_sem_init(&g_spi0_sem, 0x1);
+    rc = dpl_sem_init(&g_spi0_sem, 0x1);
     assert(rc == 0);
 #endif
 

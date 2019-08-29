@@ -36,7 +36,6 @@
 #include <os/os.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
-#include "bsp/bsp.h"
 
 #include <stats/stats.h>
 #include <dw1000/dw1000_regs.h>
@@ -196,10 +195,10 @@ reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
     assert(rng);
-    if(os_sem_get_count(&rng->sem) == 0){
+    if(dpl_sem_get_count(&rng->sem) == 0){
         STATS_INC(g_stat, reset);
-        os_error_t err = os_sem_release(&rng->sem);
-        assert(err == OS_OK);
+        dpl_error_t err = dpl_sem_release(&rng->sem);
+        assert(err == DPL_OK);
         return true;
     }
     else 
@@ -223,7 +222,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
     dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
     assert(rng);
-    if(os_sem_get_count(&rng->sem) == 1) {
+    if(dpl_sem_get_count(&rng->sem) == 1) {
         // unsolicited inbound
         return false;
     }
@@ -269,7 +268,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
                 if (dw1000_start_tx(inst).start_tx_error){
                     STATS_INC(g_stat, start_tx_error);
-                    os_sem_release(&rng->sem);  
+                    dpl_sem_release(&rng->sem);  
                     if (cbs!=NULL && cbs->start_tx_error_cb) 
                         cbs->start_tx_error_cb(inst, cbs);
                 }            
@@ -336,7 +335,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
             
                 if (dw1000_start_tx(inst).start_tx_error){
                     STATS_INC(g_stat, start_tx_error);
-                    os_sem_release(&rng->sem);  
+                    dpl_sem_release(&rng->sem);  
                     if (cbs!=NULL && cbs->start_tx_error_cb) 
                         cbs->start_tx_error_cb(inst, cbs);
                 }
@@ -377,13 +376,13 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
                 if (dw1000_start_tx(inst).start_tx_error){
                     STATS_INC(g_stat, start_tx_error);
-                    os_sem_release(&rng->sem);  
+                    dpl_sem_release(&rng->sem);  
                     if (cbs!=NULL && cbs->start_tx_error_cb) 
                         cbs->start_tx_error_cb(inst, cbs);
                 }
                 else{   
                     STATS_INC(g_stat, complete); 
-                    os_sem_release(&rng->sem);  
+                    dpl_sem_release(&rng->sem);  
                     dw1000_mac_interface_t * cbs = NULL;
                     if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
                         SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
@@ -402,7 +401,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
              //       dw1000_stop_rx(inst); // Need to prevent timeout event 
 
                 STATS_INC(g_stat, complete);                   
-                os_sem_release(&rng->sem);
+                dpl_sem_release(&rng->sem);
                 dw1000_mac_interface_t * cbs = NULL;
                 if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
                     SLIST_FOREACH(cbs, &inst->interface_cbs, next){    

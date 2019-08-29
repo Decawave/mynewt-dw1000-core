@@ -36,10 +36,8 @@
 #include <os/os.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
-#include "bsp/bsp.h"
 #include <stats/stats.h>
 
-#include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_mac.h>
@@ -70,6 +68,7 @@
 #if MYNEWT_VAL(CIR_ENABLED)
 #include <cir/cir.h>
 #endif
+
 
 #if MYNEWT_VAL(RNG_STATS)
 STATS_NAME_START(rng_stat_section)
@@ -252,8 +251,8 @@ dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint
     rng->ccp_inst = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
     assert(rng->ccp_inst);
 #endif
-    os_error_t err = os_sem_init(&rng->sem, 0x1);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_sem_init(&rng->sem, 0x1);
+    assert(err == DPL_OK);
 
     if (config != NULL ) {
         dw1000_rng_config(rng, config);
@@ -431,8 +430,8 @@ dw1000_rng_request(dw1000_rng_instance_t * rng, uint16_t dst_address, dw1000_rng
 {
     // This function executes on the device that initiates a request 
     RNG_STATS_INC(rng_request);
-    os_error_t err = os_sem_pend(&rng->sem,  OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_sem_pend(&rng->sem,  DPL_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
 
     dw1000_dev_instance_t * inst = rng->dev_inst;
     dw1000_rng_config_t * config = dw1000_rng_get_config(rng, code);
@@ -483,14 +482,14 @@ else{
         dw1000_set_delay_start(inst, rng->delay);
 
     if (dw1000_start_tx(inst).start_tx_error && inst->status.rx_timeout_error == 0){
-        os_sem_release(&rng->sem);
+        dpl_sem_release(&rng->sem);
         RNG_STATS_INC(tx_error);
     }
 
-    err = os_sem_pend(&rng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
-    assert(err == OS_OK);
-    err = os_sem_release(&rng->sem);
-    assert(err == OS_OK);
+    err = dpl_sem_pend(&rng->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions
+    assert(err == DPL_OK);
+    err = dpl_sem_release(&rng->sem);
+    assert(err == DPL_OK);
 
    return inst->status;
 }
@@ -507,8 +506,8 @@ else{
 dw1000_dev_status_t
 dw1000_rng_listen(dw1000_rng_instance_t * rng, dw1000_dev_modes_t mode)
 {
-    os_error_t err = os_sem_pend(&rng->sem,  OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_sem_pend(&rng->sem,  DPL_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
 
     // Download the CIR on the response    
 #if MYNEWT_VAL(CIR_ENABLED)   
@@ -518,16 +517,16 @@ dw1000_rng_listen(dw1000_rng_instance_t * rng, dw1000_dev_modes_t mode)
 
     RNG_STATS_INC(rng_listen);
     if(dw1000_start_rx(rng->dev_inst).start_rx_error){
-        err = os_sem_release(&rng->sem);
-        assert(err == OS_OK);
+        err = dpl_sem_release(&rng->sem);
+        assert(err == DPL_OK);
         RNG_STATS_INC(rx_error);
     }
 
     if (mode == DWT_BLOCKING){
-        err = os_sem_pend(&rng->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions
-        assert(err == OS_OK);
-        err = os_sem_release(&rng->sem);
-        assert(err == OS_OK);
+        err = dpl_sem_pend(&rng->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions
+        assert(err == DPL_OK);
+        err = dpl_sem_release(&rng->sem);
+        assert(err == DPL_OK);
     }
 
    return rng->dev_inst->status;
@@ -772,12 +771,12 @@ static bool
 rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
-    if(os_sem_get_count(&rng->sem) == 1)
+    if(dpl_sem_get_count(&rng->sem) == 1)
         return false;
 
-    if(os_sem_get_count(&rng->sem) == 0){
-        os_error_t err = os_sem_release(&rng->sem);
-        assert(err == OS_OK);
+    if(dpl_sem_get_count(&rng->sem) == 0){
+        dpl_error_t err = dpl_sem_release(&rng->sem);
+        assert(err == DPL_OK);
         RNG_STATS_INC(rx_timeout);
         switch(rng->code){
             case DWT_SS_TWR ... DWT_DS_TWR_EXT_FINAL:
@@ -806,9 +805,9 @@ static bool
 reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 {
     dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
-    if(os_sem_get_count(&rng->sem) == 0){
-        os_error_t err = os_sem_release(&rng->sem);
-        assert(err == OS_OK);
+    if(dpl_sem_get_count(&rng->sem) == 0){
+        dpl_error_t err = dpl_sem_release(&rng->sem);
+        assert(err == DPL_OK);
         RNG_STATS_INC(reset);
         return true;
     }
@@ -832,7 +831,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         return false;
 
     dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
-    if(os_sem_get_count(&rng->sem) == 1){
+    if(dpl_sem_get_count(&rng->sem) == 1){
         // unsolicited inbound
         RNG_STATS_INC(rx_unsolicited);
         return false;
@@ -882,7 +881,7 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
         return false;
     
     dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
-    if(os_sem_get_count(&rng->sem) == 1) {
+    if(dpl_sem_get_count(&rng->sem) == 1) {
         // unsolicited inbound
         return false;
     }
@@ -908,10 +907,11 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  * @return true on sucess
  */
 static void
-complete_ev_cb(struct os_event *ev) {
+complete_ev_cb(struct dpl_event *ev) {
     assert(ev != NULL);
-    assert(ev->ev_arg != NULL);
-    dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)ev->ev_arg;
+    assert(dpl_event_get_arg(ev));
+
+    dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)dpl_event_get_arg(ev);
     rng_encode(rng);
 }
 

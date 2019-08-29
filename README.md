@@ -22,6 +22,8 @@
 
 # mynewt-dw1000-core
 
+[![Build Status](https://travis-ci.org/Decawave/mynewt-dw1000-core.svg?branch=master)](https://travis-ci.org/Decawave/mynewt-dw1000-core)
+
 ## Overview
 
 The distribution <https://github.com/decawave/mynewt-dw1000-core> contains the device driver model for the Decawave DW1000 Impulse Radio-Ultra Wideband (IR-UWB) transceiver within the Mynewt-OS. The driver includes hardware abstraction layers (HAL), media access control (MAC) layer, Ranging Services (RNG) and light weight IP (lwip) stacks. The DW1000 driver and Mynewt-OS combine to create a hardware and architecture agnostic platform for IoT Location Based Services (LBS). This augmented with the newtmgt management tools creates a compelling environment for large-scale deployment of LBS. The newt management tool uses a repo methodology for package management. The driver contained herein becomes a dependent repo for any DW1000 related project and is automatically included in projects as required––the <https://github.com/decawave/mynewt-dw1000-apps> showcases this relationship.

@@ -46,15 +46,6 @@
 #include <dw1000/dw1000_stats.h>
 #include <dw1000/dw1000_mac.h>
 
-#if MYNEWT_VAL(CCP_ENABLED)
-#include <ccp/ccp.h>
-#endif
-#if MYNEWT_VAL(RNG_ENABLED)
-#include <rng/rng.h>
-#endif
-#if MYNEWT_VAL(WCS_ENABLED)
-#include <wcs/wcs.h>
-#endif
 
 #if MYNEWT_VAL(DW1000_MAC_STATS)
 STATS_NAME_START(mac_stat_section)
@@ -78,7 +69,7 @@ STATS_NAME_END(mac_stat_section)
 
 int dw1000_cli_register(void);
 static void dw1000_interrupt_task(void *arg);
-static void dw1000_interrupt_ev_cb(struct os_event *ev);
+static void dw1000_interrupt_ev_cb(struct dpl_event *ev);
 static void dw1000_irq(void *arg);
 
 //#define DIAGMSG(s,u) printf(s,u)
@@ -455,13 +446,13 @@ struct _dw1000_dev_status_t dw1000_read_rx(struct _dw1000_dev_instance_t * inst,
 #endif
     MAC_STATS_INCN(rx_bytes, rxFrameLength);
 
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
 
     dw1000_read(inst, RX_BUFFER_ID, rxBufferOffset, rxFrameBytes, rxFrameLength);
 
-    err = os_mutex_release(&inst->mutex); 
-    assert(err == OS_OK); 
+    err = dpl_mutex_release(&inst->mutex); 
+    assert(err == DPL_OK); 
     
     return inst->status;
 }
@@ -488,8 +479,8 @@ struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst
 #endif
     MAC_STATS_INCN(tx_bytes, txFrameLength);
 
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
 
     if ((txBufferOffset + txFrameLength) <= 1024){
         dw1000_write(inst, TX_BUFFER_ID, txBufferOffset,  txFrameBytes, txFrameLength);
@@ -503,8 +494,8 @@ struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst
     else
         inst->status.tx_frame_error = 1;
 
-    err = os_mutex_release(&inst->mutex); 
-    assert(err == OS_OK); 
+    err = dpl_mutex_release(&inst->mutex); 
+    assert(err == DPL_OK); 
     
     return inst->status;
 }
@@ -525,15 +516,15 @@ inline void dw1000_write_tx_fctrl(struct _dw1000_dev_instance_t * inst, uint16_t
 #ifdef DW1000_API_ERROR_CHECK
     assert((inst->longFrames && ((txFrameLength + 2) <= 1023)) || ((txFrameLength +2) <= 127));
 #endif
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
 
     // Write the frame length to the TX frame control register
     uint32_t tx_fctrl_reg = inst->tx_fctrl | (txFrameLength + 2)  | (((uint32_t)txBufferOffset) << TX_FCTRL_TXBOFFS_SHFT);
     dw1000_write_reg(inst, TX_FCTRL_ID, 0, tx_fctrl_reg, sizeof(uint32_t));
  
-    err = os_mutex_release(&inst->mutex); 
-    assert(err == OS_OK);  
+    err = dpl_mutex_release(&inst->mutex); 
+    assert(err == DPL_OK);  
 } 
 
 /**
@@ -545,8 +536,8 @@ inline void dw1000_write_tx_fctrl(struct _dw1000_dev_instance_t * inst, uint16_t
 struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst)
 {
 
-    os_error_t err = os_sem_pend(&inst->tx_sem,  OS_TIMEOUT_NEVER); // Released by a SYS_STATUS_TXFRS event
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_sem_pend(&inst->tx_sem,  DPL_TIMEOUT_NEVER); // Released by a SYS_STATUS_TXFRS event
+    assert(err == DPL_OK);
 
     dw1000_dev_control_t control = inst->control;
     dw1000_dev_config_t config = inst->config;
@@ -577,8 +568,8 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
             * Remedial action is cancle send and report error
             */
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint8_t) SYS_CTRL_TRXOFF, sizeof(uint8_t)); 
-            err = os_sem_release(&inst->tx_sem);
-            assert(err == OS_OK);
+            err = dpl_sem_release(&inst->tx_sem);
+            assert(err == DPL_OK);
         }
     }else{
         dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sys_ctrl_reg, sizeof(uint8_t));
@@ -588,7 +579,7 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
          * the sem as there will not be a TXDONE irq */
         if(inst->control.sleep_after_tx) {
             inst->status.sleeping = 1;
-            err = os_sem_release(&inst->tx_sem);
+            err = dpl_sem_release(&inst->tx_sem);
         }
     }
 
@@ -612,14 +603,14 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
  */
 inline struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t dx_time)
 {
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
 
     inst->control.delay_start_enabled = true;
     dw1000_write_reg(inst, DX_TIME_ID, 1, dx_time >> 8, DX_TIME_LEN-1);
 
-    err = os_mutex_release(&inst->mutex); 
-    assert(err == OS_OK); 
+    err = dpl_mutex_release(&inst->mutex); 
+    assert(err == DPL_OK); 
 
     return inst->status;
 }
@@ -634,8 +625,8 @@ inline struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_ins
  */
 struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst)
 {
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
 
     dw1000_dev_control_t control = inst->control;
     dw1000_dev_config_t config = inst->config;
@@ -675,8 +666,8 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
     inst->control.rx_timeout_enabled = false;
     inst->control.on_error_continue_enabled = false;
 
-    err = os_mutex_release(&inst->mutex); 
-    assert(err == OS_OK); 
+    err = dpl_mutex_release(&inst->mutex); 
+    assert(err == DPL_OK); 
 
     return inst->status;
 } 
@@ -690,8 +681,8 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
  */
 struct _dw1000_dev_status_t dw1000_stop_rx(struct _dw1000_dev_instance_t * inst)
 {
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_WAIT_FOREVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_WAIT_FOREVER);
+    assert(err == DPL_OK);
 
     dw1000_set_rx_timeout(inst, 0);
 
@@ -701,8 +692,8 @@ struct _dw1000_dev_status_t dw1000_stop_rx(struct _dw1000_dev_instance_t * inst)
     dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_ALL_TX | SYS_STATUS_ALL_RX_ERR | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_GOOD), sizeof(uint32_t));
     dw1000_write_reg(inst, SYS_MASK_ID, 0, mask, sizeof(uint32_t)); // Restore mask to what it was
     
-    err = os_mutex_release(&inst->mutex); 
-    assert(err == OS_OK); 
+    err = dpl_mutex_release(&inst->mutex); 
+    assert(err == DPL_OK); 
 
     return inst->status;
 } 
@@ -794,8 +785,9 @@ dw1000_adj_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
 struct _dw1000_dev_status_t 
 dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
 {
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER); // Block if request pending
+    assert(err == DPL_OK);
+
     inst->status.rx_timeout_error = 0;
 
     uint32_t  sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)); 
@@ -810,8 +802,8 @@ dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
         dw1000_write_reg(inst, SYS_CFG_ID, 0, sys_cfg_reg, sizeof(uint32_t));
     }
           
-    err = os_mutex_release(&inst->mutex);  
-    assert(err == OS_OK);
+    err = dpl_mutex_release(&inst->mutex);  
+    assert(err == DPL_OK);
 
     return inst->status;
 } 
@@ -855,16 +847,16 @@ dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t * inst)
 struct _dw1000_dev_status_t 
 dw1000_read_accdata(struct _dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t accOffset, uint16_t len)
 {
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER); // Block if request pending
+    assert(err == DPL_OK);
 
     // Force on the ACC clocks if we are sequenced
     dw1000_phy_sysclk_ACC(inst, true);
     dw1000_read(inst, ACC_MEM_ID, accOffset, buffer, len) ;
     dw1000_phy_sysclk_ACC(inst, false);
     
-    err = os_mutex_release(&inst->mutex);  
-    assert(err == OS_OK);
+    err = dpl_mutex_release(&inst->mutex);  
+    assert(err == DPL_OK);
     return inst->status;
 }
 
@@ -888,8 +880,8 @@ dw1000_read_accdata(struct _dw1000_dev_instance_t * inst, uint8_t *buffer, uint1
 struct _dw1000_dev_status_t 
 dw1000_mac_framefilter(struct _dw1000_dev_instance_t * inst, uint16_t enable)
 {
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER); // Block if request pending
+    assert(err == DPL_OK);
 
     uint32_t sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)) ; // Read sysconfig register
 
@@ -901,8 +893,8 @@ dw1000_mac_framefilter(struct _dw1000_dev_instance_t * inst, uint16_t enable)
         sys_cfg_reg &= ~(SYS_CFG_FFE);
 
     dw1000_write_reg(inst, SYS_CFG_ID,0, sys_cfg_reg, sizeof(uint32_t)); 
-    err = os_mutex_release(&inst->mutex);  
-    assert(err == OS_OK);
+    err = dpl_mutex_release(&inst->mutex);  
+    assert(err == DPL_OK);
 
     return inst->status;
 }
@@ -924,8 +916,8 @@ dw1000_set_autoack(struct _dw1000_dev_instance_t * inst, bool enable)
 {
     assert(inst->config.framefilter_enabled);
 
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER); // Block if request pending
+    assert(err == DPL_OK);
 
     uint32_t sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)); // Read sysconfig register
 
@@ -938,8 +930,8 @@ dw1000_set_autoack(struct _dw1000_dev_instance_t * inst, bool enable)
         dw1000_write_reg(inst, SYS_CFG_ID,0, sys_cfg_reg, sizeof(uint32_t));
     }
 
-    err = os_mutex_release(&inst->mutex);  
-    assert(err == OS_OK);
+    err = dpl_mutex_release(&inst->mutex);  
+    assert(err == DPL_OK);
 
     return inst->status;
 }
@@ -960,15 +952,15 @@ dw1000_set_autoack_delay(struct _dw1000_dev_instance_t * inst, uint8_t delay)
 {
     assert(inst->config.framefilter_enabled);
 
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER); // Block if request pending
+    assert(err == DPL_OK);
 
     inst->config.autoack_delay_enabled = delay > 0;
     if (inst->control.autoack_delay_enabled)
         dw1000_write_reg(inst, ACK_RESP_T_ID, ACK_RESP_T_ACK_TIM_OFFSET, delay, sizeof(uint8_t)); // In symbols
 
-    err = os_mutex_release(&inst->mutex);  
-    assert(err == OS_OK);
+    err = dpl_mutex_release(&inst->mutex);  
+    assert(err == DPL_OK);
 
     dw1000_set_autoack(inst, true);
 
@@ -992,8 +984,8 @@ dw1000_set_autoack_delay(struct _dw1000_dev_instance_t * inst, uint8_t delay)
 struct _dw1000_dev_status_t 
 dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay)
 {    
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER); // Block if request pending
+    assert(err == DPL_OK);
     
     inst->control.wait4resp_delay_enabled = delay > 0;
     if (inst->control.wait4resp_delay_enabled) {
@@ -1002,8 +994,8 @@ dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay)
         ack_resp_reg |= (delay & ACK_RESP_T_W4R_TIM_MASK) ; // In UWB microseconds (e.g. turn the receiver on 20uus after TX)
         dw1000_write_reg(inst, ACK_RESP_T_ID, 0, ack_resp_reg, sizeof(uint32_t));
     }
-    err = os_mutex_release(&inst->mutex);  
-    assert(err == OS_OK);
+    err = dpl_mutex_release(&inst->mutex);  
+    assert(err == DPL_OK);
     
     return inst->status;
 }
@@ -1021,8 +1013,8 @@ dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay)
 struct _dw1000_dev_status_t 
 dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool enable)
 {
-    os_error_t err = os_mutex_pend(&inst->mutex,  OS_TIMEOUT_NEVER); // Block if request pending
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER); // Block if request pending
+    assert(err == DPL_OK);
 
     uint32_t sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)); 
 
@@ -1035,8 +1027,8 @@ dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool enable)
     
     dw1000_sync_rxbufptrs(inst);
     
-    err = os_mutex_release(&inst->mutex);       // Read modify write critical section exit
-    assert(err == OS_OK);
+    err = dpl_mutex_release(&inst->mutex);       // Read modify write critical section exit
+    assert(err == DPL_OK);
     
     return inst->status;
 }
@@ -1193,21 +1185,20 @@ void
 dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
 {
     /* Check if the tasks are already initiated */
-    if (!os_eventq_inited(&inst->eventq))
+    if (!dpl_eventq_inited(&inst->eventq))
     {
         /* Use a dedicate event queue for timer and interrupt events */
-        os_eventq_init(&inst->eventq);
+        dpl_eventq_init(&inst->eventq);
         /*
          * Create the task to process timer and interrupt events from the
          * my_timer_interrupt_eventq event queue.
          */
-        inst->interrupt_ev.ev_cb = dw1000_interrupt_ev_cb;
-        inst->interrupt_ev.ev_arg = (void *)inst;
 
-        os_task_init(&inst->task_str, "dw1000_irq",
-                     dw1000_interrupt_task,
+        dpl_event_init(&inst->interrupt_ev, dw1000_interrupt_ev_cb, (void *)inst);
+        dpl_task_init(&inst->task_str, "dw1000_irq",
+                     &dw1000_interrupt_task,
                      (void *) inst,
-                     inst->task_prio, OS_WAIT_FOREVER,
+                     inst->task_prio, DPL_WAIT_FOREVER,
                      inst->task_stack,
                      DW1000_DEV_TASK_STACK_SZ);
         /* Enable pull-down on IRQ to not get spurious interrupts when dw1000 is sleeping */
@@ -1229,7 +1220,7 @@ dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
 static void 
 dw1000_irq(void *arg){
     dw1000_dev_instance_t * inst = arg;
-    os_eventq_put(&inst->eventq, &inst->interrupt_ev);   
+    dpl_eventq_put(&inst->eventq, &inst->interrupt_ev);   
 }
 
 /**
@@ -1243,7 +1234,7 @@ dw1000_interrupt_task(void *arg)
 {
     dw1000_dev_instance_t * inst = arg;
     while (1) {
-        os_eventq_run(&inst->eventq);
+        dpl_eventq_run(&inst->eventq);
     }
 }
 
@@ -1364,9 +1355,9 @@ dw1000_ic_and_host_ptrs_equal(dw1000_dev_instance_t * inst)
  * 
  */
 static void 
-dw1000_interrupt_ev_cb(struct os_event *ev)
+dw1000_interrupt_ev_cb(struct dpl_event *ev)
 {
-    dw1000_dev_instance_t * inst = ev->ev_arg;
+    dw1000_dev_instance_t * inst = dpl_event_get_arg(ev);
 
     inst->sys_status = dw1000_read_reg(inst, SYS_STATUS_ID, 0, sizeof(uint32_t)); // Read status register low 32bits
     //printf("inst->sys_status= %lX\n",inst->sys_status);
@@ -1378,9 +1369,9 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
     inst->status.overrun_error = (inst->sys_status & SYS_STATUS_RXOVRR) != 0;
     inst->status.txbuf_error = (inst->sys_status & SYS_STATUS_TXBERR) != 0;
 
-    if(os_sem_get_count(&inst->tx_sem) == 0){
-            os_error_t err = os_sem_release(&inst->tx_sem);  
-            assert(err == OS_OK); 
+    if(dpl_sem_get_count(&inst->tx_sem) == 0){
+            dpl_error_t err = dpl_sem_release(&inst->tx_sem);  
+            assert(err == DPL_OK); 
     }
     
     // leading edge detection complete
@@ -1525,9 +1516,9 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
             dw1000_phy_rx_reset(inst);      // Reset in case we were late and a frame was already being received
         }
 
-        if(os_sem_get_count(&inst->tx_sem) == 0){
-            os_error_t err = os_sem_release(&inst->tx_sem);  
-            assert(err == OS_OK); 
+        if(dpl_sem_get_count(&inst->tx_sem) == 0){
+            dpl_error_t err = dpl_sem_release(&inst->tx_sem);  
+            assert(err == DPL_OK); 
         }
         
         // Call the corresponding callback if present
@@ -1543,9 +1534,9 @@ dw1000_interrupt_ev_cb(struct os_event *ev)
     if(inst->status.txbuf_error){
         MAC_STATS_INC(TXBUF_err);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_TXBERR, sizeof(uint32_t)); 
-        if(os_sem_get_count(&inst->tx_sem) == 0){
-            os_error_t err = os_sem_release(&inst->tx_sem);  
-            assert(err == OS_OK); 
+        if(dpl_sem_get_count(&inst->tx_sem) == 0){
+            dpl_error_t err = dpl_sem_release(&inst->tx_sem);  
+            assert(err == DPL_OK); 
         }
     }
 

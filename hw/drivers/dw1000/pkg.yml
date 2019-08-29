@@ -26,8 +26,9 @@ pkg.keywords:
     - uwb
 pkg.deps:
     - "@apache-mynewt-core/hw/hal"
-    - "@mynewt-dw1000-core/lib/dsp"
     - "@apache-mynewt-core/sys/stats/full"
+    - "@mynewt-dw1000-core/lib/dsp"
+    - "@mynewt-dw1000-core/porting/dpl/mynewt"
 pkg.req_apis: 
 
 pkg.init:

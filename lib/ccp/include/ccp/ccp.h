@@ -39,7 +39,6 @@
 extern "C" {
 #endif
 
-#include <hal/hal_spi.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_ftypes.h>
@@ -67,6 +66,11 @@ STATS_SECT_START(ccp_stat_section)
     STATS_SECT_ENTRY(reset)
 STATS_SECT_END
 #endif
+
+/** @ingroup api_services
+ *  This is the dev base class which utilises the functions to perform initialization and necessary configurations on device.
+ *  @{
+ */
 
 // XXX This needs to be made bitfield-safe. Not sure the ifdefs below are enough
 typedef union _ccp_timestamp_t{
@@ -160,8 +164,8 @@ typedef struct _dw1000_ccp_instance_t{
 #endif
     dw1000_mac_interface_t cbs;                     //!< MAC Layer Callbacks
     uint64_t master_euid;                           //!< Clock Master EUID, used to reset wcs if master changes
-    struct os_sem sem;                              //!< Structure containing os semaphores
-    struct os_event postprocess_event;              //!< Structure of callout_postprocess
+    struct dpl_sem sem;                             //!< Structure containing os semaphores
+    struct dpl_event postprocess_event;             //!< Structure of callout_postprocess
     dw1000_ccp_status_t status;                     //!< DW1000 ccp status parameters
     dw1000_ccp_config_t config;                     //!< DW1000 ccp config parameters
     ccp_timestamp_t master_epoch;                   //!< ccp event referenced to master systime
@@ -173,22 +177,27 @@ typedef struct _dw1000_ccp_instance_t{
     uint16_t idx;                                   //!< Circular buffer index pointer  
     uint8_t seq_num;                                //!< Clock Master reported sequence number
     struct hal_timer timer;                         //!< Timer structure
-    struct os_eventq eventq;                        //!< Event queues
-    struct os_event timer_event;                    //!< Event callback
-    struct os_task task_str;                        //!< os_task structure  
+    struct dpl_eventq eventq;                       //!< Event queues
+    struct dpl_event timer_event;                   //!< Event callback
+    struct dpl_task task_str;                       //!< Task structure  
     uint8_t task_prio;                              //!< Priority based task
-    os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]
-        __attribute__((aligned(OS_STACK_ALIGNMENT))); //!< Task stack size
+    dpl_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]
+        __attribute__((aligned(DPL_STACK_ALIGNMENT))); //!< Task stack size
     ccp_frame_t * frames[];                          //!< Buffers to ccp frames
 }dw1000_ccp_instance_t; 
 
 uint64_t ccp_local_to_master(dw1000_ccp_instance_t *ccp, uint32_t timestamp_local);
 dw1000_ccp_instance_t * dw1000_ccp_init(dw1000_dev_instance_t * inst,  uint16_t nframes);
 void dw1000_ccp_free(dw1000_ccp_instance_t * inst);
-void dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, os_event_fn * ccp_postprocess); 
+void dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, dpl_event_fn * ccp_postprocess); 
 void dw1000_ccp_set_tof_comp_cb(dw1000_ccp_instance_t * inst, dw1000_ccp_tof_compensation_cb_t tof_comp_cb);
 void dw1000_ccp_start(dw1000_ccp_instance_t *ccp, dw1000_ccp_role_t role);
 void dw1000_ccp_stop(dw1000_ccp_instance_t *ccp);
+
+/**
+ * @}
+ *
+ */
 
 #ifdef __cplusplus
 }

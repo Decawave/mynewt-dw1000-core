@@ -43,7 +43,9 @@ extern "C" {
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
+#if MYNEWT_VAL(PAN_VERSION_ENABLED)
 #include <bootutil/image.h>
+#endif
 
 //! Roles available for PAN
 typedef enum _dw1000_pan_role_t{
@@ -81,7 +83,9 @@ typedef union{
         uint16_t role;                       //!< Requested role in network
         uint16_t lease_time;                 //!< Requested lease time in seconds
         union {
+#if MYNEWT_VAL(PAN_VERSION_ENABLED)
             struct image_version fw_ver;     //!< Firmware version running
+#endif
             struct {
                 uint16_t pan_id;             //!< Assigned pan_id
                 uint16_t short_address;      //!< Assigned device_id
@@ -120,11 +124,11 @@ typedef struct _dw1000_pan_control_t{
 typedef struct _dw1000_pan_instance_t{
     struct _dw1000_dev_instance_t * dev_inst;    //!< pointer to _dw1000_dev_instance_t
     dw1000_mac_interface_t cbs;                  //!< MAC Layer Callbacks
-    struct os_sem sem;                           //!< Structure containing os semaphores
+    struct dpl_sem sem;                          //!< Structure containing os semaphores
     dw1000_pan_status_t status;                  //!< DW1000 pan status parameters
     dw1000_pan_control_t control;                //!< DW1000 pan control parameters
-    struct os_event postprocess_event;           //!< Structure of postprocess event
-    struct os_callout pan_lease_callout_expiry;  //!< Structure of lease_callout_expiry
+    struct dpl_event postprocess_event;           //!< Structure of postprocess event
+    struct dpl_callout pan_lease_callout_expiry;  //!< Structure of lease_callout_expiry
     dw1000_pan_config_t * config;                //!< DW1000 pan config parameters
     uint16_t nframes;                            //!< Number of buffers defined to store the data
     uint16_t idx;                                //!< Indicates number of DW1000 instances
@@ -133,14 +137,14 @@ typedef struct _dw1000_pan_instance_t{
 
 dw1000_pan_instance_t * dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config, uint16_t nframes);
 void dw1000_pan_free(dw1000_pan_instance_t *pan);
-void dw1000_pan_set_postprocess(dw1000_pan_instance_t *pan, os_event_fn * postprocess);
+void dw1000_pan_set_postprocess(dw1000_pan_instance_t *pan, dpl_event_fn * postprocess);
 void dw1000_pan_start(dw1000_pan_instance_t * pan, dw1000_pan_role_t role, network_role_t network_role);
 dw1000_dev_status_t dw1000_pan_listen(dw1000_pan_instance_t * pan, dw1000_dev_modes_t mode);
 dw1000_pan_status_t dw1000_pan_blink(dw1000_pan_instance_t * pan, uint16_t role, dw1000_dev_modes_t mode, uint64_t delay);
 dw1000_pan_status_t dw1000_pan_reset(dw1000_pan_instance_t * pan, uint64_t delay);
 uint32_t dw1000_pan_lease_remaining(dw1000_pan_instance_t * pan);
 
-void dw1000_pan_slot_timer_cb(struct os_event * ev);
+void dw1000_pan_slot_timer_cb(struct dpl_event * ev);
 
 #ifdef __cplusplus
 }

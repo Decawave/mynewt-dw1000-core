@@ -231,8 +231,8 @@ hal_bsp_init(void)
 #if MYNEWT_VAL(SPI_0_MASTER)
     rc = hal_spi_init(0, (void *)&os_bsp_spi0m_cfg, HAL_SPI_TYPE_MASTER);
     assert(rc == 0);
-    rc = os_sem_init(&g_spi0_sem, 0x1);
-    assert(rc == 0);
+    dpl_error_t err = dpl_sem_init(&g_spi0_sem, 0x1);
+    assert(err == DPL_OK);
 #endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)

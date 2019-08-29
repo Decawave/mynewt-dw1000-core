@@ -1,0 +1,64 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+pkg.name: apps/syscfg
+pkg.type: app
+pkg.description: "Top-level configure for cmake build system"
+pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
+pkg.homepage: "http://www.decawave.com/"
+pkg.keywords:
+  - dw1000
+
+pkg.deps:
+    - "@apache-mynewt-core/kernel/os"
+    - "@apache-mynewt-core/hw/hal"
+    - "@apache-mynewt-core/sys/console/full"
+    - "@apache-mynewt-core/sys/shell"
+    - "@apache-mynewt-core/sys/log/full"
+#    - "@apache-mynewt-core/encoding/json"
+#   - "@apache-mynewt-core/mgmt/imgmgr"
+    - "@apache-mynewt-core/mgmt/newtmgr"
+    - "@mynewt-dw1000-core/hw/drivers/dw1000"
+    - "@mynewt-dw1000-core/lib/twr_ss_nrng"
+    - "@mynewt-dw1000-core/sys/uwbcfg"   
+    - "@mynewt-dw1000-core/lib/pan"
+    - "@mynewt-dw1000-core/lib/tdma"
+    - "@mynewt-dw1000-core/lib/ccp"
+    - "@mynewt-dw1000-core/lib/cir"
+    #    - "@mynewt-dw1000-core/lib/wcs"
+#    - "@mynewt-timescale-lib/lib/timescale"
+    - "@mynewt-dw1000-core/lib/survey"
+#    - "@mynewt-dw1000-core/lib/nmgr_uwb"
+#    - "@mynewt-dw1000-core/mgmt/bcast_ota"
+#    - "@mynewt-dw1000-core/lib/panmaster"
+#    - "@mynewt-dw1000-apps/lib/bleprph"
+    - "@mynewt-dw1000-core/lib/rng"
+    - "@mynewt-dw1000-core/lib/twr_ss"
+    - "@mynewt-dw1000-core/lib/twr_ss_ext"
+    - "@mynewt-dw1000-core/lib/twr_ds"
+    - "@mynewt-dw1000-core/lib/twr_ds_ext"
+    - "@mynewt-dw1000-core/lib/nrng"
+    - "@mynewt-dw1000-core/lib/twr_ss_nrng"
+
+pkg.cflags:
+    - "-std=gnu99"
+    - "-fms-extensions"
+
+pkg.lflags:
+    - "-lm"

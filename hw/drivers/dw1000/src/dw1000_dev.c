@@ -264,12 +264,12 @@ dw1000_dev_init(struct os_dev *odev, void *arg)
     inst->spi_sem = cfg->spi_sem;
     inst->spi_num = cfg->spi_num;
 
-    os_error_t err = os_mutex_init(&inst->mutex);
-    assert(err == OS_OK);
-    err = os_sem_init(&inst->tx_sem, 0x1); 
-    assert(err == OS_OK);
-    err = os_sem_init(&inst->spi_nb_sem, 0x1);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_init(&inst->mutex);
+    assert(err == DPL_OK);
+    err = dpl_sem_init(&inst->tx_sem, 0x1); 
+    assert(err == DPL_OK);
+    err = dpl_sem_init(&inst->spi_nb_sem, 0x1);
+    assert(err == DPL_OK);
 
     SLIST_INIT(&inst->interface_cbs);
 
@@ -443,8 +443,8 @@ dw1000_dev_status_t
 dw1000_dev_enter_sleep(dw1000_dev_instance_t * inst)
 {
     // Critical region, atomic lock with mutex
-    os_error_t err = os_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex, DPL_WAIT_FOREVER);
+    assert(err == DPL_OK);
     
     /* Upload always on array configuration and enter sleep */
     dw1000_write_reg(inst, AON_ID, AON_CTRL_OFFSET, 0x0, sizeof(uint16_t));
@@ -452,8 +452,8 @@ dw1000_dev_enter_sleep(dw1000_dev_instance_t * inst)
     inst->status.sleeping = 1;
 
     // Critical region, unlock mutex
-    err = os_mutex_release(&inst->mutex);
-    assert(err == OS_OK);
+    err = dpl_mutex_release(&inst->mutex);
+    assert(err == DPL_OK);
     return inst->status;
 }
 
@@ -469,8 +469,8 @@ dw1000_dev_wakeup(dw1000_dev_instance_t * inst)
     int timeout=5;
     uint32_t devid;
     // Critical region, atomic lock with mutex
-    os_error_t err = os_mutex_pend(&inst->mutex, OS_WAIT_FOREVER);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_mutex_pend(&inst->mutex, DPL_WAIT_FOREVER);
+    assert(err == DPL_OK);
 
     devid = dw1000_read_reg(inst, DEV_ID_ID, 0, sizeof(uint32_t));
 
@@ -488,13 +488,13 @@ dw1000_dev_wakeup(dw1000_dev_instance_t * inst)
     dw1000_phy_set_tx_antennadelay(inst, inst->tx_antenna_delay);
 
     // Critical region, unlock mutex
-    err = os_mutex_release(&inst->mutex);
-    assert(err == OS_OK);
+    err = dpl_mutex_release(&inst->mutex);
+    assert(err == DPL_OK);
 
     /* In case dw1000 was instructed to sleep directly after tx
      * we may need to release the tx sem */
-    if(os_sem_get_count(&inst->tx_sem) == 0) {
-        os_sem_release(&inst->tx_sem);
+    if(dpl_sem_get_count(&inst->tx_sem) == 0) {
+        dpl_sem_release(&inst->tx_sem);
     }
 
     return inst->status;

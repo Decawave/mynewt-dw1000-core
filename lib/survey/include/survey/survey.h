@@ -102,8 +102,8 @@ typedef struct _survey_instance_t{
     struct _dw1000_nrng_instance_t * nrng;      //!< Pointer to _dw1000_nrng_instance_t
     STATS_SECT_DECL(survey_stat_section) stat;  //!< Stats instance
     dw1000_mac_interface_t cbs;                 //!< MAC Layer Callbacks
-    void (* survey_complete_cb) (struct os_event *ev); //!< Optional Callback for post processing
-    struct os_sem sem;                          //!< Structure containing os semaphores
+    void (* survey_complete_cb) (struct dpl_event *ev); //!< Optional Callback for post processing
+    struct dpl_sem sem;                          //!< Structure containing os semaphores
     survey_status_t status;                     //!< Survey status parameters
     survey_config_t config;                     //!< Survey control parameters
     uint8_t seq_num;
@@ -117,8 +117,8 @@ typedef struct _survey_instance_t{
 
 survey_instance_t * survey_init(struct _dw1000_dev_instance_t * inst, uint16_t nnodes, uint16_t nframes);
 void survey_free(survey_instance_t * inst);
-void survey_slot_range_cb(struct os_event *ev);
-void survey_slot_broadcast_cb(struct os_event *ev);
+void survey_slot_range_cb(struct dpl_event *ev);
+void survey_slot_broadcast_cb(struct dpl_event *ev);
 survey_status_t survey_receiver(survey_instance_t * survey, uint64_t dx_time);
 
 #ifdef __cplusplus
