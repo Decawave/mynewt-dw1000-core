@@ -38,6 +38,7 @@
 #include <hal/hal_gpio.h>
 #include "bsp/bsp.h"
 #include <stats/stats.h>
+#include <config/config.h>
 
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
@@ -81,6 +82,7 @@ static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *
 static int nmgr_uwb_img_upload(int argc, char** argv);
 static int nmgr_uwb_img_list(int argc, char** argv);
 static int nmgr_uwb_img_set_state(int argc, char** argv);
+static int nmgr_uwb_remote_config(int argc, char** argv);
 static struct os_mbuf* buf_to_imgmgr_mbuf(uint8_t *buf, uint64_t len, uint64_t off, uint32_t size);
 
 static dw1000_mac_interface_t g_cbs[] = {
@@ -117,10 +119,14 @@ struct shell_cmd_help help[] = {
     {
         .summary = "List the details of the current images in the slave node",
         .usage = "img_list dst_add(0x1234)",
+    },
+    {
+        .summary = "Send config commands to remote node",
+        .usage = "remcfg <dst addr> <name> [value]",
     }
 };
 
-struct shell_cmd imgmgr_cli_cmds[] = {
+static struct shell_cmd cli_cmds[] = {
     {
         .sc_cmd = "img_upload",
         .sc_cmd_func = nmgr_uwb_img_upload,
@@ -136,9 +142,14 @@ struct shell_cmd imgmgr_cli_cmds[] = {
         .sc_cmd_func = nmgr_uwb_img_list,
         .help = &help[2],
     },
+    {
+        .sc_cmd = "remcfg",
+        .sc_cmd_func = nmgr_uwb_remote_config,
+        .help = &help[3],
+    },
 };
 
-#define CLI_CMD_NUM sizeof(imgmgr_cli_cmds)/sizeof(struct shell_cmd)
+#define CLI_CMD_NUM sizeof(cli_cmds)/sizeof(struct shell_cmd)
 
 /**
  * API to initialise the rng package.
@@ -196,7 +207,7 @@ void nmgr_cmds_pkg_init(void){
     nmgr_inst->parent = hal_dw1000_inst(2);
 #endif
     for(int i =0; i < CLI_CMD_NUM; i++)
-        shell_cmd_register(&imgmgr_cli_cmds[i]);
+        shell_cmd_register(&cli_cmds[i]);
 
     os_sem_init(&nmgr_inst->cmd_sem, 0x1);
 
@@ -279,7 +290,8 @@ nmgr_uwb_img_upload(int argc, char** argv){
             rsp = NULL;
         }
 
-        int rc = uwb_nmgr_queue_tx(inst, dst_add, 0, rsp);
+        nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NMGR_UWB);
+        int rc = uwb_nmgr_queue_tx(nmgruwb, dst_add, 0, rsp);
         if (rc) {
             /* Failed to send */
             os_time_delay(OS_TICKS_PER_SEC/10);
@@ -335,7 +347,9 @@ nmgr_uwb_img_list(int argc, char** argv){
         return 1;
     }
 
-    uwb_nmgr_queue_tx(hal_dw1000_inst(0), dst_addr, 0, om);
+    nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NMGR_UWB);
+    assert(nmgruwb);
+    uwb_nmgr_queue_tx(nmgruwb, dst_addr, 0, om);
     return 0;
 }
 
@@ -395,7 +409,9 @@ nmgr_uwb_img_set_state(int argc, char** argv){
     hdr->nh_len += cbor_encode_bytes_written(&nmgr_inst->n_b.encoder);
     hdr->nh_len = htons(hdr->nh_len);
 
-    uwb_nmgr_queue_tx(hal_dw1000_inst(0), dst_add, 0, tx_pkt);
+    nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NMGR_UWB);
+    assert(nmgruwb);
+    uwb_nmgr_queue_tx(nmgruwb, dst_add, 0, tx_pkt);
     return 0;
 }
 
@@ -444,6 +460,94 @@ buf_to_imgmgr_mbuf(uint8_t *buf, uint64_t len, uint64_t off, uint32_t size)
     hdr->nh_len = htons(hdr->nh_len);
     
     return tx_pkt;
+}
+
+static struct os_mbuf*
+get_txcfg_mbuf(char *name_str, char *value_str)
+{
+    int rc;
+    CborEncoder payload_enc;
+    struct mgmt_cbuf n_b;
+    struct cbor_mbuf_writer writer;
+    struct nmgr_hdr *hdr;
+    struct os_mbuf *rsp;
+
+    rsp = os_msys_get_pkthdr(0, 0);
+    if (!rsp) {
+        return 0;
+    }
+
+    hdr = (struct nmgr_hdr *) os_mbuf_extend(rsp, sizeof(struct nmgr_hdr));
+    if (!hdr) {
+        goto exit_err;
+    }
+    hdr->nh_len = 0;
+    hdr->nh_flags = 0;
+    hdr->nh_op = (!value_str)? NMGR_OP_READ : NMGR_OP_WRITE;
+    hdr->nh_group = htons(MGMT_GROUP_ID_CONFIG);
+    hdr->nh_seq = 0;
+    hdr->nh_id = CONF_NMGR_OP;
+
+    cbor_mbuf_writer_init(&writer, rsp);
+    cbor_encoder_init(&n_b.encoder, &writer.enc, 0);
+    rc = cbor_encoder_create_map(&n_b.encoder, &payload_enc, CborIndefiniteLength);
+    if (rc != 0) {
+        goto exit_err;
+    }
+
+    struct mgmt_cbuf *cb = &n_b;
+    CborError g_err = CborNoError;
+
+    g_err |= cbor_encode_text_stringz(&payload_enc, "name");
+    g_err |= cbor_encode_text_stringz(&payload_enc, name_str);
+    if (value_str!=0) {
+        g_err |= cbor_encode_text_stringz(&payload_enc, "val");
+        g_err |= cbor_encode_text_stringz(&payload_enc, value_str);
+        g_err |= cbor_encode_text_stringz(&payload_enc, "save");
+        g_err |= cbor_encode_boolean(&payload_enc, true);
+        console_printf("# txcfg: '%s' -> '%s'\n", name_str, value_str);
+    }
+
+    rc = cbor_encoder_close_container(&cb->encoder, &payload_enc);
+    if (rc != 0) {
+        goto exit_err;
+    }
+    hdr->nh_len += cbor_encode_bytes_written(&cb->encoder);
+    hdr->nh_len = htons(hdr->nh_len);
+
+    return rsp;
+exit_err:
+    console_printf("something went wrong\n");
+    os_mbuf_free_chain(rsp);
+    return 0;
+}
+
+static int
+nmgr_uwb_remote_config(int argc, char** argv)
+{
+    uint16_t dst_addr;
+    char *name_str;
+    char *val_str = 0;
+    if (argc < 3) {
+        return -1;
+    }
+
+    dst_addr = strtol(argv[1], NULL, 16);
+    if (!dst_addr) {
+        console_printf("Dst addr needed\n");
+        return 1;
+    }
+
+    name_str = argv[2];
+    if (argc > 3) {
+        val_str = argv[3];
+    }
+
+    struct os_mbuf *om = get_txcfg_mbuf(name_str, val_str);
+    nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NMGR_UWB);
+    assert(nmgruwb);
+    uwb_nmgr_queue_tx(nmgruwb, dst_addr, 0, om);
+    return 0;
 }
 
 
@@ -536,24 +640,175 @@ rx_post_process(struct os_event* ev)
         cbor_mbuf_reader_init(&nmgr_inst->reader, nmgr_inst->rx_pkt, sizeof(struct nmgr_hdr));
         cbor_parser_init(&nmgr_inst->reader.r, 0, &nmgr_inst->n_b.parser, &nmgr_inst->n_b.it);
 
-        if(nmgr_inst->cmd_id == IMGMGR_NMGR_ID_UPLOAD){
-            long long int rc = 0, off = 0;
+        if(frame->hdr.nh_group == htons(MGMT_GROUP_ID_IMAGE)) {
+            if(nmgr_inst->cmd_id == IMGMGR_NMGR_ID_UPLOAD) {
+                long long int rc = 0, off = 0;
+                char rsn[15] = "\0";
+                struct cbor_attr_t attrs[4] = {
+                    [0] = {
+                        .attribute = "rc",
+                        .type = CborAttrIntegerType,
+                        .addr.integer = &rc,
+                        .nodefault = true,
+                    },
+                    [1] = {
+                        .attribute = "off",
+                        .type = CborAttrIntegerType,
+                        .addr.integer = &off,
+                        .nodefault = true,
+                    },
+                    [2] = {
+                        .attribute = "rsn",
+                        .type = CborAttrTextStringType,
+                        .addr.string = rsn,
+                        .nodefault = 1,
+                        .len = sizeof(rsn),
+
+                    },
+                    [3] = {
+                        .attribute = NULL
+                    }
+                };
+                rc = cbor_read_object(&nmgr_inst->n_b.it, attrs);
+                if(rc != 0){
+                    nmgr_inst->err_status = (uint8_t)rc;
+                }else{
+                    nmgr_inst->err_status = 0;
+                    nmgr_inst->curr_off = off;
+                }
+                os_mbuf_free_chain(nmgr_inst->rx_pkt);
+                os_sem_release(&nmgr_inst->cmd_sem);
+            }else if(nmgr_inst->cmd_id == IMGMGR_NMGR_ID_STATE){
+                struct h_obj {
+                    char hash[IMGMGR_HASH_LEN];
+                    char version[32];
+                    long long int rc;
+                    long long int slot;
+                    bool bootable;
+                    bool active;
+                    bool confirmed;
+                    bool pending;
+                    bool permenant;
+                } arr_objs[2];
+                char hash_str[IMGMGR_HASH_LEN * 2 + 1];
+                long long int rc = 0;
+                int count = 0;
+                memset(&arr_objs[0], 0xff, 2 * sizeof(struct h_obj));
+                struct cbor_attr_t attrs[9] = {
+                    [0] = {
+                        .attribute = "hash",
+                        .type = CborAttrByteStringType,
+                        CBORATTR_STRUCT_OBJECT(struct h_obj, hash),
+                        .nodefault = 1,
+                        .len = sizeof(arr_objs[0].hash),
+                    },
+                    [1] = {
+                        .attribute = "slot",
+                        .type= CborAttrIntegerType,
+                        CBORATTR_STRUCT_OBJECT(struct h_obj, slot),
+                        .nodefault = true,
+                    },
+                    [2] = {
+                        .attribute = "version",
+                        .type = CborAttrTextStringType,
+                        CBORATTR_STRUCT_OBJECT(struct h_obj, version),
+                        .len = sizeof(arr_objs[0].version),
+                    },
+                    [3] = {
+                        .attribute = "bootable",
+                        .type= CborAttrBooleanType,
+                        CBORATTR_STRUCT_OBJECT(struct h_obj, bootable),
+                        .nodefault = true,
+                    },
+                    [4] = {
+                        .attribute = "active",
+                        .type= CborAttrBooleanType,
+                        CBORATTR_STRUCT_OBJECT(struct h_obj, active),
+                        .nodefault = true,
+                    },
+                    [5] = {
+                        .attribute = "confirmed",
+                        .type= CborAttrBooleanType,
+                        CBORATTR_STRUCT_OBJECT(struct h_obj, confirmed),
+                        .nodefault = true,
+                    },
+                    [6] = {
+                        .attribute = "pending",
+                        .type= CborAttrBooleanType,
+                        CBORATTR_STRUCT_OBJECT(struct h_obj, pending),
+                        .nodefault = true,
+                    },
+                    [7] = {
+                        .attribute = "permanent",
+                        .type= CborAttrBooleanType,
+                        CBORATTR_STRUCT_OBJECT(struct h_obj, permenant),
+                        .nodefault = true,
+                    },
+                    [8] = {
+                        NULL,
+                    },
+                };
+                struct cbor_attr_t arr[3] = {
+                    [0]={
+                        .attribute = "images",
+                        .type = CborAttrArrayType,
+                        CBORATTR_STRUCT_ARRAY(arr_objs, attrs, &count)
+                    },
+                    [1]={
+                        .attribute = "rc",
+                        .type = CborAttrIntegerType,
+                        .addr.integer = &rc,
+                        .nodefault = true,
+                    },
+                    [2] = {
+                        NULL,
+                    },
+                };
+                int err = cbor_read_object(&nmgr_inst->n_b.it, arr);
+                if(rc != 0LL || err != 0){
+                    nmgr_inst->err_status = 1;
+                    printf("Wrong hash sent %lld %d\n", rc, err);
+                    goto err;
+                }else
+                    nmgr_inst->err_status = 0;
+                for(int i =0; i< count; i++){
+                    printf("\nSlot = %lld \n", arr_objs[i].slot);
+                    printf("Version = %s \n", arr_objs[i].version);
+                    if(arr_objs[i].bootable)
+                        printf("bootable : true \n");
+                    printf("Flags : ");
+                    if(arr_objs[i].active)
+                        printf("active ");
+                    if(arr_objs[i].confirmed)
+                        printf("confirmed ");
+                    if(arr_objs[i].pending)
+                        printf("pending ");
+                    printf("\n%s\n", hex_format(arr_objs[i].hash, IMGMGR_HASH_LEN, hash_str, sizeof(hash_str)));
+                }
+            err:
+                os_mbuf_free_chain(nmgr_inst->rx_pkt);
+            }
+        } else if(frame->hdr.nh_group == htons(MGMT_GROUP_ID_CONFIG)) {
+            long long int rc = 0;
+            char name_str[CONF_MAX_NAME_LEN] = {0};
+            char val_str[CONF_MAX_VAL_LEN] = {0};
+
             char rsn[15] = "\0";
             struct cbor_attr_t attrs[4] = {
                 [0] = {
-                    .attribute = "rc",
-                    .type = CborAttrIntegerType,
-                    .addr.integer = &rc,
-                    .nodefault = true,
+                    .attribute = "name",
+                    .type = CborAttrTextStringType,
+                    .addr.string = name_str,
+                    .len = sizeof(name_str)
                 },
                 [1] = {
-                    .attribute = "off",
-                    .type = CborAttrIntegerType,
-                    .addr.integer = &off,
-                    .nodefault = true,
+                    .attribute = "val",
+                    .type = CborAttrTextStringType,
+                    .addr.string = val_str,
+                    .len = sizeof(val_str)
                 },
                 [2] = {
-                    .attribute = "rsn",
+                    .attribute = "rc",
                     .type = CborAttrTextStringType,
                     .addr.string = rsn,
                     .nodefault = 1,
@@ -564,128 +819,18 @@ rx_post_process(struct os_event* ev)
                     .attribute = NULL
                 }
             };
-            rc = cbor_read_object(&nmgr_inst->n_b.it, attrs);
-            if(rc != 0){
-                nmgr_inst->err_status = (uint8_t)rc;
-                
-            }else{
-                nmgr_inst->err_status = 0;
-                nmgr_inst->curr_off = off;
+            cbor_read_object(&nmgr_inst->n_b.it, attrs);
+            if (frame->hdr.nh_op == NMGR_OP_WRITE_RSP) {
+                console_printf("# Reply from 0x%04x: rc:%d, Write %s\n",
+                               frame->src_address, (int)rc, (rc)?"ERR":"OK");
+            } else {
+                console_printf("# Reply from 0x%04x: rc:%d value:'%s'\n",
+                               frame->src_address, (int)rc,
+                               val_str);
             }
             os_mbuf_free_chain(nmgr_inst->rx_pkt);
-            os_sem_release(&nmgr_inst->cmd_sem);
-        }else if(nmgr_inst->cmd_id == IMGMGR_NMGR_ID_STATE){
-            struct h_obj {
-                char hash[IMGMGR_HASH_LEN];
-                char version[32];
-                long long int rc;
-                long long int slot;
-                bool bootable;
-                bool active;
-                bool confirmed;
-                bool pending;
-                bool permenant;
-            } arr_objs[2];
-            char hash_str[IMGMGR_HASH_LEN * 2 + 1];
-            long long int rc = 0;
-            int count = 0;
-            memset(&arr_objs[0], 0xff, 2 * sizeof(struct h_obj));
-            struct cbor_attr_t attrs[9] = {
-                [0] = {
-                    .attribute = "hash",
-                    .type = CborAttrByteStringType,
-                    CBORATTR_STRUCT_OBJECT(struct h_obj, hash),
-                    .nodefault = 1,
-                    .len = sizeof(arr_objs[0].hash),
-                },
-                [1] = {
-                    .attribute = "slot",
-                    .type= CborAttrIntegerType,
-                    CBORATTR_STRUCT_OBJECT(struct h_obj, slot),
-                    .nodefault = true,
-                },
-                [2] = {
-                    .attribute = "version",
-                    .type = CborAttrTextStringType,
-                    CBORATTR_STRUCT_OBJECT(struct h_obj, version),
-                    .len = sizeof(arr_objs[0].version),
-                },
-                [3] = {
-                    .attribute = "bootable",
-                    .type= CborAttrBooleanType,
-                    CBORATTR_STRUCT_OBJECT(struct h_obj, bootable),
-                    .nodefault = true,
-                },
-                [4] = {
-                    .attribute = "active",
-                    .type= CborAttrBooleanType,
-                    CBORATTR_STRUCT_OBJECT(struct h_obj, active),
-                    .nodefault = true,
-                },
-                [5] = {
-                    .attribute = "confirmed",
-                    .type= CborAttrBooleanType,
-                    CBORATTR_STRUCT_OBJECT(struct h_obj, confirmed),
-                    .nodefault = true,
-                },
-                [6] = {
-                    .attribute = "pending",
-                    .type= CborAttrBooleanType,
-                    CBORATTR_STRUCT_OBJECT(struct h_obj, pending),
-                    .nodefault = true,
-                },
-                [7] = {
-                    .attribute = "permanent",
-                    .type= CborAttrBooleanType,
-                    CBORATTR_STRUCT_OBJECT(struct h_obj, permenant),
-                    .nodefault = true,
-                },
-                [8] = {
-                    NULL,
-                },
-            };
-            struct cbor_attr_t arr[3] = {
-                [0]={
-                    .attribute = "images",
-                    .type = CborAttrArrayType,
-                    CBORATTR_STRUCT_ARRAY(arr_objs, attrs, &count)
-                },
-                [1]={
-                    .attribute = "rc",
-                    .type = CborAttrIntegerType,
-                    .addr.integer = &rc,
-                    .nodefault = true,
-                },
-                [2] = {
-                    NULL,
-                },
-            };
-            int err = cbor_read_object(&nmgr_inst->n_b.it, arr);
-            if(rc != 0LL || err != 0){
-                nmgr_inst->err_status = 1;
-                printf("Wrong hash sent %lld %d\n", rc, err);
-                goto err;
-            }else
-                nmgr_inst->err_status = 0;
-            for(int i =0; i< count; i++){
-                printf("\nSlot = %lld \n", arr_objs[i].slot);
-                printf("Version = %s \n", arr_objs[i].version);
-                if(arr_objs[i].bootable)
-                    printf("bootable : true \n");
-                printf("Flags : ");
-                if(arr_objs[i].active)
-                    printf("active ");
-                if(arr_objs[i].confirmed)
-                    printf("confirmed ");
-                if(arr_objs[i].pending)
-                    printf("pending ");
-                printf("\n%s\n", hex_format(arr_objs[i].hash, IMGMGR_HASH_LEN, hash_str, sizeof(hash_str)));
-            }
-err:
-            os_mbuf_free_chain(nmgr_inst->rx_pkt);
-            
-        }else{
-            printf("Unrecognized command \n");
+        } else {
+            printf("Unrecognized reply (cmd_id:%d) \n", nmgr_inst->cmd_id);
             os_mbuf_free_chain(nmgr_inst->rx_pkt);
         }
     }
