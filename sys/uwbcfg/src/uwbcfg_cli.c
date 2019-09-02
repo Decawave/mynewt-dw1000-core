@@ -122,7 +122,7 @@ const struct shell_param cmd_uwbcfg_param[] = {
 };
 
 const struct shell_cmd_help cmd_uwbcfg_help = {
-	"uwbcfg commands", "<txmycfg>", cmd_uwbcfg_param
+	"uwbcfg commands", "<txmycfg, txcfg>", cmd_uwbcfg_param
 };
 #endif
 
