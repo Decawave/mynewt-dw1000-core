@@ -24,8 +24,9 @@ _addons: &addon_conf
     packages:
       - gcc-7-multilib
       - linux-libc-dev:i386
-      - gcc-aarch64-linux-gnu
-      - g++-aarch64-linux-gnu
+      # For arm64
+      #- gcc-aarch64-linux-gnu
+      #- g++-aarch64-linux-gnu
 
 go:
   - "1.12"
@@ -90,6 +91,7 @@ install:
 before_script:
   - newt version
   - gcc --version
+  - aarch64-linux-gnu-gcc --version
   - if [ "${TEST}" != "TEST_ALL" ]; then arm-none-eabi-gcc --version; fi
   - cp -R $HOME/ci/mynewt-dw1000-core-project.yml project.yml
   # Intentionally use the targets from the apps directory here too
@@ -100,12 +102,12 @@ before_script:
   - sed -i "s/^#XX//g" project.yml
     # pass in the number of target sets
   - $HOME/ci/prepare_test.sh $VM_AMOUNT
-    # Test arm64 dpl build
-  - make arm64 && cd build_arm64 && make && cpack
 
     
 script:
   - $HOME/ci/run_test.sh
+    # Test arm64 dpl build
+  #- make arm64 && cd build_arm64 && make && cpack
 
 cache:
   directories:
