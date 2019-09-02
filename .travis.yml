@@ -91,7 +91,7 @@ install:
 before_script:
   - newt version
   - gcc --version
-  - aarch64-linux-gnu-gcc --version
+  #- aarch64-linux-gnu-gcc --version
   - if [ "${TEST}" != "TEST_ALL" ]; then arm-none-eabi-gcc --version; fi
   - cp -R $HOME/ci/mynewt-dw1000-core-project.yml project.yml
   # Intentionally use the targets from the apps directory here too
