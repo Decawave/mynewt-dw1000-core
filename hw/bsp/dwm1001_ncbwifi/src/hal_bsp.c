@@ -54,7 +54,7 @@
 #include "bsp.h"
 
 #if MYNEWT_VAL(SPI_0_MASTER)
-struct os_sem g_spi0_sem;
+struct dpl_sem g_spi0_sem;
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
 /* 

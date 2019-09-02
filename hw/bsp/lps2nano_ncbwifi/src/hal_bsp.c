@@ -363,7 +363,7 @@ void hal_bsp_init(void)
 
 #if MYNEWT_VAL(SPI_0_MASTER)
     {
-    dpl_error_t err = os_sem_init(&g_spi0_sem, 0x1);
+    dpl_error_t err = dpl_sem_init(&g_spi0_sem, 0x1);
     assert(err == DPL_OK);
     }
 #endif
