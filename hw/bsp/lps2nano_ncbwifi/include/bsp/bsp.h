@@ -63,6 +63,8 @@ extern uint8_t _ram_start;
 #define USB_V_PIN           NRF_SAADC_INPUT_AIN6
 #define BATT_V_PIN          NRF_SAADC_INPUT_AIN7
 #define MEAS_BATT_EN_PIN    30
+#define GPIO_PAD_P4_0        9
+#define GPIO_PAD_P2_1       10
 
 int16_t hal_bsp_read_battery_voltage();
 int16_t hal_bsp_read_usb_voltage();

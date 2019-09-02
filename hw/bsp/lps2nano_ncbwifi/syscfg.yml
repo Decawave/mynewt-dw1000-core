@@ -70,6 +70,9 @@ syscfg.defs:
     ESP12F_ENABLED:
         description: 'Enable ESP12F at boot'
         value: 0
+    NCBWIFI_EXT_38_4_MHZ:
+        description: 'Use external sourced 38.4MHz clock'
+        value: 0
 
 syscfg.vals:
     # Enable nRF52832 MCU

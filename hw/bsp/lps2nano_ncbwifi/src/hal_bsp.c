@@ -373,6 +373,12 @@ void hal_bsp_init(void)
     rc = os_dev_create((struct os_dev *) dw1000_0, "dw1000_0",
       OS_DEV_INIT_PRIMARY, 0, dw1000_dev_init, (void *)&dw1000_0_cfg);
     assert(rc == 0);
+
+#if MYNEWT_VAL(NCBWIFI_EXT_38_4_MHZ)
+    /* This assumes a wire from board's GPIO1 to the clock mux */
+    hal_gpio_init_out(GPIO_PAD_P2_1, 1);
+#endif
+
 #endif
 
     /* Enable esp at boot (0=active, 1=inactive) */
