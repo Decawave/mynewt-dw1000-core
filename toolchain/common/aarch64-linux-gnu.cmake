@@ -12,7 +12,7 @@ set(SIZE                aarch64-linux-gnu-size)
 
 
 set(MCPU_FLAGS "-mcpu=cortex-a73")
-set(CMAKE_C_FLAGS   "${MCPU_FLAGS} -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809 -std=gnu11 -Wformat=0 -fms-extensions -fdata-sections -ffunction-sections -Wno-missing-declarations" CACHE INTERNAL "c compiler flags")
+set(CMAKE_C_FLAGS   "${MCPU_FLAGS} -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809 -std=gnu11 -Werror -Wformat=0 -fms-extensions -fdata-sections -ffunction-sections -Wno-missing-declarations" CACHE INTERNAL "c compiler flags")
 set(CMAKE_CXX_FLAGS "${MCPU_FLAGS} -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809 -std=gnu++11 -fms-extensions -fdata-sections -ffunction-sections" CACHE INTERNAL "cxx compiler flags")
 set(CMAKE_ASM_FLAGS "${MCPU_FLAGS}" CACHE INTERNAL "asm compiler flags")
 if (APPLE)

@@ -10,7 +10,7 @@ set(OBJCOPY             objcopy)
 set(OBJDUMP             objdump)
 set(SIZE                size)
 
-set(CMAKE_C_FLAGS   "-D_GNU_SOURCE -D_POSIX_C_SOURCE=200809 -std=gnu11 -Wformat=0 -fms-extensions -fdata-sections -ffunction-sections -Wno-missing-declarations" CACHE INTERNAL "c compiler flags")
+set(CMAKE_C_FLAGS   "-D_GNU_SOURCE -D_POSIX_C_SOURCE=200809 -std=gnu11 -Werror -Wformat=0 -fms-extensions -fdata-sections -ffunction-sections -Wno-missing-declarations" CACHE INTERNAL "c compiler flags")
 set(CMAKE_CXX_FLAGS "-D_GNU_SOURCE -D_POSIX_C_SOURCE=200809 -std=gnu++11 -fms-extensions -fdata-sections -ffunction-sections" CACHE INTERNAL "cxx compiler flags")
 set(CMAKE_ASM_FLAGS "" CACHE INTERNAL "asm compiler flags")
 if (APPLE)
