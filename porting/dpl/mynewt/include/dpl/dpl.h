@@ -33,7 +33,6 @@ extern "C" {
     
 struct dpl_event;
 typedef void dpl_event_fn(struct dpl_event *ev);
-typedef void (* dpl_task_func_t)(void *);
     
 #define DPL_TIME_FOREVER    (OS_TIMEOUT_NEVER)
 #define DPL_TIMEOUT_NEVER   (OS_TIMEOUT_NEVER)
