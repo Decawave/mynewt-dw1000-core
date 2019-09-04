@@ -24,9 +24,6 @@ _addons: &addon_conf
     packages:
       - gcc-7-multilib
       - linux-libc-dev:i386
-      # For arm64
-      #- gcc-aarch64-linux-gnu
-      #- g++-aarch64-linux-gnu
 
 go:
   - "1.12"
@@ -107,7 +104,11 @@ before_script:
 script:
   - $HOME/ci/run_test.sh
     # Test arm64 dpl build
-  #- make arm64 && cd build_arm64 && make && cpack
+  - make generic && pushd ./build_generic;make; popd
+  - make cortex-m3 && pushd ./build_cortex-m3;make; popd
+  - make cortex-m4 && pushd ./build_cortex-m4;make; popd
+  - make cortex-m7 && pushd ./build_cortex-m7;make; popd
+  - make cortex-a73 && pushd ./build_cortex-a73;make; popd
 
 cache:
   directories:

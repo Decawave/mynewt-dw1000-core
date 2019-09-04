@@ -66,10 +66,10 @@ xtensa-lx106:
 	$(COMMON_DEFINITIONS)                                \
 	-DCMAKE_TOOLCHAIN_FILE=../toolchain/xtensa-lx106.cmake ..
 
-arm64:
-	rm -R -f build_arm64
-	mkdir build_arm64
-	cd build_arm64 && cmake -G"Unix Makefiles"      	 \
+cortex-a73:
+	rm -R -f build_cortex-a73
+	mkdir build_cortex-a73
+	cd build_cortex-a73 && cmake -G"Unix Makefiles"      	 \
 	$(COMMON_DEFINITIONS)                                \
 	-DCMAKE_TOOLCHAIN_FILE=../toolchain/arm64.cmake ..
 
