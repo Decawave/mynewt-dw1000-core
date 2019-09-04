@@ -469,13 +469,12 @@ dw1000_rng_request(dw1000_rng_instance_t * rng, uint16_t dst_address, dw1000_rng
 
     // The timeout counter starts when the receiver in re-enabled. The timeout event 
     // should occuring just after the inbound frame is received
-if (code == DWT_SS_TWR_EXT){
-    uint16_t frame_duration = dw1000_phy_frame_duration(&inst->attrib,sizeof(twr_frame_t));
-    dw1000_set_rx_timeout(inst, frame_duration + config->rx_timeout_delay); 
-} 
-else{
-    dw1000_set_rx_timeout(inst, frame_duration + config->rx_timeout_delay); 
-}   
+    if (code == DWT_SS_TWR_EXT) {
+        uint16_t frame_duration = dw1000_phy_frame_duration(&inst->attrib,sizeof(twr_frame_t));
+        dw1000_set_rx_timeout(inst, frame_duration + config->rx_timeout_delay);
+    } else {
+        dw1000_set_rx_timeout(inst, frame_duration + config->rx_timeout_delay);
+    }
     dw1000_set_rxauto_disable(inst, true);
 
     if (rng->control.delay_start_enabled)

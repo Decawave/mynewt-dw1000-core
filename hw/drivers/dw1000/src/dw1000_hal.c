@@ -511,8 +511,8 @@ hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * c
  * @param timeout  Time in os_ticks to wait, use DPL_TIMEOUT_NEVER to wait indefinitely
  * @return void
  */
-os_error_t
-hal_dw1000_rw_noblock_wait(struct _dw1000_dev_instance_t * inst, os_time_t timeout)
+dpl_error_t
+hal_dw1000_rw_noblock_wait(struct _dw1000_dev_instance_t * inst, dpl_time_t timeout)
 {
     dpl_error_t err;
     err = dpl_sem_pend(inst->spi_sem, timeout);
