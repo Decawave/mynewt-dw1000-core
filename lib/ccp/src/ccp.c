@@ -271,7 +271,7 @@ reset_timer:
  * @return void
  */
 
-static void
+static void *
 ccp_task(void *arg)
 {
     dw1000_ccp_instance_t * inst = arg;
@@ -296,7 +296,7 @@ ccp_tasks_init(struct _dw1000_ccp_instance_t * inst)
         /* Use a dedicate event queue for tdma events */
         dpl_eventq_init(&inst->eventq);
         dpl_task_init(&inst->task_str, "dw1000_ccp",
-                     (dpl_task_func_t)ccp_task,
+                     ccp_task,
                      (void *) inst,
                      inst->task_prio, DPL_WAIT_FOREVER,
                      inst->task_stack,

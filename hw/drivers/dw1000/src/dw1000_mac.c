@@ -68,7 +68,7 @@ STATS_NAME_END(mac_stat_section)
 #endif
 
 int dw1000_cli_register(void);
-static void dw1000_interrupt_task(void *arg);
+static void * dw1000_interrupt_task(void *arg);
 static void dw1000_interrupt_ev_cb(struct dpl_event *ev);
 static void dw1000_irq(void *arg);
 
@@ -1198,7 +1198,7 @@ dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
 
         dpl_event_init(&inst->interrupt_ev, dw1000_interrupt_ev_cb, (void *)inst);
         dpl_task_init(&inst->task_str, "dw1000_irq",
-                     &dw1000_interrupt_task,
+                     dw1000_interrupt_task,
                      (void *) inst,
                      inst->task_prio, DPL_WAIT_FOREVER,
                      inst->task_stack,
@@ -1231,13 +1231,14 @@ dw1000_irq(void *arg){
  * @param arg  Pointer to the queue of interrupts.
  * @return void
  */
-static void 
+static void *
 dw1000_interrupt_task(void *arg)
 {
     dw1000_dev_instance_t * inst = arg;
     while (1) {
         dpl_eventq_run(&inst->eventq);
     }
+    return NULL;
 }
 
 

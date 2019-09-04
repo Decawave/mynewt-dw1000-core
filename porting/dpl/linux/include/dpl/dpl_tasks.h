@@ -29,7 +29,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef void (dpl_task_func_t)(void *);
+typedef void * (dpl_task_func_t)(void *);
 
 int dpl_task_init(struct dpl_task *t, const char *name, dpl_task_func_t func,
 		 void *arg, uint8_t prio, dpl_time_t sanity_itvl,

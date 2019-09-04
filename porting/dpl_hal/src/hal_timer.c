@@ -76,12 +76,13 @@ native_timer_cb(struct dpl_event *ev)
 }
 
 
-static void
+static void *
 native_timer_task(void *arg)
 {
     while (1) {
         dpl_eventq_run(&native_timer_evq);
     }
+    return NULL;
 }
 
 

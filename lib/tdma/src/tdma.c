@@ -48,6 +48,11 @@
 #include <wcs/wcs.h>
 #endif
 
+#if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
+#include <os/os_sanity.h>
+
+#endif
+
 #include <stats/stats.h>
 
 #if MYNEWT_VAL(TDMA_STATS)
@@ -75,7 +80,7 @@ static bool tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_inte
 
 #ifdef TDMA_TASKS_ENABLE
 static void tdma_tasks_init(struct _tdma_instance_t * inst);
-static void tdma_task(void *arg);
+static void * tdma_task(void *arg);
 #endif
 
 /**
@@ -253,7 +258,7 @@ tdma_tasks_init(struct _tdma_instance_t * inst)
  *
  * @return void
  */
-static void
+static void *
 tdma_task(void *arg){
     tdma_instance_t * inst = arg;
     while (1) {
