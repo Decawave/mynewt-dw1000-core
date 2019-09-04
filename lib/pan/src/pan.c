@@ -153,7 +153,7 @@ static dw1000_mac_interface_t g_cbs[] = {
         },
 #if MYNEWT_VAL(DW1000_DEVICE_1)
         [1] = {
-            .id = DW1000_RNG,
+            .id = DW1000_PAN,
             .rx_complete_cb = rx_complete_cb,
             .tx_complete_cb = tx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
@@ -162,7 +162,7 @@ static dw1000_mac_interface_t g_cbs[] = {
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
         [2] = {
-            .id = DW1000_RNG,
+            .id = DW1000_PAN,
             .rx_complete_cb = rx_complete_cb,
             .tx_complete_cb = tx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
