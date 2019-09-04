@@ -630,6 +630,7 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
 
     dw1000_dev_control_t control = inst->control;
     dw1000_dev_config_t config = inst->config;
+    inst->status.rx_restarted = 0;
 
     if (config.trxoff_enable){ // force return to idle state, if in RX state
         uint8_t state = (uint8_t) dw1000_read_reg(inst, SYS_STATE_ID, PMSC_STATE_OFFSET, sizeof(uint8_t));
@@ -708,6 +709,7 @@ struct _dw1000_dev_status_t dw1000_stop_rx(struct _dw1000_dev_instance_t * inst)
 inline struct _dw1000_dev_status_t 
 dw1000_set_wait4resp(struct _dw1000_dev_instance_t * inst, bool enable)
 {
+    inst->status.rx_restarted = 0;
     inst->control.wait4resp_enabled = enable;
     return inst->status;
 }
@@ -1398,6 +1400,7 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
              * not entirely sure why though? */
             dw1000_write_reg(inst, SYS_STATUS_ID, 1, (inst->sys_status&(SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR))>>8, sizeof(uint8_t));
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET+1, SYS_CTRL_RXENAB>>8, sizeof(uint8_t));
+            inst->status.rx_restarted = 1;
         }
 
         uint16_t finfo = dw1000_read_reg(inst, RX_FINFO_ID, RX_FINFO_OFFSET, sizeof(uint16_t));     // Read frame info - Only the first two bytes of the register are used here.
@@ -1484,6 +1487,7 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
             dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR), sizeof(uint16_t)); 
             if (inst->control.rxauto_disable == false){
                 dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
+                inst->status.rx_restarted = 1;
             }
             inst->control.rxauto_disable = false;
 
