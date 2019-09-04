@@ -71,7 +71,7 @@ cortex-a73:
 	mkdir build_cortex-a73
 	cd build_cortex-a73 && cmake -G"Unix Makefiles"      	 \
 	$(COMMON_DEFINITIONS)                                \
-	-DCMAKE_TOOLCHAIN_FILE=../toolchain/arm64.cmake ..
+	-DCMAKE_TOOLCHAIN_FILE=../toolchain/cortex-a73.cmake ..
 
 xcode:
 	rm -R -f xcode

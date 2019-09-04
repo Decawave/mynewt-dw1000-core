@@ -13,7 +13,6 @@ file(GLOB remove_from_build "./src/dw1000_cli.c")
 list(REMOVE_ITEM ${PROJECT_NAME}_SOURCES ${remove_from_build})
 
 configure_file(dw1000.pc.in dw1000.pc @ONLY)
-message(WARNING "${PROJECT_SOURCE_DIR}/../../../porting/dpl_hal")
 include_directories(
     include
     "${PROJECT_SOURCE_DIR}/../../../bin/targets/syscfg/generated/include/"

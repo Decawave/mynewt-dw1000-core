@@ -22,8 +22,8 @@ target_include_directories(
     include
 )
 
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
+#set(THREADS_PREFER_PTHREAD_FLAG ON)
+#find_package(Threads REQUIRED)
 
 target_link_libraries(
     ${PROJECT_NAME} 
