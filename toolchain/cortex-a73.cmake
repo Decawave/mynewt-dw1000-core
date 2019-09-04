@@ -1,5 +1,5 @@
 # Name of the target
-set(CMAKE_SYSTEM_PROCESSOR aarch64)
+set(CMAKE_SYSTEM_PROCESSOR cortex-a73)
 
 # Toolchain settings
 set(CMAKE_C_COMPILER    aarch64-linux-gnu-gcc)
@@ -10,13 +10,15 @@ set(OBJCOPY             aarch64-linux-gnu-objcopy)
 set(OBJDUMP             aarch64-linux-gnu-objdump)
 set(SIZE                aarch64-linux-gnu-size)
 
-set(CMAKE_C_FLAGS   "-D_GNU_SOURCE -D_POSIX_C_SOURCE=200809 -std=gnu11 -fms-extensions -fdata-sections -ffunction-sections -Wno-missing-declarations" CACHE INTERNAL "c compiler flags")
-set(CMAKE_CXX_FLAGS "-D_GNU_SOURCE -D_POSIX_C_SOURCE=200809 -std=gnu++11 -fms-extensions -fdata-sections -ffunction-sections" CACHE INTERNAL "cxx compiler flags")
-set(CMAKE_ASM_FLAGS "" CACHE INTERNAL "asm compiler flags")
+
+set(MCPU_FLAGS "-mcpu=cortex-a73")
+set(CMAKE_C_FLAGS   "${MCPU_FLAGS} -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809 -std=gnu11 -fms-extensions -fdata-sections -ffunction-sections -Wno-missing-declarations" CACHE INTERNAL "c compiler flags")
+set(CMAKE_CXX_FLAGS "${MCPU_FLAGS} -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809 -std=gnu++11 -fms-extensions -fdata-sections -ffunction-sections" CACHE INTERNAL "cxx compiler flags")
+set(CMAKE_ASM_FLAGS "${MCPU_FLAGS}" CACHE INTERNAL "asm compiler flags")
 if (APPLE)
-    set(CMAKE_EXE_LINKER_FLAGS "-lrt -dead_strip" CACHE INTERNAL "exe link flags")
+    set(CMAKE_EXE_LINKER_FLAGS "-dead_strip" CACHE INTERNAL "exe link flags")
 else (APPLE)
-    set(CMAKE_EXE_LINKER_FLAGS "-lrt -Wl,--gc-sections" CACHE INTERNAL "exe link flags")
+    set(CMAKE_EXE_LINKER_FLAGS "${MCPU_FLAGS} -Wl,--gc-sections" CACHE INTERNAL "exe link flags")
 endif (APPLE)
 
 SET(CMAKE_C_FLAGS_DEBUG "-O0 -g -ggdb3" CACHE INTERNAL "c debug compiler flags")
