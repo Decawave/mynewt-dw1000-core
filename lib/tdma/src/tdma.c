@@ -264,6 +264,7 @@ tdma_task(void *arg){
     while (1) {
         dpl_eventq_run(&inst->eventq);
     }
+    return NULL;
 }
 #endif
 
