@@ -87,6 +87,38 @@ cir_complete_ev_cb(struct os_event *ev) {
 
 #endif //CIR_VERBOSE
 
+bool
+cir_reread_from_cir(dw1000_dev_instance_t * inst, cir_instance_t *master_cir)
+{
+    /* CIR-data is lost already if the receiver has been turned back on */
+    if (inst->status.rx_restarted) {
+        return false;
+    }
+    cir_instance_t * cir = inst->cir;
+
+    /* Correct aligment using raw timestamp and resampler delays */
+    int64_t raw_ts_diff = ((int64_t)cir->raw_ts + ((int64_t)cir->resampler_delay)*8 -
+                           ((int64_t)master_cir->raw_ts + ((int64_t)master_cir->resampler_delay)*8))/64;
+
+    int fp_idx_override  = floorf(master_cir->fp_idx + 0.5f - raw_ts_diff);
+
+    /* Sanity check, only a fp_index within the accumulator makes sense */
+    if(fp_idx_override < MYNEWT_VAL(CIR_OFFSET) || (fp_idx_override + MYNEWT_VAL(CIR_SIZE)) > 1023) {
+        /* Can't extract CIR from required offset, abort */
+        return false;
+    }
+
+    /* Override our local LDE result with the other LDE's result */
+    cir->status.lde_override = 1;
+
+    dw1000_read_accdata(inst, (uint8_t *)&cir->cir, (fp_idx_override - MYNEWT_VAL(CIR_OFFSET)) * sizeof(cir_complex_t), sizeof(cir_t));
+
+    /* No need to re-read rc-phase, it hasn't changed */
+    cir->angle = atan2f((float)cir->cir.array[MYNEWT_VAL(CIR_OFFSET)].imag, (float)cir->cir.array[MYNEWT_VAL(CIR_OFFSET)].real);
+    cir->status.valid = 1;
+    return true;
+}
+
 /*! 
  * @fn cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  *
@@ -109,6 +141,8 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     CIR_STATS_INC(complete);
     
     cir->raw_ts = dw1000_read_rawrxtime(inst);
+    cir->resampler_delay = dw1000_read_reg(inst, RX_TTCKO_ID, 3, sizeof(uint8_t));
+
     uint16_t fp_idx;
     uint16_t fp_idx_reg = inst->rxdiag.fp_idx;
     if(!inst->config.rxdiag_enable) {
@@ -117,24 +151,43 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     cir->fp_idx = (float)fp_idx_reg / 64.0f;
     fp_idx  = (uint16_t)floorf(cir->fp_idx + 0.5f);
 
-    /* If we are acting as a pdoa slave, we don't trust our own LDE but instead just use the first path index
-     * of the master instance.  */
     if (inst->config.cir_pdoa_slave) {
+        /* This unit is acting as part of a pdoa network of receivers.
+         * instead of trusting the LDE of this unit, use the LDE that detected
+         * the earliest first path. This assumes all receivers are within 30mm of
+         * each other (or rather their antennas).
+         * */
         cir_instance_t * master_cir = hal_dw1000_inst(0)->cir;
         /* Correct for possible different raw timestamp */
-        int64_t raw_ts_diff = ((int64_t)cir->raw_ts - (int64_t)master_cir->raw_ts)/64;
+        int64_t raw_ts_diff = ((int64_t)cir->raw_ts + ((int64_t)cir->resampler_delay)*8 -
+                               ((int64_t)master_cir->raw_ts + ((int64_t)master_cir->resampler_delay)*8))/64;
 
-        cir->fp_idx = master_cir->fp_idx;
         int fp_idx_from_master  = floorf(master_cir->fp_idx + 0.5f - raw_ts_diff);
-
+#if 0
+        int64_t ts_diff = (int64_t)hal_dw1000_inst(0)->rxtimestamp - (int64_t)hal_dw1000_inst(1)->rxtimestamp;
+        printf("# delta fpid[%d]:%d, rtsd:%d, tsd:%dmm fpd:%d, rsdly[%d,%d]\n",
+               inst->idx,
+               fp_idx_from_master - fp_idx,
+               (int)raw_ts_diff, (int)(ts_diff*4.7f),
+               (int)(master_cir->fp_idx - cir->fp_idx),
+               master_cir->resampler_delay, cir->resampler_delay
+            );
+#endif
         /* Check if our first path comes before the master's first path.
-         * If so, the master LDE probably did not select the direct wave and the
-         * pdoa would not be correct */
+         * If so, reread the master's CIR data if possible */
         if (fp_idx_from_master - fp_idx > MYNEWT_VAL(CIR_PDOA_SLAVE_MAX_LEAD)) {
-            return true;
+            bool b = cir_reread_from_cir(hal_dw1000_inst(0), cir);
+            if (!b) {
+                return true;
+            }
+        } else {
+            /* Override our local LDE with master's LDE */
+            cir->status.lde_override = 1;
+            fp_idx = fp_idx_from_master;
         }
     }
 
+    /* Sanity check, only a fp_index within the accumulator makes sense */
     if(fp_idx < MYNEWT_VAL(CIR_OFFSET) || (fp_idx + MYNEWT_VAL(CIR_SIZE)) > 1023) {
         /* Can't extract CIR from required offset, abort */
         return true;

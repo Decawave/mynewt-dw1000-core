@@ -42,6 +42,7 @@ typedef struct _cir_status_t{
     uint16_t selfmalloc:1;
     uint16_t initialized:1;
     uint16_t valid:1;
+    uint16_t lde_override:1;
 }cir_status_t;
 
 typedef union{
@@ -70,10 +71,12 @@ typedef struct _cir_instance_t{
     float rcphase;
     float angle;
     uint64_t raw_ts;
+    uint8_t resampler_delay;
     cir_t cir;
 }cir_instance_t; 
 
 cir_instance_t * cir_init(struct _dw1000_dev_instance_t * inst, struct _cir_instance_t * cir);
+bool cir_reread_from_cir(dw1000_dev_instance_t * inst, cir_instance_t *master_cir);
 void cir_enable(struct _cir_instance_t * inst, bool mode);
 void cir_free(struct _cir_instance_t * inst);
 float cir_get_pdoa(struct _cir_instance_t * master, struct _cir_instance_t *slave);
