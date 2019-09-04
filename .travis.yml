@@ -105,9 +105,6 @@ script:
   - $HOME/ci/run_test.sh
     # Test arm64 dpl build
   - make generic && pushd ./build_generic;make; popd
-  - make cortex-m3 && pushd ./build_cortex-m3;make; popd
-  - make cortex-m4 && pushd ./build_cortex-m4;make; popd
-  - make cortex-m7 && pushd ./build_cortex-m7;make; popd
   - make cortex-a73 && pushd ./build_cortex-a73;make; popd
 
 cache:
