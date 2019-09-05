@@ -76,6 +76,7 @@ typedef struct _cir_instance_t{
 }cir_instance_t; 
 
 cir_instance_t * cir_init(struct _dw1000_dev_instance_t * inst, struct _cir_instance_t * cir);
+float cir_fp_index_diff(cir_instance_t *cir0, cir_instance_t *cir1);
 bool cir_reread_from_cir(dw1000_dev_instance_t * inst, cir_instance_t *master_cir);
 void cir_enable(struct _cir_instance_t * inst, bool mode);
 void cir_free(struct _cir_instance_t * inst);

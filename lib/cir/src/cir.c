@@ -87,6 +87,19 @@ cir_complete_ev_cb(struct os_event *ev) {
 
 #endif //CIR_VERBOSE
 
+
+float
+cir_fp_index_diff(cir_instance_t *cir0, cir_instance_t *cir1)
+{
+    /* Correct aligment using raw timestamp and resampler delays */
+    int64_t raw_ts_diff = ( (int64_t)cir1->raw_ts + ((int64_t)cir1->resampler_delay)*8 -
+                           ((int64_t)cir0->raw_ts + ((int64_t)cir0->resampler_delay)*8))/64;
+
+    float fp_diff = cir1->fp_idx - floorf(cir0->fp_idx + 0.5f - raw_ts_diff);
+    return fp_diff;
+}
+
+
 bool
 cir_reread_from_cir(dw1000_dev_instance_t * inst, cir_instance_t *master_cir)
 {
@@ -97,10 +110,7 @@ cir_reread_from_cir(dw1000_dev_instance_t * inst, cir_instance_t *master_cir)
     cir_instance_t * cir = inst->cir;
 
     /* Correct aligment using raw timestamp and resampler delays */
-    int64_t raw_ts_diff = ((int64_t)cir->raw_ts + ((int64_t)cir->resampler_delay)*8 -
-                           ((int64_t)master_cir->raw_ts + ((int64_t)master_cir->resampler_delay)*8))/64;
-
-    int fp_idx_override  = floorf(master_cir->fp_idx + 0.5f - raw_ts_diff);
+    int fp_idx_override  = cir->fp_idx - cir_fp_index_diff(master_cir, cir);
 
     /* Sanity check, only a fp_index within the accumulator makes sense */
     if(fp_idx_override < MYNEWT_VAL(CIR_OFFSET) || (fp_idx_override + MYNEWT_VAL(CIR_SIZE)) > 1023) {
@@ -158,12 +168,11 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
          * each other (or rather their antennas).
          * */
         cir_instance_t * master_cir = hal_dw1000_inst(0)->cir;
-        /* Correct for possible different raw timestamp */
+        int fp_idx_from_master  = cir->fp_idx - cir_fp_index_diff(master_cir, cir);
+
+#if 0
         int64_t raw_ts_diff = ((int64_t)cir->raw_ts + ((int64_t)cir->resampler_delay)*8 -
                                ((int64_t)master_cir->raw_ts + ((int64_t)master_cir->resampler_delay)*8))/64;
-
-        int fp_idx_from_master  = floorf(master_cir->fp_idx + 0.5f - raw_ts_diff);
-#if 0
         int64_t ts_diff = (int64_t)hal_dw1000_inst(0)->rxtimestamp - (int64_t)hal_dw1000_inst(1)->rxtimestamp;
         printf("# delta fpid[%d]:%d, rtsd:%d, tsd:%dmm fpd:%d, rsdly[%d,%d]\n",
                inst->idx,
