@@ -47,6 +47,9 @@ syscfg.defs:
     UWBCFG_DEF_TX_ANTDLY:
         description: 'Default UWB TX Antenna delay'
         value: '"0x4050"'
+    UWBCFG_DEF_EXT_CLKDLY:
+        description: 'Default UWB External clock delay'
+        value: '"0"'
     UWBCFG_DEF_ROLE:
         description: 'Default UWB Role'
         value: '"0x0000"'

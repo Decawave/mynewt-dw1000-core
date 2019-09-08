@@ -41,12 +41,13 @@ enum {
     CFGSTR_TXRF_PWR_FINE,
     CFGSTR_RX_ANTDLY,
     CFGSTR_TX_ANTDLY,
+    CFGSTR_EXT_CLKDLY,
     CFGSTR_ROLE,
     CFGSTR_MAX
 };
 
 
-#define CFGSTR_STRLEN (7)
+#define CFGSTR_STRLEN (8)
 #ifdef __cplusplus
 extern "C" {
 #endif

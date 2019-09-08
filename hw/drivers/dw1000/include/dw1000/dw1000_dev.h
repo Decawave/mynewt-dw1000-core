@@ -321,6 +321,7 @@ typedef struct _dw1000_dev_instance_t{
     uint32_t sys_status;           //!< SYS_STATUS_ID for current event
     uint16_t rx_antenna_delay;     //!< Receive antenna delay
     uint16_t tx_antenna_delay;     //!< Transmit antenna delay  
+    int32_t ext_clock_delay;       //!< External clock delay
     
     struct hal_spi_settings spi_settings;  //!< Structure of SPI settings in hal layer 
     struct dpl_eventq eventq;     //!< Structure of os_eventq that has event queue 

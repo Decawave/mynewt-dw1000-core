@@ -92,10 +92,26 @@ float
 cir_fp_index_diff(cir_instance_t *cir0, cir_instance_t *cir1)
 {
     /* Correct aligment using raw timestamp and resampler delays */
-    int64_t raw_ts_diff = ( (int64_t)cir1->raw_ts + ((int64_t)cir1->resampler_delay)*8 -
-                           ((int64_t)cir0->raw_ts + ((int64_t)cir0->resampler_delay)*8))/64;
+    double raw_ts_diff = ((int64_t) cir1->raw_ts + ((int64_t)cir1->resampler_delay)*8 -
+                           ((int64_t)cir0->raw_ts + ((int64_t)cir0->resampler_delay)*8))/64.0;
+    /* Compensate for different clock and rx-antenna delays */
+    if (cir0->dev_inst && cir1->dev_inst) {
+        raw_ts_diff += ((int32_t)cir1->dev_inst->ext_clock_delay  - (int32_t)cir0->dev_inst->ext_clock_delay)/64.0f;
+        raw_ts_diff += ((int32_t)cir1->dev_inst->rx_antenna_delay - (int32_t)cir0->dev_inst->rx_antenna_delay)/64.0f;
+    }
 
-    float fp_diff = cir1->fp_idx - floorf(cir0->fp_idx + 0.5f - raw_ts_diff);
+    float fp_diff = cir1->fp_idx - (cir0->fp_idx - raw_ts_diff);
+
+#if 0
+    printf("# delta fpid:%d, rtsd:%d(/100) fpd:%d, rsdly[%d,%d] antd:%ld\n",
+           (int)fp_diff,
+           (int)(100*raw_ts_diff),
+           (int)(cir0->fp_idx - cir1->fp_idx),
+           cir0->resampler_delay, cir1->resampler_delay,
+           (int32_t)cir1->dev_inst->rx_antenna_delay - (int32_t)cir0->dev_inst->rx_antenna_delay
+        );
+#endif
+
     return fp_diff;
 }
 
@@ -110,7 +126,7 @@ cir_reread_from_cir(dw1000_dev_instance_t * inst, cir_instance_t *master_cir)
     cir_instance_t * cir = inst->cir;
 
     /* Correct aligment using raw timestamp and resampler delays */
-    int fp_idx_override  = cir->fp_idx - cir_fp_index_diff(master_cir, cir);
+    float fp_idx_override  = cir->fp_idx - cir_fp_index_diff(master_cir, cir);
 
     /* Sanity check, only a fp_index within the accumulator makes sense */
     if(fp_idx_override < MYNEWT_VAL(CIR_OFFSET) || (fp_idx_override + MYNEWT_VAL(CIR_SIZE)) > 1023) {
@@ -120,9 +136,23 @@ cir_reread_from_cir(dw1000_dev_instance_t * inst, cir_instance_t *master_cir)
 
     /* Override our local LDE result with the other LDE's result */
     cir->status.lde_override = 1;
+    uint16_t fp_idx = floor(fp_idx_override + 0.5f);
 
-    dw1000_read_accdata(inst, (uint8_t *)&cir->cir, (fp_idx_override - MYNEWT_VAL(CIR_OFFSET)) * sizeof(cir_complex_t), sizeof(cir_t));
+    dw1000_read_accdata(inst, (uint8_t *)&cir->cir, (fp_idx - MYNEWT_VAL(CIR_OFFSET)) * sizeof(cir_complex_t), sizeof(cir_t));
 
+#if 0
+    printf("\n# fpidx_override=%lld (%d)\n", (int64_t)fp_idx_override, (int)cir->fp_idx);
+    int64_t raw_ts_diff = ((int64_t)cir->raw_ts + ((int64_t)cir->resampler_delay)*8 -
+                           ((int64_t)master_cir->raw_ts + ((int64_t)master_cir->resampler_delay)*8))/64;
+    int64_t ts_diff = (int64_t)hal_dw1000_inst(0)->rxtimestamp - (int64_t)hal_dw1000_inst(1)->rxtimestamp;
+    printf("# delta fpid[%d]:%d, rtsd:%d, tsd:%dmm fpd:%d, rsdly[%d,%d]\n",
+           inst->idx,
+           fp_idx - (int)cir->fp_idx,
+           (int)raw_ts_diff, (int)(ts_diff*4.7f),
+           (int)(master_cir->fp_idx - cir->fp_idx),
+           master_cir->resampler_delay, cir->resampler_delay
+        );
+#endif
     /* No need to re-read rc-phase, it hasn't changed */
     cir->angle = atan2f((float)cir->cir.array[MYNEWT_VAL(CIR_OFFSET)].imag, (float)cir->cir.array[MYNEWT_VAL(CIR_OFFSET)].real);
     cir->status.valid = 1;

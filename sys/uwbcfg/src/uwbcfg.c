@@ -55,6 +55,7 @@ static char uwb_config[CFGSTR_MAX][CFGSTR_STRLEN] = {
     MYNEWT_VAL(UWBCFG_DEF_TXRF_POWER_FINE),   /* txrf_power_fine */
     MYNEWT_VAL(UWBCFG_DEF_RX_ANTDLY),         /* rx_antdly */
     MYNEWT_VAL(UWBCFG_DEF_TX_ANTDLY),         /* tx_antdly */
+    MYNEWT_VAL(UWBCFG_DEF_EXT_CLKDLY),        /* external clockdelay */
     MYNEWT_VAL(UWBCFG_DEF_ROLE),              /* role */
 };
 
@@ -72,6 +73,7 @@ const char* _uwbcfg_str[] = {
     "txrf_power_fine",
     "rx_antdly",
     "tx_antdly",
+    "ext_clkdly",
     "role"
 };
 
@@ -238,6 +240,9 @@ uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst, char cfg[CFGSTR_MAX][CFGSTR_
     /* Antenna dlys will be updated in dw1000 automatically next time it wakes up */
     conf_value_from_str(cfg[CFGSTR_RX_ANTDLY], CONF_INT16, (void*)&inst->rx_antenna_delay, 0);
     conf_value_from_str(cfg[CFGSTR_TX_ANTDLY], CONF_INT16, (void*)&inst->tx_antenna_delay, 0);
+
+    /* External clock delay */
+    conf_value_from_str(cfg[CFGSTR_EXT_CLKDLY], CONF_INT32, (void*)&inst->ext_clock_delay, 0);
 
     /* Role */
     conf_value_from_str(cfg[CFGSTR_ROLE], CONF_INT16, (void*)&inst->role, 0);
