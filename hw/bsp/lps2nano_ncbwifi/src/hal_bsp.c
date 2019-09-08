@@ -75,7 +75,7 @@ static const struct dw1000_dev_cfg dw1000_0_cfg = {
 
 
 #if MYNEWT_VAL(I2C_1)
-struct dpl_mutex g_i2c1_mutex;
+struct os_mutex g_i2c1_mutex;
 
 #if MYNEWT_VAL(LSM6DSL_ONB)
 #include <lsm6dsl/lsm6dsl.h>
@@ -356,15 +356,15 @@ void hal_bsp_init(void)
 
 #if MYNEWT_VAL(I2C_1)
     {
-    dpl_error_t err = dpl_mutex_init(&g_i2c1_mutex);
-    assert(err == DPL_OK);
+        dpl_error_t err = os_mutex_init(&g_i2c1_mutex);
+        assert(err == DPL_OK);
     }
 #endif
 
 #if MYNEWT_VAL(SPI_0_MASTER)
     {
-    dpl_error_t err = dpl_sem_init(&g_spi0_sem, 0x1);
-    assert(err == DPL_OK);
+        dpl_error_t err = dpl_sem_init(&g_spi0_sem, 0x1);
+        assert(err == DPL_OK);
     }
 #endif
 
