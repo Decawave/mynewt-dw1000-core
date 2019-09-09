@@ -149,9 +149,9 @@ dw1000_rtdoa_set_frames(struct _dw1000_rtdoa_instance_t *rtdoa, uint16_t nframes
  * @param inst    Pointer to dw1000_dev_instance_t. 
  * @param config  Pointer to dw1000_rng_config_t.
  *
- * @return dw1000_dev_status_t 
+ * @return struct uwb_dev_status 
  */
-dw1000_dev_status_t
+struct uwb_dev_status
 dw1000_rtdoa_config(struct _dw1000_rtdoa_instance_t *rtdoa, dw1000_rng_config_t * config){
     assert(config);
     memcpy(&rtdoa->config, config, sizeof(dw1000_rng_config_t));
@@ -210,9 +210,9 @@ rtdoa_local_to_master64(dw1000_dev_instance_t * inst, uint64_t dtu_time, rtdoa_f
  *
  * @param inst          Pointer to dw1000_dev_instance_t.
  *
- * @return dw1000_dev_status_t 
+ * @return struct uwb_dev_status 
  */
-dw1000_dev_status_t 
+struct uwb_dev_status 
 dw1000_rtdoa_listen(dw1000_rtdoa_instance_t * rtdoa, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout)
 {
     os_error_t err = os_sem_pend(&rtdoa->sem,  OS_TIMEOUT_NEVER);

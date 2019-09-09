@@ -36,7 +36,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-#include <dw1000/dw1000_dev.h>
+#include <uwb/uwb.h>
 #include <dw1000/dw1000_ftypes.h>
 
 #ifdef __cplusplus
@@ -97,11 +97,11 @@ typedef struct _survey_config_t{
 
 //! survey instance parameters.
 typedef struct _survey_instance_t{
-    struct _dw1000_dev_instance_t * dev_inst;   //!< Pointer to _dw1000_dev_instance_t
+    struct uwb_dev * dev_inst;                  //!< Pointer to struct uwb_dev
     struct _dw1000_ccp_instance_t * ccp;        //!< Pointer to _dw1000_ccp_instance_t
     struct _dw1000_nrng_instance_t * nrng;      //!< Pointer to _dw1000_nrng_instance_t
     STATS_SECT_DECL(survey_stat_section) stat;  //!< Stats instance
-    dw1000_mac_interface_t cbs;                 //!< MAC Layer Callbacks
+    struct uwb_mac_interface cbs;               //!< MAC Layer Callbacks
     void (* survey_complete_cb) (struct dpl_event *ev); //!< Optional Callback for post processing
     struct dpl_sem sem;                          //!< Structure containing os semaphores
     survey_status_t status;                     //!< Survey status parameters
@@ -115,7 +115,7 @@ typedef struct _survey_instance_t{
 }survey_instance_t; 
 
 
-survey_instance_t * survey_init(struct _dw1000_dev_instance_t * inst, uint16_t nnodes, uint16_t nframes);
+survey_instance_t * survey_init(struct uwb_dev * inst, uint16_t nnodes, uint16_t nframes);
 void survey_free(survey_instance_t * inst);
 void survey_slot_range_cb(struct dpl_event *ev);
 void survey_slot_broadcast_cb(struct dpl_event *ev);

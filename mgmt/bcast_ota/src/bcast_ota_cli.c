@@ -207,7 +207,7 @@ txim_ev_cb(struct os_event *ev)
         os_callout_reset(&tx_im_inst.callout, OS_TICKS_PER_SEC/10);
         return;
     }
-    nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NMGR_UWB);
+    nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_NMGR_UWB);
     bcast_ota_get_packet(tx_im_inst.slot_id, (tx_im_inst.reset>0)?
                          BCAST_MODE_RESET_OFFSET : BCAST_MODE_NONE,
                          tx_im_inst.blocksize, &om, tx_im_inst.flags);
@@ -272,7 +272,7 @@ bota_cli_cmd(int argc, char **argv)
         }
         uint16_t addr = strtol(argv[2], NULL, 0);
         struct os_mbuf *om = bcast_ota_get_reset_mbuf();
-        nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NMGR_UWB);
+        nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_NMGR_UWB);
         uwb_nmgr_queue_tx(nmgruwb, addr, NMGR_CMD_STATE_SEND, om);
     } else {
         console_printf("Unknown cmd\n");

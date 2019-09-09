@@ -36,18 +36,17 @@
 #include <os/os.h>
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
-#include "bsp/bsp.h"
 #include <stats/stats.h>
 
-#include <dw1000/dw1000_regs.h>
+#include <mgmt/mgmt.h>
+#include <newtmgr/newtmgr.h>
+
+#include <dpl/dpl.h>
+#include <uwb/uwb.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_hal.h>
-#include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_phy.h>
 #include <dw1000/dw1000_ftypes.h>
-#include <mgmt/mgmt.h>
 
-#include <newtmgr/newtmgr.h>
 #include <nmgr_uwb/nmgr_uwb.h>
 
 //#define DIAGMSG(s,u) printf(s,u)
@@ -60,9 +59,9 @@ struct nmgr_uwb_usr_hdr{
     nmgr_uwb_frame_header_t uwb_hdr;
 }__attribute__((__packed__,aligned(1)));
 
-static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
 static int nmgr_resp_cb(struct nmgr_transport *nt, struct os_mbuf *m);
 
 static struct nmgr_transport uwb_transport_0;
@@ -85,16 +84,16 @@ uwb_transport(int idx) {
     return 0;
 }
 
-static dw1000_mac_interface_t g_cbs[] = {
+static struct uwb_mac_interface g_cbs[] = {
         [0] = {
-            .id = DW1000_NMGR_UWB,
+            .id = UWBEXT_NMGR_UWB,
             .rx_complete_cb = rx_complete_cb,
             .tx_complete_cb = tx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
         },
 #if MYNEWT_VAL(DW1000_DEVICE_1)
         [1] = {
-            .id = DW1000_NMGR_UWB,
+            .id = UWBEXT_NMGR_UWB,
             .rx_complete_cb = rx_complete_cb,
             .tx_complete_cb = tx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
@@ -102,7 +101,7 @@ static dw1000_mac_interface_t g_cbs[] = {
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
         [2] = {
-            .id = DW1000_NMGR_UWB,
+            .id = UWBEXT_NMGR_UWB,
             .rx_complete_cb = rx_complete_cb,
             .tx_complete_cb = tx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
@@ -114,7 +113,7 @@ static dw1000_mac_interface_t g_cbs[] = {
 uint16_t
 nmgr_uwb_mtu(struct os_mbuf *m, int idx)
 {
-    dw1000_dev_instance_t* inst = hal_dw1000_inst(idx);
+    struct uwb_dev* inst = uwb_dev_idx_lookup(idx);
     return (inst->config.rx.phrMode==DWT_PHRMODE_STD) ? NMGR_UWB_MTU_STD : NMGR_UWB_MTU_EXT;
 }
 
@@ -127,31 +126,31 @@ nmgr_uwb_mtu_0(struct os_mbuf *m)
 
 #if MYNEWT_VAL(DW1000_DEVICE_1)
 static uint16_t
-nmgr_uwb_mtu_1(struct os_mbuf *m, int idx)
+nmgr_uwb_mtu_1(struct os_mbuf *m)
 {
-    return nmgr_uwb_mtu(struct os_mbuf *m, 1);
+    return nmgr_uwb_mtu(m, 1);
 }
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
 static uint16_t
-nmgr_uwb_mtu_2(struct os_mbuf *m, int idx)
+nmgr_uwb_mtu_2(struct os_mbuf *m)
 {
-    return nmgr_uwb_mtu(struct os_mbuf *m, 2);
+    return nmgr_uwb_mtu(m, 2);
 }
 #endif
 
 nmgr_uwb_instance_t*
-nmgr_uwb_init(dw1000_dev_instance_t* inst)
+nmgr_uwb_init(struct uwb_dev* dev)
 {
-    assert(inst != NULL);
-    nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_NMGR_UWB);
+    assert(dev != NULL);
+    nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)uwb_mac_find_cb_inst_ptr(dev, UWBEXT_NMGR_UWB);
     if(nmgruwb == NULL){
         nmgruwb = (nmgr_uwb_instance_t*)malloc(sizeof(nmgr_uwb_instance_t));
         memset(nmgruwb,0,sizeof(nmgr_uwb_instance_t));
         assert(nmgruwb);
-        nmgruwb->dev_inst = inst;
+        nmgruwb->dev_inst = dev;
     }
-    os_sem_init(&nmgruwb->sem, 0x1);
+    dpl_sem_init(&nmgruwb->sem, 0x1);
     os_mqueue_init(&nmgruwb->tx_q, NULL, NULL);
 
     return nmgruwb;
@@ -170,20 +169,24 @@ void nmgr_uwb_pkg_init(void)
     printf("{\"utime\": %lu,\"msg\": \"nmgr_uwb_init\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
 
+    struct uwb_dev* udev;
 #if MYNEWT_VAL(DW1000_DEVICE_0)
+    udev = uwb_dev_idx_lookup(0);
     nmgr_transport_init(uwb_transport(0), nmgr_resp_cb, nmgr_uwb_mtu_0);
-    g_cbs[0].inst_ptr = nmgr_uwb_init(hal_dw1000_inst(0));
-    dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs[0]);
+    g_cbs[0].inst_ptr = nmgr_uwb_init(udev);
+    uwb_mac_append_interface(udev, &g_cbs[0]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
-    nmgr_uwb_init(hal_dw1000_inst(1));
-    g_cbs[1].inst_ptr = nmgr_transport_init(uwb_transport(1), nmgr_resp_cb, nmgr_uwb_mtu_1);
-    dw1000_mac_append_interface(hal_dw1000_inst(1), &g_cbs[1]);
+    udev = uwb_dev_idx_lookup(1);
+    nmgr_transport_init(uwb_transport(1), nmgr_resp_cb, nmgr_uwb_mtu_1);
+    g_cbs[1].inst_ptr = nmgr_uwb_init(udev);
+    uwb_mac_append_interface(udev, &g_cbs[1]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-    nmgr_uwb_init(hal_dw1000_inst(2));
-    g_cbs[2].inst_ptr = nmgr_transport_init(uwb_transport(2), nmgr_resp_cb, nmgr_uwb_mtu_2);
-    dw1000_mac_append_interface(hal_dw1000_inst(2), &g_cbs[2]);
+    udev = uwb_dev_idx_lookup(2);
+    nmgr_transport_init(uwb_transport(2), nmgr_resp_cb, nmgr_uwb_mtu_2);
+    g_cbs[2].inst_ptr = nmgr_uwb_init(hal_dw1000_inst(2));
+    uwb_mac_append_interface(udev, &g_cbs[2]);
 #endif
 }
 
@@ -195,11 +198,11 @@ void nmgr_uwb_pkg_init(void)
  * @return true on sucess
  */
 static bool 
-rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     nmgr_uwb_instance_t * nmgruwb = (nmgr_uwb_instance_t *)cbs->inst_ptr;
-    if(os_sem_get_count(&nmgruwb->sem) == 0){
-        os_sem_release(&nmgruwb->sem);
+    if(dpl_sem_get_count(&nmgruwb->sem) == 0){
+        dpl_sem_release(&nmgruwb->sem);
         return true;
     }
     return false;
@@ -238,8 +241,8 @@ nmgr_resp_cb(struct nmgr_transport *nt, struct os_mbuf *m)
     }
 
 early_exit:
-    if(os_sem_get_count(&nmgruwb->sem) == 0){
-        rc = os_sem_release(&nmgruwb->sem);
+    if(dpl_sem_get_count(&nmgruwb->sem) == 0){
+        rc = dpl_sem_release(&nmgruwb->sem);
         assert(rc==0);
     }
     return 0;
@@ -253,7 +256,7 @@ early_exit:
  * @return true on sucess
  */
 static bool 
-rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     nmgr_uwb_instance_t * nmgruwb = (nmgr_uwb_instance_t *)cbs->inst_ptr;
     bool ret = false;
@@ -278,12 +281,12 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         last_rpt_seq_num = frame->seq_num;
         frame->rpt_count++;
 
-        dw1000_set_wait4resp(inst, true);
-        dw1000_write_tx_fctrl(inst, inst->frame_len, 0);
-        if (dw1000_start_tx(inst).start_tx_error) {
+        uwb_set_wait4resp(inst, true);
+        uwb_write_tx_fctrl(inst, inst->frame_len, 0);
+        if (uwb_start_tx(inst).start_tx_error) {
             /* Fail silently */
         } else {
-            dw1000_write_tx(inst, inst->rxbuf, 0, inst->frame_len);
+            uwb_write_tx(inst, inst->rxbuf, 0, inst->frame_len);
         }
     }
 
@@ -329,8 +332,8 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 
 early_ret:
     /* TODO: Check and reduce slot timeout */
-    if(os_sem_get_count(&nmgruwb->sem) == 0) {
-        os_sem_release(&nmgruwb->sem);
+    if(dpl_sem_get_count(&nmgruwb->sem) == 0) {
+        dpl_sem_release(&nmgruwb->sem);
     }
     
     return ret;
@@ -339,16 +342,16 @@ early_ret:
 /**
  * API for transmission complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev
  *
  * @return true on sucess
  */
 static bool
-tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     nmgr_uwb_instance_t * nmgruwb = (nmgr_uwb_instance_t *)cbs->inst_ptr;
-    if(os_sem_get_count(&nmgruwb->sem) == 0) {
-        os_sem_release(&nmgruwb->sem);
+    if(dpl_sem_get_count(&nmgruwb->sem) == 0) {
+        dpl_sem_release(&nmgruwb->sem);
         return true;
     }
     return false;
@@ -357,35 +360,35 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 /**
  * Listen for an incoming newtmgr data
  *
- * @param inst Pointer to dw1000_dev_instance_t.
+ * @param nmgruwb pointer to struct _nmgr_uwb_instance_t
  * @param mode DWT_BLOCKING or DWT_NONBLOCKING
  * @param inst Pointer to dw1000_dev_instance_t.
  *
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-dw1000_dev_status_t
+struct uwb_dev_status
 nmgr_uwb_listen(struct _nmgr_uwb_instance_t *nmgruwb, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout)
 {
     os_error_t err;
-    os_sem_pend(&nmgruwb->sem, OS_TIMEOUT_NEVER);
-    dw1000_dev_instance_t* inst = nmgruwb->dev_inst;
+    dpl_sem_pend(&nmgruwb->sem, OS_TIMEOUT_NEVER);
+    struct uwb_dev* inst = nmgruwb->dev_inst;
 
     /* TODO: Persist listening until finished */
-    dw1000_set_rx_timeout(inst, timeout);
+    uwb_set_rx_timeout(inst, timeout);
 
     if (delay) {
-        dw1000_set_delay_start(inst, delay);
+        uwb_set_delay_start(inst, delay);
     }
 
-    if(dw1000_start_rx(inst).start_rx_error){
-        err = os_sem_release(&nmgruwb->sem);
+    if(uwb_start_rx(inst).start_rx_error){
+        err = dpl_sem_release(&nmgruwb->sem);
         assert(err == OS_OK);
     }
 
     if (mode == DWT_BLOCKING){
-        err = os_sem_pend(&nmgruwb->sem, OS_TIMEOUT_NEVER);
+        err = dpl_sem_pend(&nmgruwb->sem, OS_TIMEOUT_NEVER);
         assert(err == OS_OK);
-        err = os_sem_release(&nmgruwb->sem);
+        err = dpl_sem_release(&nmgruwb->sem);
         assert(err == OS_OK);
     }
     return inst->status;
@@ -396,16 +399,16 @@ int
 nmgr_uwb_tx(struct _nmgr_uwb_instance_t *nmgruwb, uint16_t dst_addr, uint16_t code,
             struct os_mbuf *m, uint64_t dx_time)
 {
-    dw1000_dev_instance_t* inst = nmgruwb->dev_inst;
+    struct uwb_dev* inst = nmgruwb->dev_inst;
     nmgr_uwb_frame_header_t uwb_hdr;
 
     uint8_t buf[32];
     int mbuf_offset = 0;
     int device_offset;
-    os_sem_pend(&nmgruwb->sem, OS_TIMEOUT_NEVER);
+    dpl_sem_pend(&nmgruwb->sem, OS_TIMEOUT_NEVER);
 
     /* Prepare header and write to device */
-    uwb_hdr.src_address = inst->my_short_address;
+    uwb_hdr.src_address = inst->uid;
     uwb_hdr.code = code;
     uwb_hdr.dst_address = dst_addr;
     uwb_hdr.seq_num = nmgruwb->frame_seq_num++;
@@ -418,10 +421,10 @@ nmgr_uwb_tx(struct _nmgr_uwb_instance_t *nmgruwb, uint16_t dst_addr, uint16_t co
 
     /* If fx_time provided, delay until then with tx */
     if (dx_time) {
-        dw1000_set_delay_start(inst, dx_time);
+        uwb_set_delay_start(inst, dx_time);
     }
 
-    dw1000_write_tx(inst, (uint8_t*)&uwb_hdr, 0, sizeof(nmgr_uwb_frame_header_t));
+    uwb_write_tx(inst, (uint8_t*)&uwb_hdr, 0, sizeof(nmgr_uwb_frame_header_t));
     device_offset = sizeof(nmgr_uwb_frame_header_t);
 
     /* Copy the mbuf payload data to the device to be sent */
@@ -431,23 +434,23 @@ nmgr_uwb_tx(struct _nmgr_uwb_instance_t *nmgruwb, uint16_t dst_addr, uint16_t co
 
         /* The dw1000_write_tx can do a dma transfer, make sure we wait
          * until that's finished before updating the buffer */
-        hal_dw1000_rw_noblock_wait(inst, OS_TIMEOUT_NEVER);
+        hal_dw1000_rw_noblock_wait((dw1000_dev_instance_t*)inst, OS_TIMEOUT_NEVER);
         os_mbuf_copydata(m, mbuf_offset, cpy_len, buf);
-        dw1000_write_tx(inst, buf, device_offset, cpy_len);
+        uwb_write_tx(inst, buf, device_offset, cpy_len);
         mbuf_offset += cpy_len;
         device_offset += cpy_len;
     }
 
-    dw1000_write_tx_fctrl(inst, sizeof(nmgr_uwb_frame_header_t) + OS_MBUF_PKTLEN(m), 0);
+    uwb_write_tx_fctrl(inst, sizeof(nmgr_uwb_frame_header_t) + OS_MBUF_PKTLEN(m), 0);
 
-    if(dw1000_start_tx(inst).start_tx_error){
-        os_sem_release(&nmgruwb->sem);
+    if(uwb_start_tx(inst).start_tx_error){
+        dpl_sem_release(&nmgruwb->sem);
         printf("UWB NMGR_tx: Tx Error \n");
     }
 
-    os_sem_pend(&nmgruwb->sem, OS_TIMEOUT_NEVER);
-    if(os_sem_get_count(&nmgruwb->sem) == 0) {
-        os_sem_release(&nmgruwb->sem);
+    dpl_sem_pend(&nmgruwb->sem, OS_TIMEOUT_NEVER);
+    if(dpl_sem_get_count(&nmgruwb->sem) == 0) {
+        dpl_sem_release(&nmgruwb->sem);
     }
 
     os_mbuf_free_chain(m);

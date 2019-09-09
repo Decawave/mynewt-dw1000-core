@@ -27,11 +27,11 @@ pkg.keywords:
 pkg.deps:
     - "@apache-mynewt-core/hw/hal"
     - "@apache-mynewt-core/sys/stats/full"
-    - "@mynewt-dw1000-core/lib/dsp"
+    - "@mynewt-dw1000-core/hw/drivers/uwb"
     - "@mynewt-dw1000-core/porting/dpl/mynewt"
+
 pkg.apis:
     - UWB_HW_IMPL
-pkg.req_apis: 
 
 pkg.init:
     dw1000_pkg_init: 400

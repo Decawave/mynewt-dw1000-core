@@ -151,7 +151,7 @@ typedef struct _dw1000_ccp_config_t{
 
 //! ccp instance parameters.
 typedef struct _dw1000_ccp_instance_t{
-    struct _dw1000_dev_instance_t * dev_inst;   //!< Pointer to _dw1000_dev_instance_t
+    struct uwb_dev * dev_inst;                  //!< Pointer to _dw1000_dev_instance_t
 #if MYNEWT_VAL(CCP_STATS)
     STATS_SECT_DECL(ccp_stat_section) stat;     //!< Stats instance
 #endif
@@ -162,7 +162,7 @@ typedef struct _dw1000_ccp_instance_t{
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED)
     struct _sos_instance_t * xtalt_sos;         //!< Sturcture of xtalt_sos
 #endif
-    dw1000_mac_interface_t cbs;                     //!< MAC Layer Callbacks
+    struct uwb_mac_interface cbs;                   //!< MAC Layer Callbacks
     uint64_t master_euid;                           //!< Clock Master EUID, used to reset wcs if master changes
     struct dpl_sem sem;                             //!< Structure containing os semaphores
     struct dpl_event postprocess_event;             //!< Structure of callout_postprocess
@@ -187,7 +187,7 @@ typedef struct _dw1000_ccp_instance_t{
 }dw1000_ccp_instance_t; 
 
 uint64_t ccp_local_to_master(dw1000_ccp_instance_t *ccp, uint32_t timestamp_local);
-dw1000_ccp_instance_t * dw1000_ccp_init(dw1000_dev_instance_t * inst,  uint16_t nframes);
+dw1000_ccp_instance_t * dw1000_ccp_init(struct uwb_dev* dev,  uint16_t nframes);
 void dw1000_ccp_free(dw1000_ccp_instance_t * inst);
 void dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, dpl_event_fn * ccp_postprocess); 
 void dw1000_ccp_set_tof_comp_cb(dw1000_ccp_instance_t * inst, dw1000_ccp_tof_compensation_cb_t tof_comp_cb);

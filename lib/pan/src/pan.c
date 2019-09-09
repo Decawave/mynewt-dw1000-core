@@ -136,16 +136,16 @@ static dw1000_pan_config_t g_config = {
     .network_role = MYNEWT_VAL(PAN_NETWORK_ROLE)            // Role in the network (Anchor/Tag/...)
 };
 
-static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool rx_complete_cb(struct uwb_dev * udev, struct uwb_mac_interface * cbs);
+static bool tx_complete_cb(struct uwb_dev * udev, struct uwb_mac_interface * cbs);
+static bool rx_timeout_cb(struct uwb_dev * udev, struct uwb_mac_interface * cbs);
+static bool reset_cb(struct uwb_dev * udev, struct uwb_mac_interface * cbs);
 static void pan_postprocess(struct dpl_event * ev);
 static void lease_expiry_cb(struct dpl_event * ev);
 
-static dw1000_mac_interface_t g_cbs[] = {
+static struct uwb_mac_interface g_cbs[] = {
         [0] = {
-            .id = DW1000_PAN,
+            .id = UWBEXT_PAN,
             .rx_complete_cb = rx_complete_cb,
             .tx_complete_cb = tx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
@@ -153,7 +153,7 @@ static dw1000_mac_interface_t g_cbs[] = {
         },
 #if MYNEWT_VAL(DW1000_DEVICE_1)
         [1] = {
-            .id = DW1000_PAN,
+            .id = UWBEXT_PAN,
             .rx_complete_cb = rx_complete_cb,
             .tx_complete_cb = tx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
@@ -162,7 +162,7 @@ static dw1000_mac_interface_t g_cbs[] = {
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
         [2] = {
-            .id = DW1000_PAN,
+            .id = UWBEXT_PAN,
             .rx_complete_cb = rx_complete_cb,
             .tx_complete_cb = tx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
@@ -182,11 +182,11 @@ static dw1000_mac_interface_t g_cbs[] = {
  * @return dw1000_pan_instance_t
  */
 dw1000_pan_instance_t *
-dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config, uint16_t nframes)
+dw1000_pan_init(struct uwb_dev * inst,  dw1000_pan_config_t * config, uint16_t nframes)
 {
     assert(inst);
 
-    dw1000_pan_instance_t *pan = (dw1000_pan_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_PAN);
+    dw1000_pan_instance_t *pan = (dw1000_pan_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_PAN);
     if (pan == NULL ) {
         pan = (dw1000_pan_instance_t *) malloc(sizeof(dw1000_pan_instance_t) + nframes * sizeof(pan_frame_t *));
         assert(pan);
@@ -205,15 +205,6 @@ dw1000_pan_init(dw1000_dev_instance_t * inst,  dw1000_pan_config_t * config, uin
     assert(err == DPL_OK);
 
     dw1000_pan_set_postprocess(pan, pan_postprocess);
-
-    os_error_t rc = stats_init(
-        STATS_HDR(g_stat),
-        STATS_SIZE_INIT_PARMS(g_stat, STATS_SIZE_32),
-        STATS_NAME_INIT_PARMS(pan_stat_section)
-    );
-    rc |= stats_register("pan", STATS_HDR(g_stat));
-    
-    assert(rc == OS_OK);
 
     pan->status.valid = true;
     pan->status.initialized = 1;
@@ -247,25 +238,37 @@ dw1000_pan_set_frames(dw1000_pan_instance_t *pan, pan_frame_t pan_f[], uint16_t 
 void
 pan_pkg_init(void)
 {
+    struct uwb_dev *udev;
     dw1000_pan_instance_t *pan;
     printf("{\"utime\": %lu,\"msg\": \"pan_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
+    os_error_t rc = stats_init(
+        STATS_HDR(g_stat),
+        STATS_SIZE_INIT_PARMS(g_stat, STATS_SIZE_32),
+        STATS_NAME_INIT_PARMS(pan_stat_section)
+    );
+    rc |= stats_register("pan", STATS_HDR(g_stat));
+    assert(rc == OS_OK);
+
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    g_cbs[0].inst_ptr = pan = dw1000_pan_init(hal_dw1000_inst(0), &g_config, sizeof(g_pan_0)/sizeof(pan_frame_t));
+    udev = uwb_dev_idx_lookup(0);
+    g_cbs[0].inst_ptr = pan = dw1000_pan_init(udev, &g_config, sizeof(g_pan_0)/sizeof(pan_frame_t));
     dw1000_pan_set_frames(pan, g_pan_0, sizeof(g_pan_0)/sizeof(pan_frame_t));
-    dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs[0]);
+    uwb_mac_append_interface(udev, &g_cbs[0]);
     dpl_callout_init(&pan->pan_lease_callout_expiry, dpl_eventq_dflt_get(), lease_expiry_cb, (void *) pan);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
-    g_cbs[1].inst_ptr = pan = dw1000_pan_init(hal_dw1000_inst(1), &g_config, sizeof(g_pan_1)/sizeof(pan_frame_t));
+    udev = uwb_dev_idx_lookup(1);
+    g_cbs[1].inst_ptr = pan = dw1000_pan_init(udev, &g_config, sizeof(g_pan_1)/sizeof(pan_frame_t));
     dw1000_pan_set_frames(pan, g_pan_1, sizeof(g_pan_1)/sizeof(pan_frame_t));
-    dw1000_mac_append_interface(hal_dw1000_inst(1), &g_cbs[1]);
+    uwb_mac_append_interface(udev, &g_cbs[1]);
     dpl_callout_init(&pan->pan_lease_callout_expiry, dpl_eventq_dflt_get(), lease_expiry_cb, (void *) pan);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-    g_cbs[2].inst_ptr = pan = dw1000_pan_init(hal_dw1000_inst(2), &g_config, sizeof(g_pan_2)/sizeof(pan_frame_t));
+    udev = uwb_dev_idx_lookup(2);
+    g_cbs[2].inst_ptr = pan = dw1000_pan_init(udev, &g_config, sizeof(g_pan_2)/sizeof(pan_frame_t));
     dw1000_pan_set_frames(pan, g_pan_2, sizeof(g_pan_2)/sizeof(pan_frame_t));
-    dw1000_mac_append_interface(hal_dw1000_inst(2), &g_cbs[2]);
+    uwb_mac_append_interface(udev, &g_cbs[2]);
     dpl_callout_init(&pan->pan_lease_callout_expiry, dpl_eventq_dflt_get(), lease_expiry_cb, (void *) pan);
 #endif
 }
@@ -279,8 +282,10 @@ pan_pkg_init(void)
  * @return void
  */
 void
-dw1000_pan_free(dw1000_pan_instance_t *pan){
+dw1000_pan_free(dw1000_pan_instance_t *pan)
+{
     assert(pan);
+    uwb_mac_remove_interface(pan->dev_inst, pan->cbs.id);
     if (pan->status.selfmalloc) {
         free(pan);
     } else {
@@ -366,15 +371,14 @@ lease_expiry_cb(struct dpl_event * ev)
     assert(dpl_event_get_arg(ev));
 
     dw1000_pan_instance_t * pan = (dw1000_pan_instance_t *) dpl_event_get_arg(ev);
-    dw1000_dev_instance_t * inst = pan->dev_inst;
     STATS_INC(g_stat, lease_expiry);
     pan->status.valid = false;
     pan->status.lease_expired = true;
-    inst->slot_id = 0xffff;
+    pan->dev_inst->slot_id = 0xffff;
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"pan_lease_expired\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     if (pan->control.postprocess) {
-        dpl_eventq_put(&inst->eventq, &pan->postprocess_event);
+        dpl_eventq_put(&((dw1000_dev_instance_t*)pan->dev_inst)->eventq, &pan->postprocess_event);
     }
 }
 
@@ -391,7 +395,7 @@ lease_expiry_cb(struct dpl_event * ev)
  * @return bool
  */
 static bool
-rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     dw1000_pan_instance_t * pan = (dw1000_pan_instance_t *)cbs->inst_ptr;
     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64) {
@@ -421,10 +425,10 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         frame->rpt_count < frame->rpt_max &&
         frame->long_address != inst->my_long_address) {
         frame->rpt_count++;
-        dw1000_set_wait4resp(inst, true);
-        dw1000_write_tx_fctrl(inst, inst->frame_len, 0);
-        pan->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
-        dw1000_write_tx(inst, frame->array, 0, inst->frame_len);
+        uwb_set_wait4resp(inst, true);
+        uwb_write_tx_fctrl(inst, inst->frame_len, 0);
+        pan->status.start_tx_error = uwb_start_tx(inst).start_tx_error;
+        uwb_write_tx(inst, frame->array, 0, inst->frame_len);
         STATS_INC(g_stat, relay_tx);
     }
 
@@ -433,7 +437,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         STATS_INC(g_stat, pan_request);
         if (pan->config->role == PAN_ROLE_MASTER) {
             /* Prevent another request coming in whilst processing this one */
-            dw1000_stop_rx(inst);
+            uwb_stop_rx(inst);
         } else {
             return true;
         }
@@ -441,8 +445,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     case DWT_PAN_RESP:
         if(frame->long_address == inst->my_long_address){
             /* TAG/ANCHOR side */
-            inst->my_short_address = frame->short_address;
-            inst->PANID = frame->pan_id;
+            inst->uid = frame->short_address;
+            inst->pan_id = frame->pan_id;
             inst->slot_id = frame->slot_id;
             pan->status.valid = true;
             pan->status.lease_expired = false;
@@ -453,7 +457,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 uint32_t lease_us = 1000000;
                 lease_us = (uint32_t)(frame->lease_time)*1000000;
 #if MYNEWT_VAL(CCP_ENABLED)
-                dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+                dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
                 lease_us -= (inst->rxtimestamp>>16) - (ccp->local_epoch>>16);
 #endif
                 os_time_ms_to_ticks(lease_us/1000, &exp_tics);
@@ -480,7 +484,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 
     /* Postprocess, all roles */
     if (pan->control.postprocess) {
-        dpl_eventq_put(&inst->eventq, &pan->postprocess_event);
+        dpl_eventq_put(&((dw1000_dev_instance_t*)inst)->eventq, &pan->postprocess_event);
     }
 
     /* Release sem */
@@ -501,7 +505,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  * @return bool
  */
 static bool
-tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     dw1000_pan_instance_t * pan = (dw1000_pan_instance_t *)cbs->inst_ptr;
     if(inst->fctrl_array[0] != FCNTL_IEEE_BLINK_TAG_64){
@@ -522,7 +526,7 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  * @return bool
  */
 static bool
-reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     dw1000_pan_instance_t * pan = (dw1000_pan_instance_t *)cbs->inst_ptr;
     if (dpl_sem_get_count(&pan->sem) == 0){
@@ -544,7 +548,7 @@ reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  * @return bool
  */
 static bool
-rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     dw1000_pan_instance_t * pan = (dw1000_pan_instance_t *)cbs->inst_ptr;
     if (dpl_sem_get_count(&pan->sem) == 0){
@@ -563,18 +567,17 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  * @param inst          Pointer to dw1000_dev_instance_t.
  * @param mode          dw1000_dev_modes_t of DWT_BLOCKING and DWT_NONBLOCKING.
  *
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-dw1000_dev_status_t
+struct uwb_dev_status
 dw1000_pan_listen(dw1000_pan_instance_t * pan, dw1000_dev_modes_t mode)
 {
-    dw1000_dev_instance_t * inst = pan->dev_inst;
     dpl_error_t err = dpl_sem_pend(&pan->sem,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
 
     STATS_INC(g_stat, pan_listen);
 
-    if(dw1000_start_rx(inst).start_rx_error){
+    if(uwb_start_rx(pan->dev_inst).start_rx_error){
         STATS_INC(g_stat, rx_error);
         err = dpl_sem_release(&pan->sem);
         assert(err == DPL_OK);
@@ -587,7 +590,7 @@ dw1000_pan_listen(dw1000_pan_instance_t * pan, dw1000_dev_modes_t mode)
         assert(err == DPL_OK);
     }
 
-    return inst->status;
+    return pan->dev_inst->status;
 }
 
 /**
@@ -606,7 +609,6 @@ dw1000_pan_status_t
 dw1000_pan_blink(dw1000_pan_instance_t *pan, uint16_t role,
                  dw1000_dev_modes_t mode, uint64_t delay)
 {
-    dw1000_dev_instance_t * inst = pan->dev_inst;
     dpl_error_t err = dpl_sem_pend(&pan->sem,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
 
@@ -614,7 +616,7 @@ dw1000_pan_blink(dw1000_pan_instance_t *pan, uint16_t role,
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
 
     frame->seq_num += pan->nframes;
-    frame->long_address = inst->my_long_address;
+    frame->long_address = pan->dev_inst->euid;
     frame->code = DWT_PAN_REQ;
     frame->rpt_count = 0;
     frame->rpt_max = MYNEWT_VAL(PAN_RPT_MAX);
@@ -625,12 +627,12 @@ dw1000_pan_blink(dw1000_pan_instance_t *pan, uint16_t role,
     imgr_my_version(&frame->fw_ver);
 #endif
 
-    dw1000_set_delay_start(inst, delay);
-    dw1000_write_tx_fctrl(inst, sizeof(struct _pan_frame_t), 0);
-    dw1000_write_tx(inst, frame->array, 0, sizeof(struct _pan_frame_t));
-    dw1000_set_wait4resp(inst, true);
-    dw1000_set_rx_timeout(inst, pan->config->rx_timeout_period);
-    pan->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
+    uwb_set_delay_start(pan->dev_inst, delay);
+    uwb_write_tx_fctrl(pan->dev_inst, sizeof(struct _pan_frame_t), 0);
+    uwb_write_tx(pan->dev_inst, frame->array, 0, sizeof(struct _pan_frame_t));
+    uwb_set_wait4resp(pan->dev_inst, true);
+    uwb_set_rx_timeout(pan->dev_inst, pan->config->rx_timeout_period);
+    pan->status.start_tx_error = uwb_start_tx(pan->dev_inst).start_tx_error;
 
     if (pan->status.start_tx_error){
         STATS_INC(g_stat, tx_error);
@@ -661,18 +663,17 @@ dw1000_pan_blink(dw1000_pan_instance_t *pan, uint16_t role,
 dw1000_pan_status_t
 dw1000_pan_reset(dw1000_pan_instance_t * pan, uint64_t delay)
 {
-    dw1000_dev_instance_t * inst = pan->dev_inst;
     pan_frame_t * frame = pan->frames[(pan->idx)%pan->nframes];
 
     frame->seq_num += pan->nframes;
-    frame->long_address = inst->my_long_address;
+    frame->long_address = pan->dev_inst->euid;
     frame->code = DWT_PAN_RESET;
 
-    dw1000_set_delay_start(inst, delay);
-    dw1000_write_tx_fctrl(inst, sizeof(struct _pan_frame_t), 0);
-    dw1000_write_tx(inst, frame->array, 0, sizeof(struct _pan_frame_t));
-    dw1000_set_wait4resp(inst, false);
-    pan->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
+    uwb_set_delay_start(pan->dev_inst, delay);
+    uwb_write_tx_fctrl(pan->dev_inst, sizeof(struct _pan_frame_t), 0);
+    uwb_write_tx(pan->dev_inst, frame->array, 0, sizeof(struct _pan_frame_t));
+    uwb_set_wait4resp(pan->dev_inst, false);
+    pan->status.start_tx_error = uwb_start_tx(pan->dev_inst).start_tx_error;
 
     if (pan->status.start_tx_error){
         STATS_INC(g_stat, tx_error);
@@ -747,13 +748,12 @@ dw1000_pan_slot_timer_cb(struct dpl_event * ev)
     
     tdma_instance_t * tdma = slot->parent;
     dw1000_ccp_instance_t *ccp = tdma->ccp;
-    dw1000_dev_instance_t *inst = tdma->dev_inst;
     dw1000_pan_instance_t *pan = (dw1000_pan_instance_t*)slot->arg;
     assert(pan);
     uint16_t idx = slot->idx;
 
     /* Check if we are to act as a Master Node in the network */
-    if (inst->role&DW1000_ROLE_PAN_MASTER) {
+    if (tdma->dev_inst->role&UWB_ROLE_PAN_MASTER) {
         static uint8_t _pan_cycles = 0;
 
         /* Broadcast an initial reset message to clear all leases */
@@ -762,9 +762,9 @@ dw1000_pan_slot_timer_cb(struct dpl_event * ev)
             dw1000_pan_reset(pan, tdma_tx_slot_start(tdma, idx));
         } else {
             uint64_t dx_time = tdma_rx_slot_start(tdma, idx);
-            dw1000_set_rx_timeout(inst, 3*ccp->period/tdma->nslots/4);
-            dw1000_set_delay_start(inst, dx_time);
-            dw1000_set_on_error_continue(inst, true);
+            uwb_set_rx_timeout(tdma->dev_inst, 3*ccp->period/tdma->nslots/4);
+            uwb_set_delay_start(tdma->dev_inst, dx_time);
+            uwb_set_on_error_continue(tdma->dev_inst, true);
             dw1000_pan_listen(pan, DWT_BLOCKING);
         }
     } else {
@@ -776,12 +776,12 @@ dw1000_pan_slot_timer_cb(struct dpl_event * ev)
                 timeout = 3*ccp->period/tdma->nslots/4;
             } else {
                 /* Only listen long enough to get any resets from master */
-                timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(sizeof(struct _pan_frame_t)))
+                timeout = uwb_phy_frame_duration(tdma->dev_inst, sizeof(sizeof(struct _pan_frame_t)))
                     + MYNEWT_VAL(XTALT_GUARD);
             }
-            dw1000_set_rx_timeout(inst, timeout);
-            dw1000_set_delay_start(inst, tdma_rx_slot_start(tdma, idx));
-            dw1000_set_on_error_continue(inst, true);
+            uwb_set_rx_timeout(tdma->dev_inst, timeout);
+            uwb_set_delay_start(tdma->dev_inst, tdma_rx_slot_start(tdma, idx));
+            uwb_set_on_error_continue(tdma->dev_inst, true);
             if (dw1000_pan_listen(pan, DWT_BLOCKING).start_rx_error) {
                 STATS_INC(g_stat, rx_error);
             }

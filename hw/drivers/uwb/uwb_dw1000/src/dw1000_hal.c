@@ -47,7 +47,62 @@ static const uint8_t tx_buffer[MYNEWT_VAL(DW1000_HAL_SPI_BUFFER_SIZE)] __attribu
 static dw1000_dev_instance_t hal_dw1000_instances[]= {
     #if  MYNEWT_VAL(DW1000_DEVICE_0)
     [0] = {
-            .idx = 0, 
+            .uwb_dev = {
+                .idx = 0,
+                .task_prio = 0x10,
+                .status = {0},
+                .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_0_RX_ANT_DLY),
+                .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_0_TX_ANT_DLY),
+                .attrib = {                //!< phy attritubes per the IEEE802.15.4-2011 standard, Table 99 and Table 101 
+                    .Tpsym = 1.01760,      //!< Preamble symbols duration (usec) for MPRF of 62.89Mhz
+                    .Tbsym = 1.02564,      //!< Baserate symbols duration (usec) 850khz
+                    .Tdsym = 0.12821/0.87, //!< Datarate symbols duration (usec) 6.81Mhz adjusted for RS coding
+                    .nsfd = 8,             //!< Number of symbols in start of frame delimiter
+                    .nsync = 128,          //!< Number of symbols in preamble sequence
+                    .nphr = 16             //!< Number of symbols in phy header
+                },
+                .config = {
+                    .channel = 5,                       //!< channel number {1, 2, 3, 4, 5, 7 }
+                    .prf = DWT_PRF_64M,                 //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
+                    .dataRate = DWT_BR_6M8,             //!< Data Rate {DWT_BR_110K, DWT_BR_850K or DWT_BR_6M8}
+                    .rx = {
+                        .pacLength = DWT_PAC8,          //!< Acquisition Chunk Size DWT_PAC8..DWT_PAC64 (Relates to RX preamble length)
+                        .preambleCodeIndex = 9,         //!< RX preamble code
+                        .sfdType = 0,                   //!< Boolean should we use non-standard SFD for better performance
+                        .phrMode = DWT_PHRMODE_EXT,     //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
+                        .sfdTimeout = (128 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only.
+                    },
+                    .tx ={
+                        .preambleCodeIndex = 9,         //!< TX preamble code
+                        .preambleLength = DWT_PLEN_128  //!< DWT_PLEN_64..DWT_PLEN_4096
+                    },
+                    .txrf={
+                        .PGdly = TC_PGDELAY_CH5,
+                        //.power = 0x2A4A6A8A,
+                        .BOOSTNORM = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
+                        .BOOSTP500 = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
+                        .BOOSTP250 = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
+                        .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_9db, 2.5)
+                    },
+                    .trxoff_enable = 1,
+                    .rxdiag_enable = 0,
+                    .dblbuffon_enabled = 0,
+#if MYNEWT_VAL(DW1000_MAC_FILTERING)
+                    .framefilter_enabled = 1,
+#endif
+#if MYNEWT_VAL(DW1000_BIAS_CORRECTION_ENABLED)
+                    .bias_correction_enable = 1,
+#endif
+                    .LDE_enable = 1,
+                    .LDO_enable = 0,
+                    .sleep_enable = 1,
+                    .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
+                    .rxauto_enable = 1,        //!< On error re-enable
+                    .cir_enable = 0,           //!< Default behavior for CIR interface
+                    .pmem_enable = 0,          //!< Default behavior for Preamble detection memory
+                    .cir_pdoa_slave = 0        //!< First instance should not act as pdoa slave
+                },
+            },
             .rst_pin  = MYNEWT_VAL(DW1000_DEVICE_0_RST),
             .ss_pin = MYNEWT_VAL(DW1000_DEVICE_0_SS),
             .irq_pin  = MYNEWT_VAL(DW1000_DEVICE_0_IRQ),
@@ -57,64 +112,62 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .baudrate = MYNEWT_VAL(DW1000_DEVICE_BAUDRATE_LOW),
                 .word_size = HAL_SPI_WORD_SIZE_8BIT
             },
-            .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_0_RX_ANT_DLY),
-            .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_0_TX_ANT_DLY),
-            .status = {0},
-            .attrib = {                //!< phy attritubes per the IEEE802.15.4-2011 standard, Table 99 and Table 101 
-                .Tpsym = 1.01760,      //!< Preamble symbols duration (usec) for MPRF of 62.89Mhz
-                .Tbsym = 1.02564,      //!< Baserate symbols duration (usec) 850khz
-                .Tdsym = 0.12821/0.87, //!< Datarate symbols duration (usec) 6.81Mhz adjusted for RS coding
-                .nsfd = 8,             //!< Number of symbols in start of frame delimiter
-                .nsync = 128,          //!< Number of symbols in preamble sequence
-                .nphr = 16             //!< Number of symbols in phy header
-            },
-            .config = {
-                .channel = 5,                       //!< channel number {1, 2, 3, 4, 5, 7 }
-                .prf = DWT_PRF_64M,                 //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
-                .dataRate = DWT_BR_6M8,             //!< Data Rate {DWT_BR_110K, DWT_BR_850K or DWT_BR_6M8}
-                .rx = {
-                    .pacLength = DWT_PAC8,          //!< Acquisition Chunk Size DWT_PAC8..DWT_PAC64 (Relates to RX preamble length)
-                    .preambleCodeIndex = 9,         //!< RX preamble code
-                    .sfdType = 0,                   //!< Boolean should we use non-standard SFD for better performance
-                    .phrMode = DWT_PHRMODE_EXT,     //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
-                    .sfdTimeout = (128 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
-                },
-                .tx ={
-                    .preambleCodeIndex = 9,         //!< TX preamble code
-                    .preambleLength = DWT_PLEN_128  //!< DWT_PLEN_64..DWT_PLEN_4096
-                },
-                .txrf={
-                    .PGdly = TC_PGDELAY_CH5,
-                    //.power = 0x2A4A6A8A,
-                    .BOOSTNORM = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
-                    .BOOSTP500 = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
-                    .BOOSTP250 = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
-                    .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_9db, 2.5)   
-                }, 
-                .trxoff_enable = 1,
-                .rxdiag_enable = 0,
-                .dblbuffon_enabled = 0,
-#if MYNEWT_VAL(DW1000_MAC_FILTERING)
-                .framefilter_enabled = 1,
-#endif
-#if MYNEWT_VAL(DW1000_BIAS_CORRECTION_ENABLED)
-                .bias_correction_enable = 1,
-#endif
-                .LDE_enable = 1,
-                .LDO_enable = 0,
-                .sleep_enable = 1,
-                .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
-                .rxauto_enable = 1,        //!< On error re-enable
-                .cir_enable = 0,           //!< Default behavior for CIR interface
-                .pmem_enable = 0,          //!< Default behavior for Preamble detection memory
-                .cir_pdoa_slave = 0        //!< First instance should not act as pdoa slave
-            },
             .spi_sem = 0,
-            .task_prio = 0x10
     },
     #if  MYNEWT_VAL(DW1000_DEVICE_1)
     [1] = {
-            .idx = 1, 
+            .uwb_dev = {
+                .idx = 1,
+                .task_prio = 0x11,
+                .status = {0},
+                .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_1_RX_ANT_DLY),
+                .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_1_TX_ANT_DLY),
+                .attrib = {                //!< phy attritubes per the IEEE802.15.4-2011 standard, Table 99 and Table 101
+                    .Tpsym = 1.01760,      //!< Preamble symbols duration (usec) for MPRF of 62.89Mhz
+                    .Tbsym = 1.02564,      //!< Baserate symbols duration (usec) 850khz
+                    .Tdsym = 0.12821/0.87, //!< Datarate symbols duration (usec) 6.81Mhz adjusted for RS coding
+                    .nsfd = 8,             //!< Number of symbols in start of frame delimiter
+                    .nsync = 128,          //!< Number of symbols in preamble sequence
+                    .nphr = 16             //!< Number of symbols in phy header
+                },
+                .config = {
+                    .channel = 5,                       //!< channel number {1, 2, 3, 4, 5, 7 }
+                    .prf = DWT_PRF_64M,                 //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
+                    .dataRate = DWT_BR_6M8,             //!< Data rate.
+                    .rx = {
+                        .pacLength = DWT_PAC8,          //!< Acquisition Chunk Size (Relates to RX preamble length)
+                        .preambleCodeIndex = 9,         //!< RX preamble code
+                        .sfdType = 0,                   //!< Boolean should we use non-standard SFD for better performance
+                        .phrMode = DWT_PHRMODE_EXT,     //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
+                        .sfdTimeout = (128 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only.
+                    },
+                    .tx ={
+                        .preambleCodeIndex = 9,         //!< TX preamble code
+                        .preambleLength = DWT_PLEN_128  //!< DWT_PLEN_64..DWT_PLEN_4096
+                    },
+                    .txrf={
+                        .PGdly = TC_PGDELAY_CH5,
+                        .BOOSTNORM = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
+                        .BOOSTP500 = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
+                        .BOOSTP250 = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
+                        .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_9db, 2.5)
+                    },
+                    .trxoff_enable = 1,
+                    .rxdiag_enable = 1,
+                    .dblbuffon_enabled = 0,
+#if MYNEWT_VAL(DW1000_BIAS_CORRECTION_ENABLED)
+                    .bias_correction_enable = 1,
+#endif
+                    .LDE_enable = 1,
+                    .LDO_enable = 0,
+                    .sleep_enable = 1,
+                    .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
+                    .rxauto_enable = 1,        //!< On error re-enable rx
+                    .cir_enable = 0,           //!< Default behavior for CIR interface
+                    .pmem_enable = 0,          //!< Default behavior for Preamble detection memory
+                    .cir_pdoa_slave = 1        //!< Second instance should act as pdoa slave
+                },
+            },
             .rst_pin  = MYNEWT_VAL(DW1000_DEVICE_1_RST),
             .ss_pin = MYNEWT_VAL(DW1000_DEVICE_1_SS),
             .irq_pin  = MYNEWT_VAL(DW1000_DEVICE_1_IRQ),
@@ -124,119 +177,62 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                 .baudrate = MYNEWT_VAL(DW1000_DEVICE_BAUDRATE_LOW),
                 .word_size = HAL_SPI_WORD_SIZE_8BIT
             },
-            .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_1_RX_ANT_DLY),
-            .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_1_TX_ANT_DLY),
-            .status = {0},
-            .attrib = {                //!< phy attritubes per the IEEE802.15.4-2011 standard, Table 99 and Table 101 
-                .Tpsym = 1.01760,      //!< Preamble symbols duration (usec) for MPRF of 62.89Mhz
-                .Tbsym = 1.02564,      //!< Baserate symbols duration (usec) 850khz
-                .Tdsym = 0.12821/0.87, //!< Datarate symbols duration (usec) 6.81Mhz adjusted for RS coding
-                .nsfd = 8,             //!< Number of symbols in start of frame delimiter
-                .nsync = 128,          //!< Number of symbols in preamble sequence
-                .nphr = 16             //!< Number of symbols in phy header
-            },
-            .config = {
-                .channel = 5,                       //!< channel number {1, 2, 3, 4, 5, 7 }
-                .prf = DWT_PRF_64M,                 //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
-                .dataRate = DWT_BR_6M8,             //!< Data rate. 
-                .rx = {
-                    .pacLength = DWT_PAC8,          //!< Acquisition Chunk Size (Relates to RX preamble length)
-                    .preambleCodeIndex = 9,         //!< RX preamble code
-                    .sfdType = 0,                   //!< Boolean should we use non-standard SFD for better performance
-                    .phrMode = DWT_PHRMODE_EXT,     //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
-                    .sfdTimeout = (128 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
-                },
-                .tx ={
-                    .preambleCodeIndex = 9,         //!< TX preamble code
-                    .preambleLength = DWT_PLEN_128  //!< DWT_PLEN_64..DWT_PLEN_4096
-                },
-                .txrf={
-                    .PGdly = TC_PGDELAY_CH5,
-                    .BOOSTNORM = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
-                    .BOOSTP500 = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
-                    .BOOSTP250 = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
-                    .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_9db, 2.5)  
-                }, 
-                .trxoff_enable = 1,
-                .rxdiag_enable = 1,
-                .dblbuffon_enabled = 0,
-#if MYNEWT_VAL(DW1000_BIAS_CORRECTION_ENABLED)
-                .bias_correction_enable = 1,
-#endif
-                .LDE_enable = 1,
-                .LDO_enable = 0,
-                .sleep_enable = 1,
-                .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
-                .rxauto_enable = 1,        //!< On error re-enable rx
-                .cir_enable = 0,           //!< Default behavior for CIR interface
-                .pmem_enable = 0,          //!< Default behavior for Preamble detection memory
-                .cir_pdoa_slave = 1        //!< Second instance should act as pdoa slave
-            },
             .spi_sem = 0,
-            .task_prio = 0x11
     },
     #if  MYNEWT_VAL(DW1000_DEVICE_2)
     [2] = {
-            .idx = 2, 
-            .rst_pin  = MYNEWT_VAL(DW1000_DEVICE_2_RST),
-            .ss_pin = MYNEWT_VAL(DW1000_DEVICE_2_SS),
-            .irq_pin  = MYNEWT_VAL(DW1000_DEVICE_2_IRQ),
-            .spi_settings = {
-                .data_order = HAL_SPI_MSB_FIRST,
-                .data_mode = HAL_SPI_MODE0,
-                .baudrate = MYNEWT_VAL(DW1000_DEVICE_BAUDRATE_LOW),
-                .word_size = HAL_SPI_WORD_SIZE_8BIT
-            },
-            .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_2_RX_ANT_DLY),
-            .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_2_TX_ANT_DLY),
-            .status = {0},
-            .attrib = {                //!< phy attritubes per the IEEE802.15.4-2011 standard, Table 99 and Table 101 
-                .Tpsym = 1.01760,      //!< Preamble symbols duration (usec) for MPRF of 62.89Mhz
-                .Tbsym = 1.02564,      //!< Baserate symbols duration (usec) 850khz
-                .Tdsym = 0.12821/0.87, //!< Datarate symbols duration (usec) 6.81Mhz adjusted for RS coding
-                .nsfd = 8,             //!< Number of symbols in start of frame delimiter
-                .nsync = 128,          //!< Number of symbols in preamble sequence
-                .nphr = 16             //!< Number of symbols in phy header
-            },
-             .config = {
-                .channel = 5,                       //!< channel number {1, 2, 3, 4, 5, 7 }
-                .prf = DWT_PRF_64M,                 //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
-                .dataRate = DWT_BR_6M8,             // Data rate. 
-                .rx = {
-                    .pacLength = DWT_PAC8,          //!< Acquisition Chunk Size (Relates to RX preamble length)
-                    .preambleCodeIndex = 9,         //!< RX preamble code
-                    .sfdType = 0,                   //!< Boolean should we use non-standard SFD for better performance
-                    .phrMode = DWT_PHRMODE_EXT,     //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
-                    .sfdTimeout = (128 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
+                .idx = 2,
+                .task_prio = 0x12,
+                .status = {0},
+                .rx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_2_RX_ANT_DLY),
+                .tx_antenna_delay = MYNEWT_VAL(DW1000_DEVICE_2_TX_ANT_DLY),
+                .attrib = {                //!< phy attritubes per the IEEE802.15.4-2011 standard, Table 99 and Table 101
+                    .Tpsym = 1.01760,      //!< Preamble symbols duration (usec) for MPRF of 62.89Mhz
+                    .Tbsym = 1.02564,      //!< Baserate symbols duration (usec) 850khz
+                    .Tdsym = 0.12821/0.87, //!< Datarate symbols duration (usec) 6.81Mhz adjusted for RS coding
+                    .nsfd = 8,             //!< Number of symbols in start of frame delimiter
+                    .nsync = 128,          //!< Number of symbols in preamble sequence
+                    .nphr = 16             //!< Number of symbols in phy header
                 },
-                .tx ={
-                    .preambleCodeIndex = 9,         //!< TX preamble code
-                    .preambleLength = DWT_PLEN_128  //!< DWT_PLEN_64..DWT_PLEN_4096
-                },
-                .txrf={
-                    .PGdly = TC_PGDELAY_CH5,
-                    .BOOSTNORM = dw1000_power_value(DW1000_txrf_config_0db, 0),
-                    .BOOSTP500 = dw1000_power_value(DW1000_txrf_config_0db, 0),
-                    .BOOSTP250 = dw1000_power_value(DW1000_txrf_config_0db, 0),
-                    .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_0db, 0)
-                }, 
-                .trxoff_enable = 1,
-                .rxdiag_enable = 1,
-                .dblbuffon_enabled = 0,
-#if MYNEWT_VAL(DW1000_MAC_FILTERING)
-                .framefilter_enabled = 1,
+                .config = {
+                    .channel = 5,                       //!< channel number {1, 2, 3, 4, 5, 7 }
+                    .prf = DWT_PRF_64M,                 //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
+                    .dataRate = DWT_BR_6M8,             //!< Data rate.
+                    .rx = {
+                        .pacLength = DWT_PAC8,          //!< Acquisition Chunk Size (Relates to RX preamble length)
+                        .preambleCodeIndex = 9,         //!< RX preamble code
+                        .sfdType = 0,                   //!< Boolean should we use non-standard SFD for better performance
+                        .phrMode = DWT_PHRMODE_EXT,     //!< PHR mode {0x0 - standard DWT_PHRMODE_STD, 0x3 - extended frames DWT_PHRMODE_EXT}
+                        .sfdTimeout = (128 + 1 + 8 - 8) //!< SFD timeout value (in symbols) (preamble length + 1 + SFD length - PAC size). Used in RX only. 
+                    },
+                    .tx ={
+                        .preambleCodeIndex = 9,         //!< TX preamble code
+                        .preambleLength = DWT_PLEN_128  //!< DWT_PLEN_64..DWT_PLEN_4096
+                    },
+                    .txrf={
+                        .PGdly = TC_PGDELAY_CH5,
+                        .BOOSTNORM = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
+                        .BOOSTP500 = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
+                        .BOOSTP250 = dw1000_power_value(DW1000_txrf_config_9db, 2.5),
+                        .BOOSTP125 = dw1000_power_value(DW1000_txrf_config_9db, 2.5)
+                    },
+                    .trxoff_enable = 1,
+                    .rxdiag_enable = 1,
+                    .dblbuffon_enabled = 0,
+#if MYNEWT_VAL(DW1000_BIAS_CORRECTION_ENABLED)
+                    .bias_correction_enable = 1,
 #endif
-                .LDE_enable = 1,
-                .LDO_enable = 0,
-                .sleep_enable = 1,
-                .wakeup_rx_enable = 1,      //!< Wakeup to Rx state
-                .rxauto_enable = 1,
-                .cir_enable = 0,            //!< Default behavior for CIR interface
-                .pmem_enable = 0,           //!< Default behavior for Preamble detection memory
-                .cir_pdoa_slave = 1         //!< Third instance should act as pdoa slave
+                    .LDE_enable = 1,
+                    .LDO_enable = 0,
+                    .sleep_enable = 1,
+                    .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
+                    .rxauto_enable = 1,        //!< On error re-enable rx
+                    .cir_enable = 0,           //!< Default behavior for CIR interface
+                    .pmem_enable = 0,          //!< Default behavior for Preamble detection memory
+                    .cir_pdoa_slave = 1        //!< Second instance should act as pdoa slave
+                },
             },
             .spi_sem = 0,
-            .task_prio = 0x12
     }
     #endif
     #endif

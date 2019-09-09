@@ -111,11 +111,11 @@ STATS_NAME_END(ccp_stat_section)
 #define CCP_STATS_INC(__X) {}
 #endif
 
-static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool ccp_tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool ccp_rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool ccp_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool ccp_reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool ccp_tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool ccp_rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool ccp_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool ccp_reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
 
 static struct _dw1000_ccp_status_t dw1000_ccp_send(struct _dw1000_ccp_instance_t * ccp, dw1000_dev_modes_t mode);
 static struct _dw1000_ccp_status_t dw1000_ccp_listen(struct _dw1000_ccp_instance_t * ccp, dw1000_dev_modes_t mode);
@@ -213,12 +213,12 @@ ccp_slave_timer_ev_cb(struct dpl_event *ev) {
     assert(dpl_event_get_arg(ev));
 
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *) dpl_event_get_arg(ev);
-    dw1000_dev_instance_t * inst = ccp->dev_inst;
+    struct uwb_dev * inst = ccp->dev_inst;
 
     /* Sync lost since earlier, just set a long rx timeout and
      * keep listening */
     if (ccp->status.rx_timeout_error) {
-        dw1000_set_rx_timeout(inst, (uint16_t) 0xffff);
+        uwb_set_rx_timeout(inst, (uint16_t) 0xffff);
         dw1000_ccp_listen(ccp, DWT_BLOCKING);
         goto reset_timer;
     }
@@ -228,27 +228,27 @@ ccp_slave_timer_ev_cb(struct dpl_event *ev) {
     wcs_instance_t * wcs = ccp->wcs;
     uint64_t dx_time = ccp->local_epoch +
         (uint64_t) roundf((1.0l + wcs->skew) * (double)((uint64_t)ccp->period << 16)) -
-        ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&inst->attrib))) << 16);
+        ((uint64_t)ceilf(uwb_usecs_to_dwt_usecs(uwb_phy_SHR_duration(inst))) << 16);
 #else
     uint64_t dx_time = ccp->local_epoch 
              + ((uint64_t)ccp->period << 16)
-             - ((uint64_t)ceilf(dw1000_usecs_to_dwt_usecs(dw1000_phy_SHR_duration(&inst->attrib))) << 16);
+             - ((uint64_t)ceilf(uwb_usecs_to_dwt_usecs(uwb_phy_SHR_duration(inst))) << 16);
 #endif
 
-    uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, sizeof(ccp_blink_frame_t))
+    uint16_t timeout = uwb_phy_frame_duration(inst, sizeof(ccp_blink_frame_t))
                         + MYNEWT_VAL(XTALT_GUARD);
 
 #if MYNEWT_VAL(CCP_MAX_CASCADE_RPTS) != 0
     /* Adjust timeout if we're using cascading ccp in anchors */
-    timeout += (ccp->config.tx_holdoff_dly + dw1000_phy_frame_duration(&inst->attrib, sizeof(ccp_blink_frame_t))) * MYNEWT_VAL(CCP_MAX_CASCADE_RPTS);
+    timeout += (ccp->config.tx_holdoff_dly + uwb_phy_frame_duration(inst, sizeof(ccp_blink_frame_t))) * MYNEWT_VAL(CCP_MAX_CASCADE_RPTS);
 #endif
-    dw1000_set_rx_timeout(inst, timeout);
-    dw1000_set_delay_start(inst, dx_time);
+    uwb_set_rx_timeout(inst, timeout);
+    uwb_set_delay_start(inst, dx_time);
 
     dw1000_ccp_status_t status = dw1000_ccp_listen(ccp, DWT_BLOCKING);
     if(status.start_rx_error){
         /* Sync lost, set a long rx timeout */
-        dw1000_set_rx_timeout(inst, (uint16_t) 0xffff);
+        uwb_set_rx_timeout(inst, (uint16_t) 0xffff);
         dw1000_ccp_listen(ccp, DWT_BLOCKING);
     }
 
@@ -257,8 +257,8 @@ reset_timer:
     os_cputime_timer_start(&ccp->timer, ccp->os_epoch
         + os_cputime_usecs_to_ticks(
             - MYNEWT_VAL(OS_LATENCY)
-            + (uint32_t)dw1000_dwt_usecs_to_usecs(ccp->period)
-            - dw1000_phy_frame_duration(&inst->attrib, sizeof(ccp_blink_frame_t))
+            + (uint32_t)uwb_dwt_usecs_to_usecs(ccp->period)
+            - uwb_phy_frame_duration(inst, sizeof(ccp_blink_frame_t))
             )
         );
 }
@@ -322,10 +322,10 @@ dw1000_ccp_set_tof_comp_cb(dw1000_ccp_instance_t * inst, dw1000_ccp_tof_compensa
 }
 
 /**
- * @fn dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes)
+ * @fn dw1000_ccp_init(struct uwb_dev * inst, uint16_t nframes)
  * @brief Precise timing is achieved by adding a fixed period to the transmission time of the previous frame.
  * This approach solves the non-deterministic latencies caused by the OS. The OS, however, is used to schedule
- * the next transmission event, but the DW1000 controls the actual next transmission time using the dw1000_set_delay_start.
+ * the next transmission event, but the UWB tranceiver controls the actual next transmission time using the uwb_set_delay_start.
  * This function allocates all the required resources. In the case of a large scale deployment multiple instances
  * can be uses to track multiple clock domains.
  *
@@ -336,11 +336,11 @@ dw1000_ccp_set_tof_comp_cb(dw1000_ccp_instance_t * inst, dw1000_ccp_tof_compensa
  * @return dw1000_ccp_instance_t *
  */
 dw1000_ccp_instance_t *
-dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes){
-    assert(inst);
+dw1000_ccp_init(struct uwb_dev* dev, uint16_t nframes){
+    assert(dev);
     assert(nframes > 1);
 
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(dev, UWBEXT_CCP);
     if (ccp == NULL) {
         ccp = (dw1000_ccp_instance_t *) malloc(sizeof(dw1000_ccp_instance_t) + nframes * sizeof(ccp_frame_t *));
         assert(ccp);
@@ -361,8 +361,9 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes){
             ccp->frames[i]->seq_num = 0;
         }
 
-        ccp->dev_inst = inst;
-        ccp->task_prio = inst->task_prio - 0x4;
+        ccp->dev_inst = dev;
+        /* TODO: fixme below */
+        ccp->task_prio = dev->task_prio - 0x4;
     }else{
         assert(ccp->nframes == nframes);
     }
@@ -385,8 +386,8 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes){
     dw1000_ccp_set_postprocess(ccp, &ccp_postprocess);    // Using default process
 #endif
 
-    ccp->cbs = (dw1000_mac_interface_t){
-        .id = DW1000_CCP,
+    ccp->cbs = (struct uwb_mac_interface){
+        .id = UWBEXT_CCP,
         .inst_ptr = (void*)ccp,
         .tx_complete_cb = ccp_tx_complete_cb,
         .rx_complete_cb = rx_complete_cb,
@@ -395,7 +396,7 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes){
         .tx_error_cb = ccp_error_cb,
         .reset_cb = ccp_reset_cb
     };
-    dw1000_mac_append_interface(inst, &ccp->cbs);
+    uwb_mac_append_interface(dev, &ccp->cbs);
 
     ccp_tasks_init(ccp);
     ccp->os_epoch = os_cputime_get32();
@@ -416,7 +417,7 @@ dw1000_ccp_init(struct _dw1000_dev_instance_t * inst, uint16_t nframes){
 #if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
     rc = stats_register("ccp", STATS_HDR(ccp->stat));
 #elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
-    if (inst->idx == 0)
+    if (dev->idx == 0)
         rc |= stats_register("ccp0", STATS_HDR(ccp->stat));
     else
         rc |= stats_register("ccp1", STATS_HDR(ccp->stat));
@@ -466,13 +467,13 @@ void ccp_pkg_init(void){
 #endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    dw1000_ccp_init(hal_dw1000_inst(0), 2);
+    dw1000_ccp_init(uwb_dev_idx_lookup(0), 2);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
-    dw1000_ccp_init(hal_dw1000_inst(1), 2);
+    dw1000_ccp_init(uwb_dev_idx_lookup(1), 2);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-    dw1000_ccp_init(hal_dw1000_inst(2), 2);
+    dw1000_ccp_init(uwb_dev_idx_lookup(2), 2);
 #endif
 }
 
@@ -531,7 +532,7 @@ ccp_postprocess(struct dpl_event * ev){
 #endif
 
 /**
- * @fn rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn rx_complete_cb(struct uwb_dev * inst, dw1000_mac_interface_t * cbs)
  * @brief Precise timing is achieved using the reception_timestamp and tracking intervals along with
  * the correction factor. For timescale processing, a postprocessing  callback is placed in the eventq.
  * This callback with FS_XTALT_AUTOTUNE_ENABLED set, uses the RX_TTCKO_ID register to compensate for crystal offset and drift. This is an
@@ -546,13 +547,13 @@ ccp_postprocess(struct dpl_event * ev){
  * @return void
  */
 static bool
-rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)cbs->inst_ptr;
 
     if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64){
         if(dpl_sem_get_count(&ccp->sem) == 0){
-            dw1000_set_rx_timeout(inst, (uint16_t) 0xffff);
+            uwb_set_rx_timeout(inst, (uint16_t) 0xffff);
             return true;
         }
         return false;
@@ -580,7 +581,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         return false;
 
     /* A good ccp packet has been received, stop the receiver */
-    dw1000_stop_rx(inst); //Prevent timeout event
+    uwb_stop_rx(inst); //Prevent timeout event
     
     ccp->idx++; // confirmed frame advance  
     ccp->seq_num = frame->seq_num;
@@ -605,7 +606,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
     ccp->period = (frame->transmission_interval >> 16);
     frame->carrier_integrator = inst->carrier_integrator;
     if (inst->config.rxttcko_enable) {
-        frame->rxttcko = inst->rxttcko;
+        frame->rxttcko = ((struct _dw1000_dev_instance_t*)inst)->rxttcko;
     } else {
         frame->rxttcko = 0;
     }
@@ -653,7 +654,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
         uint64_t tx_timestamp = frame->reception_timestamp;
         tx_timestamp += tx_frame.rpt_count*((uint64_t)ccp->config.tx_holdoff_dly<<16);
         tx_timestamp &= 0x0FFFFFFFE00UL;
-        dw1000_set_delay_start(inst, tx_timestamp);
+        uwb_set_delay_start(inst, tx_timestamp);
 
         /* Need to add antenna delay */
         tx_timestamp += inst->tx_antenna_delay;
@@ -669,9 +670,9 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
          * original master's timestamp */
         tx_frame.transmission_interval = frame->transmission_interval - tx_delay;
 
-        dw1000_write_tx(inst, tx_frame.array, 0, sizeof(ccp_blink_frame_t));
-        dw1000_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0);
-        ccp->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
+        uwb_write_tx(inst, tx_frame.array, 0, sizeof(ccp_blink_frame_t));
+        uwb_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0);
+        ccp->status.start_tx_error = uwb_start_tx(inst).start_tx_error;
         if (ccp->status.start_tx_error){
             CCP_STATS_INC(tx_relay_error);
         } else {
@@ -706,12 +707,12 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
 }
 
 /**
- * @fn ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn ccp_tx_complete_cb(struct uwb_dev * inst, dw1000_mac_interface_t * cbs)
  * @brief Precise timing is achieved by adding a fixed period to the transmission time of the previous frame. This static
  * function is called on successful transmission of a CCP packet, and this advances the frame index point. Circular addressing is used
  * for the frame addressing. The next os_event is scheduled to occur in (MYNEWT_VAL(CCP_PERIOD) - MYNEWT_VAL(CCP_OS_LATENCY)) usec
  * from now. This provided a context switch guard zone. The assumption is that the underlying OS will have sufficient time start
- * the call dw1000_set_delay_start within dw1000_ccp_blink.
+ * the call uwb_set_delay_start within dw1000_ccp_blink.
  *
  * @param inst    Pointer to dw1000_dev_instance_t.
  * @param cbs     Pointer to dw1000_mac_interface_t.
@@ -719,7 +720,7 @@ rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cb
  * @return bool
  */
 static bool
-ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ccp_tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)cbs->inst_ptr;
     if(dpl_sem_get_count(&ccp->sem) == 1)
@@ -756,7 +757,7 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
 }
 
 /**
- * @fn ccp_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn ccp_error_cb(struct uwb_dev * inst, dw1000_mac_interface_t * cbs)
  * @brief API for rx_error_cb of ccp.
  *
  * @param inst   Pointer to dw1000_dev_instance_t.
@@ -765,7 +766,7 @@ ccp_tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t 
  * @return void
  */
 static bool
-ccp_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ccp_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)cbs->inst_ptr;
     if(dpl_sem_get_count(&ccp->sem) == 1)
@@ -780,7 +781,7 @@ ccp_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 }
 
 /**
- * @fn ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn ccp_rx_timeout_cb(struct uwb_dev * inst, dw1000_mac_interface_t * cbs)
  * @brief API for rx_timeout_cb of ccp.
  *
  * @param inst   Pointer to dw1000_dev_instance_t.
@@ -789,7 +790,7 @@ ccp_error_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  * @return void
  */
 static bool
-ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ccp_rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)cbs->inst_ptr;
     if(dpl_sem_get_count(&ccp->sem) == 1)
@@ -806,7 +807,7 @@ ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t *
 }
 
 /**
- * @fn ccp_reset_cb(struct _dw1000_dev_instance_t * inst,  dw1000_mac_interface_t * cbs)
+ * @fn ccp_reset_cb(struct uwb_dev * inst,  dw1000_mac_interface_t * cbs)
  * @brief API for ccp_reset_cb of ccp.
  *
  * @param inst   Pointer to dw1000_dev_instance_t.
@@ -815,7 +816,7 @@ ccp_rx_timeout_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t *
  * @return void
  */
 static bool
-ccp_reset_cb(struct _dw1000_dev_instance_t * inst,  dw1000_mac_interface_t * cbs)
+ccp_reset_cb(struct uwb_dev *inst, struct uwb_mac_interface * cbs)
 {
     dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)cbs->inst_ptr;
     if(dpl_sem_get_count(&ccp->sem) == 0){
@@ -848,7 +849,7 @@ dw1000_ccp_send(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
     CCP_STATS_INC(send);
     dpl_error_t err = dpl_sem_pend(&ccp->sem, DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
-    struct _dw1000_dev_instance_t * inst = ccp->dev_inst;
+    struct uwb_dev * inst = ccp->dev_inst;
     
     ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx)%ccp->nframes];
     ccp_frame_t * frame = ccp->frames[(ccp->idx+1)%ccp->nframes];
@@ -859,7 +860,7 @@ dw1000_ccp_send(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
                         + ((uint64_t)ccp->period << 16);
 
     timestamp = timestamp & 0xFFFFFFFFFFFFFE00ULL; /* Mask off the last 9 bits */
-    dw1000_set_delay_start(inst, timestamp);
+    uwb_set_delay_start(inst, timestamp);
     timestamp += inst->tx_antenna_delay;
     frame->transmission_timestamp.timestamp = timestamp;
     
@@ -868,10 +869,10 @@ dw1000_ccp_send(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
     frame->short_address = inst->my_short_address;
     frame->transmission_interval = ((uint64_t)ccp->period << 16);
 
-    dw1000_write_tx(inst, frame->array, 0, sizeof(ccp_blink_frame_t));
-    dw1000_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0);
-    dw1000_set_wait4resp(inst, false);    
-    ccp->status.start_tx_error = dw1000_start_tx(inst).start_tx_error;
+    uwb_write_tx(inst, frame->array, 0, sizeof(ccp_blink_frame_t));
+    uwb_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0);
+    uwb_set_wait4resp(inst, false);    
+    ccp->status.start_tx_error = uwb_start_tx(inst).start_tx_error;
     if (ccp->status.start_tx_error ){
         CCP_STATS_INC(tx_start_error);
         previous_frame->transmission_timestamp.timestamp = (frame->transmission_timestamp.timestamp 
@@ -905,9 +906,9 @@ dw1000_ccp_send(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
 static dw1000_ccp_status_t
 dw1000_ccp_listen(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
 {
-    struct _dw1000_dev_instance_t * inst = ccp->dev_inst;
+    struct uwb_dev * inst = ccp->dev_inst;
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_listen\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-    dw1000_phy_forcetrxoff(inst);
+    uwb_phy_forcetrxoff(inst);
     dpl_error_t err = dpl_sem_pend(&ccp->sem,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
 
@@ -917,7 +918,7 @@ dw1000_ccp_listen(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
         .rx_timeout_error = 0,
         .start_rx_error = 0
     };
-    ccp->status.start_rx_error = dw1000_start_rx(inst).start_rx_error;
+    ccp->status.start_rx_error = uwb_start_rx(inst).start_rx_error;
     if (ccp->status.start_rx_error){
         err = dpl_sem_release(&ccp->sem);
         assert(err == DPL_OK);
@@ -931,7 +932,7 @@ dw1000_ccp_listen(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
 }
 
 /**
- * @fn dw1000_ccp_start(struct _dw1000_dev_instance_t * inst, dw1000_ccp_role_t role)
+ * @fn dw1000_ccp_start(struct uwb_dev * inst, dw1000_ccp_role_t role)
  * @brief API to start clock calibration packets (CCP) blinks.
  * With a pulse repetition period of MYNEWT_VAL(CCP_PERIOD).
  *
@@ -943,7 +944,7 @@ dw1000_ccp_listen(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
 void
 dw1000_ccp_start(dw1000_ccp_instance_t *ccp, dw1000_ccp_role_t role)
 {
-    struct _dw1000_dev_instance_t * inst = ccp->dev_inst;
+    struct uwb_dev * inst = ccp->dev_inst;
     // Initialise frame timestamp to current time
     DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_start\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     assert(ccp);
@@ -953,7 +954,7 @@ dw1000_ccp_start(dw1000_ccp_instance_t *ccp, dw1000_ccp_role_t role)
     ccp->config.role = role;
 
     /* Setup CCP to send/listen for the first packet ASAP */
-    uint64_t ts = (dw1000_read_systime(inst) - (((uint64_t)ccp->period)<<16))&0xFFFFFFFFFFULL;
+    uint64_t ts = (uwb_read_systime(inst) - (((uint64_t)ccp->period)<<16))&0xFFFFFFFFFFULL;
     ts += ((uint64_t)ccp->config.tx_holdoff_dly)<<16;
 
     if (ccp->config.role == CCP_ROLE_MASTER){

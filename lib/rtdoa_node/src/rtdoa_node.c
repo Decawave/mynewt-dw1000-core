@@ -106,7 +106,7 @@ rtdoa_node_free(dw1000_dev_instance_t * inst){
     dw1000_mac_remove_interface(inst, DW1000_RTDOA);
 }
 
-dw1000_dev_status_t
+struct uwb_dev_status
 dw1000_rtdoa_request(struct _dw1000_rtdoa_instance_t *rtdoa, uint64_t delay)
 {
     assert(rtdoa);
@@ -158,7 +158,7 @@ dw1000_rtdoa_request(struct _dw1000_rtdoa_instance_t *rtdoa, uint64_t delay)
 }
 
 
-static dw1000_dev_status_t
+static struct uwb_dev_status
 tx_rtdoa_response(dw1000_rtdoa_instance_t * rtdoa)
 {
     assert(rtdoa);

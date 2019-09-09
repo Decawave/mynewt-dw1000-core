@@ -20,12 +20,12 @@
  */
 
 /**
- * @file dw1000_rng.h
- * @athor paul kettle
- * @date 2018
- * @brief Range 
+ * @file nmgr_uwb.h
+ * @author Niklas Casril
+ * @date 2019
+ * @brief  
  *
- * @details This is the rng base class which utilises the functions to enable/disable the configurations related to rng.
+ * @details Newtmgr over uwb
  *
  */
 
@@ -41,6 +41,7 @@ extern "C" {
 #endif
 
 #include <hal/hal_spi.h>
+#include <uwb/uwb.h>
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_ftypes.h>
@@ -66,9 +67,9 @@ typedef union {
 } nmgr_uwb_frame_header_t;
 
 typedef struct _nmgr_uwb_instance_t {
-    struct _dw1000_dev_instance_t* dev_inst;
+    struct uwb_dev* dev_inst;
     uint8_t frame_seq_num;
-    struct os_sem sem;
+    struct dpl_sem sem;
     struct os_mqueue tx_q;
 } nmgr_uwb_instance_t;
 
@@ -79,11 +80,11 @@ typedef enum _nmgr_uwb_codes_t{
 }nmgr_uwb_codes_t;
 
 uint16_t nmgr_uwb_mtu(struct os_mbuf *m, int idx);
-nmgr_uwb_instance_t* nmgr_uwb_init(dw1000_dev_instance_t* inst);
+nmgr_uwb_instance_t* nmgr_uwb_init(struct uwb_dev* inst);
 int nmgr_uwb_tx(struct _nmgr_uwb_instance_t *nmgruwb, uint16_t dst_addr, uint16_t code, struct os_mbuf *m, uint64_t dx_time);
 
 /* Sychronous model */
-dw1000_dev_status_t nmgr_uwb_listen(struct _nmgr_uwb_instance_t *nmgruwb, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout);
+struct uwb_dev_status nmgr_uwb_listen(struct _nmgr_uwb_instance_t *nmgruwb, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout);
 int uwb_nmgr_process_tx_queue(struct _nmgr_uwb_instance_t *nmgruwb, uint64_t dx_time);
 int uwb_nmgr_queue_tx(struct _nmgr_uwb_instance_t *nmgruwb, uint16_t dst_addr, uint16_t code, struct os_mbuf *om);
 #ifdef __cplusplus

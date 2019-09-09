@@ -23,6 +23,7 @@
 #include <os/mynewt.h>
 #include <config/config.h>
 
+#include <uwb/uwb.h>
 #include <uwbcfg/uwbcfg.h>
 #include "uwbcfg_priv.h"
 #include <dw1000/dw1000_hal.h>
@@ -128,7 +129,7 @@ uwbcfg_internal_set(int idx, char* val)
 }
 
 static void
-check_preamble_code(dw1000_dev_instance_t * inst, uint8_t *arg_code)
+check_preamble_code(struct uwb_dev * inst, uint8_t *arg_code)
 {
     int new_code = 0;
     int ch = inst->config.channel;
@@ -153,7 +154,7 @@ check_preamble_code(dw1000_dev_instance_t * inst, uint8_t *arg_code)
 }
 
 int
-uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst, char cfg[CFGSTR_MAX][CFGSTR_STRLEN])
+uwbcfg_commit_to_inst(struct uwb_dev * inst, char cfg[CFGSTR_MAX][CFGSTR_STRLEN])
 {
     uint8_t coarse, fine, txpwr, paclen;
     int sfd_len=0;
@@ -288,17 +289,17 @@ uwbcfg_commit_to_inst(dw1000_dev_instance_t * inst, char cfg[CFGSTR_MAX][CFGSTR_
 int
 uwbcfg_commit(void)
 {
-    dw1000_dev_instance_t * inst;
+    struct uwb_dev *inst;
 #if  MYNEWT_VAL(DW1000_DEVICE_0)
-    inst = hal_dw1000_inst(0);
+    inst = uwb_dev_idx_lookup(0);
     uwbcfg_commit_to_inst(inst, uwb_config);
 #endif
 #if  MYNEWT_VAL(DW1000_DEVICE_1)
-    inst = hal_dw1000_inst(1);
+    inst = uwb_dev_idx_lookup(1);
     uwbcfg_commit_to_inst(inst, uwb_config);
 #endif
 #if  MYNEWT_VAL(DW1000_DEVICE_2)
-    inst = hal_dw1000_inst(2);
+    inst = uwb_dev_idx_lookup(2);
     uwbcfg_commit_to_inst(inst, uwb_config);
 #endif
     return 0;

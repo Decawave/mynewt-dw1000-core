@@ -54,10 +54,10 @@
  * @param subaddress    Member of dw1000_cmd_t structure. 
  * @param buffer        Result is stored in buffer.
  * @param length        Represents buffer length.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
 
-dw1000_dev_status_t 
+struct uwb_dev_status
 dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length){
     assert(reg <= 0x3F); // Record number is limited to 6-bits.
     assert((subaddress <= 0x7FFF) && ((subaddress + length) <= 0x7FFF)); // Index and sub-addressable area are limited to 15-bits.
@@ -86,7 +86,7 @@ dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uin
         hal_dw1000_read_noblock(inst, header, len, buffer, length);
     }
 
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 /**
@@ -97,10 +97,10 @@ dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uin
  * @param subaddress    Member of dw1000_cmd_t structure. 
  * @param buffer        Result is stored in buffer.
  * @param length        Represents buffer length.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
 
-dw1000_dev_status_t 
+struct uwb_dev_status
 dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length)
 {
     assert(reg <= 0x3F); // Record number is limited to 6-bits.
@@ -127,7 +127,7 @@ dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, ui
     } else {
         hal_dw1000_write_noblock(inst, header, len, buffer, length);
     }
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 /**
@@ -238,43 +238,6 @@ dw1000_softreset(dw1000_dev_instance_t * inst)
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL0_SOFTRESET_OFFSET, PMSC_CTRL0_RESET_CLEAR, sizeof(uint8_t)); // Clear reset
 }
 
-/**
- * API to initialize a dw1000_dev_instance_t structure from the os device initialization callback.  
- *
- * @param odev  Pointer to struct os_dev. 
- * @param arg   Argument to set as pointer to struct dw1000_dev_cfg.
- * @return OS_OK on success
- */
-int 
-dw1000_dev_init(struct os_dev *odev, void *arg)
-{
-#if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_dev_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-#endif
-    struct dw1000_dev_cfg *cfg = (struct dw1000_dev_cfg*)arg;
-    dw1000_dev_instance_t *inst = (dw1000_dev_instance_t *)odev;
-    
-    if (inst == NULL ) {
-        inst = (dw1000_dev_instance_t *) malloc(sizeof(dw1000_dev_instance_t));
-        assert(inst);
-        memset(inst,0,sizeof(dw1000_dev_instance_t));
-        inst->status.selfmalloc = 1;
-    }
-
-    inst->spi_sem = cfg->spi_sem;
-    inst->spi_num = cfg->spi_num;
-
-    dpl_error_t err = dpl_mutex_init(&inst->mutex);
-    assert(err == DPL_OK);
-    err = dpl_sem_init(&inst->tx_sem, 0x1); 
-    assert(err == DPL_OK);
-    err = dpl_sem_init(&inst->spi_nb_sem, 0x1);
-    assert(err == DPL_OK);
-
-    SLIST_INIT(&inst->interface_cbs);
-
-    return OS_OK;
-}
 
 /**
  * API to configure dw1000.
@@ -300,19 +263,18 @@ retry:
     assert(rc == 0);
 
     inst->device_id = dw1000_read_reg(inst, DEV_ID_ID, 0, sizeof(uint32_t));
-    inst->status.initialized = (inst->device_id == DWT_DEVICE_ID);
-    if (!inst->status.initialized && --timeout)
+    inst->uwb_dev.status.initialized = (inst->device_id == DWT_DEVICE_ID);
+    if (!inst->uwb_dev.status.initialized && --timeout)
     {
         /* In case dw1000 was sleeping */
         dw1000_dev_wakeup(inst);
         goto retry;
     }
 
-    if(!inst->status.initialized)
+    if(!inst->uwb_dev.status.initialized)
     {
         return OS_TIMEOUT;
     }
-    inst->timestamp = (uint64_t) dw1000_read_reg(inst, SYS_TIME_ID, SYS_TIME_OFFSET, SYS_TIME_LEN);
 
     dw1000_phy_init(inst, NULL);
 
@@ -325,25 +287,25 @@ retry:
     rc = hal_spi_enable(inst->spi_num);
     assert(rc == 0);
 
-    inst->PANID = MYNEWT_VAL(PANID);
-    inst->my_short_address = inst->partID & 0xffff;
+    inst->uwb_dev.pan_id = MYNEWT_VAL(PANID);
+    inst->uwb_dev.uid = inst->part_id & 0xffff;
 
     if (inst == hal_dw1000_inst(0)) {
 #if  MYNEWT_VAL(DW_DEVICE_ID_0)
-        inst->my_short_address = MYNEWT_VAL(DW_DEVICE_ID_0);
+        inst->uwb_dev.uid = MYNEWT_VAL(DW_DEVICE_ID_0);
 #endif
     } else if (inst == hal_dw1000_inst(1)){
 #if  MYNEWT_VAL(DW_DEVICE_ID_1)
-        inst->my_short_address = MYNEWT_VAL(DW_DEVICE_ID_1);
+        inst->uwb_dev.uid = MYNEWT_VAL(DW_DEVICE_ID_1);
 #endif
     } else if (inst == hal_dw1000_inst(2)){
 #if  MYNEWT_VAL(DW_DEVICE_ID_2)
-        inst->my_short_address = MYNEWT_VAL(DW_DEVICE_ID_2);
+        inst->uwb_dev.uid = MYNEWT_VAL(DW_DEVICE_ID_2);
 #endif
     }
-    inst->my_long_address = (((uint64_t)inst->lotID) << 32) + inst->partID;
+    inst->uwb_dev.euid = (((uint64_t)inst->lot_id) << 32) + inst->part_id;
 
-    dw1000_set_panid(inst,inst->PANID);
+    dw1000_set_panid(inst,inst->uwb_dev.pan_id);
     dw1000_mac_init(inst, NULL);
 
     return OS_OK;
@@ -360,10 +322,10 @@ dw1000_dev_free(dw1000_dev_instance_t * inst){
     assert(inst);  
     hal_spi_disable(inst->spi_num);  
 
-    if (inst->status.selfmalloc)
+    if (inst->uwb_dev.status.selfmalloc)
         free(inst);
     else
-        inst->status.initialized = 0;
+        inst->uwb_dev.status.initialized = 0;
 }
 
 
@@ -406,17 +368,17 @@ dw1000_dev_configure_sleep(dw1000_dev_instance_t * inst)
     uint16_t reg = dw1000_read_reg(inst, AON_ID, AON_WCFG_OFFSET, sizeof(uint16_t));
     reg |= AON_WCFG_ONW_L64P | AON_WCFG_ONW_LDC;
 
-    if (inst->status.LDE_enabled)
+    if (inst->uwb_dev.status.LDE_enabled)
         reg |= AON_WCFG_ONW_LLDE;
     else
         reg &= ~AON_WCFG_ONW_LLDE;
 
-    if (inst->status.LDO_enabled)
+    if (inst->uwb_dev.status.LDO_enabled)
         reg |= AON_WCFG_ONW_LLDO;
     else
         reg &= ~AON_WCFG_ONW_LLDO;
 
-    if (inst->config.wakeup_rx_enable)
+    if (inst->uwb_dev.config.wakeup_rx_enable)
         reg |= AON_WCFG_ONW_RX;
     else
         reg &= ~AON_WCFG_ONW_RX;
@@ -425,8 +387,8 @@ dw1000_dev_configure_sleep(dw1000_dev_instance_t * inst)
     reg = dw1000_read_reg(inst, AON_ID, AON_CFG0_OFFSET, sizeof(uint16_t));
     reg |= AON_CFG0_WAKE_SPI | AON_CFG0_WAKE_PIN; 
 
-    inst->status.sleep_enabled = inst->config.sleep_enable;
-    if (inst->status.sleep_enabled)
+    inst->uwb_dev.status.sleep_enabled = inst->uwb_dev.config.sleep_enable;
+    if (inst->uwb_dev.status.sleep_enabled)
         reg |= AON_CFG0_WAKE_CNT | AON_CFG0_SLEEP_EN;
     else
         reg &= ~(AON_CFG0_WAKE_CNT | AON_CFG0_SLEEP_EN);
@@ -437,9 +399,9 @@ dw1000_dev_configure_sleep(dw1000_dev_instance_t * inst)
  * API to enter device into sleep mode.
  *
  * @param inst   Pointer to dw1000_dev_instance_t. 
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-dw1000_dev_status_t
+struct uwb_dev_status
 dw1000_dev_enter_sleep(dw1000_dev_instance_t * inst)
 {
     // Critical region, atomic lock with mutex
@@ -449,21 +411,21 @@ dw1000_dev_enter_sleep(dw1000_dev_instance_t * inst)
     /* Upload always on array configuration and enter sleep */
     dw1000_write_reg(inst, AON_ID, AON_CTRL_OFFSET, 0x0, sizeof(uint16_t));
     dw1000_write_reg(inst, AON_ID, AON_CTRL_OFFSET, AON_CTRL_SAVE, sizeof(uint16_t));
-    inst->status.sleeping = 1;
+    inst->uwb_dev.status.sleeping = 1;
 
     // Critical region, unlock mutex
     err = dpl_mutex_release(&inst->mutex);
     assert(err == DPL_OK);
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 /**
  * API to wakeup device from sleep to init.
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
- * @return dw1000_dev_status_t 
+ * @return struct uwb_dev_status
  */
-dw1000_dev_status_t
+struct uwb_dev_status
 dw1000_dev_wakeup(dw1000_dev_instance_t * inst)
 {
     int timeout=5;
@@ -479,13 +441,13 @@ dw1000_dev_wakeup(dw1000_dev_instance_t * inst)
         hal_dw1000_wakeup(inst);
         devid = dw1000_read_reg(inst, DEV_ID_ID, 0, sizeof(uint32_t));
     }
-    inst->status.sleeping = (devid != DWT_DEVICE_ID);
+    inst->uwb_dev.status.sleeping = (devid != DWT_DEVICE_ID);
     dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_SLP2INIT, sizeof(uint32_t));
     dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_ERR, sizeof(uint32_t));
 
     /* Antenna delays lost in deep sleep ? */
-    dw1000_phy_set_rx_antennadelay(inst, inst->rx_antenna_delay);
-    dw1000_phy_set_tx_antennadelay(inst, inst->tx_antenna_delay);
+    dw1000_phy_set_rx_antennadelay(inst, inst->uwb_dev.rx_antenna_delay);
+    dw1000_phy_set_tx_antennadelay(inst, inst->uwb_dev.tx_antenna_delay);
 
     // Critical region, unlock mutex
     err = dpl_mutex_release(&inst->mutex);
@@ -497,7 +459,7 @@ dw1000_dev_wakeup(dw1000_dev_instance_t * inst)
         dpl_sem_release(&inst->tx_sem);
     }
 
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 
@@ -510,9 +472,9 @@ dw1000_dev_wakeup(dw1000_dev_instance_t * inst)
  *
  * @param inst       Pointer to dw1000_dev_instance_t.
  * @param enable     1 to configure the device to enter deep sleep after TX, 0 to disables the configuration.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-dw1000_dev_status_t
+struct uwb_dev_status
 dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, uint8_t enable)
 {
 
@@ -524,7 +486,7 @@ dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, uint8_t enable)
         reg &= ~(PMSC_CTRL1_ATXSLP);
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL1_OFFSET, reg, sizeof(uint32_t));
 
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 /**
@@ -535,9 +497,9 @@ dw1000_dev_enter_sleep_after_tx(dw1000_dev_instance_t * inst, uint8_t enable)
  * NOTE: the IRQ line has to be low/inactive (i.e. no pending events).
  * @param inst     Pointer to dw1000_dev_instance_t.
  * @param enable   1 to configure the device to enter deep sleep after TX, 0 to disables the configuration
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-dw1000_dev_status_t
+struct uwb_dev_status
 dw1000_dev_enter_sleep_after_rx(dw1000_dev_instance_t * inst, uint8_t enable)
 {        
     inst->control.sleep_after_rx = enable;
@@ -549,6 +511,213 @@ dw1000_dev_enter_sleep_after_rx(dw1000_dev_instance_t * inst, uint8_t enable)
 
     dw1000_write_reg(inst, PMSC_ID, PMSC_CTRL1_OFFSET, reg, sizeof(uint32_t));
 
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
+
+/*******************************************************/
+
+inline static struct uwb_dev_status
+uwb_dw1000_mac_config(struct uwb_dev *dev, struct uwb_dev_config *config)
+{
+    return dw1000_mac_config((dw1000_dev_instance_t *)dev, config);
+}
+
+inline static void
+uwb_dw1000_txrf_config(struct uwb_dev *dev, struct uwb_dev_txrf_config *config)
+{
+    dw1000_phy_config_txrf((dw1000_dev_instance_t *)dev, config);
+}
+
+inline static struct uwb_dev_status
+uwb_dw1000_set_rx_timeout(struct uwb_dev *dev, uint32_t timeout)
+{
+    return dw1000_set_rx_timeout((dw1000_dev_instance_t *)dev, timeout);
+}
+
+inline static struct uwb_dev_status
+uwb_dw1000_set_delay_start(struct uwb_dev *dev, uint64_t dx_time)
+{
+    return dw1000_set_delay_start((dw1000_dev_instance_t *)dev, dx_time);
+}
+
+inline static struct uwb_dev_status
+uwb_dw1000_start_tx(struct uwb_dev *dev)
+{
+    return dw1000_start_tx((dw1000_dev_instance_t *)dev);
+}
+
+inline static struct uwb_dev_status
+uwb_dw1000_start_rx(struct uwb_dev *dev)
+{
+    return dw1000_start_rx((dw1000_dev_instance_t *)dev);
+}
+
+inline static struct uwb_dev_status
+uwb_dw1000_stop_rx(struct uwb_dev *dev)
+{
+    return dw1000_stop_rx((dw1000_dev_instance_t *)dev);
+}
+
+inline static struct uwb_dev_status
+uwb_dw1000_write_tx(struct uwb_dev* dev, uint8_t *tx_frame_bytes,
+                    uint16_t tx_buffer_offset, uint16_t tx_frame_length)
+{
+    return dw1000_write_tx((dw1000_dev_instance_t *)dev, tx_frame_bytes,
+                           tx_buffer_offset, tx_frame_length);
+}
+
+inline static void
+uwb_dw1000_write_tx_fctrl(struct uwb_dev* dev, uint16_t tx_frame_length,
+                          uint16_t tx_buffer_offset)
+{
+    dw1000_write_tx_fctrl((dw1000_dev_instance_t *)dev, tx_frame_length,
+                          tx_buffer_offset);
+}
+
+inline static struct uwb_dev_status
+uwb_dw1000_set_wait4resp(struct uwb_dev *dev, bool enable)
+{
+    return dw1000_set_wait4resp((dw1000_dev_instance_t *)dev, enable);
+}
+
+inline static struct uwb_dev_status
+uwb_dw1000_set_wait4resp_delay(struct uwb_dev *dev, uint32_t delay)
+{
+    return dw1000_set_wait4resp_delay((dw1000_dev_instance_t *)dev, delay);
+}
+
+inline static struct uwb_dev_status
+uwb_dw1000_set_rxauto_disable(struct uwb_dev *dev, bool disable)
+{
+    return dw1000_set_rxauto_disable((dw1000_dev_instance_t *)dev, disable);
+}
+
+inline static uint64_t
+uwb_dw1000_read_systime(struct uwb_dev* dev)
+{
+    return dw1000_read_systime((dw1000_dev_instance_t *)dev);
+}
+
+inline static uint32_t
+uwb_dw1000_read_systime_lo32(struct uwb_dev* dev)
+{
+    return dw1000_read_systime_lo((dw1000_dev_instance_t *)dev);
+}
+
+inline static uint64_t
+uwb_dw1000_read_rxtime(struct uwb_dev* dev)
+{
+    return dw1000_read_rxtime((dw1000_dev_instance_t *)dev);
+}
+
+inline static uint32_t
+uwb_dw1000_read_rxtime_lo32(struct uwb_dev* dev)
+{
+    return dw1000_read_rxtime_lo((dw1000_dev_instance_t *)dev);
+}
+
+inline static uint64_t
+uwb_dw1000_read_txtime(struct uwb_dev* dev)
+{
+    return dw1000_read_txtime((dw1000_dev_instance_t *)dev);
+}
+
+inline static uint32_t
+uwb_dw1000_read_txtime_lo32(struct uwb_dev* dev)
+{
+    return dw1000_read_txtime_lo((dw1000_dev_instance_t *)dev);
+}
+
+inline static uint16_t
+uwb_dw1000_phy_frame_duration(struct uwb_dev* dev, uint16_t nlen)
+{
+    return dw1000_phy_frame_duration(&dev->attrib, nlen);
+}
+
+inline static uint16_t
+uwb_dw1000_phy_SHR_duration(struct uwb_dev* dev)
+{
+    return dw1000_phy_SHR_duration(&dev->attrib);
+}
+
+inline static void
+uwb_dw1000_phy_forcetrxoff(struct uwb_dev* dev)
+{
+    return dw1000_phy_forcetrxoff((dw1000_dev_instance_t *)dev);
+}
+
+inline static struct uwb_dev_status
+uwb_dw1000_set_on_error_continue(struct uwb_dev * dev, bool enable)
+{
+    return dw1000_set_on_error_continue((dw1000_dev_instance_t *)dev, enable);
+}
+
+static const struct uwb_driver_funcs dw1000_uwb_funcs = {
+    .uf_mac_config = uwb_dw1000_mac_config,
+    .uf_txrf_config = uwb_dw1000_txrf_config,
+    .uf_set_rx_timeout = uwb_dw1000_set_rx_timeout,
+    .uf_set_delay_start = uwb_dw1000_set_delay_start,
+    .uf_start_tx = uwb_dw1000_start_tx,
+    .uf_start_rx = uwb_dw1000_start_rx,
+    .uf_stop_rx = uwb_dw1000_stop_rx,
+    .uf_write_tx = uwb_dw1000_write_tx,
+    .uf_write_tx_fctrl = uwb_dw1000_write_tx_fctrl,
+    .uf_set_wait4resp = uwb_dw1000_set_wait4resp,
+    .uf_set_wait4resp_delay = uwb_dw1000_set_wait4resp_delay,
+    .uf_set_rxauto_disable = uwb_dw1000_set_rxauto_disable,
+    .uf_read_systime = uwb_dw1000_read_systime,
+    .uf_read_systime_lo32 = uwb_dw1000_read_systime_lo32,
+    .uf_read_rxtime = uwb_dw1000_read_rxtime,
+    .uf_read_rxtime_lo32 = uwb_dw1000_read_rxtime_lo32,
+    .uf_read_txtime = uwb_dw1000_read_txtime,
+    .uf_read_txtime_lo32 = uwb_dw1000_read_txtime_lo32,
+    .uf_phy_frame_duration = uwb_dw1000_phy_frame_duration,
+    .uf_phy_SHR_duration = uwb_dw1000_phy_SHR_duration,
+    .uf_phy_forcetrxoff = uwb_dw1000_phy_forcetrxoff,
+    .uf_set_on_error_continue = uwb_dw1000_set_on_error_continue,
+};
+
+/**
+ * API to initialize a dw1000_dev_instance_t structure from the os device initialization callback.  
+ *
+ * @param odev  Pointer to struct os_dev. 
+ * @param arg   Argument to set as pointer to struct dw1000_dev_cfg.
+ * @return OS_OK on success
+ */
+int 
+dw1000_dev_init(struct os_dev *odev, void *arg)
+{
+#if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_dev_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+#endif
+    /* TODO, replace with open anch close function pointers below */
+    OS_DEV_SETHANDLERS(odev, 0, 0);
+
+    struct dw1000_dev_cfg *cfg = (struct dw1000_dev_cfg*)arg;
+    struct uwb_dev *udev = (struct uwb_dev*)odev;
+    udev->uw_funcs = &dw1000_uwb_funcs;
+
+    dw1000_dev_instance_t *inst = (dw1000_dev_instance_t *)odev;
+    
+    if (inst == NULL ) {
+        inst = (dw1000_dev_instance_t *) malloc(sizeof(dw1000_dev_instance_t));
+        assert(inst);
+        memset(inst,0,sizeof(dw1000_dev_instance_t));
+        inst->uwb_dev.status.selfmalloc = 1;
+    }
+
+    inst->spi_sem = cfg->spi_sem;
+    inst->spi_num = cfg->spi_num;
+
+    dpl_error_t err = dpl_mutex_init(&inst->mutex);
+    assert(err == DPL_OK);
+    err = dpl_sem_init(&inst->tx_sem, 0x1); 
+    assert(err == DPL_OK);
+    err = dpl_sem_init(&inst->spi_nb_sem, 0x1);
+    assert(err == DPL_OK);
+
+    SLIST_INIT(&inst->uwb_dev.interface_cbs);
+
+    return OS_OK;
+}

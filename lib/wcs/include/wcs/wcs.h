@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <os/os.h>
-#include <dw1000/dw1000_dev.h>
+#include <uwb/uwb.h>
 #include <ccp/ccp.h>
 #include <timescale/timescale.h>        
 
@@ -66,24 +66,24 @@ void wcs_free(wcs_instance_t * inst);
 void wcs_update_cb(struct dpl_event * ev);
 void wcs_set_postprocess(wcs_instance_t * inst, dpl_event_fn * postprocess);
 
-uint64_t wcs_read_systime(struct _dw1000_dev_instance_t * inst);
-uint32_t wcs_read_systime_lo(struct _dw1000_dev_instance_t * inst);
-uint64_t wcs_read_rxtime(struct _dw1000_dev_instance_t * inst);
-uint32_t wcs_read_rxtime_lo(struct _dw1000_dev_instance_t * inst);
-uint64_t wcs_read_txtime(struct _dw1000_dev_instance_t * inst);
-uint32_t wcs_read_txtime_lo(struct _dw1000_dev_instance_t * inst);
-uint64_t wcs_read_systime_master(struct _dw1000_dev_instance_t * inst);
-uint32_t wcs_read_systime_lo_master(struct _dw1000_dev_instance_t * inst);
-uint64_t wcs_read_rxtime_master(struct _dw1000_dev_instance_t * inst);
-uint32_t wcs_read_rxtime_lo_master(struct _dw1000_dev_instance_t * inst);
-uint64_t wcs_read_txtime_master(struct _dw1000_dev_instance_t * inst);
-uint32_t wcs_read_txtime_lo_master(struct _dw1000_dev_instance_t * inst);
+uint64_t wcs_read_systime(struct uwb_dev * inst);
+uint32_t wcs_read_systime_lo(struct uwb_dev * inst);
+uint64_t wcs_read_rxtime(struct uwb_dev * inst);
+uint32_t wcs_read_rxtime_lo(struct uwb_dev * inst);
+uint64_t wcs_read_txtime(struct uwb_dev * inst);
+uint32_t wcs_read_txtime_lo(struct uwb_dev * inst);
+uint64_t wcs_read_systime_master(struct uwb_dev * inst);
+uint32_t wcs_read_systime_lo_master(struct uwb_dev * inst);
+uint64_t wcs_read_rxtime_master(struct uwb_dev * inst);
+uint32_t wcs_read_rxtime_lo_master(struct uwb_dev * inst);
+uint64_t wcs_read_txtime_master(struct uwb_dev * inst);
+uint32_t wcs_read_txtime_lo_master(struct uwb_dev * inst);
 
 double wcs_dtu_time_correction(struct _wcs_instance_t * wcs);
 uint64_t wcs_dtu_time_adjust(struct _wcs_instance_t * wcs, uint64_t dtu_time);
 uint64_t wcs_local_to_master64(struct _wcs_instance_t * wcs, uint64_t dtu_time);
 uint64_t wcs_local_to_master(struct _wcs_instance_t * wcs, uint64_t dtu_time);
-uint64_t wcs_read_systime_master64(struct _dw1000_dev_instance_t * inst);
+uint64_t wcs_read_systime_master64(struct uwb_dev * inst);
 
 #ifdef __cplusplus
 }

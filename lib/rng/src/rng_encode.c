@@ -112,11 +112,10 @@ rng_encode(dw1000_rng_instance_t * rng) {
         break;
         default: printf(",error: \"Unknown Frame Code\"");
     }
-#if MYNEWT_VAL(RNG_VERBOSE) > 1 
-    dw1000_dev_instance_t * inst = rng->dev_inst; //!< Structure of DW1000_dev_instance
-    if(inst->config.rxdiag_enable){
+#if MYNEWT_VAL(RNG_VERBOSE) > 1
+    if(rng->dev_inst->config.rxdiag_enable){
         printf(", ");
-        _diag_encode(inst);
+        _diag_encode((dw1000_dev_instance_t*)rng->dev_inst);
     }
 #endif
 

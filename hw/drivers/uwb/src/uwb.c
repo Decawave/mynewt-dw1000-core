@@ -21,69 +21,109 @@
 #include <uwb/uwb.h>
 #include <errno.h>
 #include <assert.h>
+#include <stdio.h>
 
-/**
- * Configure a channel on the UWB device.
- *
- * @param dev The device to configure
- * @param cnum The channel number to configure
- * @param data Driver specific configuration data for this channel.
- *
- * @return 0 on success, non-zero error code on failure.
- */
-int
-uwb_chan_config(struct uwb_dev *dev, uint8_t cnum, void *data)
+struct uwb_dev*
+uwb_dev_idx_lookup(int idx)
 {
-    assert(dev->ad_funcs->af_configure_channel != NULL);
-
-    if (cnum >= dev->ad_chan_count) {
-        return (EINVAL);
+    const char base1k[] = "dw1000_%d";
+    const char base3k[] = "dw3000_%d";
+    char buf[sizeof(base3k) + 2];
+    struct os_dev *odev;
+    snprintf(buf, sizeof buf, base1k, idx);
+    odev = os_dev_lookup(buf);
+    if (!odev) {
+        snprintf(buf, sizeof buf, base3k, idx);
+        odev = os_dev_lookup(buf);
     }
 
-    return (dev->ad_funcs->af_configure_channel(dev, cnum, data));
+    return (struct uwb_dev*)odev;
+}
+
+
+/**
+ * API to register extension  callbacks for different services.
+ *
+ * @param dev  Pointer to struct uwb_dev
+ * @param callbacks  callback instance.
+ * @return void
+ */
+struct uwb_mac_interface *
+uwb_mac_append_interface(struct uwb_dev* dev, struct uwb_mac_interface * cbs)
+{
+    assert(dev);
+    assert(cbs);
+    cbs->status.initialized = true;
+
+    if(!(SLIST_EMPTY(&dev->interface_cbs))) {
+        struct uwb_mac_interface * prev_cbs = NULL;
+        struct uwb_mac_interface * cur_cbs = NULL;
+        SLIST_FOREACH(cur_cbs, &dev->interface_cbs, next){
+            prev_cbs = cur_cbs;
+        }
+        SLIST_INSERT_AFTER(prev_cbs, cbs, next);
+    } else {
+        SLIST_INSERT_HEAD(&dev->interface_cbs, cbs, next);
+    }
+
+    return cbs;
+}
+
+
+/**
+ * API to remove specified callbacks.
+ *
+ * @param dev  Pointer to struct uwb_dev
+ * @param id    ID of the service.
+ * @return void
+ */
+void
+uwb_mac_remove_interface(struct uwb_dev* dev, uwb_extension_id_t id)
+{
+    assert(dev);
+    struct uwb_mac_interface * cbs = NULL;
+    SLIST_FOREACH(cbs, &dev->interface_cbs, next){
+        if(cbs->id == id){
+            SLIST_REMOVE(&dev->interface_cbs, cbs, uwb_mac_interface, next);
+            break;
+        }
+    }
 }
 
 /**
- * Blocking read of an UWB channel.
+ * API to return specified callbacks.
  *
- * @param dev The UWB device to read
- * @param cnum The channel number to read from that device
- * @param result Where to put the result of the read
- *
- * @return 0 on success, non-zero on error
+ * @param dev  Pointer to struct uwb_dev
+ * @param id    ID of the service.
+ * @return struct uwb_mac_interface * cbs
  */
-int
-uwb_chan_read(struct uwb_dev *dev, uint8_t cnum, int *result)
+struct uwb_mac_interface *
+uwb_mac_get_interface(struct uwb_dev* dev, uwb_extension_id_t id)
 {
-    assert(dev->ad_funcs->af_read_channel != NULL);
-
-    if (cnum >= dev->ad_chan_count) {
-        return (EINVAL);
+    assert(dev);
+    struct uwb_mac_interface * cbs = NULL;
+    SLIST_FOREACH(cbs, &dev->interface_cbs, next){
+        if(cbs->id == id){
+            break;
+        }
     }
-
-    if (!dev->ad_chans[cnum].c_configured) {
-        return (EINVAL);
-    }
-
-    return (dev->ad_funcs->af_read_channel(dev, cnum, result));
+    return cbs;
 }
 
 /**
- * Set an event handler.  This handler is called for all UWB events.
+ *  Finds the first instance pointer to the callback structure 
+ *  setup with a specific id.
  *
- * @param dev The UWB device to set the event handler for
- * @param func The event handler function to call
- * @param arg The argument to pass the event handler function
- *
- * @return 0 on success, non-zero on failure
+ * @param dev      Pointer to struct uwb_dev
+ * @param id       Corresponding id to find (UWBEXT_CCP,...)
+ * @return void pointer to instance, null otherwise
  */
-int
-uwb_event_handler_set(struct uwb_dev *dev, uwb_event_handler_func_t func,
-        void *arg)
+void*
+uwb_mac_find_cb_inst_ptr(struct uwb_dev *dev, uint16_t id)
 {
-    dev->ad_event_handler_func = func;
-    dev->ad_event_handler_arg = arg;
-
-    return (0);
+    struct uwb_mac_interface * cbs = uwb_mac_get_interface(dev, id);
+    if (cbs) {
+        return cbs->inst_ptr;
+    }
+    return 0;
 }
-

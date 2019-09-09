@@ -161,14 +161,15 @@ void dw1000_phy_disable_sequencing(struct _dw1000_dev_instance_t * inst){
  *
  * @param inst         Pointer to dw1000_dev_instance_t.
  * @param txrf_config  Pointer to dw1000_dev_txrf_config_t.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, dw1000_dev_txrf_config_t * txrf_config){
-
+struct uwb_dev_status
+dw1000_phy_init(struct _dw1000_dev_instance_t * inst, struct uwb_dev_txrf_config * txrf_config)
+{
     if (txrf_config == NULL)
-        txrf_config = &inst->config.txrf;
+        txrf_config = &inst->uwb_dev.config.txrf;
     else
-        memcpy(&inst->config.txrf, txrf_config, sizeof(dw1000_dev_txrf_config_t));
+        memcpy(&inst->uwb_dev.config.txrf, txrf_config, sizeof(struct uwb_dev_txrf_config));
 
     dw1000_softreset(inst);
     dw1000_phy_sysclk_XTAL(inst);
@@ -189,11 +190,11 @@ dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, dw1000
     uint32_t ldo_tune = _dw1000_otp_read(inst, OTP_LDOTUNE_ADDRESS);
     if((ldo_tune & 0xFF) != 0){
         dw1000_write_reg(inst, OTP_IF_ID, OTP_SF, OTP_SF_LDO_KICK, sizeof(uint8_t)); // Set load LDE kick bit
-        inst->status.LDO_enabled = 1; // LDO tune must be kicked at wake-up
+        inst->uwb_dev.status.LDO_enabled = 1; // LDO tune must be kicked at wake-up
     }
     // Load Part and Lot ID from OTP
-    inst->partID = _dw1000_otp_read(inst, OTP_PARTID_ADDRESS);
-    inst->lotID = _dw1000_otp_read(inst, OTP_LOTID_ADDRESS);
+    inst->part_id = _dw1000_otp_read(inst, OTP_PARTID_ADDRESS);
+    inst->lot_id = _dw1000_otp_read(inst, OTP_LOTID_ADDRESS);
 
     // Load vbat and vtemp from OTP
     inst->otp_vbat = _dw1000_otp_read(inst, OTP_VBAT_ADDRESS);
@@ -209,7 +210,7 @@ dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, dw1000
     reg = (3 << 5) | (inst->xtal_trim & FS_XTALT_MASK);
     dw1000_write_reg(inst, FS_CTRL_ID, FS_XTALT_OFFSET, reg, sizeof(uint8_t));
 
-    if(inst->config.LDE_enable)
+    if(inst->uwb_dev.config.LDE_enable)
         _dw1000_phy_load_microcode(inst);
 
     dw1000_phy_sysclk_SEQ(inst);    // Enable clocks for sequencing
@@ -223,8 +224,8 @@ dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, dw1000
     dw1000_write_reg(inst, AON_ID, AON_WCFG_OFFSET , AON_WCFG_ONW_RADC, sizeof(uint16_t));
 
     // Apply default antenna delay value. See NOTE 2 below. */
-    dw1000_phy_set_rx_antennadelay(inst, inst->rx_antenna_delay);
-    dw1000_phy_set_tx_antennadelay(inst, inst->tx_antenna_delay);
+    dw1000_phy_set_rx_antennadelay(inst, inst->uwb_dev.rx_antenna_delay);
+    dw1000_phy_set_tx_antennadelay(inst, inst->uwb_dev.tx_antenna_delay);
 
     // Apply tx power settings */
     dw1000_phy_config_txrf(inst, txrf_config);
@@ -232,7 +233,7 @@ dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, dw1000
     // Read system register / store local copy
     inst->sys_cfg_reg = dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)) ; // Read sysconfig register
 
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 /**
@@ -250,7 +251,7 @@ void _dw1000_phy_load_microcode(struct _dw1000_dev_instance_t * inst)
     dw1000_write_reg(inst, OTP_IF_ID, OTP_CTRL, OTP_CTRL_LDELOAD, sizeof(uint16_t)); // Set load LDE kick bit
     os_cputime_delay_usecs(120); // Allow time for code to upload (should take up to 120 us)
     dw1000_phy_sysclk_SEQ(inst); // Enable clocks for sequencing
-    inst->status.LDE_enabled = 1;
+    inst->uwb_dev.status.LDE_enabled = 1;
 }
 
 /**
@@ -280,7 +281,7 @@ void dw1000_phy_config_lde(struct _dw1000_dev_instance_t * inst, int prfIndex)
  * @param config    Pointer to dw1000_dev_txrf_config_t.
  * @return void
  */
-void dw1000_phy_config_txrf(struct _dw1000_dev_instance_t * inst, dw1000_dev_txrf_config_t *config)
+void dw1000_phy_config_txrf(struct _dw1000_dev_instance_t * inst, struct uwb_dev_txrf_config *config)
 {
     // Configure RF TX PG_DELAY
     dw1000_write_reg(inst, TX_CAL_ID, TC_PGDELAY_OFFSET, config->PGdly, sizeof(uint8_t));
@@ -360,16 +361,16 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
     // Forcing Transceiver off - so we do not want to see any new events that may have happened
     dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_ALL_TX | SYS_STATUS_ALL_RX_ERR | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_GOOD| SYS_STATUS_TXBERR), sizeof(uint32_t));
     
-    if (inst->config.dblbuffon_enabled) 
+    if (inst->uwb_dev.config.dblbuffon_enabled)
         dw1000_sync_rxbufptrs(inst);
         
     dw1000_write_reg(inst, SYS_MASK_ID, 0, mask, sizeof(uint32_t)); // Restore mask to what it was
 
-    dw1000_mac_interface_t * cbs = NULL;
-    if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
-            SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+    struct uwb_mac_interface * cbs = NULL;
+    if(!(SLIST_EMPTY(&inst->uwb_dev.interface_cbs))){ 
+            SLIST_FOREACH(cbs, &inst->uwb_dev.interface_cbs, next){    
             if (cbs!=NULL && cbs->reset_cb) 
-                if(cbs->reset_cb(inst,cbs)) continue;          
+                if(cbs->reset_cb((struct uwb_dev*)inst, cbs)) continue;          
             }   
     }      
     // Enable/restore interrupts again...
@@ -382,7 +383,7 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
     if (dpl_sem_get_count(&inst->tx_sem) == 0) {
         os_error_t err = dpl_sem_release(&inst->tx_sem);
         assert(err == OS_OK);
-        inst->status.sem_force_released = 1;
+        inst->uwb_dev.status.sem_force_released = 1;
     }
 }
 
@@ -457,7 +458,7 @@ void dw1000_phy_external_sync(struct _dw1000_dev_instance_t * inst, uint8_t dela
  * @param nlen      The length of the frame to be transmitted/received excluding crc
  * @return uint16_t duration in usec
  */
-inline uint16_t dw1000_phy_SHR_duration(struct _phy_attributes_t * attrib){
+inline uint16_t dw1000_phy_SHR_duration(struct uwb_phy_attributes * attrib){
 
     uint16_t duration = ceilf(attrib->Tpsym * (attrib->nsync + attrib->nsfd));
     return duration; 
@@ -470,7 +471,7 @@ inline uint16_t dw1000_phy_SHR_duration(struct _phy_attributes_t * attrib){
  * @param nlen      The length of the frame to be transmitted/received excluding crc
  * @return uint16_t duration in usec
  */
-inline uint16_t dw1000_phy_frame_duration(struct _phy_attributes_t * attrib, uint16_t nlen){
+inline uint16_t dw1000_phy_frame_duration(struct uwb_phy_attributes * attrib, uint16_t nlen){
 
     uint16_t duration = dw1000_phy_SHR_duration(attrib)  
             + ceilf(attrib->Tbsym * attrib->nphr + attrib->Tdsym * (nlen + 2) * 8);  // + 2 accounts for CRC

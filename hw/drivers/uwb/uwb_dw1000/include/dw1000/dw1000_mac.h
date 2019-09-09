@@ -161,31 +161,28 @@ typedef struct _dw1000_mac_deviceentcnts_t{
 } dw1000_mac_deviceentcnts_t ;
 
 
-void dw1000_mac_remove_interface(dw1000_dev_instance_t * inst, dw1000_extension_id_t id);
-void dw1000_mac_append_interface(dw1000_dev_instance_t* inst, dw1000_mac_interface_t * cbs);
-dw1000_mac_interface_t * dw1000_mac_get_interface(dw1000_dev_instance_t * inst, dw1000_extension_id_t id);
-struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_config_t * config);
-struct _dw1000_dev_status_t dw1000_mac_config(struct _dw1000_dev_instance_t * inst, dw1000_dev_config_t * config);
+struct uwb_dev_status dw1000_mac_init(struct _dw1000_dev_instance_t * inst, struct uwb_dev_config * config);
+struct uwb_dev_status dw1000_mac_config(struct _dw1000_dev_instance_t * inst, struct uwb_dev_config * config);
 void dw1000_tasks_init(struct _dw1000_dev_instance_t * inst);
-struct _dw1000_dev_status_t dw1000_mac_framefilter(struct _dw1000_dev_instance_t * inst, uint16_t enable);
-struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst,  uint8_t *txFrameBytes, uint16_t txBufferOffset, uint16_t txFrameLength);
-struct _dw1000_dev_status_t dw1000_read_rx(struct _dw1000_dev_instance_t * inst,  uint8_t *rxFrameBytes, uint16_t rxBufferOffset, uint16_t rxFrameLength);
-struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst);
-struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t dx_time);
-struct _dw1000_dev_status_t dw1000_set_wait4resp(struct _dw1000_dev_instance_t * inst, bool enable);
-struct _dw1000_dev_status_t dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay);
-struct _dw1000_dev_status_t dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable);
-struct _dw1000_dev_status_t dw1000_set_rxauto_disable(struct _dw1000_dev_instance_t * inst, bool disable);
-struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst);
-struct _dw1000_dev_status_t dw1000_stop_rx(struct _dw1000_dev_instance_t * inst);
+struct uwb_dev_status dw1000_mac_framefilter(struct _dw1000_dev_instance_t * inst, uint16_t enable);
+struct uwb_dev_status dw1000_write_tx(struct _dw1000_dev_instance_t * inst,  uint8_t *txFrameBytes, uint16_t txBufferOffset, uint16_t txFrameLength);
+struct uwb_dev_status dw1000_read_rx(struct _dw1000_dev_instance_t * inst,  uint8_t *rxFrameBytes, uint16_t rxBufferOffset, uint16_t rxFrameLength);
+struct uwb_dev_status dw1000_start_tx(struct _dw1000_dev_instance_t * inst);
+struct uwb_dev_status dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t dx_time);
+struct uwb_dev_status dw1000_set_wait4resp(struct _dw1000_dev_instance_t * inst, bool enable);
+struct uwb_dev_status dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay);
+struct uwb_dev_status dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable);
+struct uwb_dev_status dw1000_set_rxauto_disable(struct _dw1000_dev_instance_t * inst, bool disable);
+struct uwb_dev_status dw1000_start_rx(struct _dw1000_dev_instance_t * inst);
+struct uwb_dev_status dw1000_stop_rx(struct _dw1000_dev_instance_t * inst);
 void dw1000_write_tx_fctrl(struct _dw1000_dev_instance_t * inst, uint16_t txFrameLength, uint16_t txBufferOffset);
-struct _dw1000_dev_status_t dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t * inst);
-struct _dw1000_dev_status_t dw1000_read_accdata(struct _dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t len, uint16_t accOffset);
-struct _dw1000_dev_status_t dw1000_enable_autoack(struct _dw1000_dev_instance_t * inst, uint8_t delay);
-struct _dw1000_dev_status_t dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool flag);
+struct uwb_dev_status dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t * inst);
+struct uwb_dev_status dw1000_read_accdata(struct _dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t len, uint16_t accOffset);
+struct uwb_dev_status dw1000_enable_autoack(struct _dw1000_dev_instance_t * inst, uint8_t delay);
+struct uwb_dev_status dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool flag);
 void dw1000_set_callbacks(struct _dw1000_dev_instance_t * inst, dw1000_dev_cb_t cb_TxDone, dw1000_dev_cb_t cb_RxOk, dw1000_dev_cb_t cb_RxTo, dw1000_dev_cb_t cb_RxErr);
-struct _dw1000_dev_status_t dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout);
-struct _dw1000_dev_status_t dw1000_adj_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout);
+struct uwb_dev_status dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout);
+struct uwb_dev_status dw1000_adj_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout);
 
 float dw1000_calc_rssi(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_rxdiag_t * diag);
 float dw1000_get_rssi(struct _dw1000_dev_instance_t * inst);
@@ -217,7 +214,6 @@ uint32_t dw1000_read_txtime_lo(struct _dw1000_dev_instance_t * inst);
 #define dw1000_get_irqstatus(inst) ((uint8_t) dw1000_read_reg(inst, SYS_STATUS_ID, SYS_STATUS_OFFSET,sizeof(uint8_t)) & (uint8_t) SYS_STATUS_IRQS)
 
 void dw1000_configcwmode(struct _dw1000_dev_instance_t * inst, uint8_t chan);
-void* dw1000_mac_find_cb_inst_ptr(dw1000_dev_instance_t * inst, uint16_t id);
 
 #ifdef __cplusplus
 }

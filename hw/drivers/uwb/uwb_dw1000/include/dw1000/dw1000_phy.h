@@ -67,14 +67,14 @@ typedef enum {
 
 #define dw1000_power_value(COARSE,FINE) ((COARSE<<5) + (0xFFFFF & (uint16_t)(FINE * 2)))    //!< To configure power values
 
-struct _dw1000_dev_status_t dw1000_phy_init(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_txrf_config_t * txrf_config);
+struct uwb_dev_status dw1000_phy_init(struct _dw1000_dev_instance_t * inst, struct uwb_dev_txrf_config * txrf_config);
 void dw1000_phy_sysclk_XTAL(struct _dw1000_dev_instance_t * inst);
 void dw1000_phy_sysclk_PLL(struct _dw1000_dev_instance_t * inst);
 void dw1000_phy_sysclk_SEQ(struct _dw1000_dev_instance_t * inst);
 void dw1000_phy_sysclk_ACC(struct _dw1000_dev_instance_t * inst, uint8_t mode);
 void dw1000_phy_disable_sequencing(struct _dw1000_dev_instance_t * inst);
 void dw1000_phy_config_lde(struct _dw1000_dev_instance_t * inst, int prfIndex);
-void dw1000_phy_config_txrf(struct _dw1000_dev_instance_t * inst, struct _dw1000_dev_txrf_config_t * config);
+void dw1000_phy_config_txrf(struct _dw1000_dev_instance_t * inst, struct uwb_dev_txrf_config * config);
 void dw1000_phy_rx_reset(struct _dw1000_dev_instance_t * inst);
 void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst);
 void dw1000_phy_interrupt_mask(struct _dw1000_dev_instance_t * inst, uint32_t bitmask, uint8_t enable);
@@ -89,8 +89,8 @@ float dw1000_phy_read_wakeuptemp_SI(struct _dw1000_dev_instance_t * inst);
 float dw1000_phy_read_read_wakeupvbat_SI(struct _dw1000_dev_instance_t * inst);
 void dw1000_phy_external_sync(struct _dw1000_dev_instance_t * inst, uint8_t delay, bool enable);
 
-uint16_t dw1000_phy_SHR_duration(struct _phy_attributes_t * attrib);
-uint16_t dw1000_phy_frame_duration(struct _phy_attributes_t * attrib, uint16_t nlen);
+uint16_t dw1000_phy_SHR_duration(struct uwb_phy_attributes * attrib);
+uint16_t dw1000_phy_frame_duration(struct uwb_phy_attributes * attrib, uint16_t nlen);
 
 void dw1000_phy_enable_ext_pa(struct _dw1000_dev_instance_t* inst, bool enable);
 void dw1000_phy_enable_ext_lna(struct _dw1000_dev_instance_t* inst, bool enable);

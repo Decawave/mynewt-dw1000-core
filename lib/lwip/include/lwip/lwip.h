@@ -152,7 +152,7 @@ dw1000_lwip_free(dw1000_lwip_instance_t * inst);
  *              [Non-Blocking : Don't wait for Tx to complete]
  * @return      [Device Status]
  */
-dw1000_dev_status_t
+struct uwb_dev_status
 dw1000_lwip_write(dw1000_lwip_instance_t * lwip, struct pbuf *p, dw1000_lwip_modes_t code);
 
 /**

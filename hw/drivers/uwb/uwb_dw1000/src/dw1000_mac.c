@@ -230,18 +230,19 @@ const double txpwr_compensation[] = {
  * API to configure the mac layer in dw1000
  * @param inst     Pointer to _dw1000_dev_instance_t.
  * @param config   Pointer to dw1000_dev_config_t.
- * @return dw1000_dev_status_t 
+ * @return struct uwb_dev_status
  *
  */
-struct _dw1000_dev_status_t dw1000_mac_config(struct _dw1000_dev_instance_t * inst,
-                                              dw1000_dev_config_t * config)
+struct uwb_dev_status
+dw1000_mac_config(struct _dw1000_dev_instance_t * inst,
+                  struct uwb_dev_config * config)
 {
     if (config == NULL) {
-        config = &inst->config;
+        config = &inst->uwb_dev.config;
     } else {
-        memcpy(&inst->config, config, sizeof(dw1000_dev_config_t));
+        memcpy(&inst->uwb_dev.config, config, sizeof(struct uwb_dev_config));
     }
-    
+
     uint8_t nsSfd_result  = 0;
     uint8_t useDWnsSFD = 0;
     uint8_t chan = config->channel;
@@ -285,7 +286,7 @@ struct _dw1000_dev_status_t dw1000_mac_config(struct _dw1000_dev_instance_t * in
     inst->sys_cfg_reg &= ~SYS_CFG_PHR_MODE_11;
     inst->sys_cfg_reg |= (SYS_CFG_PHR_MODE_11 & (((uint32_t)config->rx.phrMode) << SYS_CFG_PHR_MODE_SHFT));
     
-    if (inst->config.rxauto_enable) 
+    if (config->rxauto_enable)
         inst->sys_cfg_reg |=SYS_CFG_RXAUTR;
     else
         inst->sys_cfg_reg &= (~SYS_CFG_RXAUTR);
@@ -375,13 +376,13 @@ struct _dw1000_dev_status_t dw1000_mac_config(struct _dw1000_dev_instance_t * in
     }
 #endif
     
-    if (inst->config.rxauto_enable)     
-        assert(inst->config.trxoff_enable);
+    if (config->rxauto_enable)
+        assert(config->trxoff_enable);
         
-    if(inst->config.dblbuffon_enabled)
+    if(config->dblbuffon_enabled)
         dw1000_set_dblrxbuff(inst, true);
 
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 
@@ -389,10 +390,11 @@ struct _dw1000_dev_status_t dw1000_mac_config(struct _dw1000_dev_instance_t * in
  * API to initialize the mac layer.
  * @param inst     Pointer to _dw1000_dev_instance_t.
  * @param config   Pointer to dw1000_dev_config_t.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  *
  */
-struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst, dw1000_dev_config_t * config)
+struct uwb_dev_status
+dw1000_mac_init(struct _dw1000_dev_instance_t * inst, struct uwb_dev_config * config)
 {
     /* Configure DW1000 */
     dw1000_mac_config(inst, config);
@@ -421,7 +423,7 @@ struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst
     dw1000_cli_register();
 #endif
 
-    return inst->status;
+    return inst->uwb_dev.status;
 } 
 
 /**
@@ -436,9 +438,10 @@ struct _dw1000_dev_status_t dw1000_mac_init(struct _dw1000_dev_instance_t * inst
  *
  * @param rxFrameBytes      Pointer to the user buffer containing the data to send.
  * @param rxBufferOffset    This specifies an offset in the DW1000s TX Buffer where writing of data starts.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-struct _dw1000_dev_status_t dw1000_read_rx(struct _dw1000_dev_instance_t * inst,  uint8_t * rxFrameBytes, uint16_t rxBufferOffset, uint16_t rxFrameLength)
+struct uwb_dev_status
+dw1000_read_rx(struct _dw1000_dev_instance_t * inst,  uint8_t * rxFrameBytes, uint16_t rxBufferOffset, uint16_t rxFrameLength)
 {
 #ifdef DW1000_API_ERROR_CHECK
     assert((config->rx.phrMode && (txFrameLength <= 1023)) || (txFrameLength <= 127));
@@ -454,7 +457,7 @@ struct _dw1000_dev_status_t dw1000_read_rx(struct _dw1000_dev_instance_t * inst,
     err = dpl_mutex_release(&inst->mutex); 
     assert(err == DPL_OK); 
     
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 /**
@@ -469,9 +472,10 @@ struct _dw1000_dev_status_t dw1000_read_rx(struct _dw1000_dev_instance_t * inst,
  *
  * @param txFrameBytes      Pointer to the user buffer containing the data to send.
  * @param txBufferOffset    This specifies an offset in the DW1000s TX Buffer where writing of data starts.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst,  uint8_t * txFrameBytes, uint16_t txBufferOffset, uint16_t txFrameLength)
+struct uwb_dev_status
+dw1000_write_tx(struct _dw1000_dev_instance_t * inst,  uint8_t * txFrameBytes, uint16_t txBufferOffset, uint16_t txFrameLength)
 {
 #ifdef DW1000_API_ERROR_CHECK
     assert((config->rx.phrMode && (txFrameLength <= 1023)) || (txFrameLength <= 127));
@@ -486,18 +490,18 @@ struct _dw1000_dev_status_t dw1000_write_tx(struct _dw1000_dev_instance_t * inst
         dw1000_write(inst, TX_BUFFER_ID, txBufferOffset,  txFrameBytes, txFrameLength);
         /* This is only valid if the offset is 0, and not always then either  */
         if (txBufferOffset == 0) {
-            for (uint8_t i = 0; i< sizeof(inst->fctrl); i++)
-                inst->fctrl_array[i] =  txFrameBytes[i];
+            for (uint8_t i = 0; i< sizeof(inst->uwb_dev.fctrl); i++)
+                inst->uwb_dev.fctrl_array[i] =  txFrameBytes[i];
         }
-        inst->status.tx_frame_error = 0;
+        inst->uwb_dev.status.tx_frame_error = 0;
     }
     else
-        inst->status.tx_frame_error = 1;
+        inst->uwb_dev.status.tx_frame_error = 1;
 
     err = dpl_mutex_release(&inst->mutex); 
     assert(err == DPL_OK); 
     
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 /**
@@ -531,18 +535,19 @@ inline void dw1000_write_tx_fctrl(struct _dw1000_dev_instance_t * inst, uint16_t
  * API to start transmission.
  *
  * @param inst  pointer to _dw1000_dev_instance_t.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst)
+struct uwb_dev_status
+dw1000_start_tx(struct _dw1000_dev_instance_t * inst)
 {
 
     dpl_error_t err = dpl_sem_pend(&inst->tx_sem,  DPL_TIMEOUT_NEVER); // Released by a SYS_STATUS_TXFRS event
     assert(err == DPL_OK);
 
     dw1000_dev_control_t control = inst->control;
-    dw1000_dev_config_t config = inst->config;
+    struct uwb_dev_config *config = &inst->uwb_dev.config;
 
-    if (config.trxoff_enable){ // force return to idle state
+    if (config->trxoff_enable){ // force return to idle state
         dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint8_t) SYS_CTRL_TRXOFF, sizeof(uint8_t)); 
     }    
     
@@ -557,8 +562,8 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
     if (control.delay_start_enabled){
         dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint8_t) sys_ctrl_reg, sizeof(uint8_t));
         uint16_t sys_status_reg = dw1000_read_reg(inst, SYS_STATUS_ID, 3, sizeof(uint16_t)); // Read at offset 3 to get the upper 2 bytes out of 5
-        inst->status.start_tx_error = (sys_status_reg & ((SYS_STATUS_HPDWARN | SYS_STATUS_TXPUTE) >> 24)) != 0;
-        if (inst->status.start_tx_error){
+        inst->uwb_dev.status.start_tx_error = (sys_status_reg & ((SYS_STATUS_HPDWARN | SYS_STATUS_TXPUTE) >> 24)) != 0;
+        if (inst->uwb_dev.status.start_tx_error){
             /*
             * Half Period Delay Warning (HPDWARN) OR Power Up error (TXPUTE). This event status bit relates to the 
             * use of delayed transmit and delayed receive functionality. It indicates the delay is more than half 
@@ -573,12 +578,12 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
         }
     }else{
         dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sys_ctrl_reg, sizeof(uint8_t));
-        inst->status.start_tx_error = 0;
+        inst->uwb_dev.status.start_tx_error = 0;
 
         /* If dw1000 is instructed to sleep after tx, release
          * the sem as there will not be a TXDONE irq */
         if(inst->control.sleep_after_tx) {
-            inst->status.sleeping = 1;
+            inst->uwb_dev.status.sleeping = 1;
             err = dpl_sem_release(&inst->tx_sem);
         }
     }
@@ -589,7 +594,7 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
     inst->control.autoack_delay_enabled = false;
     inst->control.on_error_continue_enabled = false;
 
-    return inst->status;
+    return inst->uwb_dev.status;
 } 
 
 
@@ -599,9 +604,10 @@ struct _dw1000_dev_status_t dw1000_start_tx(struct _dw1000_dev_instance_t * inst
  * 
  * @param inst     Pointer to _dw1000_dev_instance_t.
  * @param delay    Delayed Send or receive Time. 
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-inline struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t dx_time)
+struct uwb_dev_status
+dw1000_set_delay_start(struct _dw1000_dev_instance_t * inst, uint64_t dx_time)
 {
     dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
@@ -612,7 +618,7 @@ inline struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_ins
     err = dpl_mutex_release(&inst->mutex); 
     assert(err == DPL_OK); 
 
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 
@@ -620,26 +626,27 @@ inline struct _dw1000_dev_status_t dw1000_set_delay_start(struct _dw1000_dev_ins
  * API to keep the transceiver in reception mode to keep on receiving the data.
  *
  * @param inst  pointer to _dw1000_dev_instance_t.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  * 
  */
-struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst)
+struct uwb_dev_status
+dw1000_start_rx(struct _dw1000_dev_instance_t * inst)
 {
     dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
 
     dw1000_dev_control_t control = inst->control;
-    dw1000_dev_config_t config = inst->config;
-    inst->status.rx_restarted = 0;
+    struct uwb_dev_config *config = &inst->uwb_dev.config;
+    inst->uwb_dev.status.rx_restarted = 0;
 
-    if (config.trxoff_enable){ // force return to idle state, if in RX state
+    if (config->trxoff_enable){ // force return to idle state, if in RX state
         uint8_t state = (uint8_t) dw1000_read_reg(inst, SYS_STATE_ID, PMSC_STATE_OFFSET, sizeof(uint8_t));
         if(state != PMSC_STATE_IDLE )    
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint8_t) SYS_CTRL_TRXOFF, sizeof(uint8_t)); 
     }    
     
     uint16_t sys_ctrl = SYS_CTRL_RXENAB;
-    if (config.dblbuffon_enabled)
+    if (config->dblbuffon_enabled)
         dw1000_sync_rxbufptrs(inst);
     if (control.delay_start_enabled) 
         sys_ctrl |= SYS_CTRL_RXDLYE;
@@ -647,8 +654,8 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
     dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, sys_ctrl, sizeof(uint16_t));
     if (control.delay_start_enabled){   // check for errors    
         uint8_t sys_status = dw1000_read_reg(inst, SYS_STATUS_ID, 3, sizeof(uint8_t));  // Read 1 byte at offset 3 to get the 4th byte out of 5
-        inst->status.start_rx_error = (sys_status & (SYS_STATUS_HPDWARN >> 24)) != 0;   
-        if (inst->status.start_rx_error){   // if delay has passed do immediate RX on unless DWT_IDLE_ON_DLY_ERR is true
+        inst->uwb_dev.status.start_rx_error = (sys_status & (SYS_STATUS_HPDWARN >> 24)) != 0;   
+        if (inst->uwb_dev.status.start_rx_error){   // if delay has passed do immediate RX on unless DWT_IDLE_ON_DLY_ERR is true
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint8_t) SYS_CTRL_TRXOFF, sizeof(uint8_t)); // return to idle state
             if (control.on_error_continue_enabled){
                 sys_ctrl &= ~SYS_CTRL_RXDLYE;
@@ -656,7 +663,7 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
             }       
         }
     }else{
-        inst->status.start_rx_error = 0;
+        inst->uwb_dev.status.start_rx_error = 0;
     }
 
     inst->control.wait4resp_enabled = false;
@@ -670,17 +677,18 @@ struct _dw1000_dev_status_t dw1000_start_rx(struct _dw1000_dev_instance_t * inst
     err = dpl_mutex_release(&inst->mutex); 
     assert(err == DPL_OK); 
 
-    return inst->status;
+    return inst->uwb_dev.status;
 } 
 
 /**
  * API to gracefully turnoff reception mode.
  *
  * @param inst  pointer to _dw1000_dev_instance_t.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  * 
  */
-struct _dw1000_dev_status_t dw1000_stop_rx(struct _dw1000_dev_instance_t * inst)
+struct uwb_dev_status
+dw1000_stop_rx(struct _dw1000_dev_instance_t * inst)
 {
     dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_WAIT_FOREVER);
     assert(err == DPL_OK);
@@ -696,7 +704,7 @@ struct _dw1000_dev_status_t dw1000_stop_rx(struct _dw1000_dev_instance_t * inst)
     err = dpl_mutex_release(&inst->mutex); 
     assert(err == DPL_OK); 
 
-    return inst->status;
+    return inst->uwb_dev.status;
 } 
 
 /**
@@ -704,42 +712,43 @@ struct _dw1000_dev_status_t dw1000_stop_rx(struct _dw1000_dev_instance_t * inst)
  * 
  * @param inst     Pointer to _dw1000_dev_instance_t.
  * @param enable   Enables/disables the wait for response feature.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-inline struct _dw1000_dev_status_t 
+inline struct uwb_dev_status
 dw1000_set_wait4resp(struct _dw1000_dev_instance_t * inst, bool enable)
 {
-    inst->status.rx_restarted = 0;
+    inst->uwb_dev.status.rx_restarted = 0;
     inst->control.wait4resp_enabled = enable;
-    return inst->status;
-}
-/**
- * API to enable wait for feature.
- * 
- * @param inst    Pointer to _dw1000_dev_instance_t.
- * @param enable  Enables wait for feature.
- *
- */
-inline struct _dw1000_dev_status_t 
-dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable)
-{
-    inst->control.on_error_continue_enabled = enable;
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 /**
- * API to set rxauto disable 
+ * Enable rx regardless of hpdwarning
+ * 
+ * @param inst    Pointer to _dw1000_dev_instance_t.
+ * @param enable  weather to continue with rx regardless of error
+ *
+ */
+inline struct uwb_dev_status
+dw1000_set_on_error_continue(struct _dw1000_dev_instance_t * inst, bool enable)
+{
+    inst->control.on_error_continue_enabled = enable;
+    return inst->uwb_dev.status;
+}
+
+/**
+ * Set rxauto disable 
  * 
  * @param inst    Pointer to _dw1000_dev_instance_t.
  * @param disable  Disable mac-layer auto rx-reenable feature. The default behavior is rxauto enable, this API overrides default behavior
  * on an individual transaction such as in dw1000_rng_request or dw1000_rng_listen
  *
  */
-inline struct _dw1000_dev_status_t 
+inline struct uwb_dev_status
 dw1000_set_rxauto_disable(struct _dw1000_dev_instance_t * inst, bool disable)
 {
     inst->control.rxauto_disable = disable;
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 
@@ -749,7 +758,7 @@ dw1000_set_rxauto_disable(struct _dw1000_dev_instance_t * inst, bool disable)
  * @param inst      pointer to _dw1000_dev_instance_t.
  * @param timeout   Indicates how long the receiver remains on from the RX enable command.The time parameter used here is in 1.0256 
  * us (512/499.2MHz) units If set to 0 the timeout is disabled.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  * @brief The Receive Frame Wait Timeout period is a 16-bit field. The units for this parameter are roughly 1μs, 
  * (the exact unit is 512 counts of the fundamental 499.2 MHz UWB clock, or 1.026 μs). When employing the frame wait timeout, 
  * RXFWTO should be set to a value greater than the expected RX frame duration and include an allowance for any uncertainly 
@@ -757,7 +766,7 @@ dw1000_set_rxauto_disable(struct _dw1000_dev_instance_t * inst, bool disable)
  * When using .rxauto_enable feature it is important to understand the role of rx_timeout, in this situation it is the timeout 
  * that actually turns-off the receiver and returns the transeiver to the idle state. 
  */
-struct _dw1000_dev_status_t 
+struct uwb_dev_status
 dw1000_adj_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
 {
     dw1000_dev_control_t control = inst->control;
@@ -766,7 +775,7 @@ dw1000_adj_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
     } else {
         /* error, need timeout to be enabled */
     }
-    return inst->status;
+    return inst->uwb_dev.status;
 } 
 
 
@@ -776,7 +785,7 @@ dw1000_adj_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
  * @param inst      pointer to _dw1000_dev_instance_t.
  * @param timeout   Indicates how long the receiver remains on from the RX enable command.The time parameter used here is in 1.0256 
  * us (512/499.2MHz) units If set to 0 the timeout is disabled.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  * @brief The Receive Frame Wait Timeout period is a 16-bit field. The units for this parameter are roughly 1μs, 
  * (the exact unit is 512 counts of the fundamental 499.2 MHz UWB clock, or 1.026 μs). When employing the frame wait timeout, 
  * RXFWTO should be set to a value greater than the expected RX frame duration and include an allowance for any uncertainly 
@@ -784,13 +793,13 @@ dw1000_adj_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
  * When using .rxauto_enable feature it is important to understand the role of rx_timeout, in this situation it is the timeout 
  * that actually turns-off the receiver and returns the transeiver to the idle state. 
  */
-struct _dw1000_dev_status_t 
+struct uwb_dev_status
 dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
 {
     dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER); // Block if request pending
     assert(err == DPL_OK);
 
-    inst->status.rx_timeout_error = 0;
+    inst->uwb_dev.status.rx_timeout_error = 0;
 
     uint32_t  sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)); 
 
@@ -807,7 +816,7 @@ dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
     err = dpl_mutex_release(&inst->mutex);  
     assert(err == DPL_OK);
 
-    return inst->status;
+    return inst->uwb_dev.status;
 } 
 
 
@@ -815,9 +824,9 @@ dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout)
  * API to synchronize rx buffer pointers to make sure that the host/IC buffer pointers are aligned before starting RX.
  *
  * @param inst  pointer to _dw1000_dev_instance_t.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-inline struct _dw1000_dev_status_t 
+inline struct uwb_dev_status
 dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t * inst)
 {
     uint8_t  buff;
@@ -830,7 +839,7 @@ dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t * inst)
        ((buff & (SYS_STATUS_HSRBP >> 24)) << 1) )   // Host Side Receive Buffer Pointer
         dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 0x01, sizeof(uint8_t)); // We need to swap RX buffer status reg (write one to toggle internally)
 
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 /**
@@ -843,10 +852,10 @@ dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t * inst)
  * @param buffer     The buffer into which the data will be read.
  * @param length     The length of data to read (in bytes).
  * @param accOffset  The offset in the acc buffer from which to read the data.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  *
  */
-struct _dw1000_dev_status_t 
+struct uwb_dev_status
 dw1000_read_accdata(struct _dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t accOffset, uint16_t len)
 {
     dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER); // Block if request pending
@@ -859,7 +868,7 @@ dw1000_read_accdata(struct _dw1000_dev_instance_t * inst, uint8_t *buffer, uint1
     
     err = dpl_mutex_release(&inst->mutex);  
     assert(err == DPL_OK);
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 
@@ -876,10 +885,10 @@ dw1000_read_accdata(struct _dw1000_dev_instance_t * inst, uint8_t *buffer, uint1
  *      DWT_FF_ACK_EN           0x010   ack frames allowed
  *      DWT_FF_MAC_EN           0x020   mac control frames allowed
  *      DWT_FF_RSVD_EN          0x040   reserved frame types allowed
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  *
  */
-struct _dw1000_dev_status_t 
+struct uwb_dev_status
 dw1000_mac_framefilter(struct _dw1000_dev_instance_t * inst, uint16_t enable)
 {
     dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER); // Block if request pending
@@ -887,8 +896,8 @@ dw1000_mac_framefilter(struct _dw1000_dev_instance_t * inst, uint16_t enable)
 
     uint32_t sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)) ; // Read sysconfig register
 
-    inst->config.framefilter_enabled = enable > 0;
-    if(inst->config.framefilter_enabled){   // Enable frame filtering and configure frame types
+    inst->uwb_dev.config.framefilter_enabled = (enable > 0);
+    if(inst->uwb_dev.config.framefilter_enabled){   // Enable frame filtering and configure frame types
         sys_cfg_reg &= ~(SYS_CFG_FF_ALL_EN);  // Clear all
         sys_cfg_reg |= (enable & SYS_CFG_FF_ALL_EN) | SYS_CFG_FFE;
     }else
@@ -898,7 +907,7 @@ dw1000_mac_framefilter(struct _dw1000_dev_instance_t * inst, uint16_t enable)
     err = dpl_mutex_release(&inst->mutex);  
     assert(err == DPL_OK);
 
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 
@@ -910,21 +919,21 @@ dw1000_mac_framefilter(struct _dw1000_dev_instance_t * inst, uint16_t enable)
  *
  * @param inst    Pointer to _dw1000_dev_instance_t.
  * @param enable  If non-zero the ACK is sent after this delay, max is 255.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  *
  */
-struct _dw1000_dev_status_t 
+struct uwb_dev_status
 dw1000_set_autoack(struct _dw1000_dev_instance_t * inst, bool enable)
 {
-    assert(inst->config.framefilter_enabled);
+    assert(inst->uwb_dev.config.framefilter_enabled);
 
     dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER); // Block if request pending
     assert(err == DPL_OK);
 
     uint32_t sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)); // Read sysconfig register
 
-    inst->config.autoack_enabled = enable > 0;    
-    if(inst->config.autoack_enabled){
+    inst->uwb_dev.config.autoack_enabled = (enable > 0);
+    if(inst->uwb_dev.config.autoack_enabled){
         sys_cfg_reg |= SYS_CFG_AUTOACK;
         dw1000_write_reg(inst, SYS_CFG_ID,0, sys_cfg_reg, sizeof(uint32_t));
     } else {
@@ -935,7 +944,7 @@ dw1000_set_autoack(struct _dw1000_dev_instance_t * inst, bool enable)
     err = dpl_mutex_release(&inst->mutex);  
     assert(err == DPL_OK);
 
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 
@@ -946,18 +955,18 @@ dw1000_set_autoack(struct _dw1000_dev_instance_t * inst, bool enable)
  *
  * @param inst   Pointer to _dw1000_dev_instance_t.
  * @param delay  If non-zero the ACK is sent after this delay, max is 255.
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  *
  */
-struct _dw1000_dev_status_t 
+struct uwb_dev_status
 dw1000_set_autoack_delay(struct _dw1000_dev_instance_t * inst, uint8_t delay)
 {
-    assert(inst->config.framefilter_enabled);
+    assert(inst->uwb_dev.config.framefilter_enabled);
 
     dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER); // Block if request pending
     assert(err == DPL_OK);
 
-    inst->config.autoack_delay_enabled = delay > 0;
+    inst->uwb_dev.config.autoack_delay_enabled = (delay > 0);
     if (inst->control.autoack_delay_enabled)
         dw1000_write_reg(inst, ACK_RESP_T_ID, ACK_RESP_T_ACK_TIM_OFFSET, delay, sizeof(uint8_t)); // In symbols
 
@@ -966,7 +975,7 @@ dw1000_set_autoack_delay(struct _dw1000_dev_instance_t * inst, uint8_t delay)
 
     dw1000_set_autoack(inst, true);
 
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 
@@ -980,10 +989,10 @@ dw1000_set_autoack_delay(struct _dw1000_dev_instance_t * inst, uint8_t delay)
  * @param inst   Pointer to _dw1000_dev_instance_t.
  * @param delay  The delay is in UWB microseconds.
  *
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  *
  */
-struct _dw1000_dev_status_t 
+struct uwb_dev_status
 dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay)
 {    
     dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER); // Block if request pending
@@ -999,7 +1008,7 @@ dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay)
     err = dpl_mutex_release(&inst->mutex);  
     assert(err == DPL_OK);
     
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 
@@ -1009,10 +1018,10 @@ dw1000_set_wait4resp_delay(struct _dw1000_dev_instance_t * inst, uint32_t delay)
  * @param inst    Pointer to _dw1000_dev_instance_t.
  * @param enable  1 to enable, 0 to disable the double buffer mode.
  *
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  *
  */
-struct _dw1000_dev_status_t 
+struct uwb_dev_status
 dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool enable)
 {
     dpl_error_t err = dpl_mutex_pend(&inst->mutex,  DPL_TIMEOUT_NEVER); // Block if request pending
@@ -1020,8 +1029,8 @@ dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool enable)
 
     uint32_t sys_cfg_reg = SYS_CFG_MASK & dw1000_read_reg(inst, SYS_CFG_ID, 0, sizeof(uint32_t)); 
 
-    inst->config.dblbuffon_enabled = enable;
-    if(inst->config.dblbuffon_enabled)
+    inst->uwb_dev.config.dblbuffon_enabled = enable;
+    if(inst->uwb_dev.config.dblbuffon_enabled)
         sys_cfg_reg &= ~SYS_CFG_DIS_DRXB;
     else
         sys_cfg_reg |= SYS_CFG_DIS_DRXB;
@@ -1032,7 +1041,7 @@ dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool enable)
     err = dpl_mutex_release(&inst->mutex);       // Read modify write critical section exit
     assert(err == DPL_OK);
     
-    return inst->status;
+    return inst->uwb_dev.status;
 }
 
 /**
@@ -1084,11 +1093,11 @@ dw1000_calc_clock_offset_ratio(struct _dw1000_dev_instance_t * inst, int32_t int
 {
     float fom = DWT_FREQ_OFFSET_MULTIPLIER;
     float hz_to_ppm;
-    if (inst->config.dataRate == DWT_BR_110K) {
+    if (inst->uwb_dev.config.dataRate == DWT_BR_110K) {
         fom = DWT_FREQ_OFFSET_MULTIPLIER_110KB;
     }
     
-    switch ( inst->config.channel ) {
+    switch ( inst->uwb_dev.config.channel ) {
     case 1: hz_to_ppm = DWT_HZ_TO_PPM_MULTIPLIER_CHAN_1;break;
     case 2: hz_to_ppm = DWT_HZ_TO_PPM_MULTIPLIER_CHAN_2;break;
     case 3: hz_to_ppm = DWT_HZ_TO_PPM_MULTIPLIER_CHAN_3;break;
@@ -1148,7 +1157,7 @@ float
 dw1000_calc_clock_offset_ratio_ttco(struct _dw1000_dev_instance_t * inst, int32_t ttcko)
 {
     int32_t denom = 0x01F00000;
-    if (inst->config.prf != DWT_PRF_16M) {
+    if (inst->uwb_dev.config.prf != DWT_PRF_16M) {
         denom = 0x01FC0000;
     }
     return (float)-ttcko / (float)denom;
@@ -1200,7 +1209,7 @@ dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
         dpl_task_init(&inst->task_str, "dw1000_irq",
                      dw1000_interrupt_task,
                      (void *) inst,
-                     inst->task_prio, DPL_WAIT_FOREVER,
+                     inst->uwb_dev.task_prio, DPL_WAIT_FOREVER,
                      inst->task_stack,
                      DW1000_DEV_TASK_STACK_SZ);
         /* Enable pull-down on IRQ to not get spurious interrupts when dw1000 is sleeping */
@@ -1239,79 +1248,6 @@ dw1000_interrupt_task(void *arg)
         dpl_eventq_run(&inst->eventq);
     }
     return NULL;
-}
-
-
-/**
- * API to register extension  callbacks for different services.
- *
- * @param inst       Pointer to dw1000_dev_instance_t.
- * @param callbacks  callback instance.
- * @return void
- */
-void
-dw1000_mac_append_interface(dw1000_dev_instance_t* inst, dw1000_mac_interface_t * cbs){
-    assert(inst);
-
-    if (cbs == NULL){
-        cbs = (dw1000_mac_interface_t * )malloc(sizeof(dw1000_mac_interface_t));
-        assert(cbs);
-        memset(cbs, 0, sizeof(dw1000_mac_interface_t));
-        cbs->status.selfmalloc = true;
-    }else{
-        cbs->status.initialized = true;
-    }
-
-    if(!(SLIST_EMPTY(&inst->interface_cbs))){
-        dw1000_mac_interface_t * prev_cbs = NULL;
-        dw1000_mac_interface_t * cur_cbs = NULL;
-        SLIST_FOREACH(cur_cbs, &inst->interface_cbs, next){
-            prev_cbs = cur_cbs;
-        }
-        SLIST_INSERT_AFTER(prev_cbs, cbs, next);
-    }else
-        SLIST_INSERT_HEAD(&inst->interface_cbs, cbs, next);
-}
-
-
-/**
- * API to remove specified callbacks.
- *
- * @param inst  Pointer to dw1000_dev_instance_t.
- * @param id    ID of the service.
- * @return void
- */
-void
-dw1000_mac_remove_interface(dw1000_dev_instance_t * inst, dw1000_extension_id_t id){
-    assert(inst);
-    dw1000_mac_interface_t * cbs = NULL;
-    SLIST_FOREACH(cbs, &inst->interface_cbs, next){
-        if(cbs->id == id){
-            SLIST_REMOVE(&inst->interface_cbs, cbs, _dw1000_mac_interface_t, next);
-            break;
-        }
-    }
-    if(cbs != NULL && cbs->status.selfmalloc)
-        free(cbs); 
-}
-
-/**
- * API to return specified callbacks.
- *
- * @param inst  Pointer to dw1000_dev_instance_t.
- * @param id    ID of the service.
- * @return dw1000_mac_interface_t * cbs
- */
-dw1000_mac_interface_t *
-dw1000_mac_get_interface(dw1000_dev_instance_t * inst, dw1000_extension_id_t id){
-    assert(inst);
-    dw1000_mac_interface_t * cbs = NULL;
-    SLIST_FOREACH(cbs, &inst->interface_cbs, next){
-        if(cbs->id == id){
-            break;
-        }
-    }
-    return cbs;
 }
 
 
@@ -1366,11 +1302,11 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
     //printf("inst->sys_status= %lX\n",inst->sys_status);
 
     // Set status flags
-    inst->status.rx_error = (inst->sys_status & SYS_STATUS_ALL_RX_ERR) !=0;
-    inst->status.rx_timeout_error = (inst->sys_status & SYS_STATUS_ALL_RX_TO) !=0;
-    inst->status.lde_error = (inst->sys_status & SYS_STATUS_LDEDONE) == 0;
-    inst->status.overrun_error = (inst->sys_status & SYS_STATUS_RXOVRR) != 0;
-    inst->status.txbuf_error = (inst->sys_status & SYS_STATUS_TXBERR) != 0;
+    inst->uwb_dev.status.rx_error = (inst->sys_status & SYS_STATUS_ALL_RX_ERR) !=0;
+    inst->uwb_dev.status.rx_timeout_error = (inst->sys_status & SYS_STATUS_ALL_RX_TO) !=0;
+    inst->uwb_dev.status.lde_error = (inst->sys_status & SYS_STATUS_LDEDONE) == 0;
+    inst->uwb_dev.status.overrun_error = (inst->sys_status & SYS_STATUS_RXOVRR) != 0;
+    inst->uwb_dev.status.txbuf_error = (inst->sys_status & SYS_STATUS_TXBERR) != 0;
 
     if(dpl_sem_get_count(&inst->tx_sem) == 0){
             dpl_error_t err = dpl_sem_release(&inst->tx_sem);  
@@ -1381,7 +1317,7 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
     if((inst->sys_status & SYS_STATUS_RXFCG)){
         MAC_STATS_INC(DFR_cnt);
 
-        if (inst->status.overrun_error){
+        if (inst->uwb_dev.status.overrun_error){
             MAC_STATS_INC(ROV_err);
             /* Overrun flag has been set */
             dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_RXOVRR |SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR), sizeof(uint32_t));
@@ -1396,58 +1332,58 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
         // Consequently, we reenable the transeiver in the MAC-layer as early as possable. Note: The default behavior of MAC-Layer 
         // is that the transceiver only returns to the IDLE state with a timeout event occured. The MAC-layer should otherwise reenable.
 
-        if (inst->config.rxauto_enable == 0 && inst->config.dblbuffon_enabled) {
+        if (inst->uwb_dev.config.rxauto_enable == 0 && inst->uwb_dev.config.dblbuffon_enabled) {
             /* Clearing the Status flags here makes doublebuffring with explicit rx-enable work, 
              * not entirely sure why though? */
             dw1000_write_reg(inst, SYS_STATUS_ID, 1, (inst->sys_status&(SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR))>>8, sizeof(uint8_t));
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET+1, SYS_CTRL_RXENAB>>8, sizeof(uint8_t));
-            inst->status.rx_restarted = 1;
+            inst->uwb_dev.status.rx_restarted = 1;
         }
 
         uint16_t finfo = dw1000_read_reg(inst, RX_FINFO_ID, RX_FINFO_OFFSET, sizeof(uint16_t));     // Read frame info - Only the first two bytes of the register are used here.
-        inst->frame_len = (finfo & RX_FINFO_RXFL_MASK_1023) - 2;          // Report frame length - Standard frame length up to 127, extended frame length up to 1023 bytes
+        inst->uwb_dev.frame_len = (finfo & RX_FINFO_RXFL_MASK_1023) - 2;          // Report frame length - Standard frame length up to 127, extended frame length up to 1023 bytes
 
         
-        assert(inst->frame_len < sizeof(inst->rxbuf));
-        if (inst->frame_len < sizeof(inst->rxbuf))
-            dw1000_read_rx(inst, inst->rxbuf, 0, inst->frame_len);            // Read the whole frame
+        assert(inst->uwb_dev.frame_len < sizeof(inst->uwb_dev.rxbuf));
+        if (inst->uwb_dev.frame_len < sizeof(inst->uwb_dev.rxbuf))
+            dw1000_read_rx(inst, inst->uwb_dev.rxbuf, 0, inst->uwb_dev.frame_len);            // Read the whole frame
         
-        inst->fctrl = ((ieee_rng_request_frame_t * ) inst->rxbuf)->fctrl; 
+        inst->uwb_dev.fctrl = ((ieee_rng_request_frame_t * ) inst->uwb_dev.rxbuf)->fctrl; 
 
-        if (inst->status.lde_error) // retest lde_error condition
-            inst->status.lde_error = (dw1000_read_reg(inst, SYS_STATUS_ID, 1, sizeof(uint8_t))  & (SYS_STATUS_LDEDONE >> 8)) == 0;
-        if (inst->status.lde_error) // LDE eror or LDE late
+        if (inst->uwb_dev.status.lde_error) // retest lde_error condition
+            inst->uwb_dev.status.lde_error = (dw1000_read_reg(inst, SYS_STATUS_ID, 1, sizeof(uint8_t))  & (SYS_STATUS_LDEDONE >> 8)) == 0;
+        if (inst->uwb_dev.status.lde_error) // LDE eror or LDE late
             MAC_STATS_INC(LDE_err);
         
-        inst->rxtimestamp = dw1000_read_rxtime(inst);  
+        inst->uwb_dev.rxtimestamp = dw1000_read_rxtime(inst);  
 
         // Because of a previous frame not being received properly, AAT bit can be set upon the proper reception of a frame not requesting for
         // acknowledgement (ACK frame is not actually sent though). If the AAT bit is set, check ACK request bit in frame control to confirm (this
         // implementation works only for IEEE802.15.4-2011 compliant frames).
         // This issue is not documented at the time of writing this code. It should be in next release of DW1000 User Manual (v2.09, from July 2016).
 
-        if((inst->sys_status & SYS_STATUS_AAT) && ((inst->fctrl & MAC_FTYPE_ACK) == 0)){
+        if((inst->sys_status & SYS_STATUS_AAT) && ((inst->uwb_dev.fctrl & MAC_FTYPE_ACK) == 0)){
             dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_AAT, sizeof(uint8_t));     // Clear AAT status bit in register
             inst->sys_status &= ~SYS_STATUS_AAT; // Clear AAT status bit in callback data register copy
         }
 
         // Collect RX Frame Quality diagnositics
-        if(inst->config.rxdiag_enable)  
+        if(inst->uwb_dev.config.rxdiag_enable)
             dw1000_read_rxdiag(inst, &inst->rxdiag);
         
         // Toggle the Host side Receive Buffer Pointer
-        if (inst->config.dblbuffon_enabled) {
+        if (inst->uwb_dev.config.dblbuffon_enabled) {
             // The rxttcko is a poor replacement for the carrier_integrator but
             // better than nothing
-            if (inst->config.rxttcko_enable) {
+            if (inst->uwb_dev.config.rxttcko_enable) {
                 inst->rxttcko = dw1000_read_time_tracking_offset(inst);
             }
 
-            inst->status.overrun_error = dw1000_checkoverrun(inst);
-            if (inst->status.overrun_error == 0) {
+            inst->uwb_dev.status.overrun_error = dw1000_checkoverrun(inst);
+            if (inst->uwb_dev.status.overrun_error == 0) {
                 /* Check where the receiver is at, and if it's in the same buffer as we are,
                  * mask out interrupt flags to avoid spurious interrupts when clearing status bits */
-                if (inst->config.rxauto_enable) {
+                if (inst->uwb_dev.config.rxauto_enable) {
                     if (dw1000_ic_and_host_ptrs_equal(inst)) {
                         uint8_t mask = dw1000_read_reg(inst, SYS_MASK_ID, 1 , sizeof(uint8_t));
                         dw1000_write_reg(inst, SYS_MASK_ID, 1, 0, sizeof(uint8_t));
@@ -1470,15 +1406,15 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
             }
         }else{
             // carrier_integrator only avilable while in single buffer mode.
-            inst->carrier_integrator = dw1000_read_carrier_integrator(inst);
+            inst->uwb_dev.carrier_integrator = dw1000_read_carrier_integrator(inst);
 #if MYNEWT_VAL(CIR_ENABLED)
             // Call CIR complete calbacks if present
-            if(inst->config.cir_enable || inst->control.cir_enable) {
-                dw1000_mac_interface_t * cbs = NULL;
-                if(!(SLIST_EMPTY(&inst->interface_cbs))) {
-                    SLIST_FOREACH(cbs, &inst->interface_cbs, next) {
+            if(inst->uwb_dev.config.cir_enable || inst->control.cir_enable) {
+                struct uwb_mac_interface * cbs = NULL;
+                if(!(SLIST_EMPTY(&inst->uwb_dev.interface_cbs))) {
+                    SLIST_FOREACH(cbs, &inst->uwb_dev.interface_cbs, next) {
                         if (cbs != NULL && cbs->cir_complete_cb) {
-                            if(cbs->cir_complete_cb(inst,cbs)) continue;
+                            if(cbs->cir_complete_cb((struct uwb_dev*)inst,cbs)) continue;
                         }
                     }   
                 }  
@@ -1488,18 +1424,18 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
             dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_LDEDONE | SYS_STATUS_RXDFR | SYS_STATUS_RXFCG | SYS_STATUS_RXFCE | SYS_STATUS_RXDFR), sizeof(uint16_t)); 
             if (inst->control.rxauto_disable == false){
                 dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, SYS_CTRL_RXENAB, sizeof(uint16_t));
-                inst->status.rx_restarted = 1;
+                inst->uwb_dev.status.rx_restarted = 1;
             }
             inst->control.rxauto_disable = false;
 
         }
         
         // Call the corresponding frame services callback if present
-        dw1000_mac_interface_t * cbs = NULL;
-        if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
-            SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+        struct uwb_mac_interface * cbs = NULL;
+        if(!(SLIST_EMPTY(&inst->uwb_dev.interface_cbs))){ 
+            SLIST_FOREACH(cbs, &inst->uwb_dev.interface_cbs, next){    
             if (cbs != NULL && cbs->rx_complete_cb) 
-                if(cbs->rx_complete_cb(inst,cbs)) break;
+                if(cbs->rx_complete_cb((struct uwb_dev*)inst,cbs)) break;
             }   
         }  
     }
@@ -1527,16 +1463,16 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
         }
         
         // Call the corresponding callback if present
-        dw1000_mac_interface_t * cbs = NULL;
-        if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
-            SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+        struct uwb_mac_interface * cbs = NULL;
+        if(!(SLIST_EMPTY(&inst->uwb_dev.interface_cbs))){ 
+            SLIST_FOREACH(cbs, &inst->uwb_dev.interface_cbs, next){    
             if (cbs!=NULL && cbs->tx_complete_cb) 
-                if(cbs->tx_complete_cb(inst,cbs)) break;
+                if(cbs->tx_complete_cb((struct uwb_dev*)inst,cbs)) break;
             }   
         }          
     }
     // Tx buffer error
-    if(inst->status.txbuf_error){
+    if(inst->uwb_dev.status.txbuf_error){
         MAC_STATS_INC(TXBUF_err);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_TXBERR, sizeof(uint32_t)); 
         if(dpl_sem_get_count(&inst->tx_sem) == 0){
@@ -1552,7 +1488,7 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
     }
 
     // Handle frame reception/preamble detect timeout events
-    if(inst->status.rx_timeout_error){
+    if(inst->uwb_dev.status.rx_timeout_error){
         MAC_STATS_INC(RTO_cnt);
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_ALL_RX_TO, sizeof(uint32_t)); // Clear RX timeout event bits        
         // Because of an issue with receiver restart after error conditions, an RX reset must be applied 
@@ -1563,17 +1499,17 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
 
         inst->control.cir_enable = false;
         // Call the corresponding frame services callback if present
-        dw1000_mac_interface_t * cbs = NULL;
-        if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
-            SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+        struct uwb_mac_interface * cbs = NULL;
+        if(!(SLIST_EMPTY(&inst->uwb_dev.interface_cbs))){ 
+            SLIST_FOREACH(cbs, &inst->uwb_dev.interface_cbs, next){    
             if (cbs!=NULL && cbs->rx_timeout_cb) 
-                if(cbs->rx_timeout_cb(inst,cbs)) continue; 
+                if(cbs->rx_timeout_cb((struct uwb_dev*)inst,cbs)) continue; 
             }   
         }      
     }
 
     // Handle RX errors events
-    if(inst->status.rx_error) {
+    if(inst->uwb_dev.status.rx_error) {
         MAC_STATS_INC(RX_err);
 
         // Because of an issue with receiver restart after error conditions, an RX reset must be applied after any error or timeout event to ensure
@@ -1582,7 +1518,7 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
 
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, (SYS_STATUS_ALL_RX_ERR), sizeof(uint32_t)); // Clear RX error event bits
 
-        if (inst->config.dblbuffon_enabled && inst->status.overrun_error) {
+        if (inst->uwb_dev.config.dblbuffon_enabled && inst->uwb_dev.status.overrun_error) {
             MAC_STATS_INC(ROV_err);
             dw1000_phy_rx_reset(inst);
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 0b1, sizeof(uint8_t));
@@ -1597,11 +1533,11 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
         dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET+1, SYS_CTRL_RXENAB>>8, sizeof(uint8_t));
 
         // Call the corresponding frame services callback if present
-        dw1000_mac_interface_t * cbs = NULL;
-        if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
-            SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+        struct uwb_mac_interface * cbs = NULL;
+        if(!(SLIST_EMPTY(&inst->uwb_dev.interface_cbs))){ 
+            SLIST_FOREACH(cbs, &inst->uwb_dev.interface_cbs, next){    
             if (cbs!=NULL && cbs->rx_error_cb) 
-                if(cbs->rx_error_cb(inst,cbs)) continue;         
+                if(cbs->rx_error_cb((struct uwb_dev*)inst,cbs)) continue;         
             }   
         }
     }
@@ -1620,16 +1556,16 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
         dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_MASK_MCPLOCK, sizeof(uint32_t));
 
         // restore antenna delay value, these are not preserved during sleep/deepsleep */
-        dw1000_phy_set_rx_antennadelay(inst, inst->rx_antenna_delay);
-        dw1000_phy_set_tx_antennadelay(inst, inst->tx_antenna_delay);
+        dw1000_phy_set_rx_antennadelay(inst, inst->uwb_dev.rx_antenna_delay);
+        dw1000_phy_set_tx_antennadelay(inst, inst->uwb_dev.tx_antenna_delay);
 
         // Call the corresponding callback if present
-        inst->status.sleeping = 0;
-        dw1000_mac_interface_t * cbs = NULL;
-        if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
-            SLIST_FOREACH(cbs, &inst->interface_cbs, next){    
+        inst->uwb_dev.status.sleeping = 0;
+        struct uwb_mac_interface * cbs = NULL;
+        if(!(SLIST_EMPTY(&inst->uwb_dev.interface_cbs))){ 
+            SLIST_FOREACH(cbs, &inst->uwb_dev.interface_cbs, next){    
             if (cbs!=NULL && cbs->sleep_cb) 
-                if (cbs->sleep_cb(inst,cbs)) continue; 
+                if (cbs->sleep_cb((struct uwb_dev*)inst,cbs)) continue; 
             }   
         }         
         return;
@@ -1653,7 +1589,7 @@ dw1000_calc_fppl(struct _dw1000_dev_instance_t * inst,
         (!diag->fp_amp && !diag->fp_amp2 && !diag->fp_amp3)) {
         return -INFINITY;
     }
-    float A = (inst->config.prf == DWT_PRF_16M) ? 113.77 : 121.74;
+    float A = (inst->uwb_dev.config.prf == DWT_PRF_16M) ? 113.77 : 121.74;
 
     float N = diag->pacc_cnt;
     float v = (float)diag->fp_amp*diag->fp_amp +
@@ -1674,7 +1610,7 @@ dw1000_calc_fppl(struct _dw1000_dev_instance_t * inst,
 float
 dw1000_get_fppl(struct _dw1000_dev_instance_t * inst)
 {
-    if (!inst->config.rxdiag_enable)
+    if (!inst->uwb_dev.config.rxdiag_enable)
         return -INFINITY;
     return dw1000_calc_fppl(inst, &inst->rxdiag);
 }
@@ -1695,7 +1631,7 @@ dw1000_calc_rssi(struct _dw1000_dev_instance_t * inst,
         return -INFINITY;
     }
     float rssi = 10.0f * log10f(diag->cir_pwr * 0x20000/(diag->pacc_cnt * diag->pacc_cnt))
-        - ((inst->config.prf == DWT_PRF_16M) ? 113.77 : 121.74);
+        - ((inst->uwb_dev.config.prf == DWT_PRF_16M) ? 113.77 : 121.74);
     return rssi;
 }
 
@@ -1709,7 +1645,7 @@ dw1000_calc_rssi(struct _dw1000_dev_instance_t * inst,
 float
 dw1000_get_rssi(struct _dw1000_dev_instance_t * inst)
 {
-    if (!inst->config.rxdiag_enable) 
+    if (!inst->uwb_dev.config.rxdiag_enable)
         return -INFINITY;
     return dw1000_calc_rssi(inst, &inst->rxdiag);
 }
@@ -1887,25 +1823,3 @@ dw1000_configcwmode(struct _dw1000_dev_instance_t * inst, uint8_t chan)
                      TC_PGTEST_CW, TC_PGTEST_LEN);
 }
 
-
-/**
- *  Finds the first instance pointer to the callback structure 
- *  setup with a specific id.
- *
- * @param inst     Pointer to dw1000_dev_instance_t.
- * @param id       Corresponding id to find (DW1000_CCP,...)
- * @return void pointer to instance, null otherwise
- */
-void*
-dw1000_mac_find_cb_inst_ptr(dw1000_dev_instance_t * inst, uint16_t id)
-{
-    dw1000_mac_interface_t * cbs = NULL;
-    if(!(SLIST_EMPTY(&inst->interface_cbs))){ 
-        SLIST_FOREACH(cbs, &inst->interface_cbs, next){
-            if (cbs != NULL && cbs->inst_ptr && cbs->id==id) {
-                return cbs->inst_ptr;
-            }
-        }
-    }
-    return 0;
-}

@@ -73,7 +73,7 @@ typedef struct _tdma_slot_t{
 
 //! Structure of tdma instance
 typedef struct _tdma_instance_t{
-    struct _dw1000_dev_instance_t * dev_inst; //!< Pointer to _dw1000_dev_instance_t
+    struct uwb_dev * dev_inst;                //!< Pointer to associated uwb_dev
 #if MYNEWT_VAL(CCP_ENABLED)
     dw1000_ccp_instance_t * ccp;              //!< Pointer to ccp instance
 #endif
@@ -81,7 +81,7 @@ typedef struct _tdma_instance_t{
     STATS_SECT_DECL(tdma_stat_section) stat;  //!< Stats instance
 #endif
     tdma_status_t status;                    //!< Status of tdma 
-    dw1000_mac_interface_t cbs;              //!< MAC Layer Callbacks
+    struct uwb_mac_interface cbs;            //!< MAC Layer Callbacks
     struct dpl_mutex mutex;                  //!< Structure of os_mutex
     uint16_t idx;                            //!< Slot number
     uint16_t nslots;                         //!< Number of slots 
@@ -100,7 +100,7 @@ typedef struct _tdma_instance_t{
     struct _tdma_slot_t * slot[];           //!< Dynamically allocated slot
 }tdma_instance_t;
 
-struct _tdma_instance_t * tdma_init(struct _dw1000_dev_instance_t * inst, uint16_t nslots);
+struct _tdma_instance_t * tdma_init(struct uwb_dev * dev, uint16_t nslots);
 void tdma_free(struct _tdma_instance_t * inst);
 void tdma_assign_slot(struct _tdma_instance_t * inst, void (* call_back )(struct dpl_event *), uint16_t idx, void * arg);
 void tdma_release_slot(struct _tdma_instance_t * inst, uint16_t idx);

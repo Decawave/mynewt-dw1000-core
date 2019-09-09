@@ -68,9 +68,9 @@ dw1000_lwip_context_t cntxt;
  *
  * @param inst     Pointer to dw1000_dev_instance_t.
  * @param config   Pointer to structure dw1000_lwip_config_t containing configuration values. 
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-dw1000_dev_status_t
+struct uwb_dev_status
 dw1000_lwip_config(dw1000_lwip_instance_t * lwip, dw1000_lwip_config_t * config)
 {
 	assert(lwip);
@@ -223,9 +223,9 @@ static bool complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * c
  * @param inst  Pointer to dw1000_dev_instance_t.
  * @param p     lwIP Buffer to be sent to radio.
  * @param mode  Represents mode of blocking LWIP_BLOCKING : Wait for Tx to complete LWIP_NONBLOCKING : Don't wait for Tx to complete. 
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-dw1000_dev_status_t 
+struct uwb_dev_status 
 dw1000_lwip_write(dw1000_lwip_instance_t * lwip, struct pbuf *p, dw1000_lwip_modes_t mode)
 {
 	/* Semaphore lock for multi-threaded applications */

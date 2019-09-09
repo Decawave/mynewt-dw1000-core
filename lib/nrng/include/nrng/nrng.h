@@ -111,7 +111,7 @@ typedef union {
 } nrng_frame_t;
 
 typedef struct _dw1000_nrng_instance_t{
-    struct _dw1000_dev_instance_t * dev_inst;
+    struct uwb_dev * dev_inst;
 #if MYNEWT_VAL(NRNG_STATS)
     STATS_SECT_DECL(nrng_stat_section) stat; //!< Stats instance
 #endif
@@ -125,7 +125,7 @@ typedef struct _dw1000_nrng_instance_t{
     uint64_t delay;
     uint8_t seq_num;
     struct dpl_sem sem;                          //!< Structure of semaphores
-    dw1000_mac_interface_t cbs;                 //!< MAC Layer Callbacks
+    struct uwb_mac_interface cbs;                //!< MAC Layer Callbacks
     dw1000_nrng_device_type_t device_type;
     dw1000_rng_status_t status;
     dw1000_rng_control_t control;
@@ -135,16 +135,16 @@ typedef struct _dw1000_nrng_instance_t{
     nrng_frame_t * frames[];
 }dw1000_nrng_instance_t;
 
-dw1000_nrng_instance_t * dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1000_nrng_device_type_t type, uint16_t nframes, uint16_t nnodes);
-dw1000_dev_status_t dw1000_nrng_request_delay_start(struct _dw1000_nrng_instance_t * nrng, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t code, uint16_t start_slot_id, uint16_t end_slot_id);
-dw1000_dev_status_t dw1000_nrng_request(struct _dw1000_nrng_instance_t * nrng, uint16_t dst_address, dw1000_rng_modes_t code, uint16_t start_slot_id, uint16_t end_slot_id);
-float dw1000_nrng_twr_to_tof_frames(struct _dw1000_dev_instance_t * inst, nrng_frame_t *first_frame, nrng_frame_t *final_frame);
+dw1000_nrng_instance_t * dw1000_nrng_init(struct uwb_dev * inst, dw1000_rng_config_t * config, dw1000_nrng_device_type_t type, uint16_t nframes, uint16_t nnodes);
+struct uwb_dev_status dw1000_nrng_request_delay_start(struct _dw1000_nrng_instance_t * nrng, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t code, uint16_t start_slot_id, uint16_t end_slot_id);
+struct uwb_dev_status dw1000_nrng_request(struct _dw1000_nrng_instance_t * nrng, uint16_t dst_address, dw1000_rng_modes_t code, uint16_t start_slot_id, uint16_t end_slot_id);
+float dw1000_nrng_twr_to_tof_frames(struct uwb_dev * inst, nrng_frame_t *first_frame, nrng_frame_t *final_frame);
 void dw1000_nrng_set_frames(struct _dw1000_nrng_instance_t * nrng, uint16_t nframes);
-dw1000_dev_status_t dw1000_nrng_config(struct _dw1000_nrng_instance_t * nrng, dw1000_rng_config_t * config);
+struct uwb_dev_status dw1000_nrng_config(struct _dw1000_nrng_instance_t * nrng, dw1000_rng_config_t * config);
 dw1000_rng_config_t * dw1000_nrng_get_config(struct _dw1000_nrng_instance_t * nrng, dw1000_rng_modes_t code);
-dw1000_dev_status_t dw1000_nrng_listen(struct _dw1000_nrng_instance_t * nrng, dw1000_dev_modes_t mode);
+struct uwb_dev_status dw1000_nrng_listen(struct _dw1000_nrng_instance_t * nrng, dw1000_dev_modes_t mode);
 uint32_t dw1000_nrng_get_ranges(struct _dw1000_nrng_instance_t * nrng, float ranges[], uint16_t nranges, uint16_t base);
-uint32_t usecs_to_response(dw1000_dev_instance_t * inst, uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration);
+uint32_t usecs_to_response(struct uwb_dev * inst, uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration);
 
 void dw1000_nrng_append_config(dw1000_nrng_instance_t * nrng, struct rng_config_list *cfgs);
 void dw1000_nrng_remove_config(dw1000_nrng_instance_t * nrng, dw1000_rng_modes_t code);

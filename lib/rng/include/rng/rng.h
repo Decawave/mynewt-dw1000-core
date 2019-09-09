@@ -173,7 +173,7 @@ struct rng_config_list {
     
 //! Structure of range instance
 typedef struct _dw1000_rng_instance_t{
-    struct _dw1000_dev_instance_t * dev_inst; //!< Structure of DW1000_dev_instance
+    struct uwb_dev * dev_inst;              //!< Structure of uwb_dev
 #if MYNEWT_VAL(WCS_ENABLED)
     struct _dw1000_ccp_instance_t * ccp_inst; //!< Structure of CCP
 #endif
@@ -196,12 +196,12 @@ typedef struct _dw1000_rng_instance_t{
 
     
 void rng_pkg_init(void);
-dw1000_rng_instance_t * dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes);
+dw1000_rng_instance_t * dw1000_rng_init(struct uwb_dev * dev, dw1000_rng_config_t * config, uint16_t nframes);
 void dw1000_rng_free(dw1000_rng_instance_t * rng);
-dw1000_dev_status_t dw1000_rng_config(struct _dw1000_rng_instance_t * rng, dw1000_rng_config_t * config);
-dw1000_dev_status_t dw1000_rng_request(struct _dw1000_rng_instance_t * rng, uint16_t dst_address, dw1000_rng_modes_t protocal);
-dw1000_dev_status_t dw1000_rng_listen(struct _dw1000_rng_instance_t * rng, dw1000_dev_modes_t mode);
-dw1000_dev_status_t dw1000_rng_request_delay_start(struct _dw1000_rng_instance_t * rng, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t protocal);
+struct uwb_dev_status dw1000_rng_config(struct _dw1000_rng_instance_t * rng, dw1000_rng_config_t * config);
+struct uwb_dev_status dw1000_rng_request(struct _dw1000_rng_instance_t * rng, uint16_t dst_address, dw1000_rng_modes_t protocal);
+struct uwb_dev_status dw1000_rng_listen(struct _dw1000_rng_instance_t * rng, dw1000_dev_modes_t mode);
+struct uwb_dev_status dw1000_rng_request_delay_start(struct _dw1000_rng_instance_t * rng, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t protocal);
 dw1000_rng_config_t * dw1000_rng_get_config(struct _dw1000_rng_instance_t * rng, dw1000_rng_modes_t code);
 void dw1000_rng_set_frames(struct _dw1000_rng_instance_t * rng, twr_frame_t twr[], uint16_t nframes);
 #if MYNEWT_VAL(DW1000_RANGE)

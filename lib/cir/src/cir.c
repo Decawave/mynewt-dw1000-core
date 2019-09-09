@@ -67,7 +67,7 @@ cir_complete_ev_cb(struct os_event *ev) {
     
     dw1000_dev_instance_t * inst = (dw1000_dev_instance_t *)ev->ev_arg;
     cir_t * cir  = &inst->cir->cir;
-    if(inst->config.rxdiag_enable){
+    if(inst->uwb_dev.config.rxdiag_enable){
         for (uint16_t i=0; i < MYNEWT_VAL(CIR_SIZE); i++){
             cir->array[i].real /= inst->rxdiag.pacc_cnt;
             cir->array[i].imag /= inst->rxdiag.pacc_cnt;
@@ -78,7 +78,7 @@ cir_complete_ev_cb(struct os_event *ev) {
 #if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
     cir_encode(inst->cir, "cir", MYNEWT_VAL(CIR_SIZE));
 #elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
-    if (inst->idx == 0)
+    if (inst->uwb_dev.idx == 0)
         cir_encode(inst->cir, "cir0", MYNEWT_VAL(CIR_SIZE));   
     else     
         cir_encode(inst->cir, "cir1", MYNEWT_VAL(CIR_SIZE)); 
@@ -110,8 +110,8 @@ cir_remap_fp_index(cir_instance_t *cir0, cir_instance_t *cir1)
 
     /* Compensate for different clock and rx-antenna delays */
     if (cir0->dev_inst && cir1->dev_inst) {
-        raw_ts_diff += ((int32_t)cir0->dev_inst->ext_clock_delay  - (int32_t)cir1->dev_inst->ext_clock_delay)/64.0f;
-        raw_ts_diff += ((int32_t)cir0->dev_inst->rx_antenna_delay - (int32_t)cir1->dev_inst->rx_antenna_delay)/64.0f;
+        raw_ts_diff += ((int32_t)cir0->dev_inst->uwb_dev.ext_clock_delay  - (int32_t)cir1->dev_inst->uwb_dev.ext_clock_delay)/64.0f;
+        raw_ts_diff += ((int32_t)cir0->dev_inst->uwb_dev.rx_antenna_delay - (int32_t)cir1->dev_inst->uwb_dev.rx_antenna_delay)/64.0f;
     }
 
     float fp_idx_0_given_1 = cir0->fp_idx + raw_ts_diff;
@@ -122,7 +122,7 @@ bool
 cir_reread_from_cir(dw1000_dev_instance_t * inst, cir_instance_t *master_cir)
 {
     /* CIR-data is lost already if the receiver has been turned back on */
-    if (inst->status.rx_restarted) {
+    if (inst->uwb_dev.status.rx_restarted) {
         return false;
     }
     cir_instance_t * cir = inst->cir;
@@ -149,7 +149,7 @@ cir_reread_from_cir(dw1000_dev_instance_t * inst, cir_instance_t *master_cir)
 }
 
 /*! 
- * @fn cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn cir_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  *
  * @brief Read CIR inadvance of RXENB 
  * 
@@ -162,25 +162,26 @@ cir_reread_from_cir(dw1000_dev_instance_t * inst, cir_instance_t *master_cir)
  */
 #if MYNEWT_VAL(CIR_ENABLED)
 static bool
-cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+cir_complete_cb(struct uwb_dev * udev, struct uwb_mac_interface * cbs)
 {
     cir_instance_t * cir = (cir_instance_t *)cbs->inst_ptr;
+    struct _dw1000_dev_instance_t *inst = (struct _dw1000_dev_instance_t *)udev;
 
     cir->status.valid = 0;
     CIR_STATS_INC(complete);
     
-    cir->raw_ts = dw1000_read_rawrxtime(inst);
+    cir->raw_ts = dw1000_read_rawrxtime(cir->dev_inst);
     cir->resampler_delay = dw1000_read_reg(inst, RX_TTCKO_ID, 3, sizeof(uint8_t));
 
     uint16_t fp_idx;
     uint16_t fp_idx_reg = inst->rxdiag.fp_idx;
-    if(!inst->config.rxdiag_enable) {
-        fp_idx_reg = dw1000_read_reg(inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
+    if(!inst->uwb_dev.config.rxdiag_enable) {
+        fp_idx_reg = dw1000_read_reg(cir->dev_inst, RX_TIME_ID, RX_TIME_FP_INDEX_OFFSET, sizeof(uint16_t));
     }
     cir->fp_idx = (float)fp_idx_reg / 64.0f;
     fp_idx  = (uint16_t)floorf(cir->fp_idx + 0.5f);
 
-    if (inst->config.cir_pdoa_slave) {
+    if (inst->uwb_dev.config.cir_pdoa_slave) {
         /* This unit is acting as part of a pdoa network of receivers.
          * instead of trusting the LDE of this unit, use the LDE that detected
          * the earliest first path. This assumes all receivers are within 30mm of
@@ -208,9 +209,9 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         /* Can't extract CIR from required offset, abort */
         return true;
     }
-    dw1000_read_accdata(inst, (uint8_t *)&cir->cir, (fp_idx - MYNEWT_VAL(CIR_OFFSET)) * sizeof(cir_complex_t), sizeof(cir_t));
+    dw1000_read_accdata(cir->dev_inst, (uint8_t *)&cir->cir, (fp_idx - MYNEWT_VAL(CIR_OFFSET)) * sizeof(cir_complex_t), sizeof(cir_t));
 
-    float _rcphase = (float)((uint8_t)dw1000_read_reg(inst, RX_TTCKO_ID, 4, sizeof(uint8_t)) & 0x7F);
+    float _rcphase = (float)((uint8_t)dw1000_read_reg(cir->dev_inst, RX_TTCKO_ID, 4, sizeof(uint8_t)) & 0x7F);
     cir->rcphase = _rcphase * (M_PI/64.0f);
     cir->angle = atan2f((float)cir->cir.array[MYNEWT_VAL(CIR_OFFSET)].imag, (float)cir->cir.array[MYNEWT_VAL(CIR_OFFSET)].real);
     cir->status.valid = 1;
@@ -352,20 +353,20 @@ cir_free(cir_instance_t * inst){
 }
 
 #if MYNEWT_VAL(CIR_ENABLED)
-dw1000_mac_interface_t cbs[] = {
+struct uwb_mac_interface cbs[] = {
     [0] = {
-            .id =  DW1000_CIR,
+            .id =  UWBEXT_CIR,
             .cir_complete_cb = cir_complete_cb
     },
 #if MYNEWT_VAL(DW1000_DEVICE_1)
     [1] = {
-            .id =  DW1000_CIR,
+            .id =  UWBEXT_CIR,
             .cir_complete_cb = cir_complete_cb
     },
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
     [2] = {
-            .id =  DW1000_CIR,
+            .id =  UWBEXT_CIR,
             .cir_complete_cb = cir_complete_cb
     }
 #endif
@@ -384,17 +385,17 @@ void cir_pkg_init(void)
 
     dw1000_dev_instance_t * inst = hal_dw1000_inst(0);
     cbs[0].inst_ptr = inst->cir = cir_init(inst, NULL);
-    dw1000_mac_append_interface(inst, &cbs[0]);
+    uwb_mac_append_interface(&inst->uwb_dev, &cbs[0]);
 
 #if MYNEWT_VAL(DW1000_DEVICE_1)
     inst = hal_dw1000_inst(1);
     cbs[1].inst_ptr = inst->cir = cir_init(inst, NULL);
-    dw1000_mac_append_interface(inst, &cbs[1]);
+    uwb_mac_append_interface(&inst->uwb_dev, &cbs[1]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
     inst = hal_dw1000_inst(2);
     cbs[2].inst_ptr = inst->cir = cir_init(inst, NULL);
-    dw1000_mac_append_interface(inst, &cbs[2]);
+    uwb_mac_append_interface(&inst->uwb_dev, &cbs[2]);
 #endif
 
 #endif // MYNEWT_VAL(CIR_ENABLED)

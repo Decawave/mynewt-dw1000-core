@@ -122,22 +122,22 @@ dw1000_dump_registers(struct _dw1000_dev_instance_t * inst)
     }
     console_printf("{\"inst->tx_sem\"=\"0x%0X\"}\n", dpl_sem_get_count(&inst->tx_sem));
 #if MYNEWT_VAL(RNG_ENABLED)
-    dw1000_rng_instance_t *rng = (dw1000_rng_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_RNG);
+    dw1000_rng_instance_t *rng = (dw1000_rng_instance_t*)uwb_mac_find_cb_inst_ptr(&inst->uwb_dev, UWBEXT_RNG);
     if (rng)
         console_printf("{\"rng->sem\"=\"0x%0X\"}\n", dpl_sem_get_count(&rng->sem));
 #endif
 #if MYNEWT_VAL(NRNG_ENABLED)
-    dw1000_nrng_instance_t *nrng = (dw1000_nrng_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_NRNG);
+    dw1000_nrng_instance_t *nrng = (dw1000_nrng_instance_t*)uwb_mac_find_cb_inst_ptr(&inst->uwb_dev, UWBEXT_NRNG);
     if (nrng)
         console_printf("{\"nrng->sem\"=\"0x%0X\"}\n", dpl_sem_get_count(&nrng->sem));
 #endif
 #if MYNEWT_VAL(CCP_ENABLED)
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
+    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(&inst->uwb_dev, UWBEXT_CCP);
     if (ccp)
         console_printf("{\"ccp->sem\"=\"0x%0X\"}\n", dpl_sem_get_count(&ccp->sem));
 #endif
 #if MYNEWT_VAL(SURVEY_ENABLED)
-    survey_instance_t *survey = (survey_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_SURVEY);
+    survey_instance_t *survey = (survey_instance_t*)uwb_mac_find_cb_inst_ptr(&inst->uwb_dev, UWBEXT_SURVEY);
     if (survey)
         console_printf("{\"survey->sem\"=\"0x%0X\"}\n", dpl_sem_get_count(&survey->sem));
 #endif
