@@ -25,6 +25,9 @@ pkg.keywords:
     - dw1000
     - CCP
 
+pkg.deps:
+    - "@mynewt-dw1000-core/hw/drivers/uwb"
+
 pkg.cflags:
     - "-std=gnu99"
     - "-fms-extensions"

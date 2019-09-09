@@ -32,7 +32,7 @@ pkg.cflags:
     - "-fms-extensions"
 
 pkg.deps:
-    - "@mynewt-dw1000-core/hw/drivers/dw1000"
+    - "@mynewt-dw1000-core/hw/drivers/uwb"
 pkg.deps.TIMESCALE:
     - "@mynewt-timescale-lib/lib/timescale"
         

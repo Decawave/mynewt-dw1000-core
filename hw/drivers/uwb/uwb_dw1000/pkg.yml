@@ -17,23 +17,29 @@
 # under the License.
 #
 
-pkg.name: lib/cir
-pkg.description: Channel Impulse Response
-pkg.author: "Paul Kettle <Paul.Kettle@decawave.com>"
-pkg.homepage: "http://www.decawave.com]/"
+pkg.name: hw/drivers/uwb/uwb_dw1000
+pkg.description: Driver for DW1000 Transeiver 
+pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
+pkg.homepage: "http:/www.decawave.com/"
 pkg.keywords:
     - dw1000
     - uwb
-    - cir
-    - pmem
-    
+pkg.deps:
+    - "@apache-mynewt-core/hw/hal"
+    - "@apache-mynewt-core/sys/stats/full"
+    - "@mynewt-dw1000-core/lib/dsp"
+    - "@mynewt-dw1000-core/porting/dpl/mynewt"
+pkg.apis:
+    - UWB_HW_IMPL
+pkg.req_apis: 
+
+pkg.init:
+    dw1000_pkg_init: 400
+
 pkg.cflags:
     - "-std=gnu99"
     - "-fms-extensions"
 
-pkg.deps:
-    - "@mynewt-dw1000-core/hw/drivers/uwb/uwb_dw1000"
-    - "@apache-mynewt-core/encoding/json"
-        
-pkg.init:
-    cir_pkg_init: 405
+pkg.lflags:
+    - "-lm"
+    

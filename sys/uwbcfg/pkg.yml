@@ -24,7 +24,7 @@ pkg.homepage: ""
 pkg.keywords:
 
 pkg.deps:
-    - "@mynewt-dw1000-core/hw/drivers/dw1000"
+    - "@mynewt-dw1000-core/hw/drivers/uwb/uwb_dw1000"
     - "@apache-mynewt-core/sys/config"
 
 pkg.init:

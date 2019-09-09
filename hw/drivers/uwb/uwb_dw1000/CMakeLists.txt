@@ -13,8 +13,9 @@ list(REMOVE_ITEM ${PROJECT_NAME}_SOURCES ${remove_from_build})
 
 include_directories(
     include
-    "${PROJECT_SOURCE_DIR}/../../../bin/targets/syscfg/generated/include/"
-    "${PROJECT_SOURCE_DIR}/../../../porting/dpl_hal/include"
+    "${PROJECT_SOURCE_DIR}/../include"
+    "${PROJECT_SOURCE_DIR}/../../../../bin/targets/syscfg/generated/include/"
+    "${PROJECT_SOURCE_DIR}/../../../../porting/dpl_hal/include"
 )
 
 source_group("include" FILES ${${PROJECT_NAME}_HEADERS})
@@ -56,5 +57,5 @@ install(DIRECTORY include/ DESTINATION include/
         FILES_MATCHING PATTERN "*.h"
 )
 
-include(../../../CMakeCommon.cmake)
+include(../../../../CMakeCommon.cmake)
 

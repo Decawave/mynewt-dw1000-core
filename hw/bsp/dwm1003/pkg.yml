@@ -43,7 +43,7 @@ pkg.deps.UARTBB_0:
     - "@apache-mynewt-core/hw/drivers/uart/uart_bitbang"
 
 pkg.deps.DW1000_DEVICE_0:
-    - '@mynewt-dw1000-core/hw/drivers/dw1000'
+    - '@mynewt-dw1000-core/hw/drivers/uwb/uwb_dw1000'
 
 pkg.deps.LSM6DSL_ONB:
     - '@mynewt-dw1000-core/hw/drivers/sensors/lsm6dsl'

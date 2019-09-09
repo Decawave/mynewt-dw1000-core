@@ -39,4 +39,4 @@ pkg.deps:
     - '@apache-mynewt-core/libc/baselibc'   
 
 pkg.deps.DW1000_DEVICE_0:
-    - '@mynewt-dw1000-core/hw/drivers/dw1000'
+    - '@mynewt-dw1000-core/hw/drivers/uwb/uwb_dw1000'

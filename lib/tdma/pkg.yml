@@ -22,7 +22,7 @@ pkg.description: Time-division multiple access
 pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
-    - dw1000
+    - uwb
     - TDMA
 
 pkg.cflags:

@@ -22,8 +22,8 @@ pkg.description: TWR library superset
 pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
-    - dw1000
-    - CCP
+    - uwb
+    - two-way-ranging
 
 pkg.cflags:
     - "-std=gnu99"
