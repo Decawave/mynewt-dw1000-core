@@ -22,7 +22,7 @@ pkg.description: lwIP library
 pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
-    - dw1000
+    - uwb
     - lwIP
 
 pkg.cflags:
@@ -33,7 +33,7 @@ pkg.lflags:
     - "-lm"
 
 pkg.deps:
-    - "@mynewt-dw1000-core/hw/drivers/dw1000"
+    - "@mynewt-dw1000-core/hw/drivers/uwb"
 
 pkg.deps.DW1000_LWIP:
     - "@mynewt-dw1000-core/net/ip/lwip_base"
