@@ -1,4 +1,4 @@
-#cmake_minimum_required(VERSION 3.13)
+#cmake_minimum_required(VERSION 3.12)
 #project(uwb-core VERSION ${VERSION} LANGUAGES C)
 
 add_subdirectory(ccp)

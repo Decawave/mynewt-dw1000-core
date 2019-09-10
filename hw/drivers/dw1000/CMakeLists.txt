@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.12)
 project(uwb_dw1000 VERSION ${VERSION} LANGUAGES C)
 
 file(GLOB ${PROJECT_NAME}_SOURCES 
@@ -53,103 +53,9 @@ target_include_directories(${PROJECT_NAME}
     PRIVATE ${libdpl_os_INCLUDE_DIRECTORIES}  
 )
 
-
 install(DIRECTORY include/ DESTINATION include/
         FILES_MATCHING PATTERN "*.h"
 )
 
 include(../../../CMakeCommon.cmake)
 
-#[[
-#target_link_libraries(
-#    ${PROJECT_NAME} 
-#    dpl_os::dpl_os
-#    dpl_hal::dpl_hal
-#)
-
-include(GNUInstallDirs)
-target_include_directories( ${PROJECT_NAME} 
-    PUBLIC 
-      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
-      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/>
-    PRIVATE
-      ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
-
-# Install library
-install(
-    TARGETS ${PROJECT_NAME} 
-    EXPORT ${PROJECT_NAME}-targets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
-
-target_compile_options(${PROJECT_NAME} PRIVATE -Werror -fms-extensions)
-
-install(
-    DIRECTORY include/ DESTINATION include/
-    FILES_MATCHING PATTERN "*.h"
-)
-
-include(CMakePackageConfigHelpers)
-write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-version.cmake"
-    VERSION ${timescale_VERSION}
-    COMPATIBILITY AnyNewerVersion
-)
-
-# Export library
-install(
-    EXPORT ${PROJECT_NAME}-targets
-    FILE ${PROJECT_NAME}-config.cmake
-    NAMESPACE ${PROJECT_NAME}::
-    DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
-)
-
-install(
-  FILES 
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-release.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-version.cmake"
-  DESTINATION ./
-  CONFIGURATIONS Release
-)
-install(
-  FILES 
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-debug.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-version.cmake"
-  DESTINATION ./
-  CONFIGURATIONS Debug
-)
-
-install(
-    EXPORT_ANDROID_MK ${PROJECT_NAME}-targets 
-    DESTINATION share/ndk-modules/${PROJECT_NAME}
-)
-
-export(
-    TARGETS ${PROJECT_NAME}
-    FILE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake
-    NAMESPACE ${PROJECT_NAME}::
-    EXPORT_LINK_INTERFACE_LIBRARIES
-)
-
-export(
-    PACKAGE ${PROJECT_NAME}
-)
-
-#configure_file(${PROJECT_NAME}-config.cmake
-#    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-release.cmake"
-#    COPYONLY
-#)
-
-# Install library
-#install(
-#    TARGETS ${PROJECT_NAME} ARCHIVE 
-#    DESTINATION lib
-#)
-
-#install(DIRECTORY include/ DESTINATION include/
-#        FILES_MATCHING PATTERN "*.h"
-#)
-
-]]
