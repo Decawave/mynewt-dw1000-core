@@ -165,6 +165,12 @@ typedef union {
     uint8_t array[sizeof(struct _twr_frame_t)];        //!< Array of size twr_frame
 } twr_frame_t;
 
+struct rng_config_list {
+    uint16_t rng_code;
+    dw1000_rng_config_t *config;
+    SLIST_ENTRY(rng_config_list) next;
+};
+    
 //! Structure of range instance
 typedef struct _dw1000_rng_instance_t{
     struct _dw1000_dev_instance_t * dev_inst; //!< Structure of DW1000_dev_instance
@@ -182,11 +188,13 @@ typedef struct _dw1000_rng_instance_t{
     dw1000_rng_control_t control;           //!< Structure of range control
     dw1000_rng_status_t status;             //!< Structure of range status
     uint16_t idx;                           //!< Input index to circular buffer 
-    uint16_t idx_current;                     //!< Output index to circular buffer 
+    uint16_t idx_current;                   //!< Output index to circular buffer 
     uint16_t nframes;                       //!< Number of buffers defined to store the ranging data
+    SLIST_HEAD(, rng_config_list) rng_configs;
     twr_frame_t * frames[];                 //!< Pointer to twr buffers
 }dw1000_rng_instance_t;
 
+    
 void rng_pkg_init(void);
 dw1000_rng_instance_t * dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes);
 void dw1000_rng_free(dw1000_rng_instance_t * rng);
@@ -208,6 +216,10 @@ float dw1000_rng_path_loss(float Pt, float G, float fc, float R);
 float dw1000_rng_bias_correction(dw1000_dev_instance_t * inst, float Pr);
 uint32_t dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code);
 
+void dw1000_rng_append_config(dw1000_rng_instance_t * rng, struct rng_config_list *cfgs);
+void dw1000_rng_remove_config(dw1000_rng_instance_t * rng, dw1000_rng_modes_t code);
+
+    
 #ifdef __cplusplus
 }
 #endif

@@ -106,6 +106,12 @@ static dw1000_rng_config_t g_config = {
     .rx_timeout_delay = MYNEWT_VAL(TWR_SS_RX_TIMEOUT)       // Receive response timeout in usec
 };
 
+static struct rng_config_list g_rng_cfgs = {
+    .rng_code = DWT_SS_TWR,
+    .config = &g_config
+};
+
+
 /**
  * @fn twr_ss_pkg_init(void)
  * @brief API to initialise the rng_ss package.
@@ -120,14 +126,17 @@ twr_ss_pkg_init(void){
 #if MYNEWT_VAL(DW1000_DEVICE_0)
     g_cbs[0].inst_ptr = (dw1000_rng_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_RNG);
     dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs[0]);
+    dw1000_rng_append_config(g_cbs[0].inst_ptr, &g_rng_cfgs);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
     g_cbs[1].inst_ptr = (dw1000_rng_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(1), DW1000_RNG);
     dw1000_mac_append_interface(hal_dw1000_inst(1), &g_cbs[1]);
+    dw1000_rng_append_config(g_cbs[1].inst_ptr, &g_rng_cfgs);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
     g_cbs[2].inst_ptr = (dw1000_rng_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(2), DW1000_RNG);
     dw1000_mac_append_interface(hal_dw1000_inst(2), &g_cbs[2]);
+    dw1000_rng_append_config(g_cbs[2].inst_ptr, &g_rng_cfgs);
 #endif
 
     int rc = stats_init(
@@ -152,19 +161,6 @@ void
 twr_ss_free(dw1000_dev_instance_t * inst){
     assert(inst);
     dw1000_mac_remove_interface(inst, DW1000_RNG_SS);
-}
-
-/**
- * @fn twr_ss_config(dw1000_dev_instance_t * inst)
- * @brief API for get local config callback.
- *
- * @param inst  Pointer to dw1000_dev_instance_t.
- *
- * @return true on sucess
- */
-dw1000_rng_config_t *
-twr_ss_config(dw1000_dev_instance_t * inst){
-    return &g_config;
 }
 
 /**
