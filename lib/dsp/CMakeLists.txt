@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
-project(dsp)
+project(dsp VERSION ${VERSION} LANGUAGES C)
 
 file(GLOB ${PROJECT_NAME}_SOURCES 
     src/*.c
@@ -7,8 +7,6 @@ file(GLOB ${PROJECT_NAME}_SOURCES
 file(GLOB ${PROJECT_NAME}_HEADERS 
     include/*.h
 )
-
-#configure_file(${PROJECT_NAME}.pc.in ${PROJECT_NAME}.pc @ONLY)
 
 include_directories(
     include
@@ -25,24 +23,18 @@ add_library(${PROJECT_NAME}
     ${${PROJECT_NAME}_HEADERS}
 )
 
-target_include_directories(
-    ${PROJECT_NAME} 
+include(GNUInstallDirs)
+target_include_directories(${PROJECT_NAME} 
     PUBLIC 
-    include
-)
-
-target_link_libraries(
-    ${PROJECT_NAME} 
-)
-
-# Install library
-install(
-    TARGETS ${PROJECT_NAME} ARCHIVE 
-    DESTINATION lib
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
+      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/>
+    PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 install(DIRECTORY include/ DESTINATION include/
         FILES_MATCHING PATTERN "*.h"
 )
 
+include(../../CMakeCommon.cmake)
 

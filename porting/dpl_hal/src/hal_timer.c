@@ -20,9 +20,9 @@
 //#ifdef REMOVE
 #include <stdint.h>
 #include <assert.h>
-#include"dpl/dpl.h"
+#include "dpl/dpl.h"
 #include "hal/hal_timer.h"
-#include"os/os.h"
+#include "os/os.h"
 
 /*
  * For native cpu implementation.

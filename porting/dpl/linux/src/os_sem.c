@@ -23,7 +23,6 @@
 #include <time.h>
 #include <stdio.h>
 
-#include "os/os.h"
 #include "dpl/dpl.h"
 
 dpl_error_t

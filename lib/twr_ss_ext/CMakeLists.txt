@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.2)
-project(twr_ss_ext)
+cmake_minimum_required(VERSION 3.13)
+project(twr_ss_ext VERSION ${VERSION} LANGUAGES C)
 
 file(GLOB ${PROJECT_NAME}_SOURCES 
     src/*.c
@@ -25,6 +25,40 @@ add_library(${PROJECT_NAME}
     ${${PROJECT_NAME}_HEADERS}
 )
 
+add_library(libdpl_os ALIAS dpl_os)
+get_target_property(libdpl_os_INCLUDE_DIRECTORIES libdpl_os INCLUDE_DIRECTORIES)
+add_library(libuwb_dw1000 ALIAS uwb_dw1000)
+get_target_property(libuwb_dw1000_INCLUDE_DIRECTORIES libuwb_dw1000 INCLUDE_DIRECTORIES)
+add_library(libdsp ALIAS dsp)
+get_target_property(libdsp_INCLUDE_DIRECTORIES libdsp INCLUDE_DIRECTORIES)
+add_library(libeuclid ALIAS euclid)
+get_target_property(libeuclid_INCLUDE_DIRECTORIES libeuclid INCLUDE_DIRECTORIES)
+add_library(librng ALIAS rng)
+get_target_property(librng_INCLUDE_DIRECTORIES librng INCLUDE_DIRECTORIES)
+
+
+
+include(GNUInstallDirs)
+target_include_directories(${PROJECT_NAME} 
+    PUBLIC 
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
+      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/>
+    PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/src
+      PRIVATE ${libdpl_os_INCLUDE_DIRECTORIES}
+      PRIVATE ${libuwb_dw1000_INCLUDE_DIRECTORIES}
+      PRIVATE ${libdsp_INCLUDE_DIRECTORIES}
+      PRIVATE ${libeuclid_INCLUDE_DIRECTORIES}
+      PRIVATE ${librng_INCLUDE_DIRECTORIES}
+)
+
+# Install library
+install(DIRECTORY include/ DESTINATION include/
+        FILES_MATCHING PATTERN "*.h"
+)
+
+include(../../CMakeCommon.cmake)
+#[[
 target_include_directories(
     ${PROJECT_NAME} 
     PUBLIC 
@@ -49,4 +83,4 @@ install(
 install(DIRECTORY include/ DESTINATION include/
         FILES_MATCHING PATTERN "*.h"
 )
-
+]]

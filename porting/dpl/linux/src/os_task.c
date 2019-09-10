@@ -17,7 +17,6 @@
  * under the License.
  */
 
-#include "os/os.h"
 #include "dpl/dpl_tasks.h"
 
 #ifdef __cplusplus
@@ -52,7 +51,7 @@ dpl_task_init(struct dpl_task *t, const char *name, dpl_task_func_t func,
 {
     int err;
     if ((t == NULL) || (func == NULL)) {
-        return OS_INVALID_PARM;
+        return DPL_INVALID_PARAM;
     }
     err = pthread_attr_init(&t->attr);
     if (err) return err;

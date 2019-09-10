@@ -25,7 +25,6 @@
 #include <signal.h>
 #include <time.h>
 
-#include "os/os.h"
 #include "dpl/dpl_time.h"
 
 /**
