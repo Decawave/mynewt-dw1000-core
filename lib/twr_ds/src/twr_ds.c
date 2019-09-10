@@ -134,7 +134,7 @@ void twr_ds_pkg_init(void){
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
     g_cbs[2].inst_ptr = (dw1000_rng_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(2), DW1000_RNG);
-    dw1000_mac_append_interface(hal_dw1000_inst(1), &g_cbs[2]);
+    dw1000_mac_append_interface(hal_dw1000_inst(2), &g_cbs[2]);
     dw1000_rng_append_config(g_cbs[2].inst_ptr, &g_rng_cfgs);
 #endif
 
