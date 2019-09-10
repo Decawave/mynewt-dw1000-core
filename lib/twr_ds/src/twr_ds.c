@@ -68,7 +68,7 @@ static dw1000_mac_interface_t g_cbs[] = {
             .reset_cb = reset_cb,
             .start_tx_error_cb = start_tx_error_cb
         },
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(DW1000_DEVICE_1) || MYNEWT_VAL(DW1000_DEVICE_2)
         [1] = {
             .id = DW1000_RNG_DS,
             .rx_complete_cb = rx_complete_cb,
@@ -148,7 +148,6 @@ void twr_ds_pkg_init(void){
     assert(rc == 0);
   
 }
-
 
 /**
  * API to free the allocated resources.

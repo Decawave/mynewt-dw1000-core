@@ -71,7 +71,7 @@ static dw1000_mac_interface_t g_cbs[] = {
             .reset_cb = reset_cb,
             .final_cb = tx_final_cb
         },
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(DW1000_DEVICE_1) ||  MYNEWT_VAL(DW1000_DEVICE_2)
         [1] = {
             .id = DW1000_RNG_SS_EXT,
             .rx_complete_cb = rx_complete_cb,

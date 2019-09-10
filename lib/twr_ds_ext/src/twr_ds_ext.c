@@ -65,7 +65,7 @@ static dw1000_mac_interface_t g_cbs[] = {
             .final_cb = tx_final_cb,
             .start_tx_error_cb = start_tx_error_cb
         },
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(DW1000_DEVICE_1) || MYNEWT_VAL(DW1000_DEVICE_2)
         [1] = {
             .id = DW1000_RNG_DS_EXT,
             .rx_complete_cb = rx_complete_cb,
@@ -98,7 +98,6 @@ STATS_NAME_START(twr_ds_ext_stat_section)
 STATS_NAME_END(twr_ds_ext_stat_section)
 
 static STATS_SECT_DECL(twr_ds_ext_stat_section) g_stat;
-
 
 static dw1000_rng_config_t g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(TWR_DS_EXT_TX_HOLDOFF),         // Send Time delay in usec.
