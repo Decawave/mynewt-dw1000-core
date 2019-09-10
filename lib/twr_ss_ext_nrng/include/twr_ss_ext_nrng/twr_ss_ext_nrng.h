@@ -47,7 +47,6 @@ extern "C" {
 
 void twr_ss_ext_nrng_pkg_init(void);
 void twr_ss_ext_nrng_free(dw1000_dev_instance_t * inst);
-dw1000_rng_config_t * twr_ss_ext_nrng_config(dw1000_dev_instance_t * inst);
 
 #ifdef __cplusplus
 }

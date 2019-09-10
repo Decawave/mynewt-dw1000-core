@@ -131,6 +131,7 @@ typedef struct _dw1000_nrng_instance_t{
     dw1000_rng_control_t control;
     dw1000_rng_config_t config;
     uint16_t idx;
+    SLIST_HEAD(, rng_config_list) rng_configs;
     nrng_frame_t * frames[];
 }dw1000_nrng_instance_t;
 
@@ -145,6 +146,10 @@ dw1000_dev_status_t dw1000_nrng_listen(struct _dw1000_nrng_instance_t * nrng, dw
 uint32_t dw1000_nrng_get_ranges(struct _dw1000_nrng_instance_t * nrng, float ranges[], uint16_t nranges, uint16_t base);
 uint32_t usecs_to_response(dw1000_dev_instance_t * inst, uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration);
 
+void dw1000_nrng_append_config(dw1000_nrng_instance_t * nrng, struct rng_config_list *cfgs);
+void dw1000_nrng_remove_config(dw1000_nrng_instance_t * nrng, dw1000_rng_modes_t code);
+
+    
 #ifdef __cplusplus
 }
 #endif

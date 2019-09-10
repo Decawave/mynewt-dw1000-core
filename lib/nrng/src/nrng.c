@@ -33,15 +33,6 @@
 #include <dw1000/dw1000_ftypes.h>
 #include <nrng/nrng.h>
 #include <rng/rng.h>
-#if MYNEWT_VAL(TWR_DS_NRNG_ENABLED)
-#include <twr_ds_nrng/twr_ds_nrng.h>
-#endif
-#if MYNEWT_VAL(TWR_SS_NRNG_ENABLED)
-#include <twr_ss_nrng/twr_ss_nrng.h>
-#endif
-#if MYNEWT_VAL(TWR_DS_EXT_NRNG_ENABLED)
-#include <twr_ds_ext_nrng/twr_ds_ext_nrng.h>
-#endif
 #if MYNEWT_VAL(WCS_ENABLED)
 #include <wcs/wcs.h>
 #endif
@@ -242,29 +233,61 @@ dw1000_nrng_get_ranges(dw1000_nrng_instance_t * nrng, float ranges[], uint16_t n
 dw1000_rng_config_t *
 dw1000_nrng_get_config(dw1000_nrng_instance_t * nrng, dw1000_rng_modes_t code)
 {
-    dw1000_dev_instance_t * inst = nrng->dev_inst;
-    dw1000_rng_config_t * config;
+    struct rng_config_list * cfgs;
 
-    switch (code){
-#if MYNEWT_VAL(TWR_DS_NRNG_ENABLED)
-        case  DWT_DS_TWR_NRNG:                     //!< Double sided TWR
-            config = twr_ds_nrng_config(inst);
-            break;
-#endif
-#if MYNEWT_VAL(TWR_DS_EXT_NRNG_ENABLED)
-        case DWT_DS_TWR_NRNG_EXT:                  //!< Double sided TWR in extended mode
-            config = twr_ds_ext_nrng_config(inst);
-            break;
-#endif
-#if MYNEWT_VAL(TWR_SS_NRNG_ENABLED) 
-        case  DWT_SS_TWR_NRNG:                     //!< Single sided TWR
-            config = twr_ss_nrng_config(inst);
-            break;
-#endif
-        default:
-            assert(0);
+    if(!(SLIST_EMPTY(&nrng->rng_configs))){ 
+        SLIST_FOREACH(cfgs, &nrng->rng_configs, next){    
+            if (cfgs != NULL && cfgs->rng_code == code) {
+                return cfgs->config;
+            }
+        }
     }
-    return config;
+    return &g_config;
+}
+
+/**
+ * Add config extension for different rng services.
+ *
+ * @param rng        Pointer to dw1000_rng_instance_t.
+ * @param callbacks  callback instance.
+ * @return void
+ */
+void
+dw1000_nrng_append_config(dw1000_nrng_instance_t * nrng, struct rng_config_list *cfgs)
+{
+    assert(nrng);
+
+    if(!(SLIST_EMPTY(&nrng->rng_configs))) {
+        struct rng_config_list * prev_cfgs = NULL;
+        struct rng_config_list * cur_cfgs = NULL;
+        SLIST_FOREACH(cur_cfgs, &nrng->rng_configs, next){
+            prev_cfgs = cur_cfgs;
+        }
+        SLIST_INSERT_AFTER(prev_cfgs, cfgs, next);
+    } else {
+        SLIST_INSERT_HEAD(&nrng->rng_configs, cfgs, next);
+    }
+}
+
+
+/**
+ * API to remove config.
+ *
+ * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param id    ID of the service.
+ * @return void
+ */
+void
+dw1000_nrng_remove_config(dw1000_nrng_instance_t * nrng, dw1000_rng_modes_t code)
+{
+    assert(nrng);
+    struct rng_config_list * cfgs = NULL;
+    SLIST_FOREACH(cfgs, &nrng->rng_configs, next){
+        if(cfgs->rng_code == code){
+            SLIST_REMOVE(&nrng->rng_configs, cfgs, rng_config_list, next);
+            break;
+        }
+    }
 }
 
 /**
