@@ -16,8 +16,8 @@ COMMON_DEFINITIONS =                                      \
 	-DGIT_SHORT_HASH=$(GIT_SHORT_HASH)     				
 
 generic:
-#	rm -R -f build_generic
-#	mkdir build_generic
+	rm -R -f build_generic
+	mkdir build_generic
 	cd build_generic && cmake -G"Unix Makefiles"          \
 	$(COMMON_DEFINITIONS)                                 \
 	-DCMAKE_TOOLCHAIN_FILE=../toolchain/generic.cmake ..
