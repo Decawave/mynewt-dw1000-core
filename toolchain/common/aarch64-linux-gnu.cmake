@@ -1,5 +1,3 @@
-# Name of the target
-set(CMAKE_SYSTEM_PROCESSOR cortex-a73)
 
 # Toolchain settings
 set(CMAKE_C_COMPILER    aarch64-linux-gnu-gcc)

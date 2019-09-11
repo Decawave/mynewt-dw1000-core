@@ -41,7 +41,7 @@ pkg.deps:
     - "@mynewt-dw1000-core/lib/tdma"
     - "@mynewt-dw1000-core/lib/ccp"
     - "@mynewt-dw1000-core/lib/cir"
-    #    - "@mynewt-dw1000-core/lib/wcs"
+#    - "@mynewt-dw1000-core/lib/wcs"
 #    - "@mynewt-timescale-lib/lib/timescale"
     - "@mynewt-dw1000-core/lib/survey"
 #    - "@mynewt-dw1000-core/lib/nmgr_uwb"

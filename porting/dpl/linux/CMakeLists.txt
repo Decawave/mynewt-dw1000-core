@@ -1,8 +1,22 @@
-project(dpl_linux)
+cmake_minimum_required(VERSION 3.12)
+project(dpl_linux VERSION ${VERSION} LANGUAGES C)
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
-file(GLOB ${PROJECT_NAME}_SOURCES src/*.c src/*.cc)
-file(GLOB ${PROJECT_NAME}_HEADERS include/*.h)
+set(CMAKE_EXPORT_PACKAGE_REGISTRY ON)
+
+file(GLOB ${PROJECT_NAME}_SOURCES 
+    src/*.c
+)
+file(GLOB ${PROJECT_NAME}_HEADERS 
+    include/*.h
+)
+
+include_directories(
+    include
+    "${PROJECT_SOURCE_DIR}/../../../bin/targets/syscfg/generated/include/"
+)
+
+source_group("include" FILES ${${PROJECT_NAME}_HEADERS})
+source_group("lib" FILES ${${PROJECT_NAME}_SOURCES})
 
 add_library(${PROJECT_NAME} 
     STATIC
@@ -10,36 +24,16 @@ add_library(${PROJECT_NAME}
     ${${PROJECT_NAME}_HEADERS}
 )
 
-
-include_directories(
-    include
-    "${PROJECT_SOURCE_DIR}/../../../bin/targets/syscfg/generated/include/"
-)
-
-target_include_directories(
-    ${PROJECT_NAME} 
+include(GNUInstallDirs)
+target_include_directories(${PROJECT_NAME} 
     PUBLIC 
-    include
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
+      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/>
+    PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-#set(THREADS_PREFER_PTHREAD_FLAG ON)
-#find_package(Threads REQUIRED)
-
-target_link_libraries(
-    ${PROJECT_NAME} 
-    dpl_os
-)
-
-
-# Install library
-install(
-    TARGETS ${PROJECT_NAME} ARCHIVE 
-    DESTINATION lib
-)
-
-install(DIRECTORY include/ DESTINATION include/
-        FILES_MATCHING PATTERN "*.h"
-)
+include(../../../CMakeCommon.cmake)
 
 #[[
 # API Unit test

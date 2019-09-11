@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.2)
-project(survey)
+cmake_minimum_required(VERSION 3.12)
+project(survey VERSION ${VERSION} LANGUAGES C)
 
 file(GLOB ${PROJECT_NAME}_SOURCES 
     src/*.c
@@ -7,11 +7,6 @@ file(GLOB ${PROJECT_NAME}_SOURCES
 file(GLOB ${PROJECT_NAME}_HEADERS 
     include/*.h
 )
-
-#file(GLOB remove_from_build "./src/dw1000_cli.c")
-#list(REMOVE_ITEM ${PROJECT_NAME}_SOURCES ${remove_from_build})
-
-#configure_file(${PROJECT_NAME}.pc.in ${PROJECT_NAME}.pc @ONLY)
 
 include_directories(
     include
@@ -28,27 +23,41 @@ add_library(${PROJECT_NAME}
     ${${PROJECT_NAME}_HEADERS}
 )
 
-target_include_directories(
-    ${PROJECT_NAME} 
-    PUBLIC 
-    include
-)
+add_library(libdpl_os ALIAS dpl_os)
+get_target_property(libdpl_os_INCLUDE_DIRECTORIES libdpl_os INCLUDE_DIRECTORIES)
+add_library(libuwb_dw1000 ALIAS uwb_dw1000)
+get_target_property(libuwb_dw1000_INCLUDE_DIRECTORIES libuwb_dw1000 INCLUDE_DIRECTORIES)
+add_library(libdsp ALIAS dsp)
+get_target_property(libdsp_INCLUDE_DIRECTORIES libdsp INCLUDE_DIRECTORIES)
+add_library(libeuclid ALIAS euclid)
+get_target_property(libeuclid_INCLUDE_DIRECTORIES libeuclid INCLUDE_DIRECTORIES)
+add_library(libnrng ALIAS rng)
+get_target_property(librng_INCLUDE_DIRECTORIES librng INCLUDE_DIRECTORIES)
+add_library(libnrng ALIAS nrng)
+get_target_property(libnrng_INCLUDE_DIRECTORIES libnrng INCLUDE_DIRECTORIES)
+add_library(libtdma ALIAS tdma)
+get_target_property(libtdma_INCLUDE_DIRECTORIES libtdma INCLUDE_DIRECTORIES)
 
-target_link_libraries(
-    ${PROJECT_NAME} 
-    dpl_os
-    dpl_hal
-    dw1000
-    nrng
-    tdma
+
+include(GNUInstallDirs)
+target_include_directories(${PROJECT_NAME} 
+    PUBLIC 
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
+      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/>
+    PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/src
+      PRIVATE ${libdpl_os_INCLUDE_DIRECTORIES}
+      PRIVATE ${libuwb_dw1000_INCLUDE_DIRECTORIES}
+      PRIVATE ${libdsp_INCLUDE_DIRECTORIES}
+      PRIVATE ${libeuclid_INCLUDE_DIRECTORIES}
+      PRIVATE ${libnrng_INCLUDE_DIRECTORIES}
+      PRIVATE ${libtdma_INCLUDE_DIRECTORIES}
 )
 
 # Install library
-install(
-    TARGETS ${PROJECT_NAME} ARCHIVE 
-    DESTINATION lib
-)
-
 install(DIRECTORY include/ DESTINATION include/
         FILES_MATCHING PATTERN "*.h"
 )
+
+include(../../CMakeCommon.cmake)
+

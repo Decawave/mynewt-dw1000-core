@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.2)
-project(dw1000)
+cmake_minimum_required(VERSION 3.12)
+project(uwb_dw1000 VERSION ${VERSION} LANGUAGES C)
 
 file(GLOB ${PROJECT_NAME}_SOURCES 
     ./src/*.c
@@ -12,7 +12,6 @@ file(GLOB ${PROJECT_NAME}_HEADERS
 file(GLOB remove_from_build "./src/dw1000_cli.c")
 list(REMOVE_ITEM ${PROJECT_NAME}_SOURCES ${remove_from_build})
 
-configure_file(dw1000.pc.in dw1000.pc @ONLY)
 include_directories(
     include
     "${PROJECT_SOURCE_DIR}/../../../bin/targets/syscfg/generated/include/"
@@ -28,24 +27,35 @@ add_library(${PROJECT_NAME}
     ${${PROJECT_NAME}_HEADERS}
 )
 
+
+#list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../porting/dpl_os")
+#include(dpl_os-config)
+#find_package(dpl_os CONFIG QUIET)
+#list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../porting/dpl_hal")
+#include(dpl_hal-config)
+#find_package(dpl_hal CONFIG QUIET)
+#list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../porting/dpl/linux")
+#find_package(dpl_linux CONFIG QUIET)
+#include(dpl_linux-config)
+
+add_library(libdpl_linux ALIAS dpl_linux)
+get_target_property(libdpl_linux_INCLUDE_DIRECTORIES libdpl_linux INCLUDE_DIRECTORIES)
+add_library(libdpl_os ALIAS dpl_os)
+get_target_property(libdpl_os_INCLUDE_DIRECTORIES libdpl_os INCLUDE_DIRECTORIES)
+
 target_include_directories(${PROJECT_NAME} 
     PUBLIC 
-    include
-)
-
-target_link_libraries(
-    ${PROJECT_NAME} 
-    dpl_os
-    dpl_hal
-)
-
-# Install library
-install(
-    TARGETS ${PROJECT_NAME} ARCHIVE 
-    DESTINATION lib
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
+      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/>
+    PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/src
+    PRIVATE ${libdpl_linux_INCLUDE_DIRECTORIES}
+    PRIVATE ${libdpl_os_INCLUDE_DIRECTORIES}  
 )
 
 install(DIRECTORY include/ DESTINATION include/
         FILES_MATCHING PATTERN "*.h"
 )
+
+include(../../../CMakeCommon.cmake)
 

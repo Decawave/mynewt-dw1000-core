@@ -24,7 +24,7 @@
 
 ## Overview
 
-The Decawave Porting Layer (DPL) abstracts the OS dependencies from the mynewt-dw1000-core (this implementation was borrowed from the Runtime.io Nimble porting example). DPL provides an API for OS services required by the driver. 
+The Decawave Porting Layer (DPL) abstracts the OS dependencies from the mynewt-dw1000-core (this implementation was inspired by the Runtime.io Nimble porting example). DPL provides an API for OS services required by the driver. 
 
 A standalone CMake build environment co-exists with the newt environment. The design intent is that much of the development will continue under the newt but with an option to build static libraries of the UWB Framework for POSIX,  Zephyr and FreeRTOS instantiations.
 ```

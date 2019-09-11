@@ -5,17 +5,15 @@ GIT_SHORT_HASH:= $(shell git rev-parse --short HEAD)
 endif
 
 VERSION_MAJOR = 1
-VERSION_MINOR = 0
-VERSION_PATCH = 0
+VERSION_MINOR = 3
+VERSION_PATCH = 1
 
-VERSION = $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)-$(GIT_SHORT_HASH)
+VERSION = $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)
 
 COMMON_DEFINITIONS =                                      \
 	-DCMAKE_BUILD_TYPE=$(BUILD_TYPE)                      \
-	-DVERSION_MAJOR=$(VERSION_MAJOR)                      \
-	-DVERSION_MINOR=$(VERSION_MINOR)                      \
-	-DVERSION_PATCH=$(VERSION_PATCH)                      \
 	-DVERSION=$(VERSION)                                  \
+	-DGIT_SHORT_HASH=$(GIT_SHORT_HASH)     				
 
 generic:
 	rm -R -f build_generic
