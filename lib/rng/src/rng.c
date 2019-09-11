@@ -947,8 +947,10 @@ complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         return false;
 
     rng->idx_current = (rng->idx)%rng->nframes;
-    dpl_event_init(&rng_event, complete_ev_cb, (void*) rng);
-    dpl_eventq_put(dpl_eventq_dflt_get(), &rng_event);
+    if (!dpl_event_is_queued(&rng_event)) {
+        dpl_event_init(&rng_event, complete_ev_cb, (void*) rng);
+        dpl_eventq_put(dpl_eventq_dflt_get(), &rng_event);
+    }
     return false;
 }
 #endif
