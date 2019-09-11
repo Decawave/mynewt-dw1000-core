@@ -25,9 +25,9 @@ syscfg.defs:
         restrictions: CIR_ENABLED
     CIR_SIZE:
         description: 'Number of samples'
-        value: 8
+        value: 1
     CIR_OFFSET:
-        description: 'offsert in CIR readout'
+        description: 'offset in CIR readout'
         value: 1
     CIR_VERBOSE:
         description: 'JSON print of CIR'
