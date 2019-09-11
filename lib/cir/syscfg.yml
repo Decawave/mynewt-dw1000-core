@@ -24,11 +24,15 @@ syscfg.defs:
         value: 1
         restrictions: CIR_ENABLED
     CIR_SIZE:
-        description: 'Number of samples'
+        description: 'Number of samples to load from accumulator'
         value: 1
+        restrictions:
+          - $notnull
     CIR_OFFSET:
         description: 'offset in CIR readout'
-        value: 1
+        value: 0
+        restrictions:
+          - "CIR_OFFSET < CIR_SIZE"
     CIR_VERBOSE:
         description: 'JSON print of CIR'
         value: 0
