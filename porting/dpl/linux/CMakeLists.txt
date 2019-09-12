@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.12)
 project(dpl_linux VERSION ${VERSION} LANGUAGES C)
 
 set(CMAKE_EXPORT_PACKAGE_REGISTRY ON)

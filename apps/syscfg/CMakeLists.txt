@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.12)
 project(syscfg VERSION ${VERSION} LANGUAGES C)
 
 #set(CMAKE_VERBOSE_MAKEFILE ON)

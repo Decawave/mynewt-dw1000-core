@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.12)
 project(uwb_dw1000 VERSION ${VERSION} LANGUAGES C)
 
 file(GLOB ${PROJECT_NAME}_SOURCES 
