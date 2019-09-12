@@ -27,5 +27,8 @@ pkg.deps:
     - "@mynewt-dw1000-core/hw/drivers/uwb/uwb_dw1000"
     - "@apache-mynewt-core/sys/config"
 
+pkg.deps.UWBCFG_NMGR:
+    - "@apache-mynewt-core/mgmt/newtmgr"
+  
 pkg.init:
   uwbcfg_pkg_init:    500

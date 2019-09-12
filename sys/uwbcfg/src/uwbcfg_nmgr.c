@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "os/mynewt.h"
+#if MYNEWT_VAL(UWBCFG_NMGR)
 #include "hal/hal_bsp.h"
 #include "mgmt/mgmt.h"
 #include "cborattr/cborattr.h"
@@ -31,7 +32,6 @@
 #include <uwbcfg/uwbcfg.h>
 #include "uwbcfg_priv.h"
 
-#if MYNEWT_VAL(UWBCFG_NMGR)
 
 static int uwbcfg_write(struct mgmt_cbuf *);
 //static int uwbcfg_read(struct mgmt_cbuf *);
