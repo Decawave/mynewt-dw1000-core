@@ -57,11 +57,11 @@
 #include <lwip/icmp.h>
 #include <lwip/inet_chksum.h>
 
-static bool complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
 dw1000_lwip_context_t cntxt;
 /**
  * API to assign the config parameters.
@@ -90,10 +90,10 @@ dw1000_lwip_config(dw1000_lwip_instance_t * lwip, dw1000_lwip_config_t * config)
  * @return dw1000_rng_instance_t
  */
 dw1000_lwip_instance_t *
-dw1000_lwip_init(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config, uint16_t nframes, uint16_t buf_len)
+dw1000_lwip_init(struct uwb_dev * inst, dw1000_lwip_config_t * config, uint16_t nframes, uint16_t buf_len)
 {
 	assert(inst);
-    dw1000_lwip_instance_t *lwip = (dw1000_lwip_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_LWIP);
+    dw1000_lwip_instance_t *lwip = (dw1000_lwip_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_LWIP);
 
 	if (lwip == NULL){
 		lwip  = (dw1000_lwip_instance_t *) malloc(sizeof(dw1000_lwip_instance_t) + nframes * sizeof(char *));
@@ -119,8 +119,8 @@ dw1000_lwip_init(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config, ui
 		dw1000_lwip_config(lwip, config);
 	}
     lwip->dev_inst = inst;
-    lwip->cbs = (dw1000_mac_interface_t){
-        .id = DW1000_LWIP,
+    lwip->cbs = (struct uwb_mac_interface){
+        .id = UWBEXT_LWIP,
         .inst_ptr = lwip,
         .tx_complete_cb = tx_complete_cb,
         .rx_complete_cb = rx_complete_cb,
@@ -128,7 +128,7 @@ dw1000_lwip_init(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config, ui
         .rx_error_cb = rx_error_cb,
 		.complete_cb = complete_cb
     };
-    dw1000_mac_append_interface(inst, &lwip->cbs);
+    uwb_mac_append_interface(inst, &lwip->cbs);
 
 	lwip->status.initialized = 1;
 	return lwip;
@@ -208,7 +208,8 @@ lwip_rx_cb(void *arg, struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *addr
  * @param inst  Pointer to dw1000_dev_instance_t.
  * @return void
  */
-static bool complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+static bool complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
+{
 #if 0
         if(inst->lwip->ext_rx_complete_cb != NULL){
         	inst->lwip->ext_rx_complete_cb(inst);
@@ -248,13 +249,13 @@ dw1000_lwip_write(dw1000_lwip_instance_t * lwip, struct pbuf *p, dw1000_lwip_mod
 	/* Copy the LWIP packet after LWIP Id */
 	memcpy(id_pbuf+4+2, temp_buf, lwip->buf_len);
 
-	dw1000_write_tx(lwip->dev_inst, (uint8_t *)id_pbuf, 0, lwip->buf_len+4);
+	uwb_write_tx(lwip->dev_inst, (uint8_t *)id_pbuf, 0, lwip->buf_len+4+2);
 	free(id_pbuf);
     pbuf_free(p);
     
-	dw1000_write_tx_fctrl(lwip->dev_inst, lwip->buf_len, 0);
+	uwb_write_tx_fctrl(lwip->dev_inst, lwip->buf_len+4+2, 0);
 	lwip->lwip_netif.flags = NETIF_FLAG_UP | NETIF_FLAG_LINK_UP ;
-	lwip->status.start_tx_error = dw1000_start_tx(lwip->dev_inst).start_tx_error;
+	lwip->status.start_tx_error = uwb_start_tx(lwip->dev_inst).start_tx_error;
 
 	if( mode == LWIP_BLOCKING )
 		err = os_sem_pend(&lwip->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions units os_clicks
@@ -279,8 +280,8 @@ dw1000_lwip_start_rx(dw1000_lwip_instance_t * lwip, uint16_t timeout)
 {
     os_error_t err = os_sem_pend(&lwip->data_sem, OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
-    dw1000_set_rx_timeout(lwip->dev_inst, timeout);
-    dw1000_start_rx(lwip->dev_inst);
+    uwb_set_rx_timeout(lwip->dev_inst, timeout);
+    uwb_start_rx(lwip->dev_inst);
 }
 
 /**
@@ -290,7 +291,7 @@ dw1000_lwip_start_rx(dw1000_lwip_instance_t * lwip, uint16_t timeout)
  * @retrun void 
  */
 static bool 
-rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     dw1000_lwip_instance_t * lwip = (dw1000_lwip_instance_t *)cbs->inst_ptr;
 	if(strncmp((char *)&inst->fctrl, "LW",2))
@@ -300,7 +301,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     assert(err == OS_OK);
 
 	char *ptr = lwip->data_buf[0];
-    dw1000_read_rx(lwip->dev_inst, (uint8_t *)ptr, 0, lwip->buf_len);
+    memcpy((uint8_t *)ptr, inst->rxbuf, inst->frame_len);
 
     uint8_t buf_size = lwip->buf_len;
     uint16_t pkt_addr;
@@ -331,7 +332,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  * @return void
  */
 static bool 
-tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     dw1000_lwip_instance_t * lwip = (dw1000_lwip_instance_t *)cbs->inst_ptr;
 	if(strncmp((char *)&inst->fctrl, "LW",2)) {
@@ -352,7 +353,7 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  * @param void
  */
 static bool 
-rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     dw1000_lwip_instance_t * lwip = (dw1000_lwip_instance_t *)cbs->inst_ptr;
     if (os_sem_get_count(&lwip->data_sem) == 0){
@@ -372,7 +373,7 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  * @return void
  */
 static bool 
-rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     dw1000_lwip_instance_t * lwip = (dw1000_lwip_instance_t *)cbs->inst_ptr;
 
@@ -396,10 +397,11 @@ rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
  * @return void
  */
 void 
-dw1000_low_level_init( dw1000_dev_instance_t * inst, dw1000_dev_txrf_config_t * txrf_config, dw1000_dev_config_t * mac_config)
+dw1000_low_level_init(struct uwb_dev * inst, struct uwb_dev_txrf_config * txrf_config,
+                      struct uwb_dev_config * mac_config)
 {
-	dw1000_phy_init(inst, txrf_config);
-	dw1000_mac_init(inst, mac_config) ;
+	uwb_txrf_config(inst, txrf_config);
+	uwb_mac_config(inst, mac_config) ;
 }
 
 /**
@@ -484,8 +486,8 @@ dw1000_lwip_send(dw1000_lwip_instance_t *lwip, uint16_t payload_size, char * pay
 err_t 
 dw1000_ll_output(struct netif *dw1000_netif, struct pbuf *p)
 {
-	dw1000_dev_instance_t * inst = hal_dw1000_inst(0);
-    dw1000_lwip_instance_t *lwip = (dw1000_lwip_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_LWIP);
+    struct uwb_dev *udev = uwb_dev_idx_lookup(0);
+    dw1000_lwip_instance_t *lwip = (dw1000_lwip_instance_t*)uwb_mac_find_cb_inst_ptr(udev, UWBEXT_LWIP);
 
 	dw1000_lwip_write(lwip, p, LWIP_BLOCKING);
 

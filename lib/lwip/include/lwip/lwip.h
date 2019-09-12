@@ -76,8 +76,8 @@ typedef struct _dw1000_lwip_status_t{
 
 //! Lwip instance parameters.
 typedef struct _dw1000_lwip_instance_t{
-    struct _dw1000_dev_instance_t * dev_inst;   //!< Structure for DW1000 instance 
-    dw1000_mac_interface_t cbs;
+    struct uwb_dev * dev_inst;             //!< Structure for uwb instance 
+    struct uwb_mac_interface cbs;
     struct os_sem sem;                     //!< Structure for OS semaphores
     struct os_sem data_sem;                //!< Structure for data of semaphores
 
@@ -126,7 +126,7 @@ dw1000_config(dw1000_dev_instance_t * inst);
  * @return         [Structure pointer to lwip]
  */
 dw1000_lwip_instance_t *
-dw1000_lwip_init(dw1000_dev_instance_t * inst, dw1000_lwip_config_t * config, uint16_t nframes, uint16_t buf_len);
+dw1000_lwip_init(struct uwb_dev *inst, dw1000_lwip_config_t * config, uint16_t nframes, uint16_t buf_len);
 
 /**
  * [dw1000_pcb_init Function to initialize a PCB for raw lwip]
@@ -162,9 +162,9 @@ dw1000_lwip_write(dw1000_lwip_instance_t * lwip, struct pbuf *p, dw1000_lwip_mod
  * @param mac_config  [Radio MAC configuration structure]
  */
 void
-dw1000_low_level_init( dw1000_dev_instance_t * inst, 
-			dw1000_dev_txrf_config_t * txrf_config,
-			dw1000_dev_config_t * mac_config);
+dw1000_low_level_init( struct uwb_dev * inst, 
+                       struct uwb_dev_txrf_config * txrf_config,
+                       struct uwb_dev_config * mac_config);
 
 /**
  * [dw1000_netif_config lwIP network interface configuration function]
