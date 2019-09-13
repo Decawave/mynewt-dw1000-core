@@ -73,15 +73,15 @@ static struct uwb_mac_interface g_cbs = {
 void
 rtdoa_tag_pkg_init(void)
 {
-    struct _dw1000_rtdoa_instance_t *rtdoa = 0;
+    struct rtdoa_instance *rtdoa = 0;
 #if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"rtdoa_tag_pkg_init\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
 
     struct uwb_dev *udev = uwb_dev_idx_lookup(0);
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    g_cbs.inst_ptr = rtdoa = dw1000_rtdoa_init(udev, &g_config, MYNEWT_VAL(RTDOA_NFRAMES));
-    dw1000_rtdoa_set_frames(rtdoa, MYNEWT_VAL(RTDOA_NFRAMES));
+    g_cbs.inst_ptr = rtdoa = rtdoa_init(udev, &g_config, MYNEWT_VAL(RTDOA_NFRAMES));
+    rtdoa_set_frames(rtdoa, MYNEWT_VAL(RTDOA_NFRAMES));
 #endif
     uwb_mac_append_interface(udev, &g_cbs);
 
@@ -115,7 +115,7 @@ rtdoa_tag_free(struct uwb_dev * inst)
 static bool 
 rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance *)cbs->inst_ptr;
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
 
@@ -139,7 +139,7 @@ rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 static bool 
 rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance *)cbs->inst_ptr;
     if(os_sem_get_count(&rtdoa->sem) == 0) {
         RTDOA_STATS_INC(rx_timeout);
         os_error_t err = os_sem_release(&rtdoa->sem);
@@ -160,7 +160,7 @@ rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 static bool
 reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance *)cbs->inst_ptr;
     if(os_sem_get_count(&rtdoa->sem) == 0){
         os_error_t err = os_sem_release(&rtdoa->sem);  
         assert(err == OS_OK);
@@ -180,7 +180,7 @@ reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 static bool 
 rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance *)cbs->inst_ptr;
     int64_t new_timeout;
     struct uwb_ccp_instance *ccp = rtdoa->ccp;
     struct uwb_wcs_instance * wcs = ccp->wcs;

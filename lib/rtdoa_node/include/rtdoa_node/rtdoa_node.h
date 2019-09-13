@@ -34,7 +34,7 @@ extern "C" {
 #include <uwb/uwb.h>
 #include <uwb/uwb_ftypes.h>
 
-struct uwb_dev_status dw1000_rtdoa_request(struct _dw1000_rtdoa_instance_t *rtdoa, uint64_t delay);
+struct uwb_dev_status rtdoa_request(struct rtdoa_instance *rtdoa, uint64_t delay);
 
 void rtdoa_node_pkg_init(void);
 void rtdoa_node_free(struct uwb_dev * inst);

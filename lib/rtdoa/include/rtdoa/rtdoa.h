@@ -58,13 +58,6 @@ STATS_SECT_END
 #define RTDOA_STATS_INC(__X) {}
 #endif
 
-typedef enum _dw1000_rtdoa_device_type_t{
-    DWT_RTDOA_NONE=0,
-    DWT_RTDOA_INITIATOR,
-    DWT_RTDOA_RESPONDER,
-    DWT_RTDOA_SUBSCRIBER
-} dw1000_rtdoa_device_type_t;
-    
 //! N-Ranges request frame
 typedef union {
     struct _rtdoa_request_frame_t{
@@ -100,8 +93,8 @@ typedef union {
 } rtdoa_frame_t;
 
 
-typedef struct _dw1000_rtdoa_instance_t{
-    struct uwb_dev * dev_inst;                  //!< Pointer to _dw1000_dev_instance_t
+struct rtdoa_instance{
+    struct uwb_dev * dev_inst;                  //!< Pointer to struct uwb_dev
     struct uwb_ccp_instance * ccp;
 #if MYNEWT_VAL(RTDOA_STATS)
     STATS_SECT_DECL(rtdoa_stat_section) stat;   //!< Stats instance
@@ -116,23 +109,22 @@ typedef struct _dw1000_rtdoa_instance_t{
     dw1000_rng_status_t status;
     dw1000_rng_control_t control;
     dw1000_rng_config_t config;
-//    dw1000_rtdoa_device_type_t device_type;
     uint16_t idx;
     rtdoa_frame_t * req_frame;
     rtdoa_frame_t * frames[];
-} dw1000_rtdoa_instance_t;
+};
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-dw1000_rtdoa_instance_t * dw1000_rtdoa_init(struct uwb_dev * inst, dw1000_rng_config_t * config, uint16_t nframes);
-float rtdoa_tdoa_between_frames(struct _dw1000_rtdoa_instance_t *rtdoa, rtdoa_frame_t *req_frame, rtdoa_frame_t *resp_frame);
+struct rtdoa_instance * rtdoa_init(struct uwb_dev * inst, dw1000_rng_config_t * config, uint16_t nframes);
+float rtdoa_tdoa_between_frames(struct rtdoa_instance *rtdoa, rtdoa_frame_t *req_frame, rtdoa_frame_t *resp_frame);
 
-void dw1000_rtdoa_set_frames(struct _dw1000_rtdoa_instance_t *rtdoa, uint16_t nframes);
-struct uwb_dev_status dw1000_rtdoa_config(struct _dw1000_rtdoa_instance_t *rtdoa, dw1000_rng_config_t * config);
+void rtdoa_set_frames(struct rtdoa_instance *rtdoa, uint16_t nframes);
+struct uwb_dev_status rtdoa_config(struct rtdoa_instance *rtdoa, dw1000_rng_config_t * config);
 
-struct uwb_dev_status dw1000_rtdoa_listen(dw1000_rtdoa_instance_t * rtdoa, uwb_dev_modes_t mode, uint64_t delay, uint16_t timeout);
+struct uwb_dev_status rtdoa_listen(struct rtdoa_instance * rtdoa, uwb_dev_modes_t mode, uint64_t delay, uint16_t timeout);
 uint32_t rtdoa_usecs_to_response(struct uwb_dev * inst, rtdoa_request_frame_t * req,
                                  uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration);
 uint64_t rtdoa_local_to_master64(struct uwb_dev * inst, uint64_t dtu_time, rtdoa_frame_t *req_frame);

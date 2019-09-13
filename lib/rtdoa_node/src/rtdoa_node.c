@@ -74,13 +74,13 @@ static struct uwb_mac_interface g_cbs = {
  */
 void rtdoa_node_pkg_init(void)
 {
-    struct _dw1000_rtdoa_instance_t *rtdoa = 0;
+    struct rtdoa_instance *rtdoa = 0;
 #if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"rtdoa_node_pkg_init\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    g_cbs.inst_ptr = rtdoa = dw1000_rtdoa_init(uwb_dev_idx_lookup(0), &g_config, MYNEWT_VAL(RTDOA_NFRAMES));
-    dw1000_rtdoa_set_frames(rtdoa, MYNEWT_VAL(RTDOA_NFRAMES));
+    g_cbs.inst_ptr = rtdoa = rtdoa_init(uwb_dev_idx_lookup(0), &g_config, MYNEWT_VAL(RTDOA_NFRAMES));
+    rtdoa_set_frames(rtdoa, MYNEWT_VAL(RTDOA_NFRAMES));
 #endif
     uwb_mac_append_interface(uwb_dev_idx_lookup(0), &g_cbs);
 
@@ -104,7 +104,7 @@ rtdoa_node_free(struct uwb_dev * inst)
 }
 
 struct uwb_dev_status
-dw1000_rtdoa_request(struct _dw1000_rtdoa_instance_t *rtdoa, uint64_t delay)
+rtdoa_request(struct rtdoa_instance *rtdoa, uint64_t delay)
 {
     assert(rtdoa);
     struct uwb_dev * inst = rtdoa->dev_inst;
@@ -156,7 +156,7 @@ dw1000_rtdoa_request(struct _dw1000_rtdoa_instance_t *rtdoa, uint64_t delay)
 
 
 static struct uwb_dev_status
-tx_rtdoa_response(dw1000_rtdoa_instance_t * rtdoa)
+tx_rtdoa_response(struct rtdoa_instance * rtdoa)
 {
     assert(rtdoa);
     /* This function executes on the device that responds to a rtdoa request */
@@ -207,14 +207,14 @@ tx_rtdoa_response(dw1000_rtdoa_instance_t * rtdoa)
 /**
  * API for receive error callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
 static bool 
 rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance *)cbs->inst_ptr;
 
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
@@ -232,14 +232,14 @@ rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /**
  * API for receive timeout callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
 static bool 
 rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance *)cbs->inst_ptr;
     if(os_sem_get_count(&rtdoa->sem) == 1) {
         return false;
     }
@@ -256,13 +256,13 @@ rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /** 
  * API for reset_cb of rtdoa interface
  *
- * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @param inst   Pointer to struct uwb_dev. 
  * @return true on sucess
  */
 static bool
 reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance *)cbs->inst_ptr;
 
     if(os_sem_get_count(&rtdoa->sem) == 0){
         os_error_t err = os_sem_release(&rtdoa->sem);  
@@ -277,14 +277,14 @@ reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /**
  * API for transmit complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
 static bool 
 tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance *)cbs->inst_ptr;
     assert(rtdoa);
     
     /* If we sent the request or a repeat of the request, send response now */
@@ -308,14 +308,14 @@ tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /**
  * API for receive complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
 static bool 
 rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance *)cbs->inst_ptr;
     struct uwb_ccp_instance * ccp = rtdoa->ccp;
     struct uwb_wcs_instance * wcs = ccp->wcs;
 

@@ -55,16 +55,16 @@ STATS_NAME_START(rtdoa_stat_section)
 STATS_NAME_END(rtdoa_stat_section)
 #endif
 
-dw1000_rtdoa_instance_t *
-dw1000_rtdoa_init(struct uwb_dev * inst, dw1000_rng_config_t * config, uint16_t nframes)
+struct rtdoa_instance *
+rtdoa_init(struct uwb_dev * inst, dw1000_rng_config_t * config, uint16_t nframes)
 {
     assert(inst);
 
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_RTDOA);
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_RTDOA);
     if (rtdoa == NULL ) {
-        rtdoa = (dw1000_rtdoa_instance_t*) malloc(sizeof(dw1000_rtdoa_instance_t) + nframes * sizeof(rtdoa_frame_t * )); 
+        rtdoa = (struct rtdoa_instance*) malloc(sizeof(struct rtdoa_instance) + nframes * sizeof(rtdoa_frame_t * )); 
         assert(rtdoa);
-        memset(rtdoa, 0, sizeof(dw1000_rtdoa_instance_t));
+        memset(rtdoa, 0, sizeof(struct rtdoa_instance));
         rtdoa->status.selfmalloc = 1;
     }
     os_error_t err = os_sem_init(&rtdoa->sem, 0x1); 
@@ -76,7 +76,7 @@ dw1000_rtdoa_init(struct uwb_dev * inst, dw1000_rng_config_t * config, uint16_t 
     rtdoa->seq_num = 0;
     
     if (config != NULL ){
-        dw1000_rtdoa_config(rtdoa, config);
+        rtdoa_config(rtdoa, config);
     }
 
 #if MYNEWT_VAL(RTDOA_STATS)
@@ -108,7 +108,7 @@ dw1000_rtdoa_init(struct uwb_dev * inst, dw1000_rng_config_t * config, uint16_t 
  * @return void 
  */
 void
-dw1000_rtdoa_free(dw1000_rtdoa_instance_t * inst)
+rtdoa_free(struct rtdoa_instance * inst)
 {
     assert(inst);
     uwb_mac_remove_interface(inst->dev_inst, inst->cbs.id);
@@ -124,8 +124,8 @@ dw1000_rtdoa_free(dw1000_rtdoa_instance_t * inst)
         inst->status.initialized = 0;
 }
 
-inline void
-dw1000_rtdoa_set_frames(struct _dw1000_rtdoa_instance_t *rtdoa, uint16_t nframes)
+void
+rtdoa_set_frames(struct rtdoa_instance *rtdoa, uint16_t nframes)
 {
     assert(nframes <= rtdoa->nframes);
     rtdoa_frame_t default_frame = {
@@ -150,7 +150,7 @@ dw1000_rtdoa_set_frames(struct _dw1000_rtdoa_instance_t *rtdoa, uint16_t nframes
  * @return struct uwb_dev_status 
  */
 struct uwb_dev_status
-dw1000_rtdoa_config(struct _dw1000_rtdoa_instance_t *rtdoa, dw1000_rng_config_t * config){
+rtdoa_config(struct rtdoa_instance *rtdoa, dw1000_rng_config_t * config){
     assert(config);
     memcpy(&rtdoa->config, config, sizeof(dw1000_rng_config_t));
     return rtdoa->dev_inst->status;
@@ -211,7 +211,8 @@ rtdoa_local_to_master64(struct uwb_dev * inst, uint64_t dtu_time, rtdoa_frame_t 
  * @return struct uwb_dev_status 
  */
 struct uwb_dev_status 
-dw1000_rtdoa_listen(dw1000_rtdoa_instance_t * rtdoa, uwb_dev_modes_t mode, uint64_t delay, uint16_t timeout)
+rtdoa_listen(struct rtdoa_instance * rtdoa, uwb_dev_modes_t mode,
+             uint64_t delay, uint16_t timeout)
 {
     os_error_t err = os_sem_pend(&rtdoa->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
@@ -238,7 +239,7 @@ dw1000_rtdoa_listen(dw1000_rtdoa_instance_t * rtdoa, uwb_dev_modes_t mode, uint6
 
 
 float
-rtdoa_tdoa_between_frames(struct _dw1000_rtdoa_instance_t *rtdoa,
+rtdoa_tdoa_between_frames(struct rtdoa_instance *rtdoa,
                           rtdoa_frame_t *req_frame, rtdoa_frame_t *resp_frame)
 {
     int64_t tof;
