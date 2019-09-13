@@ -37,15 +37,11 @@
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
 
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_hal.h>
-#include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <nrng/nrng.h>
-#if MYNEWT_VAL(WCS_ENABLED)
-#include <wcs/wcs.h>
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+#include <uwb_wcs/uwb_wcs.h>
 #endif
 #include <dsp/polyval.h>
 #include <rng/slots.h>
@@ -253,11 +249,11 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
                             + (uint64_t)(uwb_usecs_to_dwt_usecs(uwb_phy_frame_duration(inst, sizeof(nrng_response_frame_t)))))))<< 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
-#if MYNEWT_VAL(WCS_ENABLED)
-                dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-                wcs_instance_t * wcs = ccp->wcs;
-                frame->reception_timestamp = (uint32_t)(wcs_local_to_master(wcs, request_timestamp)) & 0xFFFFFFFFULL;
-                frame->transmission_timestamp = (uint32_t)(wcs_local_to_master(wcs, response_timestamp)) & 0xFFFFFFFFULL;
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+                struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+                struct uwb_wcs_instance * wcs = ccp->wcs;
+                frame->reception_timestamp = (uint32_t)(uwb_wcs_local_to_master(wcs, request_timestamp)) & 0xFFFFFFFFULL;
+                frame->transmission_timestamp = (uint32_t)(uwb_wcs_local_to_master(wcs, response_timestamp)) & 0xFFFFFFFFULL;
 #else
                 frame->reception_timestamp = request_timestamp & 0xFFFFFFFFULL;
                 frame->transmission_timestamp = response_timestamp & 0xFFFFFFFFULL;
@@ -268,7 +264,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
                 frame->slot_id = slot_idx;
                 frame->seq_num = _frame->seq_num;
 
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = - inst->carrier_integrator;
@@ -309,11 +305,11 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
                 if (inst->status.lde_error == 0) 
                    response_timestamp = inst->rxtimestamp;
 
-#if MYNEWT_VAL(WCS_ENABLED)
-                dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-                wcs_instance_t * wcs = ccp->wcs;
-                frame->request_timestamp = wcs_local_to_master(wcs, uwb_read_txtime(inst)) & 0xFFFFFFFFULL;
-                frame->response_timestamp = wcs_local_to_master(wcs, response_timestamp) & 0xFFFFFFFFULL;
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+                struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+                struct uwb_wcs_instance * wcs = ccp->wcs;
+                frame->request_timestamp = uwb_wcs_local_to_master(wcs, uwb_read_txtime(inst)) & 0xFFFFFFFFULL;
+                frame->response_timestamp = uwb_wcs_local_to_master(wcs, response_timestamp) & 0xFFFFFFFFULL;
 #else
                 frame->request_timestamp = uwb_read_txtime_lo32(inst) & 0xFFFFFFFFUL;
                 frame->response_timestamp  = (uint32_t)(response_timestamp & 0xFFFFFFFFULL);
@@ -321,7 +317,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
                 frame->code = DWT_SS_TWR_NRNG_FINAL;
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = inst->carrier_integrator;

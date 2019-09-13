@@ -282,7 +282,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = - inst->carrier_integrator;
@@ -329,7 +329,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
                 uint16_t src_address = frame->src_address; 
                 uint8_t seq_num = frame->seq_num; 
 
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = inst->carrier_integrator;
@@ -392,7 +392,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
                 
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = - inst->carrier_integrator;

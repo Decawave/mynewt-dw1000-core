@@ -40,10 +40,10 @@
 extern "C" {
 #endif
 
-#include <hal/hal_spi.h>
-#include <dw1000/dw1000_regs.h>
+#include <dpl/dpl.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_ftypes.h>
 #include <euclid/triad.h>
 #include <stats/stats.h>
 #include <rng/slots.h>
@@ -174,15 +174,15 @@ struct rng_config_list {
 //! Structure of range instance
 typedef struct _dw1000_rng_instance_t{
     struct uwb_dev * dev_inst;              //!< Structure of uwb_dev
-#if MYNEWT_VAL(WCS_ENABLED)
-    struct _dw1000_ccp_instance_t * ccp_inst; //!< Structure of CCP
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+    struct uwb_ccp_instance * ccp_inst;     //!< Structure of CCP
 #endif
 #if MYNEWT_VAL(RNG_STATS)
     STATS_SECT_DECL(rng_stat_section) stat; //!< Stats instance
 #endif
     uint16_t code;                          //!< Range profile code
     uint16_t seq_num;                       //!< Local sequence number
-    struct dpl_sem sem;                      //!< Structure of semaphores
+    struct dpl_sem sem;                     //!< Structure of semaphores
     uint64_t delay;                         //!< Delay in transmission
     dw1000_rng_config_t config;             //!< Structure of range config
     dw1000_rng_control_t control;           //!< Structure of range control
@@ -200,7 +200,7 @@ dw1000_rng_instance_t * dw1000_rng_init(struct uwb_dev * dev, dw1000_rng_config_
 void dw1000_rng_free(dw1000_rng_instance_t * rng);
 struct uwb_dev_status dw1000_rng_config(struct _dw1000_rng_instance_t * rng, dw1000_rng_config_t * config);
 struct uwb_dev_status dw1000_rng_request(struct _dw1000_rng_instance_t * rng, uint16_t dst_address, dw1000_rng_modes_t protocal);
-struct uwb_dev_status dw1000_rng_listen(struct _dw1000_rng_instance_t * rng, dw1000_dev_modes_t mode);
+struct uwb_dev_status dw1000_rng_listen(struct _dw1000_rng_instance_t * rng, uwb_dev_modes_t mode);
 struct uwb_dev_status dw1000_rng_request_delay_start(struct _dw1000_rng_instance_t * rng, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t protocal);
 dw1000_rng_config_t * dw1000_rng_get_config(struct _dw1000_rng_instance_t * rng, dw1000_rng_modes_t code);
 void dw1000_rng_set_frames(struct _dw1000_rng_instance_t * rng, twr_frame_t twr[], uint16_t nframes);

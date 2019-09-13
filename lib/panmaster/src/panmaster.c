@@ -14,7 +14,7 @@
 #if MYNEWT_VAL(PAN_ENABLED)
 #include <uwb/uwb.h>
 #include <pan/pan.h>
-#include <ccp/ccp.h>
+#include <uwb_ccp/uwb_ccp.h>
 
 #endif
 static struct panmaster_node_idx node_idx[MYNEWT_VAL(PANMASTER_MAXNUM_NODES)];

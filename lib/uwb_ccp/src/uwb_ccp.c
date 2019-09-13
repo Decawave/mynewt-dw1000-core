@@ -36,14 +36,12 @@
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
 
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_phy.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <dw1000/dw1000_hal.h>
-#if MYNEWT_VAL(CCP_ENABLED)
-#include <ccp/ccp.h>
-#endif
-#if MYNEWT_VAL(WCS_ENABLED)
-#include <wcs/wcs.h>
+#include <uwb_ccp/uwb_ccp.h>
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+#include <uwb_wcs/uwb_wcs.h>
 #endif
 
 //#define DIAGMSG(s,u) printf(s,u)
@@ -85,26 +83,26 @@ static float g_fs_xtalt_poly[] ={
 #endif
 
 
-#if MYNEWT_VAL(CCP_STATS)
+#if MYNEWT_VAL(UWB_CCP_STATS)
 #include <stats/stats.h>
-STATS_NAME_START(ccp_stat_section)
-    STATS_NAME(ccp_stat_section, master_cnt)
-    STATS_NAME(ccp_stat_section, slave_cnt)
-    STATS_NAME(ccp_stat_section, send)
-    STATS_NAME(ccp_stat_section, listen)
-    STATS_NAME(ccp_stat_section, slave_cnt)
-    STATS_NAME(ccp_stat_section, wcs_resets)
-    STATS_NAME(ccp_stat_section, tx_complete)
-    STATS_NAME(ccp_stat_section, rx_complete)
-    STATS_NAME(ccp_stat_section, rx_relayed)
-    STATS_NAME(ccp_stat_section, rx_unsolicited)
-    STATS_NAME(ccp_stat_section, txrx_error)
-    STATS_NAME(ccp_stat_section, tx_start_error)
-    STATS_NAME(ccp_stat_section, tx_relay_error)
-    STATS_NAME(ccp_stat_section, tx_relay_ok)
-    STATS_NAME(ccp_stat_section, rx_timeout)
-    STATS_NAME(ccp_stat_section, reset)
-STATS_NAME_END(ccp_stat_section)
+STATS_NAME_START(uwb_ccp_stat_section)
+    STATS_NAME(uwb_ccp_stat_section, master_cnt)
+    STATS_NAME(uwb_ccp_stat_section, slave_cnt)
+    STATS_NAME(uwb_ccp_stat_section, send)
+    STATS_NAME(uwb_ccp_stat_section, listen)
+    STATS_NAME(uwb_ccp_stat_section, slave_cnt)
+    STATS_NAME(uwb_ccp_stat_section, wcs_resets)
+    STATS_NAME(uwb_ccp_stat_section, tx_complete)
+    STATS_NAME(uwb_ccp_stat_section, rx_complete)
+    STATS_NAME(uwb_ccp_stat_section, rx_relayed)
+    STATS_NAME(uwb_ccp_stat_section, rx_unsolicited)
+    STATS_NAME(uwb_ccp_stat_section, txrx_error)
+    STATS_NAME(uwb_ccp_stat_section, tx_start_error)
+    STATS_NAME(uwb_ccp_stat_section, tx_relay_error)
+    STATS_NAME(uwb_ccp_stat_section, tx_relay_ok)
+    STATS_NAME(uwb_ccp_stat_section, rx_timeout)
+    STATS_NAME(uwb_ccp_stat_section, reset)
+STATS_NAME_END(uwb_ccp_stat_section)
 
 #define CCP_STATS_INC(__X) STATS_INC(ccp->stat, __X)
 #else
@@ -112,33 +110,33 @@ STATS_NAME_END(ccp_stat_section)
 #endif
 
 static bool rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
-static bool ccp_tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
-static bool ccp_rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
-static bool ccp_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
-static bool ccp_reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
 
-static struct _dw1000_ccp_status_t dw1000_ccp_send(struct _dw1000_ccp_instance_t * ccp, dw1000_dev_modes_t mode);
-static struct _dw1000_ccp_status_t dw1000_ccp_listen(struct _dw1000_ccp_instance_t * ccp, dw1000_dev_modes_t mode);
+static struct uwb_ccp_status ccp_send(struct uwb_ccp_instance * ccp, uwb_dev_modes_t mode);
+static struct uwb_ccp_status ccp_listen(struct uwb_ccp_instance * ccp, uwb_dev_modes_t mode);
 
-static void ccp_tasks_init(struct _dw1000_ccp_instance_t * inst);
+static void ccp_tasks_init(struct uwb_ccp_instance * inst);
 static void ccp_timer_irq(void * arg);
 static void ccp_master_timer_ev_cb(struct dpl_event *ev);
 static void ccp_slave_timer_ev_cb(struct dpl_event *ev);
 
-#if !MYNEWT_VAL(WCS_ENABLED)
+#if !MYNEWT_VAL(UWB_WCS_ENABLED)
 static void ccp_postprocess(struct dpl_event * ev);
 #endif
 
 /**
- * @fn ccp_timer_init(struct _dw1000_dev_instance_t * inst, dw1000_ccp_role_t role)
+ * @fn ccp_timer_init(struct uwb_ccp_instance *ccp, uwb_ccp_role_t role)
  * @brief API to initiate timer for ccp.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
- * @param role  dw1000_ccp_role_t for CCP_ROLE_MASTER, CCP_ROLE_SLAVE, CCP_ROLE_RELAY roles.
+ * @param inst  Pointer to struct uwb_ccp_instance.
+ * @param role  uwb_ccp_role_t for CCP_ROLE_MASTER, CCP_ROLE_SLAVE, CCP_ROLE_RELAY roles.
  * @return void
  */
 static void
-ccp_timer_init(dw1000_ccp_instance_t *ccp, dw1000_ccp_role_t role)
+ccp_timer_init(struct uwb_ccp_instance *ccp, uwb_ccp_role_t role)
 {
     ccp->status.timer_enabled = true;
 
@@ -156,14 +154,14 @@ ccp_timer_init(dw1000_ccp_instance_t *ccp, dw1000_ccp_role_t role)
  * @fn ccp_timer_irq(void * arg)
  * @brief ccp_timer_event is in the interrupt context and schedules and tasks on the ccp event queue.
  *
- * @param arg   Pointer to  dw1000_dev_instance_t.
+ * @param arg   Pointer to struct uwb_ccp_instance.
  * @return void
  */
 static void
 ccp_timer_irq(void * arg){
     assert(arg);
 
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)arg;
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)arg;
     dpl_eventq_put(&ccp->eventq, &ccp->timer_event);
 }
 
@@ -171,28 +169,29 @@ ccp_timer_irq(void * arg){
  * @fn ccp_master_timer_ev_cb(struct os_event *ev)
  * @brief The OS scheduler is not accurate enough for the timing requirement of an RTLS system.
  * Instead, the OS is used to schedule events in advance of the actual event.
- * The DW1000 delay start mechanism then takes care of the actual event. This removes the non-deterministic
+ * The UWB delay start mechanism then takes care of the actual event. This removes the non-deterministic
  * latencies of the OS implementation.
  *
  * @param ev  Pointer to os_events.
  * @return void
  */
 static void
-ccp_master_timer_ev_cb(struct dpl_event *ev) {
+ccp_master_timer_ev_cb(struct dpl_event *ev)
+{
     assert(ev != NULL);
     assert(dpl_event_get_arg(ev));
 
-    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *) dpl_event_get_arg(ev);
+    struct uwb_ccp_instance * ccp = (struct uwb_ccp_instance *) dpl_event_get_arg(ev);
     
     CCP_STATS_INC(master_cnt);
 
-    if (dw1000_ccp_send(ccp, DWT_BLOCKING).start_tx_error){
+    if (ccp_send(ccp, UWB_BLOCKING).start_tx_error){
         os_cputime_timer_start(&ccp->timer, ccp->os_epoch
-            + os_cputime_usecs_to_ticks((uint32_t)dw1000_dwt_usecs_to_usecs(ccp->period) << 1)
+            + os_cputime_usecs_to_ticks((uint32_t)uwb_dwt_usecs_to_usecs(ccp->period) << 1)
         );
     }else{
         os_cputime_timer_start(&ccp->timer, ccp->os_epoch
-            + os_cputime_usecs_to_ticks((uint32_t)dw1000_dwt_usecs_to_usecs(ccp->period))
+            + os_cputime_usecs_to_ticks((uint32_t)uwb_dwt_usecs_to_usecs(ccp->period))
         );
     }
 }
@@ -201,31 +200,32 @@ ccp_master_timer_ev_cb(struct dpl_event *ev) {
  * @fn ccp_slave_timer_ev_cb(struct os_event *ev)
  * @brief The OS scheduler is not accurate enough for the timing requirement of an RTLS system.
  * Instead, the OS is used to schedule events in advance of the actual event.
- * The DW1000 delay start mechanism then takes care of the actual event. This removes the non-deterministic
+ * The UWB delay start mechanism then takes care of the actual event. This removes the non-deterministic
  * latencies of the OS implementation.
  *
  * @param ev  Pointer to os_events.
  * @return void
  */
 static void
-ccp_slave_timer_ev_cb(struct dpl_event *ev) {
+ccp_slave_timer_ev_cb(struct dpl_event *ev)
+{
     assert(ev != NULL);
     assert(dpl_event_get_arg(ev));
 
-    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *) dpl_event_get_arg(ev);
+    struct uwb_ccp_instance * ccp = (struct uwb_ccp_instance *) dpl_event_get_arg(ev);
     struct uwb_dev * inst = ccp->dev_inst;
 
     /* Sync lost since earlier, just set a long rx timeout and
      * keep listening */
     if (ccp->status.rx_timeout_error) {
         uwb_set_rx_timeout(inst, (uint16_t) 0xffff);
-        dw1000_ccp_listen(ccp, DWT_BLOCKING);
+        ccp_listen(ccp, UWB_BLOCKING);
         goto reset_timer;
     }
 
     CCP_STATS_INC(slave_cnt);
-#if MYNEWT_VAL(WCS_ENABLED)
-    wcs_instance_t * wcs = ccp->wcs;
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+    struct uwb_wcs_instance * wcs = ccp->wcs;
     uint64_t dx_time = ccp->local_epoch +
         (uint64_t) roundf((1.0l + wcs->skew) * (double)((uint64_t)ccp->period << 16)) -
         ((uint64_t)ceilf(uwb_usecs_to_dwt_usecs(uwb_phy_SHR_duration(inst))) << 16);
@@ -235,21 +235,21 @@ ccp_slave_timer_ev_cb(struct dpl_event *ev) {
              - ((uint64_t)ceilf(uwb_usecs_to_dwt_usecs(uwb_phy_SHR_duration(inst))) << 16);
 #endif
 
-    uint16_t timeout = uwb_phy_frame_duration(inst, sizeof(ccp_blink_frame_t))
+    uint16_t timeout = uwb_phy_frame_duration(inst, sizeof(uwb_ccp_blink_frame_t))
                         + MYNEWT_VAL(XTALT_GUARD);
 
 #if MYNEWT_VAL(CCP_MAX_CASCADE_RPTS) != 0
     /* Adjust timeout if we're using cascading ccp in anchors */
-    timeout += (ccp->config.tx_holdoff_dly + uwb_phy_frame_duration(inst, sizeof(ccp_blink_frame_t))) * MYNEWT_VAL(CCP_MAX_CASCADE_RPTS);
+    timeout += (ccp->config.tx_holdoff_dly + uwb_phy_frame_duration(inst, sizeof(uwb_ccp_blink_frame_t))) * MYNEWT_VAL(CCP_MAX_CASCADE_RPTS);
 #endif
     uwb_set_rx_timeout(inst, timeout);
     uwb_set_delay_start(inst, dx_time);
 
-    dw1000_ccp_status_t status = dw1000_ccp_listen(ccp, DWT_BLOCKING);
+    struct uwb_ccp_status status = ccp_listen(ccp, UWB_BLOCKING);
     if(status.start_rx_error){
         /* Sync lost, set a long rx timeout */
         uwb_set_rx_timeout(inst, (uint16_t) 0xffff);
-        dw1000_ccp_listen(ccp, DWT_BLOCKING);
+        ccp_listen(ccp, UWB_BLOCKING);
     }
 
 reset_timer:
@@ -258,7 +258,7 @@ reset_timer:
         + os_cputime_usecs_to_ticks(
             - MYNEWT_VAL(OS_LATENCY)
             + (uint32_t)uwb_dwt_usecs_to_usecs(ccp->period)
-            - uwb_phy_frame_duration(inst, sizeof(ccp_blink_frame_t))
+            - uwb_phy_frame_duration(inst, sizeof(uwb_ccp_blink_frame_t))
             )
         );
 }
@@ -267,14 +267,14 @@ reset_timer:
  * @fn ccp_task(void *arg)
  * @brief The ccp event queue being run to process timer events.
  *
- * @param arg  Pointer to dw1000_ccp_instance_t.
+ * @param arg  Pointer to struct ccp_instance.
  * @return void
  */
 
 static void *
 ccp_task(void *arg)
 {
-    dw1000_ccp_instance_t * inst = arg;
+    struct uwb_ccp_instance * inst = arg;
     while (1) {
         dpl_eventq_run(&inst->eventq);
     }
@@ -282,31 +282,31 @@ ccp_task(void *arg)
 }
 
 /**
- * @fn ccp_tasks_init(struct _dw1000_ccp_instance_t * inst)
+ * @fn ccp_tasks_init(struct uwb_ccp_instance * inst)
  * @brief ccp eventq is used.
  *
- * @param inst Pointer to dw1000_dev_instance_t *
+ * @param inst Pointer to struct uwb_ccp_instance
  * @return void
  */
 static void
-ccp_tasks_init(struct _dw1000_ccp_instance_t * inst)
+ccp_tasks_init(struct uwb_ccp_instance * inst)
 {
     /* Check if the tasks are already initiated */
     if (!dpl_eventq_inited(&inst->eventq))
     {
         /* Use a dedicate event queue for tdma events */
         dpl_eventq_init(&inst->eventq);
-        dpl_task_init(&inst->task_str, "dw1000_ccp",
-                     ccp_task,
-                     (void *) inst,
-                     inst->task_prio, DPL_WAIT_FOREVER,
-                     inst->task_stack,
-                     DW1000_DEV_TASK_STACK_SZ);
+        dpl_task_init(&inst->task_str, "ccp",
+                      ccp_task,
+                      (void *) inst,
+                      inst->task_prio, DPL_WAIT_FOREVER,
+                      inst->task_stack,
+                      MYNEWT_VAL(UWB_CCP_TASK_STACK_SZ));
     }
 }
 
 /**
- * @fn dw1000_ccp_set_tof_comp_cb(dw1000_ccp_instance_t * inst, dw1000_ccp_tof_compensation_cb_t tof_comp_cb)
+ * @fn uwb_ccp_set_tof_comp_cb(struct uwb_ccp_instance * inst, uwb_ccp_tof_compensation_cb_t tof_comp_cb)
  * @brief Sets the CB that estimate the tof in dw units to the node with euid provided as
  * paramater. Used to compensate for the tof from the clock source.
  *
@@ -316,48 +316,48 @@ ccp_tasks_init(struct _dw1000_ccp_instance_t * inst)
  * @return void
  */
 void
-dw1000_ccp_set_tof_comp_cb(dw1000_ccp_instance_t * inst, dw1000_ccp_tof_compensation_cb_t tof_comp_cb)
+uwb_ccp_set_tof_comp_cb(struct uwb_ccp_instance * inst, uwb_ccp_tof_compensation_cb_t tof_comp_cb)
 {
     inst->tof_comp_cb = tof_comp_cb;
 }
 
 /**
- * @fn dw1000_ccp_init(struct uwb_dev * inst, uint16_t nframes)
+ * @fn uwb_ccp_init(struct uwb_dev * inst, uint16_t nframes)
  * @brief Precise timing is achieved by adding a fixed period to the transmission time of the previous frame.
  * This approach solves the non-deterministic latencies caused by the OS. The OS, however, is used to schedule
  * the next transmission event, but the UWB tranceiver controls the actual next transmission time using the uwb_set_delay_start.
  * This function allocates all the required resources. In the case of a large scale deployment multiple instances
  * can be uses to track multiple clock domains.
  *
- * @param inst     Pointer to dw1000_dev_instance_t
+ * @param inst     Pointer to struct uwb_dev* dev
  * @param nframes  Nominally set to 2 frames for the simple use case. But depending on the interpolation
  * algorithm this should be set accordingly. For example, four frames are required or bicubic interpolation.
  *
- * @return dw1000_ccp_instance_t *
+ * @return struct uwb_ccp_instance *
  */
-dw1000_ccp_instance_t *
-dw1000_ccp_init(struct uwb_dev* dev, uint16_t nframes){
+struct uwb_ccp_instance *
+uwb_ccp_init(struct uwb_dev* dev, uint16_t nframes){
     assert(dev);
     assert(nframes > 1);
 
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(dev, UWBEXT_CCP);
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(dev, UWBEXT_CCP);
     if (ccp == NULL) {
-        ccp = (dw1000_ccp_instance_t *) malloc(sizeof(dw1000_ccp_instance_t) + nframes * sizeof(ccp_frame_t *));
+        ccp = (struct uwb_ccp_instance *) malloc(sizeof(struct uwb_ccp_instance) + nframes * sizeof(uwb_ccp_frame_t *));
         assert(ccp);
-        memset(ccp, 0, sizeof(dw1000_ccp_instance_t));
+        memset(ccp, 0, sizeof(struct uwb_ccp_instance));
         ccp->status.selfmalloc = 1;
         ccp->nframes = nframes;
-        ccp_frame_t ccp_default = {
+        uwb_ccp_frame_t ccp_default = {
             .fctrl = FCNTL_IEEE_BLINK_CCP_64,    // frame control (FCNTL_IEEE_BLINK_64 to indicate a data frame using 64-bit addressing).
             .seq_num = 0xFF,
             .rpt_count = 0,
-            .rpt_max = MYNEWT_VAL(CCP_MAX_CASCADE_RPTS)
+            .rpt_max = MYNEWT_VAL(UWB_CCP_MAX_CASCADE_RPTS)
         };
 
         for (uint16_t i = 0; i < ccp->nframes; i++){
-            ccp->frames[i] = (ccp_frame_t *) malloc(sizeof(ccp_frame_t));
+            ccp->frames[i] = (uwb_ccp_frame_t *) malloc(sizeof(uwb_ccp_frame_t));
             assert(ccp->frames[i]);
-            memcpy(ccp->frames[i], &ccp_default, sizeof(ccp_frame_t));
+            memcpy(ccp->frames[i], &ccp_default, sizeof(uwb_ccp_frame_t));
             ccp->frames[i]->seq_num = 0;
         }
 
@@ -367,34 +367,34 @@ dw1000_ccp_init(struct uwb_dev* dev, uint16_t nframes){
     }else{
         assert(ccp->nframes == nframes);
     }
-    ccp->period = MYNEWT_VAL(CCP_PERIOD);
-    ccp->config = (dw1000_ccp_config_t){
+    ccp->period = MYNEWT_VAL(UWB_CCP_PERIOD);
+    ccp->config = (struct uwb_ccp_config){
         .postprocess = false,
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED)
         .fs_xtalt_autotune = true,
 #endif
-        .tx_holdoff_dly = MYNEWT_VAL(CCP_RPT_HOLDOFF_DLY),
+        .tx_holdoff_dly = MYNEWT_VAL(UWB_CCP_RPT_HOLDOFF_DLY),
     };
 
     dpl_error_t err = dpl_sem_init(&ccp->sem, 0x1);
     assert(err == DPL_OK);
 
-#if MYNEWT_VAL(WCS_ENABLED)
-    ccp->wcs = wcs_init(NULL, ccp);                       // Using wcs process
-    dw1000_ccp_set_postprocess(ccp, &wcs_update_cb);      // Using default process
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+    ccp->wcs = uwb_wcs_init(NULL, ccp);                       // Using wcs process
+    uwb_ccp_set_postprocess(ccp, &uwb_wcs_update_cb);      // Using default process
 #else
-    dw1000_ccp_set_postprocess(ccp, &ccp_postprocess);    // Using default process
+    uwb_ccp_set_postprocess(ccp, &ccp_postprocess);    // Using default process
 #endif
 
     ccp->cbs = (struct uwb_mac_interface){
         .id = UWBEXT_CCP,
         .inst_ptr = (void*)ccp,
-        .tx_complete_cb = ccp_tx_complete_cb,
+        .tx_complete_cb = tx_complete_cb,
         .rx_complete_cb = rx_complete_cb,
-        .rx_timeout_cb = ccp_rx_timeout_cb,
-        .rx_error_cb = ccp_error_cb,
-        .tx_error_cb = ccp_error_cb,
-        .reset_cb = ccp_reset_cb
+        .rx_timeout_cb = rx_timeout_cb,
+        .rx_error_cb = error_cb,
+        .tx_error_cb = error_cb,
+        .reset_cb = reset_cb
     };
     uwb_mac_append_interface(dev, &ccp->cbs);
 
@@ -406,11 +406,11 @@ dw1000_ccp_init(struct uwb_dev* dev, uint16_t nframes){
 #endif
     ccp->status.initialized = 1;
 
-#if MYNEWT_VAL(CCP_STATS)
+#if MYNEWT_VAL(UWB_CCP_STATS)
     int rc = stats_init(
                 STATS_HDR(ccp->stat),
                 STATS_SIZE_INIT_PARMS(ccp->stat, STATS_SIZE_32),
-                STATS_NAME_INIT_PARMS(ccp_stat_section)
+                STATS_NAME_INIT_PARMS(uwb_ccp_stat_section)
             );
     assert(rc == 0);
 
@@ -429,19 +429,22 @@ dw1000_ccp_init(struct uwb_dev* dev, uint16_t nframes){
 }
 
 /**
- * @fn dw1000_ccp_free(dw1000_ccp_instance_t * inst)
+ * @fn uwb_ccp_free(struct uwb_ccp_instance * inst)
  * @brief Deconstructor
  *
- * @param inst   Pointer to dw1000_ccp_instance_t.
+ * @param inst   Pointer to struct uwb_ccp_instance.
  * @return void
  */
 void
-dw1000_ccp_free(dw1000_ccp_instance_t * inst){
+uwb_ccp_free(struct uwb_ccp_instance * inst)
+{
     assert(inst);
     dpl_sem_release(&inst->sem);
 
-#if MYNEWT_VAL(WCS_ENABLED)
-    wcs_free(inst->wcs);
+    uwb_mac_remove_interface(inst->dev_inst, inst->cbs.id);
+
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+    uwb_wcs_free(inst->wcs);
 #endif
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED)
     sosfilt_free(inst->xtalt_sos);
@@ -456,44 +459,44 @@ dw1000_ccp_free(dw1000_ccp_instance_t * inst){
 }
 
 /**
- * @fn ccp_pkg_init(void)
+ * @fn uwb_ccp_pkg_init(void)
  * @brief API to initialise the package, only one ccp service required in the system.
  *
  * @return void
  */
-void ccp_pkg_init(void){
+void uwb_ccp_pkg_init(void){
 #if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
-    printf("{\"utime\": %lu,\"msg\": \"ccp_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    printf("{\"utime\": %lu,\"msg\": \"uwb_ccp_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    dw1000_ccp_init(uwb_dev_idx_lookup(0), 2);
+    uwb_ccp_init(uwb_dev_idx_lookup(0), 2);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
-    dw1000_ccp_init(uwb_dev_idx_lookup(1), 2);
+    uwb_ccp_init(uwb_dev_idx_lookup(1), 2);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-    dw1000_ccp_init(uwb_dev_idx_lookup(2), 2);
+    uwb_ccp_init(uwb_dev_idx_lookup(2), 2);
 #endif
 }
 
 /**
- * @fn dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, os_event_fn * postprocess)
+ * @fn uwb_ccp_set_postprocess(struct ccp_instance * inst, os_event_fn * postprocess)
  * @brief API that overrides the default post-processing behaviors, replacing the JSON stream with an alternative
  * or an advanced timescale processing algorithm.
  *
- * @param inst              Pointer to dw1000_dev_instance_t.
- * @param postprocess       Pointer to os_event_fn.
+ * @param inst              Pointer to struct ccp_instance * ccp.
+ * @param postprocess       Pointer to dpl_event_fn.
  * @return void
  */
 void
-dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * ccp, dpl_event_fn * postprocess)
+uwb_ccp_set_postprocess(struct uwb_ccp_instance * ccp, dpl_event_fn * postprocess)
 {
     dpl_event_init(&ccp->postprocess_event, postprocess, (void *) ccp);
     ccp->config.postprocess = true;
 }
 
-#if !MYNEWT_VAL(WCS_ENABLED)
+#if !MYNEWT_VAL(UWB_WCS_ENABLED)
 /**
  * @fn ccp_postprocess(struct os_event * ev)
  * @brief API that serves as a place holder for timescale processing and by default is creates json string for the event.
@@ -506,9 +509,9 @@ ccp_postprocess(struct dpl_event * ev){
     assert(ev != NULL);
     assert(dpl_event_get_arg(ev));
 
-    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *) dpl_event_get_arg(ev);
-    ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx-1)%ccp->nframes];
-    ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes];
+    struct uwb_ccp_instance * ccp = (struct uwb_ccp_instance *) dpl_event_get_arg(ev);
+    uwb_ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx-1)%ccp->nframes];
+    uwb_ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes];
     uint64_t delta = 0;
 
     if (ccp->config.role == CCP_ROLE_MASTER){
@@ -518,7 +521,7 @@ ccp_postprocess(struct dpl_event * ev){
     }
     delta = delta & ((uint64_t)1<<63)?delta & 0xFFFFFFFFFF :delta;
 
-#if MYNEWT_VAL(CCP_VERBOSE)
+#if MYNEWT_VAL(UWB_CCP_VERBOSE)
     float clock_offset = dw1000_calc_clock_offset_ratio(ccp->dev_inst, frame->carrier_integrator);
     printf("{\"utime\": %lu,\"ccp\":[\"%llX\",\"%llX\"],\"clock_offset\": %lu,\"seq_num\" :%d}\n",
         os_cputime_ticks_to_usecs(os_cputime_get32()),
@@ -532,7 +535,7 @@ ccp_postprocess(struct dpl_event * ev){
 #endif
 
 /**
- * @fn rx_complete_cb(struct uwb_dev * inst, dw1000_mac_interface_t * cbs)
+ * @fn rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief Precise timing is achieved using the reception_timestamp and tracking intervals along with
  * the correction factor. For timescale processing, a postprocessing  callback is placed in the eventq.
  * This callback with FS_XTALT_AUTOTUNE_ENABLED set, uses the RX_TTCKO_ID register to compensate for crystal offset and drift. This is an
@@ -541,15 +544,15 @@ ccp_postprocess(struct dpl_event * ev){
  *
  * The fs_xtalt adjustments align crystals to 1us (1PPM) while timescale processing resolves timestamps to sub 1ns.
  *
- * @param inst   Pointer to dw1000_dev_instance_t.
- * @param cbs    Pointer to dw1000_mac_interface_t.
+ * @param inst   Pointer to struct uwb_dev.
+ * @param cbs    Pointer to struct uwb_mac_interface.
  *
  * @return void
  */
 static bool
 rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)cbs->inst_ptr;
+    struct uwb_ccp_instance * ccp = (struct uwb_ccp_instance *)cbs->inst_ptr;
 
     if (inst->fctrl_array[0] != FCNTL_IEEE_BLINK_CCP_64){
         if(dpl_sem_get_count(&ccp->sem) == 0){
@@ -570,10 +573,10 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
     }
     DIAGMSG("{\"utime\": %lu,\"msg\": \"ccp:rx_complete_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
-    ccp_frame_t * frame = ccp->frames[(ccp->idx+1)%ccp->nframes];  // speculative frame advance
+    uwb_ccp_frame_t * frame = ccp->frames[(ccp->idx+1)%ccp->nframes];  // speculative frame advance
 
-    if (inst->frame_len >= sizeof(ccp_blink_frame_t) && inst->frame_len <= sizeof(frame->array))
-        memcpy(frame->array, inst->rxbuf, sizeof(ccp_blink_frame_t));
+    if (inst->frame_len >= sizeof(uwb_ccp_blink_frame_t) && inst->frame_len <= sizeof(frame->array))
+        memcpy(frame->array, inst->rxbuf, sizeof(uwb_ccp_blink_frame_t));
     else
         return false;
 
@@ -593,12 +596,12 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
         frame->euid != ccp->master_euid) {
         ccp->master_euid = frame->euid; 
         CCP_STATS_INC(wcs_resets);
-        ccp->status.valid = (MYNEWT_VAL(CCP_VALID_THRESHOLD)==0);
-#if MYNEWT_VAL(WCS_ENABLED)
+        ccp->status.valid = (MYNEWT_VAL(UWB_CCP_VALID_THRESHOLD)==0);
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
         ccp->wcs->status.initialized = 0;
 #endif
     } else {
-        ccp->status.valid |= ccp->idx > (MYNEWT_VAL(CCP_VALID_THRESHOLD)-1);
+        ccp->status.valid |= ccp->idx > (MYNEWT_VAL(UWB_CCP_VALID_THRESHOLD)-1);
     }
 
     ccp->master_epoch.timestamp = frame->transmission_timestamp.timestamp;
@@ -614,7 +617,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
     /* Compensate for time of flight */
     if (ccp->tof_comp_cb) {
         uint32_t tof_comp = ccp->tof_comp_cb(frame->short_address);
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
         tof_comp *= (1.0l - ccp->wcs->skew);
 #endif
         ccp->local_epoch -= tof_comp;
@@ -630,14 +633,14 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
         uint64_t repeat_dly = master_interval - frame->transmission_interval;
         ccp->master_epoch.timestamp = (ccp->master_epoch.timestamp - repeat_dly);
 
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
         /* Compensate for skew before correcting our local timestamp for repeat delay. */
         repeat_dly *= (1.0l - ccp->wcs->skew);
 #endif
         ccp->local_epoch = (ccp->local_epoch - repeat_dly) & 0x0FFFFFFFFFFUL;
         frame->reception_timestamp = ccp->local_epoch;
         /* master_interval and transmission_interval are expressed as dwt_usecs */
-        ccp->os_epoch -= os_cputime_usecs_to_ticks(dw1000_dwt_usecs_to_usecs((repeat_dly >> 16)));
+        ccp->os_epoch -= os_cputime_usecs_to_ticks(uwb_dwt_usecs_to_usecs((repeat_dly >> 16)));
         /* Carrier integrator is only valid if direct from the master */
         frame->carrier_integrator = 0;
         frame->rxttcko = 0;
@@ -645,8 +648,8 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 
     /* Cascade relay of ccp packet */
     if (ccp->config.role == CCP_ROLE_RELAY && ccp->status.valid && frame->rpt_count < frame->rpt_max) {
-        ccp_frame_t tx_frame;
-        memcpy(tx_frame.array, frame->array, sizeof(ccp_frame_t));
+        uwb_ccp_frame_t tx_frame;
+        memcpy(tx_frame.array, frame->array, sizeof(uwb_ccp_frame_t));
 
         /* Only replace the short id, retain the euid to know which master this originates from */
         tx_frame.short_address = inst->my_short_address;
@@ -661,7 +664,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 
         /* Calculate the transmission time of our packet in the masters reference */
         uint64_t tx_delay = (tx_timestamp - frame->reception_timestamp);
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
         tx_delay *= (1.0l - ccp->wcs->skew);
 #endif
         tx_frame.transmission_timestamp.timestamp += tx_delay;
@@ -670,8 +673,8 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
          * original master's timestamp */
         tx_frame.transmission_interval = frame->transmission_interval - tx_delay;
 
-        uwb_write_tx(inst, tx_frame.array, 0, sizeof(ccp_blink_frame_t));
-        uwb_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0);
+        uwb_write_tx(inst, tx_frame.array, 0, sizeof(uwb_ccp_blink_frame_t));
+        uwb_write_tx_fctrl(inst, sizeof(uwb_ccp_blink_frame_t), 0);
         ccp->status.start_tx_error = uwb_start_tx(inst).start_tx_error;
         if (ccp->status.start_tx_error){
             CCP_STATS_INC(tx_relay_error);
@@ -707,22 +710,22 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 }
 
 /**
- * @fn ccp_tx_complete_cb(struct uwb_dev * inst, dw1000_mac_interface_t * cbs)
+ * @fn tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief Precise timing is achieved by adding a fixed period to the transmission time of the previous frame. This static
  * function is called on successful transmission of a CCP packet, and this advances the frame index point. Circular addressing is used
- * for the frame addressing. The next os_event is scheduled to occur in (MYNEWT_VAL(CCP_PERIOD) - MYNEWT_VAL(CCP_OS_LATENCY)) usec
+ * for the frame addressing. The next os_event is scheduled to occur in (MYNEWT_VAL(UWB_CCP_PERIOD) - MYNEWT_VAL(UWB_CCP_OS_LATENCY)) usec
  * from now. This provided a context switch guard zone. The assumption is that the underlying OS will have sufficient time start
- * the call uwb_set_delay_start within dw1000_ccp_blink.
+ * the call uwb_set_delay_start within ccp_blink.
  *
- * @param inst    Pointer to dw1000_dev_instance_t.
- * @param cbs     Pointer to dw1000_mac_interface_t.
+ * @param inst   Pointer to struct uwb_dev.
+ * @param cbs    Pointer to struct uwb_mac_interface.
  *
  * @return bool
  */
 static bool
-ccp_tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
+tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)cbs->inst_ptr;
+    struct uwb_ccp_instance * ccp = (struct uwb_ccp_instance *)cbs->inst_ptr;
     if(dpl_sem_get_count(&ccp->sem) == 1)
         return false;
 
@@ -730,7 +733,7 @@ ccp_tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
     if (ccp->config.role != CCP_ROLE_MASTER)
         return false;
 
-    ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
+    uwb_ccp_frame_t * frame = ccp->frames[(++ccp->idx)%ccp->nframes];
 
     ccp->os_epoch = os_cputime_get32();
     ccp->local_epoch = frame->transmission_timestamp.lo;
@@ -757,18 +760,18 @@ ccp_tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 }
 
 /**
- * @fn ccp_error_cb(struct uwb_dev * inst, dw1000_mac_interface_t * cbs)
+ * @fn error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for rx_error_cb of ccp.
  *
- * @param inst   Pointer to dw1000_dev_instance_t.
- * @param cbs    Pointer to dw1000_mac_interface_t.
+ * @param inst   Pointer to struct uwb_dev.
+ * @param cbs    Pointer to struct uwb_mac_interface.
  *
  * @return void
  */
 static bool
-ccp_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
+error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)cbs->inst_ptr;
+    struct uwb_ccp_instance * ccp = (struct uwb_ccp_instance *)cbs->inst_ptr;
     if(dpl_sem_get_count(&ccp->sem) == 1)
         return false;  
 
@@ -781,18 +784,18 @@ ccp_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 }
 
 /**
- * @fn ccp_rx_timeout_cb(struct uwb_dev * inst, dw1000_mac_interface_t * cbs)
+ * @fn rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for rx_timeout_cb of ccp.
  *
- * @param inst   Pointer to dw1000_dev_instance_t.
- * @param cbs    Pointer to dw1000_mac_interface_t.
+ * @param inst   Pointer to struct uwb_dev.
+ * @param cbs    Pointer to struct uwb_mac_interface.
  *
  * @return void
  */
 static bool
-ccp_rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
+rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)cbs->inst_ptr;
+    struct uwb_ccp_instance * ccp = (struct uwb_ccp_instance *)cbs->inst_ptr;
     if(dpl_sem_get_count(&ccp->sem) == 1)
         return false;
 
@@ -807,20 +810,20 @@ ccp_rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 }
 
 /**
- * @fn ccp_reset_cb(struct uwb_dev * inst,  dw1000_mac_interface_t * cbs)
- * @brief API for ccp_reset_cb of ccp.
+ * @fn reset_cb(struct uwb_dev*, struct uwb_mac_interface*)
+ * @brief API for reset_cb of ccp.
  *
- * @param inst   Pointer to dw1000_dev_instance_t.
- * @param cbs    Pointer to dw1000_mac_interface_t.
+ * @param inst   Pointer to struct uwb_dev *inst.
+ * @param cbs    Pointer to struct uwb_mac_interface.
  *
  * @return void
  */
 static bool
-ccp_reset_cb(struct uwb_dev *inst, struct uwb_mac_interface * cbs)
+reset_cb(struct uwb_dev *inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)cbs->inst_ptr;
+    struct uwb_ccp_instance * ccp = (struct uwb_ccp_instance *)cbs->inst_ptr;
     if(dpl_sem_get_count(&ccp->sem) == 0){
-        DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_reset_cb\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
+        DIAGMSG("{\"utime\": %lu,\"msg\": \"uwb_ccp_reset_cb\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
         dpl_error_t err = dpl_sem_release(&ccp->sem);
         assert(err == DPL_OK);
         CCP_STATS_INC(reset);
@@ -830,20 +833,20 @@ ccp_reset_cb(struct uwb_dev *inst, struct uwb_mac_interface * cbs)
 }
 
 /**
- * @fn dw1000_ccp_send(dw1000_dev_instance_t * inst, dw1000_ccp_modes_t mode)
- * @brief API that start clock calibration packets (CCP) blinks  with a pulse repetition period of MYNEWT_VAL(CCP_PERIOD).
+ * @fn ccp_send(struct uwb_ccp_instance *ccp, uwb_ccp_modes_t mode)
+ * @brief Start clock calibration packets (CCP) blinks with a pulse repetition period of MYNEWT_VAL(CCP_PERIOD).
  * Precise timing is achieved by adding a fixed period to the transmission time of the previous frame.
  * This removes the need to explicitly read the systime register and the assiciated non-deterministic latencies.
  * This function is static function for internl use. It will force a Half Period Delay Warning is called at
  * out of sequence.
  *
- * @param inst   Pointer to dw1000_dev_instance_t.
- * @param mode   dw1000_dev_modes_t for DWT_BLOCKING, DWT_NON_BLOCKING modes.
+ * @param inst   Pointer to struct uwb_ccp_instance *ccp.
+ * @param mode   uwb_dev_modes_t for UWB_BLOCKING, UWB_NON_BLOCKING modes.
  *
- * @return dw1000_ccp_status_t
+ * @return struct ccp_status
  */
-static dw1000_ccp_status_t
-dw1000_ccp_send(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
+static struct uwb_ccp_status
+ccp_send(struct uwb_ccp_instance *ccp, uwb_dev_modes_t mode)
 {
     assert(ccp);
     CCP_STATS_INC(send);
@@ -851,10 +854,10 @@ dw1000_ccp_send(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
     assert(err == DPL_OK);
     struct uwb_dev * inst = ccp->dev_inst;
     
-    ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx)%ccp->nframes];
-    ccp_frame_t * frame = ccp->frames[(ccp->idx+1)%ccp->nframes];
+    uwb_ccp_frame_t * previous_frame = ccp->frames[(uint16_t)(ccp->idx)%ccp->nframes];
+    uwb_ccp_frame_t * frame = ccp->frames[(ccp->idx+1)%ccp->nframes];
     frame->rpt_count = 0;
-    frame->rpt_max = MYNEWT_VAL(CCP_MAX_CASCADE_RPTS);
+    frame->rpt_max = MYNEWT_VAL(UWB_CCP_MAX_CASCADE_RPTS);
 
     uint64_t timestamp = previous_frame->transmission_timestamp.timestamp
                         + ((uint64_t)ccp->period << 16);
@@ -869,8 +872,8 @@ dw1000_ccp_send(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
     frame->short_address = inst->my_short_address;
     frame->transmission_interval = ((uint64_t)ccp->period << 16);
 
-    uwb_write_tx(inst, frame->array, 0, sizeof(ccp_blink_frame_t));
-    uwb_write_tx_fctrl(inst, sizeof(ccp_blink_frame_t), 0);
+    uwb_write_tx(inst, frame->array, 0, sizeof(uwb_ccp_blink_frame_t));
+    uwb_write_tx_fctrl(inst, sizeof(uwb_ccp_blink_frame_t), 0);
     uwb_set_wait4resp(inst, false);    
     ccp->status.start_tx_error = uwb_start_tx(inst).start_tx_error;
     if (ccp->status.start_tx_error ){
@@ -881,7 +884,7 @@ dw1000_ccp_send(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
         err = dpl_sem_release(&ccp->sem);
         assert(err == DPL_OK);
 
-    }else if(mode == DWT_BLOCKING){
+    }else if(mode == UWB_BLOCKING){
         err = dpl_sem_pend(&ccp->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions
         assert(err == DPL_OK);
         err = dpl_sem_release(&ccp->sem);
@@ -891,30 +894,30 @@ dw1000_ccp_send(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
 }
 
 /*!
- * @fn dw1000_ccp_receive(dw1000_dev_instance_t * inst, dw1000_ccp_modes_t mode)
+ * @fn ccp_listen(struct ccp_instance *ccp, uwb_ccp_modes_t mode)
  *
  * @brief Explicit entry function for reveicing a ccp frame.
  *
  * input parameters
- * @param inst - dw1000_dev_instance_t *
- * @param mode - dw1000_dev_modes_t for DWT_BLOCKING, DWT_NONBLOCKING modes.
+ * @param inst - struct ccp_instance *ccp *
+ * @param mode - uwb_dev_modes_t for UWB_BLOCKING, UWB_NONBLOCKING modes.
  *
  * output parameters
  *
- * returns dw1000_ccp_status_t
+ * returns struct uwb_ccp_status_t
  */
-static dw1000_ccp_status_t
-dw1000_ccp_listen(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
+static struct uwb_ccp_status
+ccp_listen(struct uwb_ccp_instance *ccp, uwb_dev_modes_t mode)
 {
     struct uwb_dev * inst = ccp->dev_inst;
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_listen\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"uwb_ccp_listen\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     uwb_phy_forcetrxoff(inst);
     dpl_error_t err = dpl_sem_pend(&ccp->sem,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
 
     CCP_STATS_INC(listen);
 
-    ccp->status = (dw1000_ccp_status_t){
+    ccp->status = (struct uwb_ccp_status){
         .rx_timeout_error = 0,
         .start_rx_error = 0
     };
@@ -922,7 +925,7 @@ dw1000_ccp_listen(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
     if (ccp->status.start_rx_error){
         err = dpl_sem_release(&ccp->sem);
         assert(err == DPL_OK);
-    }else if(mode == DWT_BLOCKING){
+    }else if(mode == UWB_BLOCKING){
         err = dpl_sem_pend(&ccp->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions
         assert(err == DPL_OK);
         err = dpl_sem_release(&ccp->sem);
@@ -932,25 +935,25 @@ dw1000_ccp_listen(struct _dw1000_ccp_instance_t *ccp, dw1000_dev_modes_t mode)
 }
 
 /**
- * @fn dw1000_ccp_start(struct uwb_dev * inst, dw1000_ccp_role_t role)
+ * @fn ccp_start(struct uwb_ccp_instance, uwb_ccp_role_t role)
  * @brief API to start clock calibration packets (CCP) blinks.
- * With a pulse repetition period of MYNEWT_VAL(CCP_PERIOD).
+ * With a pulse repetition period of MYNEWT_VAL(UWB_CCP_PERIOD).
  *
- * @param inst   Pointer to dw1000_dev_instance_t.
- * @param role   dw1000_ccp_role_t of CCP_ROLE_MASTER, CCP_ROLE_SLAVE, CCP_ROLE_RELAY.
+ * @param inst   Pointer to struct uwb_ccp_instance.
+ * @param role   struct uwb_ccp_role of CCP_ROLE_MASTER, CCP_ROLE_SLAVE, CCP_ROLE_RELAY.
  *
  * @return void
  */
 void
-dw1000_ccp_start(dw1000_ccp_instance_t *ccp, dw1000_ccp_role_t role)
+uwb_ccp_start(struct uwb_ccp_instance *ccp, uwb_ccp_role_t role)
 {
     struct uwb_dev * inst = ccp->dev_inst;
     // Initialise frame timestamp to current time
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"dw1000_ccp_start\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"uwb_ccp_start\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     assert(ccp);
     ccp->idx = 0x0;
     ccp->status.valid = false;
-    ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes];
+    uwb_ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes];
     ccp->config.role = role;
 
     /* Setup CCP to send/listen for the first packet ASAP */
@@ -968,14 +971,14 @@ dw1000_ccp_start(dw1000_ccp_instance_t *ccp, dw1000_ccp_role_t role)
 }
 
 /**
- * @fn dw1000_ccp_stop(dw1000_dev_instance_t * inst)
- * @brief API to stop clock calibration packets (CCP) blinks.
+ * @fn ccp_stop(struct ccp_instance * inst)
+ * @brief API to stop clock calibration packets (CCP) blinks / receives.
  *
  * @param inst   Pointer to  dw1000_dev_instance_t.
  * @return void
  */
 void
-dw1000_ccp_stop(dw1000_ccp_instance_t *ccp)
+uwb_ccp_stop(struct uwb_ccp_instance *ccp)
 {
     assert(ccp);
     os_cputime_timer_stop(&ccp->timer);

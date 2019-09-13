@@ -17,14 +17,13 @@
 # under the License.
 #
 
-pkg.name: lib/wcs
-pkg.description: Wireless Clock Synchronization
+pkg.name: lib/uwb_wcs
+pkg.description: Wireless Clock Synchronization for UWB
 pkg.author: "Paul Kettle <Paul.Kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com]/"
 pkg.keywords:
-    - dw1000
     - uwb
-    - ccp
+    - uwb_ccp
     - timescale
     
 pkg.cflags:

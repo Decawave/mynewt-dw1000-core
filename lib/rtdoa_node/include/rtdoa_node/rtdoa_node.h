@@ -19,8 +19,8 @@
  * under the License.
  */
 
-#ifndef _DW1000_RTDOA_NODE_H_
-#define _DW1000_RTDOA_NODE_H_
+#ifndef _UWBEXT_RTDOA_NODE_H_
+#define _UWBEXT_RTDOA_NODE_H_
 
 #if MYNEWT_VAL(RTDOA_NODE_ENABLED)
 
@@ -31,18 +31,18 @@
 extern "C" {
 #endif
 
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 
 struct uwb_dev_status dw1000_rtdoa_request(struct _dw1000_rtdoa_instance_t *rtdoa, uint64_t delay);
 
 void rtdoa_node_pkg_init(void);
-void rtdoa_node_free(dw1000_dev_instance_t * inst);
-dw1000_rng_config_t * rtdoa_node_config(dw1000_dev_instance_t * inst);
+void rtdoa_node_free(struct uwb_dev * inst);
+dw1000_rng_config_t * rtdoa_node_config(struct uwb_dev * inst);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif // RTDOA_NODE_ENABLED
-#endif //_DW1000_RTDOA_NODE_H_
+#endif //_UWBEXT_RTDOA_NODE_H_

@@ -38,20 +38,18 @@
 #include <hal/hal_gpio.h>
 #include <stats/stats.h>
 
-#include <dw1000/dw1000_dev.h>
+#include <uwb/uwb.h>
 #include <dw1000/dw1000_hal.h>
-#include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_ftypes.h>
-#include <dw1000/dw1000_stats.h>
+//#include <uwb/uwb_ftypes.h>
+//#include <dw1000/dw1000_stats.h>
 #include <dsp/polyval.h>
 
 #if MYNEWT_VAL(RNG_ENABLED)
 #include <rng/rng.h>
 #include <rng/rng_encode.h>
 #endif
-#if MYNEWT_VAL(WCS_ENABLED)
-#include <wcs/wcs.h>
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+#include <uwb_wcs/uwb_wcs.h>
 #endif
 #if MYNEWT_VAL(CIR_ENABLED)
 #include <cir/cir.h>
@@ -235,8 +233,8 @@ dw1000_rng_init(struct uwb_dev * dev, dw1000_rng_config_t * config, uint16_t nfr
         rng->nframes = nframes;
     }
     rng->dev_inst = dev;
-#if MYNEWT_VAL(WCS_ENABLED)
-    rng->ccp_inst = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(dev, UWBEXT_CCP);
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+    rng->ccp_inst = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(dev, UWBEXT_CCP);
     assert(rng->ccp_inst);
 #endif
     dpl_error_t err = dpl_sem_init(&rng->sem, 0x1);
@@ -511,16 +509,16 @@ dw1000_rng_request(dw1000_rng_instance_t * rng, uint16_t dst_address, dw1000_rng
 }
 
 /**
- * @fn dw1000_rng_listen(dw1000_rng_instance_t * inst, dw1000_dev_modes_t mode)
+ * @fn dw1000_rng_listen(dw1000_rng_instance_t * inst, uwb_dev_modes_t mode)
  * @brief API to listen rng request.
  *
  * @param inst          Pointer to dw1000_rng_instance_t.
- * @param mode          dw1000_dev_modes_t of DWT_BLOCKING and DWT_NONBLOCKING
+ * @param mode          uwb_dev_modes_t of UWB_BLOCKING and UWB_NONBLOCKING
  *
  * @return struct uwb_dev_status
  */
 struct uwb_dev_status
-dw1000_rng_listen(dw1000_rng_instance_t * rng, dw1000_dev_modes_t mode)
+dw1000_rng_listen(dw1000_rng_instance_t * rng, uwb_dev_modes_t mode)
 {
     dpl_error_t err = dpl_sem_pend(&rng->sem,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
@@ -538,7 +536,7 @@ dw1000_rng_listen(dw1000_rng_instance_t * rng, dw1000_dev_modes_t mode)
         RNG_STATS_INC(rx_error);
     }
 
-    if (mode == DWT_BLOCKING){
+    if (mode == UWB_BLOCKING){
         err = dpl_sem_pend(&rng->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions
         assert(err == DPL_OK);
         err = dpl_sem_release(&rng->sem);
@@ -683,9 +681,9 @@ dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng, uint16_t idx)
     switch(frame->code){
         case DWT_SS_TWR ... DWT_SS_TWR_END:
         case DWT_SS_TWR_EXT ... DWT_SS_TWR_EXT_END:{
-#if MYNEWT_VAL(WCS_ENABLED)
-            dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-            wcs_instance_t * wcs = ccp->wcs;
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+            struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+            struct uwb_wcs_instance * wcs = ccp->wcs;
             float skew = wcs->skew;
 #else
             float skew = dw1000_calc_clock_offset_ratio((dw1000_dev_instance_t*)inst, first_frame->carrier_integrator);
@@ -775,11 +773,11 @@ dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code){
 }
 
 /**
- * @fn rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for receive timeout callback.
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
- * @param cbs   Pointer to dw1000_mac_interface_t.
+ * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
  */
@@ -809,11 +807,11 @@ rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 }
 
 /**
- * @fn reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for reset_cb of rng interface
  *
  * @param inst   Pointer to dw1000_dev_instance_t.
- * @param cbs    Pointer to dw1000_mac_interface_t.
+ * @param cbs    Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
  */
@@ -832,11 +830,11 @@ reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 }
 
 /**
- * @fn rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for receive complete callback.
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
- * @param cbs   Pointer to dw1000_mac_interface_t.
+ * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
  */
@@ -882,11 +880,11 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 }
 
 /**
- * @fn tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for transmission complete callback.
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
- * @param cbs   Pointer to dw1000_mac_interface_t.
+ * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
  */
@@ -934,11 +932,11 @@ complete_ev_cb(struct dpl_event *ev) {
 static struct dpl_event rng_event;
 
 /**
- * @fn complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for rng complete callback and put complete_event_cb in queue.
  *
  * @param inst   Pointer to dw1000_dev_instance_t.
- * @param cbs    Pointer to dw1000_mac_interface_t.
+ * @param cbs    Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
  */

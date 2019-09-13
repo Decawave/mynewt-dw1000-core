@@ -41,11 +41,11 @@
 #include <dw1000/dw1000_hal.h>
 #include <tdma/tdma.h>
 
-#if MYNEWT_VAL(CCP_ENABLED)
-#include <ccp/ccp.h>
+#if MYNEWT_VAL(UWB_CCP_ENABLED)
+#include <uwb_ccp/uwb_ccp.h>
 #endif
-#if MYNEWT_VAL(WCS_ENABLED)
-#include <wcs/wcs.h>
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+#include <uwb_wcs/uwb_wcs.h>
 #endif
 
 #if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
@@ -121,7 +121,7 @@ tdma_init(struct uwb_dev *dev, uint16_t nslots)
     };
     uwb_mac_append_interface(dev, &tdma->cbs);
 
-    tdma->ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(dev, UWBEXT_CCP);
+    tdma->ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(dev, UWBEXT_CCP);
     assert(tdma->ccp);
     
 #if MYNEWT_VAL(TDMA_STATS)
@@ -269,11 +269,11 @@ tdma_task(void *arg){
 #endif
 
 /**
- * @fn rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief Interrupt context tdma_rx_complete callback. Used to define eopch for tdma actavities
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
- * @param cbs   Pointer to dw1000_mac_interface_t.
+ * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return bool based on the totality of the handling which is false this implementation.
  */
@@ -281,7 +281,7 @@ static bool
 rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     tdma_instance_t * tdma = (tdma_instance_t*)cbs->inst_ptr;
-    dw1000_ccp_instance_t *ccp = tdma->ccp;
+    struct uwb_ccp_instance *ccp = tdma->ccp;
 
     if (ccp->status.valid && inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64){
         TDMA_STATS_INC(rx_complete);
@@ -300,11 +300,11 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 }
 
 /**
- * @fn tx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief Interrupt context tdma_tx_complete callback. Used to define eopch for tdma actavities
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
- * @param cbs   Pointer to dw1000_mac_interface_t.
+ * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return bool based on the totality of the handling which is false this implementation.
  */
@@ -312,7 +312,7 @@ static bool
 tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     tdma_instance_t * tdma = (tdma_instance_t*)cbs->inst_ptr;
-    dw1000_ccp_instance_t *ccp = tdma->ccp;
+    struct uwb_ccp_instance *ccp = tdma->ccp;
 
     if (inst->fctrl_array[0] == FCNTL_IEEE_BLINK_CCP_64 && ccp->config.role == CCP_ROLE_MASTER){
         TDMA_STATS_INC(tx_complete);
@@ -402,7 +402,7 @@ tdma_superframe_event_cb(struct dpl_event * ev){
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"tdma_superframe_event_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     tdma_instance_t * tdma = (tdma_instance_t *) dpl_event_get_arg(ev);
-    dw1000_ccp_instance_t * ccp = tdma->ccp;
+    struct uwb_ccp_instance * ccp = tdma->ccp;
     
     TDMA_STATS_INC(superframe_cnt);
 
@@ -486,11 +486,11 @@ tdma_stop(struct _tdma_instance_t * tdma)
 uint64_t
 tdma_tx_slot_start(struct _tdma_instance_t * tdma, float idx)
 {
-    dw1000_ccp_instance_t * ccp = tdma->ccp;
+    struct uwb_ccp_instance * ccp = tdma->ccp;
 
-#if MYNEWT_VAL(WCS_ENABLED)
-    wcs_instance_t * wcs = ccp->wcs;
-    uint64_t dx_time = (ccp->local_epoch + (uint64_t) wcs_dtu_time_adjust(wcs, ((idx * ((uint64_t)ccp->period << 16))/tdma->nslots)));
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+    struct uwb_wcs_instance * wcs = ccp->wcs;
+    uint64_t dx_time = (ccp->local_epoch + (uint64_t) uwb_wcs_dtu_time_adjust(wcs, ((idx * ((uint64_t)ccp->period << 16))/tdma->nslots)));
     // uint64_t dx_time = (ccp->local_epoch + (uint64_t) roundf((1.0l + wcs->skew) * (double)((idx * (uint64_t)ccp->period * 65536)/tdma->nslots)));
 #else
     uint64_t dx_time = (ccp->local_epoch + (uint64_t) ((idx * ((uint64_t)ccp->period << 16)/tdma->nslots)));

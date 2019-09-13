@@ -39,14 +39,10 @@
 
 #if MYNEWT_VAL(LWIP_ENABLED)
 
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_hal.h>
-#include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <lwip/lwip.h>
 
-#include <dw1000/dw1000_phy.h>
 #include "sysinit/sysinit.h"
 
 

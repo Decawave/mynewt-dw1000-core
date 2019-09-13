@@ -42,7 +42,7 @@ extern "C" {
 #endif
 
 #include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb_ftypes.h>
 #include <rng/rng.h>
 
 void twr_ss_ext_pkg_init(void);

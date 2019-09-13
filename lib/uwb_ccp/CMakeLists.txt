@@ -1,4 +1,4 @@
-project(ccp VERSION ${VERSION} LANGUAGES C)
+project(uwb_ccp VERSION ${VERSION} LANGUAGES C)
 
 file(GLOB ${PROJECT_NAME}_SOURCES 
     src/*.c

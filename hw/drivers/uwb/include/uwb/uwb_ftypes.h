@@ -20,16 +20,16 @@
  */
 
 /** 
- * @file dw1000_ftypes.h
+ * @file uwb_ftypes.h
  * @author paul kettle
  * @date 2018
  * @brief ftypes file
  *
- * @details This is the ftypes base class which include all the frames implemented in dw1000.
+ * @details This is the ftypes base class which include the main uwb frames types
  */
 
-#ifndef _DW1000_FTYPES_H_
-#define _DW1000_FTYPES_H_
+#ifndef _UWB_FTYPES_H_
+#define _UWB_FTYPES_H_
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -80,11 +80,11 @@ typedef union {
     struct _ieee_rng_request_frame_t{
         uint16_t fctrl;             //!< Frame control (0x8841 to indicate a data frame using 16-bit addressing)
         uint8_t seq_num;            //!< Sequence number, incremented for each new frame
-        uint16_t PANID;             //!< PANID (0xDECA)
+        uint16_t PANID;             //!< PANID
         uint16_t dst_address;       //!< Destination address
         uint16_t src_address;       //!< Source address
         uint16_t code;              //!< Response code for the request 
-    }__attribute__((__packed__,aligned(1)));    
+    }__attribute__((__packed__,aligned(1)));
     uint8_t array[sizeof(struct _ieee_rng_request_frame_t)];  //!< Array of size range request frame
 } ieee_rng_request_frame_t;
 
@@ -105,11 +105,11 @@ typedef union {
     struct _ieee_std_frame_t{
         uint16_t fctrl;             //!< Frame control (0x8841 to indicate a data frame using 16-bit addressing)
         uint8_t seq_num;            //!< Sequence number, incremented for each new frame
-        uint16_t PANID;             //!< PANID (0xDECA)
+        uint16_t PANID;             //!< PANID
         uint16_t dst_address;       //!< Destination address
         uint16_t src_address;       //!< Source address
         uint16_t code;              //!< Response code for the request 
-    }__attribute__((__packed__,aligned(1)));          
+    }__attribute__((__packed__,aligned(1)));
     uint8_t array[sizeof(struct _ieee_std_frame_t)];  //!< Array of size standard frame
 } ieee_std_frame_t;
 
@@ -117,4 +117,4 @@ typedef union {
 #ifdef __cplusplus
 }
 #endif
-#endif /* _DW1000_FTYPES_H_ */
+#endif /* _UWB_FTYPES_H_ */

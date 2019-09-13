@@ -26,9 +26,8 @@
 #include <stdint.h>
 
 #include <hal/hal_spi.h>
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <euclid/triad.h>
 #include <stats/stats.h>
 
@@ -102,10 +101,10 @@ typedef union {
 
 
 typedef struct _dw1000_rtdoa_instance_t{
-    struct _dw1000_dev_instance_t * dev_inst;   //!< Pointer to _dw1000_dev_instance_t
-    struct _dw1000_ccp_instance_t * ccp;
+    struct uwb_dev * dev_inst;                  //!< Pointer to _dw1000_dev_instance_t
+    struct uwb_ccp_instance * ccp;
 #if MYNEWT_VAL(RTDOA_STATS)
-    STATS_SECT_DECL(rtdoa_stat_section) stat; //!< Stats instance
+    STATS_SECT_DECL(rtdoa_stat_section) stat;   //!< Stats instance
 #endif
     uint16_t resp_count;
     uint64_t delay;
@@ -113,11 +112,11 @@ typedef struct _dw1000_rtdoa_instance_t{
     uint8_t seq_num;
     uint16_t nframes;
     struct os_sem sem;                          //!< Structure of semaphores
-    dw1000_mac_interface_t cbs;                 //!< MAC Layer Callbacks
+    struct uwb_mac_interface cbs;               //!< MAC Layer Callbacks
     dw1000_rng_status_t status;
     dw1000_rng_control_t control;
     dw1000_rng_config_t config;
-    dw1000_rtdoa_device_type_t device_type;
+//    dw1000_rtdoa_device_type_t device_type;
     uint16_t idx;
     rtdoa_frame_t * req_frame;
     rtdoa_frame_t * frames[];
@@ -127,16 +126,16 @@ typedef struct _dw1000_rtdoa_instance_t{
 extern "C" {
 #endif
 
-dw1000_rtdoa_instance_t * dw1000_rtdoa_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes);
+dw1000_rtdoa_instance_t * dw1000_rtdoa_init(struct uwb_dev * inst, dw1000_rng_config_t * config, uint16_t nframes);
 float rtdoa_tdoa_between_frames(struct _dw1000_rtdoa_instance_t *rtdoa, rtdoa_frame_t *req_frame, rtdoa_frame_t *resp_frame);
 
 void dw1000_rtdoa_set_frames(struct _dw1000_rtdoa_instance_t *rtdoa, uint16_t nframes);
 struct uwb_dev_status dw1000_rtdoa_config(struct _dw1000_rtdoa_instance_t *rtdoa, dw1000_rng_config_t * config);
 
-struct uwb_dev_status dw1000_rtdoa_listen(dw1000_rtdoa_instance_t * rtdoa, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout);
-uint32_t rtdoa_usecs_to_response(dw1000_dev_instance_t * inst, rtdoa_request_frame_t * req,
+struct uwb_dev_status dw1000_rtdoa_listen(dw1000_rtdoa_instance_t * rtdoa, uwb_dev_modes_t mode, uint64_t delay, uint16_t timeout);
+uint32_t rtdoa_usecs_to_response(struct uwb_dev * inst, rtdoa_request_frame_t * req,
                                  uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration);
-uint64_t rtdoa_local_to_master64(dw1000_dev_instance_t * inst, uint64_t dtu_time, rtdoa_frame_t *req_frame);
+uint64_t rtdoa_local_to_master64(struct uwb_dev * inst, uint64_t dtu_time, rtdoa_frame_t *req_frame);
 
 #ifdef __cplusplus
 }

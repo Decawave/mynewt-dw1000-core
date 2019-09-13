@@ -43,9 +43,9 @@
 
 #include <dpl/dpl.h>
 #include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_hal.h>
-#include <dw1000/dw1000_ftypes.h>
 
 #include <nmgr_uwb/nmgr_uwb.h>
 
@@ -361,13 +361,14 @@ tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * Listen for an incoming newtmgr data
  *
  * @param nmgruwb pointer to struct _nmgr_uwb_instance_t
- * @param mode DWT_BLOCKING or DWT_NONBLOCKING
+ * @param mode UWB_BLOCKING or UWB_NONBLOCKING
  * @param inst Pointer to dw1000_dev_instance_t.
  *
  * @return struct uwb_dev_status
  */
 struct uwb_dev_status
-nmgr_uwb_listen(struct _nmgr_uwb_instance_t *nmgruwb, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout)
+nmgr_uwb_listen(struct _nmgr_uwb_instance_t *nmgruwb, uwb_dev_modes_t mode,
+                uint64_t delay, uint16_t timeout)
 {
     os_error_t err;
     dpl_sem_pend(&nmgruwb->sem, OS_TIMEOUT_NEVER);
@@ -385,7 +386,7 @@ nmgr_uwb_listen(struct _nmgr_uwb_instance_t *nmgruwb, dw1000_dev_modes_t mode, u
         assert(err == OS_OK);
     }
 
-    if (mode == DWT_BLOCKING){
+    if (mode == UWB_BLOCKING){
         err = dpl_sem_pend(&nmgruwb->sem, OS_TIMEOUT_NEVER);
         assert(err == OS_OK);
         err = dpl_sem_release(&nmgruwb->sem);
@@ -414,7 +415,7 @@ nmgr_uwb_tx(struct _nmgr_uwb_instance_t *nmgruwb, uint16_t dst_addr, uint16_t co
     uwb_hdr.seq_num = nmgruwb->frame_seq_num++;
     uwb_hdr.PANID = 0xDECA;
     uwb_hdr.rpt_count = 0;
-    uwb_hdr.rpt_max = MYNEWT_VAL(CCP_MAX_CASCADE_RPTS);
+    uwb_hdr.rpt_max = MYNEWT_VAL(UWB_CCP_MAX_CASCADE_RPTS);
 
     /* TODO:BELOW IS UGLY, change to use code as identifier instead */
     uwb_hdr.fctrl = NMGR_UWB_FCTRL;
@@ -432,7 +433,7 @@ nmgr_uwb_tx(struct _nmgr_uwb_instance_t *nmgruwb, uint16_t dst_addr, uint16_t co
         int cpy_len = OS_MBUF_PKTLEN(m) - mbuf_offset;
         cpy_len = (cpy_len > sizeof(buf)) ? sizeof(buf) : cpy_len;
 
-        /* The dw1000_write_tx can do a dma transfer, make sure we wait
+        /* The uwb_write_tx can do a dma transfer, make sure we wait
          * until that's finished before updating the buffer */
         hal_dw1000_rw_noblock_wait((dw1000_dev_instance_t*)inst, OS_TIMEOUT_NEVER);
         os_mbuf_copydata(m, mbuf_offset, cpy_len, buf);

@@ -1,6 +1,6 @@
 #project(uwb-core VERSION ${VERSION} LANGUAGES C)
 
-add_subdirectory(ccp)
+add_subdirectory(uwb_ccp)
 add_subdirectory(tdma)
 add_subdirectory(cir)
 #add_subdirectory(pan)
@@ -17,7 +17,7 @@ add_subdirectory(survey)
 find_package(timescale CONFIG)
 
 if(timescale_FOUND)
-add_subdirectory(wcs)
+add_subdirectory(uwb_wcs)
 endif()
 
 

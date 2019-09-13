@@ -30,9 +30,8 @@ extern "C" {
 #endif
 
 #include <hal/hal_spi.h>
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <euclid/triad.h>
 #include <stats/stats.h>
 
@@ -142,7 +141,7 @@ float dw1000_nrng_twr_to_tof_frames(struct uwb_dev * inst, nrng_frame_t *first_f
 void dw1000_nrng_set_frames(struct _dw1000_nrng_instance_t * nrng, uint16_t nframes);
 struct uwb_dev_status dw1000_nrng_config(struct _dw1000_nrng_instance_t * nrng, dw1000_rng_config_t * config);
 dw1000_rng_config_t * dw1000_nrng_get_config(struct _dw1000_nrng_instance_t * nrng, dw1000_rng_modes_t code);
-struct uwb_dev_status dw1000_nrng_listen(struct _dw1000_nrng_instance_t * nrng, dw1000_dev_modes_t mode);
+struct uwb_dev_status dw1000_nrng_listen(struct _dw1000_nrng_instance_t * nrng, uwb_dev_modes_t mode);
 uint32_t dw1000_nrng_get_ranges(struct _dw1000_nrng_instance_t * nrng, float ranges[], uint16_t nranges, uint16_t base);
 uint32_t usecs_to_response(struct uwb_dev * inst, uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration);
 

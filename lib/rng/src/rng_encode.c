@@ -28,8 +28,8 @@
 #include <dw1000/dw1000_mac.h>
 #include <rng/rng_encode.h>
 
-#if MYNEWT_VAL(WCS_ENABLED)
-#include <wcs/wcs.h>
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+#include <uwb_wcs/uwb_wcs.h>
 #endif
 
 #if MYNEWT_VAL(RNG_VERBOSE)
@@ -92,8 +92,8 @@ rng_encode(dw1000_rng_instance_t * rng) {
     frame->spherical.range = dw1000_rng_tof_to_meters(time_of_flight);
 
     rc = json_encode_object_start(&encoder);
-#if MYNEWT_VAL(WCS_ENABLED)
-    JSON_VALUE_UINT(&value, wcs_read_systime_master64(rng->dev_inst));   
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+    JSON_VALUE_UINT(&value, uwb_wcs_read_systime_master64(rng->dev_inst));   
 #else
     JSON_VALUE_UINT(&value, os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif

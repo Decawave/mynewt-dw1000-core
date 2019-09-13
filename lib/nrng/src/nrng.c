@@ -25,16 +25,14 @@
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
 
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_ftypes.h>
 #include <nrng/nrng.h>
 #include <rng/rng.h>
-#if MYNEWT_VAL(WCS_ENABLED)
-#include <wcs/wcs.h>
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+#include <uwb_wcs/uwb_wcs.h>
 #endif
 #if MYNEWT_VAL(CIR_ENABLED)
 #include <cir/cir.h>
@@ -473,7 +471,7 @@ dw1000_nrng_request(dw1000_nrng_instance_t * nrng, uint16_t dst_address, dw1000_
  * @return struct uwb_dev_status
  */
 struct uwb_dev_status
-dw1000_nrng_listen(dw1000_nrng_instance_t * nrng, dw1000_dev_modes_t mode)
+dw1000_nrng_listen(dw1000_nrng_instance_t * nrng, uwb_dev_modes_t mode)
 {
     dpl_error_t err = dpl_sem_pend(&nrng->sem,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
@@ -489,7 +487,7 @@ dw1000_nrng_listen(dw1000_nrng_instance_t * nrng, dw1000_dev_modes_t mode)
         assert(err == DPL_OK);
         NRNG_STATS_INC(start_rx_error);
     }
-    if (mode == DWT_BLOCKING){
+    if (mode == UWB_BLOCKING){
         err = dpl_sem_pend(&nrng->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions 
         assert(err == DPL_OK);
         err = dpl_sem_release(&nrng->sem);
@@ -530,7 +528,7 @@ dw1000_nrng_twr_to_tof_frames(struct uwb_dev * inst, nrng_frame_t *first_frame, 
             break;
         case DWT_SS_TWR_NRNG ... DWT_SS_TWR_NRNG_FINAL:{
             assert(first_frame != NULL);
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
             ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
                     -  (first_frame->transmission_timestamp - first_frame->reception_timestamp))/2.0f;
 #else
@@ -567,11 +565,11 @@ complete_ev_cb(struct dpl_event *ev) {
 
 struct dpl_event nrng_event;
 /**
- * @fn complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for nrng complete callback and put complete_event_cb in queue.
  *
  * @param inst   Pointer to dw1000_dev_instance_t.
- * @param cbs    Pointer to dw1000_mac_interface_t.
+ * @param cbs    Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
  */

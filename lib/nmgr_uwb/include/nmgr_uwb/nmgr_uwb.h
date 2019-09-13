@@ -42,9 +42,9 @@ extern "C" {
 
 #include <hal/hal_spi.h>
 #include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_ftypes.h>
 
 #define NMGR_UWB_MTU_STD (128 -  sizeof(struct _ieee_std_frame_t) - sizeof(uint16_t) - 2/*CRC*/)
 #define NMGR_UWB_MTU_EXT (1023 - sizeof(struct _ieee_std_frame_t) - sizeof(uint16_t) - 2/*CRC*/)
@@ -84,7 +84,7 @@ nmgr_uwb_instance_t* nmgr_uwb_init(struct uwb_dev* inst);
 int nmgr_uwb_tx(struct _nmgr_uwb_instance_t *nmgruwb, uint16_t dst_addr, uint16_t code, struct os_mbuf *m, uint64_t dx_time);
 
 /* Sychronous model */
-struct uwb_dev_status nmgr_uwb_listen(struct _nmgr_uwb_instance_t *nmgruwb, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout);
+struct uwb_dev_status nmgr_uwb_listen(struct _nmgr_uwb_instance_t *nmgruwb, uwb_dev_modes_t mode, uint64_t delay, uint16_t timeout);
 int uwb_nmgr_process_tx_queue(struct _nmgr_uwb_instance_t *nmgruwb, uint64_t dx_time);
 int uwb_nmgr_queue_tx(struct _nmgr_uwb_instance_t *nmgruwb, uint16_t dst_addr, uint16_t code, struct os_mbuf *om);
 #ifdef __cplusplus

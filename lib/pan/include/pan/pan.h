@@ -40,9 +40,9 @@ extern "C" {
 #endif
 
 #include <hal/hal_spi.h>
+#include <uwb/uwb_ftypes.h>
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_ftypes.h>
 #if MYNEWT_VAL(PAN_VERSION_ENABLED)
 #include <bootutil/image.h>
 #endif
@@ -139,8 +139,8 @@ dw1000_pan_instance_t * dw1000_pan_init(struct uwb_dev * inst,  dw1000_pan_confi
 void dw1000_pan_free(dw1000_pan_instance_t *pan);
 void dw1000_pan_set_postprocess(dw1000_pan_instance_t *pan, dpl_event_fn * postprocess);
 void dw1000_pan_start(dw1000_pan_instance_t * pan, dw1000_pan_role_t role, network_role_t network_role);
-struct uwb_dev_status dw1000_pan_listen(dw1000_pan_instance_t * pan, dw1000_dev_modes_t mode);
-dw1000_pan_status_t dw1000_pan_blink(dw1000_pan_instance_t * pan, uint16_t role, dw1000_dev_modes_t mode, uint64_t delay);
+struct uwb_dev_status dw1000_pan_listen(dw1000_pan_instance_t * pan, uwb_dev_modes_t mode);
+dw1000_pan_status_t dw1000_pan_blink(dw1000_pan_instance_t * pan, uint16_t role, uwb_dev_modes_t mode, uint64_t delay);
 dw1000_pan_status_t dw1000_pan_reset(dw1000_pan_instance_t * pan, uint64_t delay);
 uint32_t dw1000_pan_lease_remaining(dw1000_pan_instance_t * pan);
 

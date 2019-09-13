@@ -1,18 +1,18 @@
 
 syscfg.defs:
-    CCP_ENABLED:
+    UWB_CCP_ENABLED:
         description: >
             'Enable clock calibration'
         value: 1
-        restrictions: CCP_PERIOD
+        restrictions: UWB_CCP_PERIOD
         restrictions: XTALT_GUARD
-    CCP_VERBOSE:
+    UWB_CCP_VERBOSE:
         description: 'Show debug output from postprocess'
         value: 0
-    CCP_VALID_THRESHOLD:
+    UWB_CCP_VALID_THRESHOLD:
         description: 'Consider CCP valid once this many packets have been received (>=1)'
         value: 2
-    CCP_PERIOD:
+    UWB_CCP_PERIOD:
         description: >
             Clock Calibration Packets Period (dwt usec). Should be a multiple of 0x10000
             or else cascading will not work properly.
@@ -21,23 +21,26 @@ syscfg.defs:
         description: >
             Autotune XTALT to Clock Master
         value: 0
-        restrictions: CCP_ENABLED
+        restrictions: UWB_CCP_ENABLED
     XTALT_GUARD:
         description: >
             Guardband for xtal drift (dwt units)
         value: ((uint32_t)0x100)
-    CCP_MAX_CASCADE_RPTS:
+    UWB_CCP_MAX_CASCADE_RPTS:
         description: >
             Max number of cascade levels allowed in repeating CCP packet.
             Set to 0 to disable cascading. Relates to tx_holdoff_dly and tdma slot size.
         value: 4
-    CCP_RPT_HOLDOFF_DLY:
+    UWB_CCP_RPT_HOLDOFF_DLY:
         description: >
             Holdoff dly when repeating CCP packet.
         value: ((uint16_t)0x380)
-    CCP_STATS:
+    UWB_CCP_STATS:
         description: 'Enable statistics for the CCP module'
         value: 1
+    UWB_CCP_TASK_STACK_SZ:
+        description: 'Size of interrupt task stack'
+        value: 128
 
 
        

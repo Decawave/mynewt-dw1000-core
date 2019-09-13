@@ -37,7 +37,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <uwb/uwb.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb_ftypes.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -98,7 +98,7 @@ typedef struct _survey_config_t{
 //! survey instance parameters.
 typedef struct _survey_instance_t{
     struct uwb_dev * dev_inst;                  //!< Pointer to struct uwb_dev
-    struct _dw1000_ccp_instance_t * ccp;        //!< Pointer to _dw1000_ccp_instance_t
+    struct uwb_ccp_instance * ccp;              //!< Pointer to uwb_ccp_instance
     struct _dw1000_nrng_instance_t * nrng;      //!< Pointer to _dw1000_nrng_instance_t
     STATS_SECT_DECL(survey_stat_section) stat;  //!< Stats instance
     struct uwb_mac_interface cbs;               //!< MAC Layer Callbacks

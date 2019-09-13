@@ -38,11 +38,12 @@ extern "C" {
 #endif
 
 #include <stats/stats.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_phy.h>
 #include <os/os.h>
-#include <ccp/ccp.h>
+#include <uwb_ccp/uwb_ccp.h>
 
 #define TDMA_TASKS_ENABLE
 
@@ -74,8 +75,8 @@ typedef struct _tdma_slot_t{
 //! Structure of tdma instance
 typedef struct _tdma_instance_t{
     struct uwb_dev * dev_inst;                //!< Pointer to associated uwb_dev
-#if MYNEWT_VAL(CCP_ENABLED)
-    dw1000_ccp_instance_t * ccp;              //!< Pointer to ccp instance
+#if MYNEWT_VAL(UWB_CCP_ENABLED)
+    struct uwb_ccp_instance * ccp;            //!< Pointer to ccp instance
 #endif
 #if MYNEWT_VAL(TDMA_STATS)
     STATS_SECT_DECL(tdma_stat_section) stat;  //!< Stats instance

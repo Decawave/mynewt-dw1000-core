@@ -43,7 +43,6 @@
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_ftypes.h>
 #include <dw1000/dw1000_stats.h>
 #include <cir/cir.h>
 #include <cir/cir_encode.h>

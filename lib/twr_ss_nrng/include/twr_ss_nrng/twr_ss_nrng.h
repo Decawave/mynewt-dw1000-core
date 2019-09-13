@@ -42,7 +42,7 @@ extern "C" {
 #endif
 
 #include <uwb/uwb.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb_ftypes.h>
 #include <nrng/nrng.h>
 
 void twr_ss_nrng_pkg_init(void);

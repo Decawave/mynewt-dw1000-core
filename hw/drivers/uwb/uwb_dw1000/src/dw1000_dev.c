@@ -536,6 +536,12 @@ uwb_dw1000_set_rx_timeout(struct uwb_dev *dev, uint32_t timeout)
 }
 
 inline static struct uwb_dev_status
+uwb_dw1000_adj_rx_timeout(struct uwb_dev *dev, uint32_t timeout)
+{
+    return dw1000_adj_rx_timeout((dw1000_dev_instance_t *)dev, timeout);
+}
+
+inline static struct uwb_dev_status
 uwb_dw1000_set_delay_start(struct uwb_dev *dev, uint64_t dx_time)
 {
     return dw1000_set_delay_start((dw1000_dev_instance_t *)dev, dx_time);
@@ -653,10 +659,17 @@ uwb_dw1000_set_on_error_continue(struct uwb_dev * dev, bool enable)
     return dw1000_set_on_error_continue((dw1000_dev_instance_t *)dev, enable);
 }
 
+inline static void
+uwb_dw1000_set_panid(struct uwb_dev * dev, uint16_t pan_id)
+{
+    return dw1000_set_panid((dw1000_dev_instance_t *)dev, pan_id);
+}
+
 static const struct uwb_driver_funcs dw1000_uwb_funcs = {
     .uf_mac_config = uwb_dw1000_mac_config,
     .uf_txrf_config = uwb_dw1000_txrf_config,
     .uf_set_rx_timeout = uwb_dw1000_set_rx_timeout,
+    .uf_adj_rx_timeout = uwb_dw1000_adj_rx_timeout,
     .uf_set_delay_start = uwb_dw1000_set_delay_start,
     .uf_start_tx = uwb_dw1000_start_tx,
     .uf_start_rx = uwb_dw1000_start_rx,
@@ -676,6 +689,7 @@ static const struct uwb_driver_funcs dw1000_uwb_funcs = {
     .uf_phy_SHR_duration = uwb_dw1000_phy_SHR_duration,
     .uf_phy_forcetrxoff = uwb_dw1000_phy_forcetrxoff,
     .uf_set_on_error_continue = uwb_dw1000_set_on_error_continue,
+    .uf_set_panid = uwb_dw1000_set_panid,
 };
 
 /**

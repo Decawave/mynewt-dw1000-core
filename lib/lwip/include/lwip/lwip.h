@@ -40,10 +40,8 @@ extern "C" {
 #endif
 
 #include <hal/hal_spi.h>
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_ftypes.h>
-#include <dw1000/dw1000_phy.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <lwip/pbuf.h>
 #include <lwip/ip_addr.h>
 #include <lwip/netif.h>
@@ -114,8 +112,8 @@ typedef struct _dw1000_lwip_context_t{
  * @return dw1000_lwip_config_t
  *
  */
-dw1000_lwip_config_t *
-dw1000_config(dw1000_dev_instance_t * inst);
+//dw1000_lwip_config_t *
+//dw1000_config(dw1000_dev_instance_t * inst);
 
 /**
  * [dw1000_lwip_init Function to initialize the lwip service]

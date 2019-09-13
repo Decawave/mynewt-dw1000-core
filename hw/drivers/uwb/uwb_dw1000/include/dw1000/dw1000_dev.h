@@ -63,12 +63,6 @@ extern "C" {
 
 #define BROADCAST_ADDRESS          0xffff  //!< Broad cast addresss
 
-//! IDs for blocking/non-blocking mode .
-typedef enum _dw1000_dev_modes_t{
-    DWT_BLOCKING,                    //!< Blocking mode of DW1000
-    DWT_NONBLOCKING                  //!< Non-blocking mode of DW1000
-}dw1000_dev_modes_t;
-
 
 //! Structure of DW1000 attributes.
 typedef struct _dw1000_cmd{

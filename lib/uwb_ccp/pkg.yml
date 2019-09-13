@@ -1,3 +1,4 @@
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,20 +17,23 @@
 # under the License.
 #
 
-# Package: lib/wcs
+pkg.name: lib/uwb_ccp
+pkg.description: UWB Clock Calibration (Packets)
+pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
+pkg.homepage: "http://www.decawave.com/"
+pkg.keywords:
+    - uwb
+    - CCP
 
-syscfg.defs:
-    WCS_ENABLED:
-        description: 'Wireless clock synchronization'
-        value: 1
-        restrictions: CCP_ENABLED
-        restrictions: TIMESCALE_ENABLED
-    WCS_DTU:
-        description: 'Decawave Time units'
-        value: ((double)128e6*512)
-    WCS_DTU_SI:
-        description: 'Decawave Time units in sec'
-        value: ((double)128*499.2e6)
-    WCS_VERBOSE:
-        description: 'Enable json debug output'
-        value: 0
+pkg.deps:
+    - "@mynewt-dw1000-core/hw/drivers/uwb"
+
+pkg.cflags:
+    - "-std=gnu99"
+    - "-fms-extensions"
+
+pkg.lflags:
+    - "-lm"
+    
+pkg.init:
+    uwb_ccp_pkg_init: 402

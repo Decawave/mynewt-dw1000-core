@@ -62,6 +62,13 @@ typedef enum uwb_extension_id {
 #define UWB_ROLE_PAN_MASTER   (0x0002)
 #define UWB_ROLE_ANCHOR       (0x0004)
 
+//! IDs for blocking/non-blocking mode .
+typedef enum _uwb_dev_modes_t{
+    UWB_BLOCKING,                    //!< Blocking mode 
+    UWB_NONBLOCKING                  //!< Non-blocking mode
+}uwb_dev_modes_t;
+
+
 //! Structure of UWB device status.
 struct uwb_dev_status {
     uint32_t selfmalloc:1;            //!< Internal flag for memory garbage collection
@@ -216,6 +223,26 @@ typedef void (*uwb_txrf_config_func_t)(struct uwb_dev * dev, struct uwb_dev_txrf
  * NOTE: On dw1000 the timeout is a 16bit field only.
  */
 typedef struct uwb_dev_status (*uwb_set_rx_timeout_func_t)(struct uwb_dev *dev, uint32_t timeout);
+
+/**
+ * Adjust RX Wait Timeout period.
+ *
+ * @param inst      pointer to struct uwb_dev.
+ * @param timeout   Indicates how long the receiver remains on from the RX enable command. The time parameter used here is in 1.0256 
+ * us (512/499.2MHz) units If set to 0 the timeout is disabled.
+ * @return struct uwb_dev_status
+ * @brief The Receive Frame Wait Timeout period is a 32-bit field. The units for this parameter are roughly 1μs, 
+ * (the exact unit is 512 counts of the fundamental 499.2 MHz UWB clock, or 1.026 μs). When employing the frame wait timeout, 
+ * RXFWTO should be set to a value greater than the expected RX frame duration and include an allowance for any uncertainly 
+ * attaching to the expected transmission start time of the awaited frame. 
+ * When using .rxauto_enable feature it is important to understand the role of rx_timeout, in this situation it is the timeout 
+ * that actually turns-off the receiver and returns the transeiver to the idle state.
+ *
+ * OBSERVE: This only works if the receiver has been setup to use a timeout with uwb_set_rx_timeout first.
+ *
+ * NOTE: On dw1000 the timeout is a 16bit field only.
+ */
+typedef struct uwb_dev_status (*uwb_adj_rx_timeout_func_t)(struct uwb_dev *dev, uint32_t timeout);
 
 /**
  * To specify a time in future to either turn on the receiver to be ready to receive a frame,
@@ -406,11 +433,21 @@ typedef void (*uwb_phy_forcetrxoff_func_t)(struct uwb_dev* dev);
  */
 typedef struct uwb_dev_status (*uwb_set_on_error_continue_func_t)(struct uwb_dev * dev, bool enable);
 
-    
+/**
+ * Update PAN ID in device
+ *
+ * @param inst    Pointer to struct uwb_dev.
+ * @param uint16_t pan id
+ *
+ */
+typedef void (*uwb_set_panid_func_t)(struct uwb_dev * dev, uint16_t pan_id);
+
+
 struct uwb_driver_funcs {
     uwb_mac_config_func_t uf_mac_config;
     uwb_txrf_config_func_t uf_txrf_config;
     uwb_set_rx_timeout_func_t uf_set_rx_timeout;
+    uwb_adj_rx_timeout_func_t uf_adj_rx_timeout;
     uwb_set_delay_start_func_t uf_set_delay_start;
     uwb_start_tx_func_t uf_start_tx;
     uwb_start_rx_func_t uf_start_rx;
@@ -430,6 +467,7 @@ struct uwb_driver_funcs {
     uwb_phy_SHR_duration_func_t uf_phy_SHR_duration;
     uwb_phy_forcetrxoff_func_t uf_phy_forcetrxoff;
     uwb_set_on_error_continue_func_t uf_set_on_error_continue;
+    uwb_set_panid_func_t uf_set_panid;
 };
 
 struct uwb_dev {
@@ -475,6 +513,10 @@ struct uwb_dev {
 
 #if 0
     // TODO
+    dw1000_calc_fppl
+    dw1000_calc_rssi
+    dw1000_dev_configure_sleep
+    dw1000_dev_enter_sleep_after_tx
     hal_dw1000_rw_noblock_wait
     dw1000_read_rawrxtime ???
     dw1000_set_dblrxbuff 
@@ -532,6 +574,30 @@ static inline struct uwb_dev_status
 uwb_set_rx_timeout(struct uwb_dev *dev, uint32_t to)
 {
     return (dev->uw_funcs->uf_set_rx_timeout(dev, to));
+}
+
+/**
+ * Adjust RX Wait Timeout period.
+ *
+ * @param inst      pointer to struct uwb_dev.
+ * @param timeout   Indicates how long the receiver remains on from the RX enable command. The time parameter used here is in 1.0256 
+ * us (512/499.2MHz) units If set to 0 the timeout is disabled.
+ * @return struct uwb_dev_status
+ * @brief The Receive Frame Wait Timeout period is a 32-bit field. The units for this parameter are roughly 1μs, 
+ * (the exact unit is 512 counts of the fundamental 499.2 MHz UWB clock, or 1.026 μs). When employing the frame wait timeout, 
+ * RXFWTO should be set to a value greater than the expected RX frame duration and include an allowance for any uncertainly 
+ * attaching to the expected transmission start time of the awaited frame. 
+ * When using .rxauto_enable feature it is important to understand the role of rx_timeout, in this situation it is the timeout 
+ * that actually turns-off the receiver and returns the transeiver to the idle state.
+ *
+ * OBSERVE: This only works if the receiver has been setup to use a timeout with uwb_set_rx_timeout first.
+ *
+ * NOTE: On dw1000 the timeout is a 16bit field only.
+ */
+static inline struct uwb_dev_status
+uwb_adj_rx_timeout(struct uwb_dev *dev, uint32_t to)
+{
+    return (dev->uw_funcs->uf_adj_rx_timeout(dev, to));
 }
 
 /**
@@ -779,6 +845,18 @@ static inline void uwb_phy_forcetrxoff(struct uwb_dev* dev)
 static inline struct uwb_dev_status uwb_set_on_error_continue(struct uwb_dev * dev, bool enable)
 {
     return (dev->uw_funcs->uf_set_on_error_continue(dev, enable));
+}
+
+/**
+ * Update PAN ID in device
+ *
+ * @param inst    Pointer to struct uwb_dev.
+ * @param uint16_t pan id
+ *
+ */
+static inline void uwb_set_panid(struct uwb_dev * dev, uint16_t pan_id)
+{
+    return (dev->uw_funcs->uf_set_panid(dev, pan_id));
 }
 
 #define uwb_dwt_usecs_to_usecs(_t) (double)( (_t) * (0x10000UL/(128*499.2)))

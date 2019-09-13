@@ -44,14 +44,15 @@
 #include <os/os_dev.h>
 
 #include <uwb/uwb.h>
-#include <ccp/ccp.h>
-#include <wcs/wcs.h>
+#include <uwb_ccp/uwb_ccp.h>
+#include <uwb_wcs/uwb_wcs.h>
+#include <dw1000/dw1000_mac.h>
 #include <timescale/timescale.h>
 
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
 
 //#define DIAGMSG(s,u) printf(s,u)
-#define WCS_DTU MYNEWT_VAL(WCS_DTU)
+#define WCS_DTU MYNEWT_VAL(UWB_WCS_DTU)
 
 #ifndef DIAGMSG
 #define DIAGMSG(s,u)
@@ -63,30 +64,30 @@ static void wcs_postprocess(struct dpl_event * ev);
 
 static const double g_x0[TIMESCALE_N] = {0};
 static const double g_q[] = { MYNEWT_VAL(TIMESCALE_QVAR) * 1.0l, MYNEWT_VAL(TIMESCALE_QVAR) * 0.1l, MYNEWT_VAL(TIMESCALE_QVAR) * 0.01l};
-static const double g_T = 1e-6l * MYNEWT_VAL(CCP_PERIOD);  // peroid in sec
+static const double g_T = 1e-6l * MYNEWT_VAL(UWB_CCP_PERIOD);  // peroid in sec
 
 /*! 
- * @fn wcs_init(wcs_instance_t * inst,  dw1000_ccp_instance_t * ccp)
+ * @fn uwb_wcs_init(struct uwb_wcs_instance * inst,  struct uwb_ccp_instance * ccp)
  *
  * @brief Allocate resources for the clkcal calibration tasks. Binds resources 
  * to dw1000_ccp interface and instantiate timescale instance if in use.      
  *
  * input parameters
  * @param inst - clkcal_instance_t *
- * @param ccp - dw1000_ccp_instance_t *,
+ * @param ccp - struct uwb_ccp_instance *,
  *
  * output parameters
  *
- * returns wcs_instance_t * 
+ * returns struct uwb_wcs_instance * 
  */
 
-wcs_instance_t * 
-wcs_init(wcs_instance_t * inst, dw1000_ccp_instance_t * ccp){
+struct uwb_wcs_instance * 
+uwb_wcs_init(struct uwb_wcs_instance * inst, struct uwb_ccp_instance * ccp){
 
     if (inst == NULL ) {
-        inst = (wcs_instance_t *) malloc(sizeof(wcs_instance_t)); 
+        inst = (struct uwb_wcs_instance *) malloc(sizeof(struct uwb_wcs_instance)); 
         assert(inst);
-        memset(inst, 0, sizeof(wcs_instance_t));
+        memset(inst, 0, sizeof(struct uwb_wcs_instance));
         inst->status.selfmalloc = 1;
     }
     inst->ccp = ccp;    
@@ -95,25 +96,25 @@ wcs_init(wcs_instance_t * inst, dw1000_ccp_instance_t * ccp){
     inst->timescale->status.initialized = 0; //Ignore X0 values, until we get first event
     inst->status.initialized = 0;
 
-    wcs_set_postprocess(inst, &wcs_postprocess);      // Using default process
+    uwb_wcs_set_postprocess(inst, &wcs_postprocess);      // Using default process
 
     return inst;
 }
 
 /*! 
- * @fn wcs_free(wcs_instance_t * inst)
+ * @fn uwb_wcs_free(struct uwb_wcs_instance * inst)
  *
  * @brief Free resources and restore default behaviour. 
  *
  * input parameters
- * @param inst - wcs_instance_t * inst
+ * @param inst - struct uwb_wcs_instance * inst
  *
  * output parameters
  *
  * returns none
  */
 void 
-wcs_free(wcs_instance_t * inst){
+uwb_wcs_free(struct uwb_wcs_instance * inst){
     assert(inst);  
     timescale_free(inst->timescale);
     if (inst->status.selfmalloc)
@@ -136,19 +137,20 @@ wcs_free(wcs_instance_t * inst){
  *
  * returns none 
  */
-void wcs_update_cb(struct dpl_event * ev){
+void uwb_wcs_update_cb(struct dpl_event * ev)
+{
     assert(ev != NULL);
     assert(dpl_event_get_arg(ev) != NULL);
 
-    dw1000_ccp_instance_t * ccp = (dw1000_ccp_instance_t *)dpl_event_get_arg(ev);
-    wcs_instance_t * wcs = ccp->wcs;
+    struct uwb_ccp_instance * ccp = (struct uwb_ccp_instance *)dpl_event_get_arg(ev);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
     timescale_instance_t * timescale = wcs->timescale;
     timescale_states_t * states = (timescale_states_t *) (timescale->eke->x);
 
-    DIAGMSG("{\"utime\": %lu,\"msg\": \"wcs_update_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
+    DIAGMSG("{\"utime\": %lu,\"msg\": \"uwb_wcs_update_cb\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
     if(ccp->status.valid){
-        ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes];
+        uwb_ccp_frame_t * frame = ccp->frames[(ccp->idx)%ccp->nframes];
 
         wcs->observed_interval = (ccp->local_epoch - wcs->local_epoch.lo) & 0x0FFFFFFFFFFUL; // Observed ccp interval        
         wcs->master_epoch.timestamp = ccp->master_epoch.timestamp; 
@@ -159,10 +161,10 @@ void wcs_update_cb(struct dpl_event * ev){
             /* Update pointer in case realloc happens in timescale_init */
             states = (timescale_states_t *) (timescale->eke->x);
             states->time = (double) wcs->master_epoch.lo;
-            states->skew = (1.0l + (double ) dw1000_calc_clock_offset_ratio((dw1000_dev_instance_t*)ccp->dev_inst, frame->carrier_integrator)) * MYNEWT_VAL(WCS_DTU);
+            states->skew = (1.0l + (double ) dw1000_calc_clock_offset_ratio((dw1000_dev_instance_t*)ccp->dev_inst, frame->carrier_integrator)) * MYNEWT_VAL(UWB_WCS_DTU);
             wcs->status.valid = wcs->status.initialized = 1;
         }else{
-            double skew = (1.0l + (double ) dw1000_calc_clock_offset_ratio((dw1000_dev_instance_t*)ccp->dev_inst, frame->carrier_integrator)) * MYNEWT_VAL(WCS_DTU);
+            double skew = (1.0l + (double ) dw1000_calc_clock_offset_ratio((dw1000_dev_instance_t*)ccp->dev_inst, frame->carrier_integrator)) * MYNEWT_VAL(UWB_WCS_DTU);
             double T = wcs->observed_interval / WCS_DTU ; // observed interval in seconds, master reference
             //previous_frame->transmission_timestamp = (frame->transmission_timestamp + ((uint64_t)inst->ccp->period << 16)) & 0x0FFFFFFFFFFUL;
             //double T = 1e-6l * frame->transmission_interval * wcs->nT;   // interval in seconds referenced to master
@@ -200,15 +202,15 @@ wcs_postprocess(struct dpl_event * ev){
     assert(ev != NULL);
     assert(dpl_event_get_arg(ev) != NULL);
 
-#if MYNEWT_VAL(WCS_VERBOSE)
-    wcs_instance_t * wcs = (wcs_instance_t *) dpl_event_get_arg(ev);
+#if MYNEWT_VAL(UWB_WCS_VERBOSE)
+    struct uwb_wcs_instance * wcs = (struct uwb_wcs_instance *) dpl_event_get_arg(ev);
     timescale_instance_t * timescale = wcs->timescale; 
     timescale_states_t * x = (timescale_states_t *) (timescale->eke->x); 
 
         printf("{\"utime\": %llu, \"wcs\": [%llu,%llu,%llu,%llu], \"skew\": %llu}\n",
-        wcs_read_systime_master64(wcs->ccp->dev_inst),
+        uwb_wcs_read_systime_master64(wcs->ccp->dev_inst),
         (uint64_t) wcs->master_epoch.timestamp,
-        (uint64_t) wcs_local_to_master(wcs, wcs->local_epoch.lo),
+        (uint64_t) uwb_wcs_local_to_master(wcs, wcs->local_epoch.lo),
         (uint64_t) wcs->local_epoch.timestamp,
         (uint64_t) x->time,
        *(uint64_t *)&(wcs->skew)
@@ -217,19 +219,19 @@ wcs_postprocess(struct dpl_event * ev){
 }
 
 /*! 
- * @fn wcs_set_postprocess(wcs_instance_t *  inst * inst, os_event_fn * ccp_postprocess)
+ * @fn uwb_wcs_set_postprocess(struct uwb_wcs_instance *  inst * inst, os_event_fn * ccp_postprocess)
  *
  * @brief Overrides the default post-processing behaviors, replacing the JSON stream with an alternative 
  * or an advanced timescale processing algorithm.
  * 
  * input parameters
- * @param inst - wcs_instance_t *
+ * @param inst - struct uwb_wcs_instance *
  *
  * returns none
  */
 void 
-wcs_set_postprocess(wcs_instance_t * inst, dpl_event_fn * postprocess){
-
+uwb_wcs_set_postprocess(struct uwb_wcs_instance * inst, dpl_event_fn * postprocess)
+{
     dpl_event_init(&inst->postprocess_ev, postprocess, (void *)inst);
     inst->config.postprocess = true;
 }
@@ -243,16 +245,16 @@ wcs_set_postprocess(wcs_instance_t * inst, dpl_event_fn * postprocess){
  * @return time
  * 
  */
-inline uint64_t wcs_dtu_time_adjust(struct _wcs_instance_t * wcs, uint64_t dtu_time){
+inline uint64_t uwb_wcs_dtu_time_adjust(struct uwb_wcs_instance * wcs, uint64_t dtu_time){
     
     if (wcs->status.valid)
-       dtu_time = (uint64_t) roundl(dtu_time * wcs_dtu_time_correction(wcs));
+       dtu_time = (uint64_t) roundl(dtu_time * uwb_wcs_dtu_time_correction(wcs));
 
     return dtu_time & 0x00FFFFFFFFFFUL;
 }
 
 
-inline double wcs_dtu_time_correction(struct _wcs_instance_t * wcs){
+inline double uwb_wcs_dtu_time_correction(struct uwb_wcs_instance * wcs){
     assert(wcs);
 
     timescale_states_t * x = (timescale_states_t *) (wcs->timescale->eke->x);
@@ -268,12 +270,12 @@ inline double wcs_dtu_time_correction(struct _wcs_instance_t * wcs){
 /**
  * API compensate for clock skew and offset relative to master clock
  *
- * @param wcs pointer to wcs_instance_t
+ * @param wcs pointer to struct uwb_wcs_instance
  * @param dtu_time local observed timestamp
  * @return time
  * 
  */
-uint64_t wcs_local_to_master64(wcs_instance_t * wcs, uint64_t dtu_time){
+uint64_t uwb_wcs_local_to_master64(struct uwb_wcs_instance * wcs, uint64_t dtu_time){
     timescale_instance_t * timescale = wcs->timescale; 
 
     double delta = ((dtu_time & 0x0FFFFFFFFFFUL) - wcs->local_epoch.lo) & 0x0FFFFFFFFFFUL;
@@ -292,30 +294,30 @@ uint64_t wcs_local_to_master64(wcs_instance_t * wcs, uint64_t dtu_time){
 /**
  * API compensate for clock skew and offset relative to master clock
  *
- * @param wcs pointer to wcs_instance_t
+ * @param wcs pointer to struct uwb_wcs_instance
  * @param dtu_time local observed timestamp
  * @return time
  *
  */
 
-uint64_t wcs_local_to_master(wcs_instance_t * wcs, uint64_t dtu_time){
-    return wcs_local_to_master64(wcs, dtu_time) & 0x0FFFFFFFFFFUL;
+uint64_t uwb_wcs_local_to_master(struct uwb_wcs_instance * wcs, uint64_t dtu_time){
+    return uwb_wcs_local_to_master64(wcs, dtu_time) & 0x0FFFFFFFFFFUL;
 }
 
 
 /**
  *
- * With WCS_ENABLED the adjust_timer API compensates all local timestamps values for local local drift.
+ * With UWB_WCS_ENABLED the adjust_timer API compensates all local timestamps values for local local drift.
  * This simplifies the TWR problem by mitigiating the need for double sided exchanges.
  *
  * @param inst  Pointer to _dw1000_dev_instance_t.
  * @return time
  */
 
-inline uint64_t wcs_read_systime(struct uwb_dev * inst){
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-    wcs_instance_t * wcs = ccp->wcs;
-    return wcs_dtu_time_adjust(wcs, uwb_read_systime(inst));
+inline uint64_t uwb_wcs_read_systime(struct uwb_dev * inst){
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
+    return uwb_wcs_dtu_time_adjust(wcs, uwb_read_systime(inst));
 }
 
 /**
@@ -326,10 +328,10 @@ inline uint64_t wcs_read_systime(struct uwb_dev * inst){
  * @return time 
  */
 
-inline uint32_t wcs_read_systime_lo(struct uwb_dev * inst){
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-    wcs_instance_t * wcs = ccp->wcs;
-    return (uint32_t) (wcs_dtu_time_adjust(wcs, uwb_read_systime_lo32(inst)) & 0xFFFFFFFFUL);
+inline uint32_t uwb_wcs_read_systime_lo(struct uwb_dev * inst){
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
+    return (uint32_t) (uwb_wcs_dtu_time_adjust(wcs, uwb_read_systime_lo32(inst)) & 0xFFFFFFFFUL);
 }
 
 /**
@@ -341,10 +343,10 @@ inline uint32_t wcs_read_systime_lo(struct uwb_dev * inst){
  */
 
 
-uint64_t wcs_read_rxtime(struct uwb_dev * inst){
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-    wcs_instance_t * wcs = ccp->wcs;
-    return wcs_dtu_time_adjust(wcs, uwb_read_rxtime(inst));
+uint64_t uwb_wcs_read_rxtime(struct uwb_dev * inst){
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
+    return uwb_wcs_dtu_time_adjust(wcs, uwb_read_rxtime(inst));
 }
 
 
@@ -356,10 +358,10 @@ uint64_t wcs_read_rxtime(struct uwb_dev * inst){
  * @return time
  */
 
-uint32_t wcs_read_rxtime_lo(struct uwb_dev * inst){
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-    wcs_instance_t * wcs = ccp->wcs;
-    return (uint32_t) wcs_dtu_time_adjust(wcs, uwb_read_rxtime_lo32(inst)) & 0xFFFFFFFFUL;
+uint32_t uwb_wcs_read_rxtime_lo(struct uwb_dev * inst){
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
+    return (uint32_t) uwb_wcs_dtu_time_adjust(wcs, uwb_read_rxtime_lo32(inst)) & 0xFFFFFFFFUL;
 }
 
 /**
@@ -371,10 +373,10 @@ uint32_t wcs_read_rxtime_lo(struct uwb_dev * inst){
  * 
  */
 
-uint64_t wcs_read_txtime(struct uwb_dev * inst){
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-    wcs_instance_t * wcs = ccp->wcs;
-    return wcs_dtu_time_adjust(wcs, uwb_read_txtime(inst));
+uint64_t uwb_wcs_read_txtime(struct uwb_dev * inst){
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
+    return uwb_wcs_dtu_time_adjust(wcs, uwb_read_txtime(inst));
 }
 
 /**
@@ -385,15 +387,15 @@ uint64_t wcs_read_txtime(struct uwb_dev * inst){
  * @return time
  */
 
-uint32_t wcs_read_txtime_lo(struct uwb_dev * inst){
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-    wcs_instance_t * wcs = ccp->wcs;
-    return (uint32_t) (wcs_dtu_time_adjust(wcs, uwb_read_txtime_lo32(inst)) & 0xFFFFFFFFUL);
+uint32_t uwb_wcs_read_txtime_lo(struct uwb_dev * inst){
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
+    return (uint32_t) (uwb_wcs_dtu_time_adjust(wcs, uwb_read_txtime_lo32(inst)) & 0xFFFFFFFFUL);
 }
 
 /**
  * 
- * With WCS_ENABLED the wsc_ timer API transforms all local timestamps to the master clock timedomain, effectivly compensating for offset and drift. 
+ * With UWB_WCS_ENABLED the wsc_ timer API transforms all local timestamps to the master clock timedomain, effectivly compensating for offset and drift. 
  * This simplifies the TDOA multilateration problem by referencing all times to a shared timedomain. Note all local timer event are still in the local timedomain 
  * and as such all dx_delay calcaultion should use the dw1000_ or adj_ api.  
  *
@@ -401,25 +403,25 @@ uint32_t wcs_read_txtime_lo(struct uwb_dev * inst){
  * @return time
  */
 
-uint64_t wcs_read_systime_master(struct uwb_dev * inst){
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-    wcs_instance_t * wcs = ccp->wcs;
-    return wcs_local_to_master(wcs, uwb_read_systime(inst));
+uint64_t uwb_wcs_read_systime_master(struct uwb_dev * inst){
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
+    return uwb_wcs_local_to_master(wcs, uwb_read_systime(inst));
 }
 
 
 /**
  * 
- * With WCS_ENABLED the wsc_ timer API transforms all local systime to the master clock timedomain, effectivly compensating for offset and drift. 
+ * With UWB_WCS_ENABLED the wsc_ timer API transforms all local systime to the master clock timedomain, effectivly compensating for offset and drift. 
  *
  * @param inst  Pointer to struct uwb_dev. 
  * @return time
  */
 
-uint64_t wcs_read_systime_master64(struct uwb_dev * inst){
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-    wcs_instance_t * wcs = ccp->wcs;
-    return wcs_local_to_master64(wcs, uwb_read_systime(inst));
+uint64_t uwb_wcs_read_systime_master64(struct uwb_dev * inst){
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
+    return uwb_wcs_local_to_master64(wcs, uwb_read_systime(inst));
 }
 
 /**
@@ -430,10 +432,10 @@ uint64_t wcs_read_systime_master64(struct uwb_dev * inst){
  * @return time 
  */
 
-uint32_t wcs_read_systime_lo_master(struct uwb_dev * inst){
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-    wcs_instance_t * wcs = ccp->wcs;
-    return (uint32_t) (wcs_local_to_master(wcs, uwb_read_systime_lo32(inst)) & 0xFFFFFFFFUL);
+uint32_t uwb_wcs_read_systime_lo_master(struct uwb_dev * inst){
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
+    return (uint32_t) (uwb_wcs_local_to_master(wcs, uwb_read_systime_lo32(inst)) & 0xFFFFFFFFUL);
 }
 
 /**
@@ -445,10 +447,10 @@ uint32_t wcs_read_systime_lo_master(struct uwb_dev * inst){
  */
 
 
-uint64_t wcs_read_rxtime_master(struct uwb_dev * inst){
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-    wcs_instance_t * wcs = ccp->wcs;
-    return wcs_local_to_master(wcs, uwb_read_rxtime(inst));
+uint64_t uwb_wcs_read_rxtime_master(struct uwb_dev * inst){
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
+    return uwb_wcs_local_to_master(wcs, uwb_read_rxtime(inst));
 }
 
 
@@ -460,10 +462,10 @@ uint64_t wcs_read_rxtime_master(struct uwb_dev * inst){
  * @return time
  */
 
-uint32_t wcs_read_rxtime_lo_master(struct uwb_dev * inst){
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-    wcs_instance_t * wcs = ccp->wcs;
-    return (uint32_t) (wcs_local_to_master(wcs, uwb_read_rxtime_lo32(inst)) & 0xFFFFFFFFUL);
+uint32_t uwb_wcs_read_rxtime_lo_master(struct uwb_dev * inst){
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
+    return (uint32_t) (uwb_wcs_local_to_master(wcs, uwb_read_rxtime_lo32(inst)) & 0xFFFFFFFFUL);
 }
 
 /**
@@ -475,10 +477,10 @@ uint32_t wcs_read_rxtime_lo_master(struct uwb_dev * inst){
  * 
  */
 
-uint64_t wcs_read_txtime_master(struct uwb_dev * inst){
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-    wcs_instance_t * wcs = ccp->wcs;
-    return wcs_local_to_master(wcs, uwb_read_txtime(inst));
+uint64_t uwb_wcs_read_txtime_master(struct uwb_dev * inst){
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
+    return uwb_wcs_local_to_master(wcs, uwb_read_txtime(inst));
 }
 
 /**
@@ -489,10 +491,10 @@ uint64_t wcs_read_txtime_master(struct uwb_dev * inst){
  * @return time
  */
 
-uint32_t wcs_read_txtime_lo_master(struct uwb_dev * inst){
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-    wcs_instance_t * wcs = ccp->wcs;
-    return (uint32_t) (wcs_local_to_master(wcs, uwb_read_txtime_lo32(inst))& 0xFFFFFFFFUL);
+uint32_t uwb_wcs_read_txtime_lo_master(struct uwb_dev * inst){
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
+    return (uint32_t) (uwb_wcs_local_to_master(wcs, uwb_read_txtime_lo32(inst))& 0xFFFFFFFFUL);
 }
 
-#endif  /* MYNEWT_VAL(WCS_ENABLED) */
+#endif  /* MYNEWT_VAL(UWB_WCS_ENABLED) */

@@ -27,17 +27,13 @@
 #include "bsp/bsp.h"
 #include <math.h>
 
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_hal.h>
-#include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <rtdoa/rtdoa.h>
 #include <rng/rng.h>
-#include <wcs/wcs.h>
-#if MYNEWT_VAL(CCP_ENABLED)
-#include <ccp/ccp.h>
+#include <uwb_wcs/uwb_wcs.h>
+#if MYNEWT_VAL(UWB_CCP_ENABLED)
+#include <uwb_ccp/uwb_ccp.h>
 #endif
 #include <rng/slots.h>
 
@@ -60,11 +56,11 @@ STATS_NAME_END(rtdoa_stat_section)
 #endif
 
 dw1000_rtdoa_instance_t *
-dw1000_rtdoa_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes)
+dw1000_rtdoa_init(struct uwb_dev * inst, dw1000_rng_config_t * config, uint16_t nframes)
 {
     assert(inst);
 
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_RTDOA);
+    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_RTDOA);
     if (rtdoa == NULL ) {
         rtdoa = (dw1000_rtdoa_instance_t*) malloc(sizeof(dw1000_rtdoa_instance_t) + nframes * sizeof(rtdoa_frame_t * )); 
         assert(rtdoa);
@@ -112,9 +108,11 @@ dw1000_rtdoa_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, ui
  * @return void 
  */
 void
-dw1000_rtdoa_free(dw1000_rtdoa_instance_t * inst){
-
+dw1000_rtdoa_free(dw1000_rtdoa_instance_t * inst)
+{
     assert(inst);
+    uwb_mac_remove_interface(inst->dev_inst, inst->cbs.id);
+
     if (inst->status.selfmalloc){
         for(int i =0; i< inst->nframes; i++){
             free(inst->frames[i]);
@@ -167,7 +165,7 @@ dw1000_rtdoa_config(struct _dw1000_rtdoa_instance_t *rtdoa, dw1000_rng_config_t 
  * @return void
  */
 uint32_t
-rtdoa_usecs_to_response(dw1000_dev_instance_t * inst, rtdoa_request_frame_t * req,
+rtdoa_usecs_to_response(struct uwb_dev * inst, rtdoa_request_frame_t * req,
                         uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration)
 {    
     uint32_t ret = 0;
@@ -188,10 +186,10 @@ rtdoa_usecs_to_response(dw1000_dev_instance_t * inst, rtdoa_request_frame_t * re
  * @return void
  */
 uint64_t
-rtdoa_local_to_master64(dw1000_dev_instance_t * inst, uint64_t dtu_time, rtdoa_frame_t *req_frame)
+rtdoa_local_to_master64(struct uwb_dev * inst, uint64_t dtu_time, rtdoa_frame_t *req_frame)
 {
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
-    wcs_instance_t * wcs = ccp->wcs;
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
 
     double delta = ((dtu_time & 0x0FFFFFFFFFFUL) - (req_frame->rx_timestamp&0x0FFFFFFFFFFUL)) & 0x0FFFFFFFFFFUL;
     uint64_t req_lo40 = (req_frame->tx_timestamp & 0x0FFFFFFFFFFUL);
@@ -208,28 +206,28 @@ rtdoa_local_to_master64(dw1000_dev_instance_t * inst, uint64_t dtu_time, rtdoa_f
 /**
  * API to listen as a slave node
  *
- * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param inst          Pointer to struct uwb_dev.
  *
  * @return struct uwb_dev_status 
  */
 struct uwb_dev_status 
-dw1000_rtdoa_listen(dw1000_rtdoa_instance_t * rtdoa, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout)
+dw1000_rtdoa_listen(dw1000_rtdoa_instance_t * rtdoa, uwb_dev_modes_t mode, uint64_t delay, uint16_t timeout)
 {
     os_error_t err = os_sem_pend(&rtdoa->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
     /* Setup start time and overall timeout */
-    dw1000_set_delay_start(rtdoa->dev_inst, delay);
-    dw1000_set_rx_timeout(rtdoa->dev_inst, timeout);
+    uwb_set_delay_start(rtdoa->dev_inst, delay);
+    uwb_set_rx_timeout(rtdoa->dev_inst, timeout);
     rtdoa->timeout = (delay + (((uint64_t)timeout)<<16))&0xFFFFFFFFFFUL;
 
     RTDOA_STATS_INC(rtdoa_listen);
-    if(dw1000_start_rx(rtdoa->dev_inst).start_rx_error){
+    if(uwb_start_rx(rtdoa->dev_inst).start_rx_error){
         err = os_sem_release(&rtdoa->sem);
         assert(err == OS_OK);
         RTDOA_STATS_INC(start_rx_error);
     }
-    if (mode == DWT_BLOCKING){
+    if (mode == UWB_BLOCKING){
         err = os_sem_pend(&rtdoa->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
         assert(err == OS_OK);
         err = os_sem_release(&rtdoa->sem);

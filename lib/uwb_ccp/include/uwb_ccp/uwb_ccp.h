@@ -20,7 +20,7 @@
  */
 
 /**
- * @file ccp.h
+ * @file uwb_ccp.h
  * @author paul kettle
  * @date 2018
  * 
@@ -29,8 +29,8 @@
  *
  */
 
-#ifndef _DW1000_CCP_H_
-#define _DW1000_CCP_H_
+#ifndef _UWB_CCP_H_
+#define _UWB_CCP_H_
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -39,16 +39,18 @@
 extern "C" {
 #endif
 
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <dpl/dpl.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
+
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED)
 #include <dsp/sosfilt.h>
 #include <dsp/polyval.h>
 #endif
 
-#if MYNEWT_VAL(CCP_STATS)
-STATS_SECT_START(ccp_stat_section)
+#if MYNEWT_VAL(UWB_CCP_STATS)
+#include <stats/stats.h>
+STATS_SECT_START(uwb_ccp_stat_section)
     STATS_SECT_ENTRY(master_cnt)
     STATS_SECT_ENTRY(slave_cnt)
     STATS_SECT_ENTRY(wcs_resets)
@@ -73,7 +75,7 @@ STATS_SECT_END
  */
 
 // XXX This needs to be made bitfield-safe. Not sure the ifdefs below are enough
-typedef union _ccp_timestamp_t{
+typedef union _uwb_ccp_timestamp_t{
     struct {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
         uint64_t lo:40;
@@ -87,12 +89,12 @@ typedef union _ccp_timestamp_t{
 #endif
     };
     uint64_t timestamp;
-}ccp_timestamp_t;
+}uwb_ccp_timestamp_t;
 
-//! Timestamps and blink frame format  of ccp frame.
+//! Timestamps and blink frame format  of uwb_ccp frame.
 typedef union {
-    //! Frame format of ccp blink frame.
-    struct _ccp_blink_frame_t{
+    //! Frame format of uwb_ccp blink frame.
+    struct _uwb_ccp_blink_frame_t{
         struct _ieee_blink_frame_t;
         uint16_t short_address;                 //!< Short Address
         union {
@@ -101,27 +103,27 @@ typedef union {
             };
             uint8_t ti_array[sizeof(struct _transmission_interval_struct)];
         }__attribute__((__packed__, aligned(1)));
-        ccp_timestamp_t transmission_timestamp; //!< Transmission timestamp
+        uwb_ccp_timestamp_t transmission_timestamp; //!< Transmission timestamp
         uint8_t rpt_count;                      //!< Repeat level
         uint8_t rpt_max;                        //!< Repeat max level
     }__attribute__((__packed__, aligned(1)));
-    uint8_t array[sizeof(struct _ccp_blink_frame_t)];
-}ccp_blink_frame_t;
+    uint8_t array[sizeof(struct _uwb_ccp_blink_frame_t)];
+}uwb_ccp_blink_frame_t;
 
-//! Timestamps and blink frame format  of ccp frame.
+//! Timestamps and blink frame format  of uwb_ccp frame.
 typedef union {
-//! Frame format of ccp frame.
-    struct _ccp_frame_t{
-        struct _ccp_blink_frame_t;          
+//! Frame format of uwb_ccp frame.
+    struct _uwb_ccp_frame_t{
+        struct _uwb_ccp_blink_frame_t;          
         uint64_t reception_timestamp;       //!< Reception timestamp
         int32_t carrier_integrator;         //!< Receiver carrier_integrator
         int32_t rxttcko;                    //!< Receiver time tracking offset
     }__attribute__((__packed__, aligned(1)));
-    uint8_t array[sizeof(struct _ccp_frame_t)];
-}ccp_frame_t;
+    uint8_t array[sizeof(struct _uwb_ccp_frame_t)];
+}uwb_ccp_frame_t;
 
-//! Status parameters of ccp.
-typedef struct _dw1000_ccp_status_t{
+//! Status parameters of uwb_ccp.
+struct uwb_ccp_status {
     uint16_t selfmalloc:1;            //!< Internal flag for memory garbage collection 
     uint16_t initialized:1;           //!< Instance allocated 
     uint16_t valid:1;                 //!< Set for valid parameters 
@@ -129,49 +131,49 @@ typedef struct _dw1000_ccp_status_t{
     uint16_t start_rx_error:1;        //!< Set for start request error
     uint16_t rx_timeout_error:1;      //!< Receive timeout error 
     uint16_t timer_enabled:1;         //!< Indicates timer is enabled 
-}dw1000_ccp_status_t;
+};
 
 //! Extension ids for services.
-typedef enum _dw1000_ccp_role_t{
+typedef enum _uwb_ccp_role_t{
     CCP_ROLE_MASTER,                        //!< Clock calibration packet master mode
     CCP_ROLE_SLAVE,                         //!< Clock calibration packet slave mode
     CCP_ROLE_RELAY                          //!< Clock calibration packet master replay mode
-}dw1000_ccp_role_t;
+}uwb_ccp_role_t;
 
 //! Callback for fetching clock source tof compensation
-typedef uint32_t (*dw1000_ccp_tof_compensation_cb_t)(uint16_t short_addr);
+typedef uint32_t (*uwb_ccp_tof_compensation_cb_t)(uint16_t short_addr);
 
-//! ccp config parameters.  
-typedef struct _dw1000_ccp_config_t{
+//! uwb_ccp config parameters.  
+struct uwb_ccp_config {
     uint16_t postprocess:1;           //!< CCP postprocess
     uint16_t fs_xtalt_autotune:1;     //!< Autotune XTALT to Clock Master
-    uint16_t role:4;                  //!< dw1000_ccp_role_t
+    uint16_t role:4;                  //!< ccp_role_t
     uint16_t tx_holdoff_dly;          //!< Relay nodes holdoff
-}dw1000_ccp_config_t;
+};
 
-//! ccp instance parameters.
-typedef struct _dw1000_ccp_instance_t{
-    struct uwb_dev * dev_inst;                  //!< Pointer to _dw1000_dev_instance_t
-#if MYNEWT_VAL(CCP_STATS)
-    STATS_SECT_DECL(ccp_stat_section) stat;     //!< Stats instance
+//! uwb_ccp instance parameters.
+struct uwb_ccp_instance {
+    struct uwb_dev * dev_inst;                      //!< Pointer to struct uwb_dev
+#if MYNEWT_VAL(UWB_CCP_STATS)
+    STATS_SECT_DECL(uwb_ccp_stat_section) stat;     //!< Stats instance
 #endif
-#if MYNEWT_VAL(WCS_ENABLED)
-    struct _wcs_instance_t * wcs;               //!< Wireless clock calibration 
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+    struct uwb_wcs_instance * wcs;                  //!< Wireless clock sync 
 #endif
 
 #if MYNEWT_VAL(FS_XTALT_AUTOTUNE_ENABLED)
-    struct _sos_instance_t * xtalt_sos;         //!< Sturcture of xtalt_sos
+    struct _sos_instance_t * xtalt_sos;             //!< Sturcture of xtalt_sos
 #endif
     struct uwb_mac_interface cbs;                   //!< MAC Layer Callbacks
     uint64_t master_euid;                           //!< Clock Master EUID, used to reset wcs if master changes
     struct dpl_sem sem;                             //!< Structure containing os semaphores
     struct dpl_event postprocess_event;             //!< Structure of callout_postprocess
-    dw1000_ccp_status_t status;                     //!< DW1000 ccp status parameters
-    dw1000_ccp_config_t config;                     //!< DW1000 ccp config parameters
-    ccp_timestamp_t master_epoch;                   //!< ccp event referenced to master systime
-    uint64_t local_epoch;                           //!< ccp event referenced to local systime
-    uint32_t os_epoch;                              //!< ccp event referenced to ostime
-    dw1000_ccp_tof_compensation_cb_t tof_comp_cb;   //!< tof compensation callback
+    struct uwb_ccp_status status;                   //!< uwb_ccp status parameters
+    struct uwb_ccp_config config;                   //!< uwb_ccp config parameters
+    uwb_ccp_timestamp_t master_epoch;               //!< uwb_ccp event referenced to master systime
+    uint64_t local_epoch;                           //!< uwb_ccp event referenced to local systime
+    uint32_t os_epoch;                              //!< uwb_ccp event referenced to ostime
+    uwb_ccp_tof_compensation_cb_t tof_comp_cb;      //!< tof compensation callback
     uint32_t period;                                //!< Pulse repetition period
     uint16_t nframes;                               //!< Number of buffers defined to store the data 
     uint16_t idx;                                   //!< Circular buffer index pointer  
@@ -181,18 +183,18 @@ typedef struct _dw1000_ccp_instance_t{
     struct dpl_event timer_event;                   //!< Event callback
     struct dpl_task task_str;                       //!< Task structure  
     uint8_t task_prio;                              //!< Priority based task
-    dpl_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]
+    dpl_stack_t task_stack[MYNEWT_VAL(UWB_CCP_TASK_STACK_SZ)]
         __attribute__((aligned(DPL_STACK_ALIGNMENT))); //!< Task stack size
-    ccp_frame_t * frames[];                          //!< Buffers to ccp frames
-}dw1000_ccp_instance_t; 
+    uwb_ccp_frame_t * frames[];                          //!< Buffers to uwb_ccp frames
+}; 
 
-uint64_t ccp_local_to_master(dw1000_ccp_instance_t *ccp, uint32_t timestamp_local);
-dw1000_ccp_instance_t * dw1000_ccp_init(struct uwb_dev* dev,  uint16_t nframes);
-void dw1000_ccp_free(dw1000_ccp_instance_t * inst);
-void dw1000_ccp_set_postprocess(dw1000_ccp_instance_t * inst, dpl_event_fn * ccp_postprocess); 
-void dw1000_ccp_set_tof_comp_cb(dw1000_ccp_instance_t * inst, dw1000_ccp_tof_compensation_cb_t tof_comp_cb);
-void dw1000_ccp_start(dw1000_ccp_instance_t *ccp, dw1000_ccp_role_t role);
-void dw1000_ccp_stop(dw1000_ccp_instance_t *ccp);
+uint64_t uwb_ccp_local_to_master(struct uwb_ccp_instance *uwb_ccp, uint32_t timestamp_local);
+struct uwb_ccp_instance * uwb_ccp_init(struct uwb_dev* dev,  uint16_t nframes);
+void uwb_ccp_free(struct uwb_ccp_instance * inst);
+void uwb_ccp_set_postprocess(struct uwb_ccp_instance * inst, dpl_event_fn * uwb_ccp_postprocess); 
+void uwb_ccp_set_tof_comp_cb(struct uwb_ccp_instance * inst, uwb_ccp_tof_compensation_cb_t tof_comp_cb);
+void uwb_ccp_start(struct uwb_ccp_instance *ccp, uwb_ccp_role_t role);
+void uwb_ccp_stop(struct uwb_ccp_instance *ccp);
 
 /**
  * @}
@@ -202,4 +204,4 @@ void dw1000_ccp_stop(dw1000_ccp_instance_t *ccp);
 #ifdef __cplusplus
 }
 #endif
-#endif /* _DW1000_CCP_H_ */
+#endif /* _UWB_CCP_H_ */

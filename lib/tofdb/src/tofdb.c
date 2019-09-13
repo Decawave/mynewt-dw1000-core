@@ -2,8 +2,8 @@
 #include <math.h>
 #include <os/mynewt.h>
 #include <syscfg/syscfg.h>
-#if MYNEWT_VAL(CCP_ENABLED)
-#include <ccp/ccp.h>
+#if MYNEWT_VAL(UWB_CCP_ENABLED)
+#include <uwb_ccp/uwb_ccp.h>
 #endif
 #include <tofdb/tofdb.h>
 #include <dw1000/dw1000_hal.h>
@@ -83,7 +83,7 @@ ret:
     return OS_OK;
 }
 
-uint32_t
+static uint32_t
 ccp_cb(uint16_t short_addr)
 {
     uint32_t tof=0;
@@ -102,11 +102,11 @@ tofdb_pkg_init(void)
 
     memset(nodes, 0, sizeof(nodes));
     /*  */
-#if MYNEWT_VAL(CCP_ENABLED)
+#if MYNEWT_VAL(UWB_CCP_ENABLED)
     
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_CCP);
-    dw1000_ccp_set_tof_comp_cb(ccp, ccp_cb);
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_CCP);
+    uwb_ccp_set_tof_comp_cb(ccp, ccp_cb);
 #endif
 #endif
 }

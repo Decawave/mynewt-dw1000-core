@@ -35,7 +35,7 @@ pkg.lflags:
 pkg.deps:
     - "@mynewt-dw1000-core/lib/rng"
     - "@mynewt-dw1000-core/lib/twr_ss_nrng"
-    - "@mynewt-dw1000-core/lib/ccp"
+    - "@mynewt-dw1000-core/lib/uwb_ccp"
     - "@mynewt-dw1000-core/lib/tdma"
 
 pkg.init:

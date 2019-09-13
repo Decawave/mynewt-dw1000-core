@@ -40,12 +40,8 @@
 #include <stats/stats.h>
 #include <config/config.h>
 
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_hal.h>
-#include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <mgmt/mgmt.h>
 #include <newtmgr/newtmgr.h>
 #include "console/console.h"
@@ -76,8 +72,8 @@
 #define DIAGMSG(s,u)
 #endif
 
-static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
 
 static int nmgr_uwb_img_upload(int argc, char** argv);
 static int nmgr_uwb_img_list(int argc, char** argv);
@@ -85,22 +81,22 @@ static int nmgr_uwb_img_set_state(int argc, char** argv);
 static int nmgr_uwb_remote_config(int argc, char** argv);
 static struct os_mbuf* buf_to_imgmgr_mbuf(uint8_t *buf, uint64_t len, uint64_t off, uint32_t size);
 
-static dw1000_mac_interface_t g_cbs[] = {
+static struct uwb_mac_interface g_cbs[] = {
         [0] = {
-            .id = DW1000_NMGR_CMD,
+            .id = UWBEXT_NMGR_CMD,
             .rx_complete_cb = rx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
         },
 #if MYNEWT_VAL(DW1000_DEVICE_1)
         [1] = {
-            .id = DW1000_NMGR_CMD,
+            .id = UWBEXT_NMGR_CMD,
             .rx_complete_cb = rx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
         },
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
         [2] = {
-            .id = DW1000_NMGR_CMD,
+            .id = UWBEXT_NMGR_CMD,
             .rx_complete_cb = rx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
         }
@@ -177,7 +173,7 @@ typedef struct _nmgr_cmd_instance_t {
     uint8_t nmgr_cmd_seq_num;
     struct os_mbuf *rx_pkt;
     os_stack_t *pstack;
-    dw1000_dev_instance_t* parent;
+    struct uwb_dev* dev_inst;
 }nmgr_cmd_instance_t;
 
 static nmgr_cmd_instance_t *nmgr_inst = NULL;
@@ -193,18 +189,18 @@ void nmgr_cmds_pkg_init(void){
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
     SYSINIT_ASSERT_ACTIVE();
-    dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs[0]);
-    nmgr_inst->parent = hal_dw1000_inst(0);
+    g_cbs[0].inst_ptr = nmgr_inst->dev_inst = uwb_dev_idx_lookup(0);
+    uwb_mac_append_interface(g_cbs[0].inst_ptr, &g_cbs[0]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
     SYSINIT_ASSERT_ACTIVE();
-    dw1000_mac_append_interface(hal_dw1000_inst(1), &g_cbs[1]);
-    nmgr_inst->parent = hal_dw1000_inst(1);
+    g_cbs[1].inst_ptr = nmgr_inst->dev_inst = uwb_dev_idx_lookup(1);
+    uwb_mac_append_interface(g_cbs[1].inst_ptr, &g_cbs[1]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
     SYSINIT_ASSERT_ACTIVE();
-    dw1000_mac_append_interface(hal_dw1000_inst(2), &g_cbs[2]);
-    nmgr_inst->parent = hal_dw1000_inst(2);
+    g_cbs[2].inst_ptr = nmgr_inst->dev_inst = uwb_dev_idx_lookup(2);
+    uwb_mac_append_interface(g_cbs[2].inst_ptr, &g_cbs[2]);
 #endif
     for(int i =0; i < CLI_CMD_NUM; i++)
         shell_cmd_register(&cli_cmds[i]);
@@ -256,7 +252,7 @@ nmgr_uwb_img_upload(int argc, char** argv){
         return 1;
     }
 
-    dw1000_dev_instance_t * inst = nmgr_inst->parent;
+    struct uwb_dev * inst = nmgr_inst->dev_inst;
     
     uint8_t retries = 0;
     int  len = 0;
@@ -290,7 +286,7 @@ nmgr_uwb_img_upload(int argc, char** argv){
             rsp = NULL;
         }
 
-        nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NMGR_UWB);
+        nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_NMGR_UWB);
         int rc = uwb_nmgr_queue_tx(nmgruwb, dst_add, 0, rsp);
         if (rc) {
             /* Failed to send */
@@ -347,7 +343,7 @@ nmgr_uwb_img_list(int argc, char** argv){
         return 1;
     }
 
-    nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NMGR_UWB);
+    nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_NMGR_UWB);
     assert(nmgruwb);
     uwb_nmgr_queue_tx(nmgruwb, dst_addr, 0, om);
     return 0;
@@ -409,7 +405,7 @@ nmgr_uwb_img_set_state(int argc, char** argv){
     hdr->nh_len += cbor_encode_bytes_written(&nmgr_inst->n_b.encoder);
     hdr->nh_len = htons(hdr->nh_len);
 
-    nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NMGR_UWB);
+    nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_NMGR_UWB);
     assert(nmgruwb);
     uwb_nmgr_queue_tx(nmgruwb, dst_add, 0, tx_pkt);
     return 0;
@@ -544,7 +540,7 @@ nmgr_uwb_remote_config(int argc, char** argv)
     }
 
     struct os_mbuf *om = get_txcfg_mbuf(name_str, val_str);
-    nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NMGR_UWB);
+    nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_NMGR_UWB);
     assert(nmgruwb);
     uwb_nmgr_queue_tx(nmgruwb, dst_addr, 0, om);
     return 0;
@@ -554,12 +550,13 @@ nmgr_uwb_remote_config(int argc, char** argv)
 /**
  * API for receive timeout callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev * inst.
  *
  * @return true on sucess
  */
 static bool 
-rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
+{
     if (strncmp((char*)&inst->fctrl, "NM", 2)){
         return false;
     }
@@ -573,12 +570,12 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 /**
  * API for receive complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev * inst.
  *
  * @return true on sucess
  */
 static bool 
-rx_complete_cb(struct _dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     if (strncmp((char*)&inst->fctrl, "NM", 2)){
         return false;
@@ -596,8 +593,7 @@ static void
 rx_post_process(struct os_event* ev)
 {
     // nmgr_inst = (struct _nmgr_cmd_instance_t*)ev->ev_arg;
-    dw1000_dev_instance_t * inst = hal_dw1000_inst(0);
-    nmgr_uwb_frame_t *frame = (nmgr_uwb_frame_t*)inst->rxbuf;
+    nmgr_uwb_frame_t *frame = (nmgr_uwb_frame_t*)nmgr_inst->dev_inst->rxbuf;
     
     //There is a chance that the response could be split if the total length is more than NMGR_UWB_MTU
     //If so then do the decoding only after the entire packet is received
@@ -610,29 +606,29 @@ rx_post_process(struct os_event* ev)
             return;
         }
         //Trim out the uwb frame header
-        int rc = os_mbuf_copyinto(nmgr_inst->rx_pkt, 0, &frame->array[sizeof(struct _nmgr_uwb_header)], inst->frame_len - sizeof(struct _nmgr_uwb_header));
+        int rc = os_mbuf_copyinto(nmgr_inst->rx_pkt, 0, &frame->array[sizeof(struct _nmgr_uwb_header)], nmgr_inst->dev_inst->frame_len - sizeof(struct _nmgr_uwb_header));
         assert(rc==0);
 
         if(htons(frame->hdr.nh_len) > NMGR_UWB_MTU_EXT && 0){
             nmgr_inst->repeat_mode = 1;
             nmgr_inst->rem_len = (htons(frame->hdr.nh_len) + sizeof(struct nmgr_hdr)) - OS_MBUF_PKTLEN(nmgr_inst->rx_pkt);
-            uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, 128) + 0x600;
-            dw1000_set_rx_timeout(inst, timeout);
-            dw1000_start_rx(inst);
+            uint16_t timeout = uwb_phy_frame_duration(nmgr_inst->dev_inst, 128) + 0x600;
+            uwb_set_rx_timeout(nmgr_inst->dev_inst, timeout);
+            uwb_start_rx(nmgr_inst->dev_inst);
         }
         nmgr_inst->cmd_id = frame->hdr.nh_id;
     }
     else{
-        nmgr_inst->rem_len -= (inst->frame_len - sizeof(struct _nmgr_uwb_header));
+        nmgr_inst->rem_len -= (nmgr_inst->dev_inst->frame_len - sizeof(struct _nmgr_uwb_header));
         if(nmgr_inst->rem_len == 0)
             nmgr_inst->repeat_mode = 0;
         else{
-            uint16_t timeout = dw1000_phy_frame_duration(&inst->attrib, 128) + 0x600;
-            dw1000_set_rx_timeout(inst, timeout);
-            dw1000_start_rx(inst);
+            uint16_t timeout = uwb_phy_frame_duration(nmgr_inst->dev_inst, 128) + 0x600;
+            uwb_set_rx_timeout(nmgr_inst->dev_inst, timeout);
+            uwb_start_rx(nmgr_inst->dev_inst);
         }
         uint16_t cur_len = OS_MBUF_PKTLEN(nmgr_inst->rx_pkt);
-        os_mbuf_copyinto(nmgr_inst->rx_pkt, cur_len, &frame->array[sizeof(struct _nmgr_uwb_header)], inst->frame_len - sizeof(struct _nmgr_uwb_header));
+        os_mbuf_copyinto(nmgr_inst->rx_pkt, cur_len, &frame->array[sizeof(struct _nmgr_uwb_header)], nmgr_inst->dev_inst->frame_len - sizeof(struct _nmgr_uwb_header));
     }
     //Start decoding
     if(nmgr_inst->repeat_mode == 0){

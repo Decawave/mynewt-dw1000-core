@@ -49,11 +49,11 @@
 #if MYNEWT_VAL(TDMA_ENABLED)
 #include <tdma/tdma.h>
 #endif
-#if MYNEWT_VAL(CCP_ENABLED)
-#include <ccp/ccp.h>
+#if MYNEWT_VAL(UWB_CCP_ENABLED)
+#include <uwb_ccp/uwb_ccp.h>
 #endif
-#if MYNEWT_VAL(WCS_ENABLED)
-#include <wcs/wcs.h>
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+#include <uwb_wcs/uwb_wcs.h>
 #endif
 #if MYNEWT_VAL(NRNG_ENABLED)
 #include <rng/rng.h>
@@ -136,7 +136,7 @@ survey_init(struct uwb_dev * inst, uint16_t nnodes, uint16_t nframes){
 
         /* Lookup the other instances we will need */
         survey->dev_inst = inst;
-        survey->ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+        survey->ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
         survey->nrng = (dw1000_nrng_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_NRNG);
 
         dpl_error_t err = dpl_sem_init(&survey->sem, 0x1); 
@@ -248,7 +248,7 @@ survey_slot_range_cb(struct dpl_event *ev)
 
     tdma_slot_t * slot = (tdma_slot_t *) dpl_event_get_arg(ev);
     tdma_instance_t * tdma = slot->parent;
-    dw1000_ccp_instance_t * ccp = tdma->ccp;
+    struct uwb_ccp_instance * ccp = tdma->ccp;
     survey_instance_t * survey = (survey_instance_t *)slot->arg;
     survey->seq_num = (ccp->seq_num & ((uint32_t)~0UL << MYNEWT_VAL(SURVEY_MASK))) >> MYNEWT_VAL(SURVEY_MASK);
     
@@ -280,7 +280,7 @@ survey_slot_broadcast_cb(struct dpl_event *ev){
 
     tdma_slot_t * slot = (tdma_slot_t *) dpl_event_get_arg(ev);
     tdma_instance_t * tdma = slot->parent;
-    dw1000_ccp_instance_t * ccp = tdma->ccp;
+    struct uwb_ccp_instance * ccp = tdma->ccp;
     survey_instance_t * survey = (survey_instance_t *)slot->arg;
     survey->seq_num = (ccp->seq_num & ((uint32_t)~0UL << MYNEWT_VAL(SURVEY_MASK))) >> MYNEWT_VAL(SURVEY_MASK);
 
@@ -336,7 +336,7 @@ survey_listen(survey_instance_t * survey, uint64_t dx_time){
     uint16_t timeout = uwb_phy_frame_duration(survey->dev_inst, sizeof(nrng_request_frame_t))
                         + survey->nrng->config.rx_timeout_delay;
     uwb_set_rx_timeout(survey->dev_inst, timeout + 0x1000);
-    dw1000_nrng_listen(survey->nrng, DWT_BLOCKING);
+    dw1000_nrng_listen(survey->nrng, UWB_BLOCKING);
 
     return survey->status;
 }
@@ -436,7 +436,7 @@ survey_receiver(survey_instance_t * survey, uint64_t dx_time){
  * API for receive survey broadcasts.
  * 
  * @param inst pointer to dw1000_dev_instance_t
- * @param cbs pointer todw1000_mac_interface_t
+ * @param cbs pointer tostruct uwb_mac_interface
  * @return true on sucess
  */
 static bool 

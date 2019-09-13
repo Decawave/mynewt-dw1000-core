@@ -38,7 +38,7 @@
 #include <hal/hal_gpio.h>
 #include <stats/stats.h>
 
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb_ftypes.h>
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_hal.h>

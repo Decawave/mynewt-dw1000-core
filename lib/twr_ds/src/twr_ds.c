@@ -41,8 +41,8 @@
 #include <uwb/uwb.h>
 #include <rng/rng.h>
 #include <dsp/polyval.h>
-#if MYNEWT_VAL(WCS_ENABLED)
-#include <wcs/wcs.h>
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+#include <uwb_wcs/uwb_wcs.h>
 #endif
 
 #if MYNEWT_VAL(RNG_VERBOSE)
@@ -248,7 +248,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = - inst->carrier_integrator;
@@ -297,7 +297,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
                 uint16_t src_address = frame->src_address; 
                 uint8_t seq_num = frame->seq_num; 
                 
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = inst->carrier_integrator;
@@ -364,7 +364,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = - inst->carrier_integrator;
@@ -401,7 +401,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
                 // This code executes on the device that initialed the original request, and has now receive the final response timestamp. 
                 // This marks the completion of the double-single-two-way request. 
              //   if (inst->config.dblbuffon_enabled && inst->config.rxauto_enable)  
-             //       dw1000_stop_rx(inst); // Need to prevent timeout event 
+             //       uwb_stop_rx(inst); // Need to prevent timeout event 
 
                 STATS_INC(g_stat, complete);                   
                 dpl_sem_release(&rng->sem);

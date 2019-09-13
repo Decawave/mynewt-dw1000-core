@@ -36,15 +36,8 @@
 #include <hal/hal_gpio.h>
 #include <imgmgr/imgmgr.h>
 
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_hal.h>
-#include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_ftypes.h>
-
-#if MYNEWT_VAL(CCP_ENABLED)
-#include <ccp/ccp.h>
+#if MYNEWT_VAL(UWB_CCP_ENABLED)
+#include <uwb_ccp/uwb_ccp.h>
 #endif
 #if MYNEWT_VAL(TDMA_ENABLED)
 #include <tdma/tdma.h>
@@ -383,14 +376,14 @@ lease_expiry_cb(struct dpl_event * ev)
 }
 
 /**
- * @fn rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief This is an internal static function that executes on both the pan_master Node and the TAG/ANCHOR
  * that initiated the blink. On the pan_master the postprocess function should allocate a PANID and a SLOTID,
  * while on the TAG/ANCHOR the returned allocations are assigned and the PAN discover event is stopped. The pan
  * discovery resources can be released.
  *
  * @param inst    Pointer to dw1000_dev_instance_t.
- * @param cbs     Pointer to dw1000_mac_interface_t.
+ * @param cbs     Pointer to struct uwb_mac_interface.
  *
  * @return bool
  */
@@ -456,8 +449,8 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
                 uint32_t exp_tics;
                 uint32_t lease_us = 1000000;
                 lease_us = (uint32_t)(frame->lease_time)*1000000;
-#if MYNEWT_VAL(CCP_ENABLED)
-                dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+#if MYNEWT_VAL(UWB_CCP_ENABLED)
+                struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
                 lease_us -= (inst->rxtimestamp>>16) - (ccp->local_epoch>>16);
 #endif
                 os_time_ms_to_ticks(lease_us/1000, &exp_tics);
@@ -496,11 +489,11 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 }
 
 /**
- * @fn tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for transmit complete callback.
  *
  * @param inst  Pointer to dw1000_dev_instance_t.
- * @param cbs   Pointer to dw1000_mac_interface_t.
+ * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return bool
  */
@@ -517,11 +510,11 @@ tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 }
 
 /**
- * @fn reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for reset callback.
  *
  * @param inst   Pointer to dw1000_dev_instance_t.
- * @param cbs    Pointer to dw1000_mac_interface_t.
+ * @param cbs    Pointer to struct uwb_mac_interface.
  *
  * @return bool
  */
@@ -539,11 +532,11 @@ reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 }
 
 /**
- * @fn rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for receive timeout callback.
  *
  * @param inst    Pointer to dw1000_dev_instance_t.
- * @param cbs     Pointer to dw1000_mac_interface_t.
+ * @param cbs     Pointer to struct uwb_mac_interface.
  *
  * @return bool
  */
@@ -565,12 +558,12 @@ rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief Listen for PAN requests / resets
  *
  * @param inst          Pointer to dw1000_dev_instance_t.
- * @param mode          dw1000_dev_modes_t of DWT_BLOCKING and DWT_NONBLOCKING.
+ * @param mode          dw1000_dev_modes_t of UWB_BLOCKING and UWB_NONBLOCKING.
  *
  * @return struct uwb_dev_status
  */
 struct uwb_dev_status
-dw1000_pan_listen(dw1000_pan_instance_t * pan, dw1000_dev_modes_t mode)
+dw1000_pan_listen(dw1000_pan_instance_t * pan, uwb_dev_modes_t mode)
 {
     dpl_error_t err = dpl_sem_pend(&pan->sem,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
@@ -583,7 +576,7 @@ dw1000_pan_listen(dw1000_pan_instance_t * pan, dw1000_dev_modes_t mode)
         assert(err == DPL_OK);
     }
 
-    if (mode == DWT_BLOCKING){
+    if (mode == UWB_BLOCKING){
         err = dpl_sem_pend(&pan->sem, DPL_TIMEOUT_NEVER);
         assert(err == DPL_OK);
         err = dpl_sem_release(&pan->sem);
@@ -607,7 +600,7 @@ dw1000_pan_listen(dw1000_pan_instance_t * pan, dw1000_dev_modes_t mode)
  */
 dw1000_pan_status_t
 dw1000_pan_blink(dw1000_pan_instance_t *pan, uint16_t role,
-                 dw1000_dev_modes_t mode, uint64_t delay)
+                 uwb_dev_modes_t mode, uint64_t delay)
 {
     dpl_error_t err = dpl_sem_pend(&pan->sem,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
@@ -641,7 +634,7 @@ dw1000_pan_blink(dw1000_pan_instance_t *pan, uint16_t role,
         // Use seq_num to detect this on receiver size
         dpl_sem_release(&pan->sem);
     }
-    else if(mode == DWT_BLOCKING){
+    else if(mode == UWB_BLOCKING){
         err = dpl_sem_pend(&pan->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions
         dpl_sem_release(&pan->sem);
         assert(err == DPL_OK);
@@ -747,7 +740,7 @@ dw1000_pan_slot_timer_cb(struct dpl_event * ev)
     tdma_slot_t * slot = (tdma_slot_t *) dpl_event_get_arg(ev);
     
     tdma_instance_t * tdma = slot->parent;
-    dw1000_ccp_instance_t *ccp = tdma->ccp;
+    struct uwb_ccp_instance *ccp = tdma->ccp;
     dw1000_pan_instance_t *pan = (dw1000_pan_instance_t*)slot->arg;
     assert(pan);
     uint16_t idx = slot->idx;
@@ -765,7 +758,7 @@ dw1000_pan_slot_timer_cb(struct dpl_event * ev)
             uwb_set_rx_timeout(tdma->dev_inst, 3*ccp->period/tdma->nslots/4);
             uwb_set_delay_start(tdma->dev_inst, dx_time);
             uwb_set_on_error_continue(tdma->dev_inst, true);
-            dw1000_pan_listen(pan, DWT_BLOCKING);
+            dw1000_pan_listen(pan, UWB_BLOCKING);
         }
     } else {
         /* Act as a slave Node in the network */
@@ -782,13 +775,13 @@ dw1000_pan_slot_timer_cb(struct dpl_event * ev)
             uwb_set_rx_timeout(tdma->dev_inst, timeout);
             uwb_set_delay_start(tdma->dev_inst, tdma_rx_slot_start(tdma, idx));
             uwb_set_on_error_continue(tdma->dev_inst, true);
-            if (dw1000_pan_listen(pan, DWT_BLOCKING).start_rx_error) {
+            if (dw1000_pan_listen(pan, UWB_BLOCKING).start_rx_error) {
                 STATS_INC(g_stat, rx_error);
             }
         } else {
             /* Subslot 0 is for master reset, subslot 1 is for sending requests */
             uint64_t dx_time = tdma_tx_slot_start(tdma, (float)idx+1.0f/16);
-            dw1000_pan_blink(pan, pan->config->network_role, DWT_BLOCKING, dx_time);
+            dw1000_pan_blink(pan, pan->config->network_role, UWB_BLOCKING, dx_time);
         }
     }
 }

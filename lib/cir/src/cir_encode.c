@@ -26,8 +26,8 @@
 #include <cir/cir.h>
 
 
-#if MYNEWT_VAL(WCS_ENABLED)
-#include <wcs/wcs.h>
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+#include <uwb_wcs/uwb_wcs.h>
 #endif
 
 #if MYNEWT_VAL(CIR_VERBOSE)
@@ -77,7 +77,7 @@ cir_encode(cir_instance_t * cir, char * name, uint16_t nsize){
     encoder.je_arg= NULL;
 
     rc = json_encode_object_start(&encoder); 
-//#if MYNEWT_VAL(WCS_ENABLED)
+//#if MYNEWT_VAL(UWB_WCS_ENABLED)
 //    JSON_VALUE_UINT(&value, wcs_read_systime_master64(rng->dev_inst));   
 //#else
     JSON_VALUE_UINT(&value, os_cputime_ticks_to_usecs(os_cputime_get32()));
