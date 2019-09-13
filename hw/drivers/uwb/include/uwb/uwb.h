@@ -442,6 +442,26 @@ typedef struct uwb_dev_status (*uwb_set_on_error_continue_func_t)(struct uwb_dev
  */
 typedef void (*uwb_set_panid_func_t)(struct uwb_dev * dev, uint16_t pan_id);
 
+/**
+ * Calculate rssi from last RX in dBm. 
+ * Note that config.rxdiag_enable needs to be set.
+ *
+ * @param inst  Pointer to struct uwb_dev.
+ *
+ * @return rssi on success
+ */
+typedef float (*uwb_get_rssi_func_t)(struct uwb_dev * dev);
+
+/**
+ * Calculate First Path Power Level from last RX in dBm,
+ * Note that config.rxdiag_enable needs to be set.
+ *
+ * @param inst  Pointer to struct uwb_dev.
+ *
+ * @return fppl on success
+ */
+typedef float (*uwb_get_fppl_func_t)(struct uwb_dev * inst);
+
 
 struct uwb_driver_funcs {
     uwb_mac_config_func_t uf_mac_config;
@@ -468,6 +488,8 @@ struct uwb_driver_funcs {
     uwb_phy_forcetrxoff_func_t uf_phy_forcetrxoff;
     uwb_set_on_error_continue_func_t uf_set_on_error_continue;
     uwb_set_panid_func_t uf_set_panid;
+    uwb_get_rssi_func_t uf_get_rssi;
+    uwb_get_fppl_func_t uf_get_fppl;
 };
 
 struct uwb_dev {
@@ -858,6 +880,33 @@ static inline void uwb_set_panid(struct uwb_dev * dev, uint16_t pan_id)
 {
     return (dev->uw_funcs->uf_set_panid(dev, pan_id));
 }
+
+/**
+ * Calculate rssi from last RX in dBm. 
+ * Note that config.rxdiag_enable needs to be set.
+ *
+ * @param inst  Pointer to struct uwb_dev.
+ *
+ * @return rssi on success
+ */
+static inline float uwb_get_rssi(struct uwb_dev * dev)
+{
+    return (dev->uw_funcs->uf_get_rssi(dev));
+}
+
+/**
+ * Calculate First Path Power Level from last RX in dBm,
+ * Note that config.rxdiag_enable needs to be set.
+ *
+ * @param inst  Pointer to struct uwb_dev.
+ *
+ * @return fppl on success
+ */
+static inline float uwb_get_fppl(struct uwb_dev * dev)
+{
+    return (dev->uw_funcs->uf_get_fppl(dev));
+}
+
 
 #define uwb_dwt_usecs_to_usecs(_t) (double)( (_t) * (0x10000UL/(128*499.2)))
 #define uwb_usecs_to_dwt_usecs(_t) (double)( (_t) / uwb_dwt_usecs_to_usecs(1.0))

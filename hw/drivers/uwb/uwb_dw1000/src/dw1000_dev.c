@@ -665,6 +665,18 @@ uwb_dw1000_set_panid(struct uwb_dev * dev, uint16_t pan_id)
     return dw1000_set_panid((dw1000_dev_instance_t *)dev, pan_id);
 }
 
+inline static float
+uwb_dw1000_get_rssi(struct uwb_dev * dev)
+{
+    return dw1000_get_rssi((dw1000_dev_instance_t *)dev);
+}
+
+inline static float
+uwb_dw1000_get_fppl(struct uwb_dev * dev)
+{
+    return dw1000_get_fppl((dw1000_dev_instance_t *)dev);
+}
+
 static const struct uwb_driver_funcs dw1000_uwb_funcs = {
     .uf_mac_config = uwb_dw1000_mac_config,
     .uf_txrf_config = uwb_dw1000_txrf_config,
@@ -690,6 +702,8 @@ static const struct uwb_driver_funcs dw1000_uwb_funcs = {
     .uf_phy_forcetrxoff = uwb_dw1000_phy_forcetrxoff,
     .uf_set_on_error_continue = uwb_dw1000_set_on_error_continue,
     .uf_set_panid = uwb_dw1000_set_panid,
+    .uf_get_rssi = uwb_dw1000_get_rssi,
+    .uf_get_fppl = uwb_dw1000_get_fppl,
 };
 
 /**
