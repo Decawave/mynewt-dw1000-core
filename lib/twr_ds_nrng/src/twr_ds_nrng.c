@@ -42,7 +42,7 @@
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb_ftypes.h>
 #include <nranges/nranges.h>
 #include <dsp/polyval.h>
 
@@ -51,13 +51,13 @@
 #define DIAGMSG(s,u)
 #endif
 
-static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
-static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
-static bool rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
+static bool rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
 static void send_final_msg(dw1000_dev_instance_t * inst , nrng_frame_t * frame);
 
-static dw1000_mac_interface_t g_cbs = {
-            .id = DW1000_NRNG_DS,
+static struct uwb_mac_interface g_cbs = {
+            .id = UWBEXT_NRNG_DS,
             .rx_complete_cb = rx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
             .rx_error_cb = rx_error_cb,
@@ -98,9 +98,9 @@ static struct rng_config_list g_rng_cfgs = {
 void twr_ds_nrng_pkg_init(void){
 
     printf("{\"utime\": %lu,\"msg\": \"twr_ds_nrng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-    dw1000_nrng_instance_t *nrng = (dw1000_nrng_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NRNG);
+    dw1000_nrng_instance_t *nrng = (dw1000_nrng_instance_t*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_NRNG);
     g_cbs.inst_ptr = nrng;
-    dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs);
+    uwb_mac_append_interface(uwb_dev_idx_lookup(0), &g_cbs);
     dw1000_nrng_append_config(nrng, &g_rng_cfgs);
 
     int rc = stats_init(
@@ -123,9 +123,9 @@ void twr_ds_nrng_pkg_init(void){
  * @return void 
  */
 void 
-twr_ds_nrng_free(dw1000_dev_instance_t * inst){
+twr_ds_nrng_free(struct uwb_dev * inst){
     assert(inst); 
-    dw1000_mac_remove_interface(inst, DW1000_NRNG_DS);
+    uwb_mac_remove_interface(inst, UWBEXT_NRNG_DS);
 }
 
 
@@ -137,7 +137,7 @@ twr_ds_nrng_free(dw1000_dev_instance_t * inst){
  * @return true on sucess
  */
 static bool 
-rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs){
     if(inst->fctrl != FCNTL_IEEE_N_RANGES_16){
         return false;
     }
@@ -180,7 +180,7 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  * @return true on sucess
  */
 static bool 
-rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs){
     /* Place holder */
     if(inst->fctrl != FCNTL_IEEE_N_RANGES_16){
         return false;
@@ -203,7 +203,7 @@ rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
  * @return true on sucess
  */
 static bool 
-rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     if(inst->fctrl != FCNTL_IEEE_N_RANGES_16){
         return false;
@@ -234,7 +234,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 uint64_t request_timestamp = dw1000_read_rxtime(inst);
                 uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay
                             + (uint64_t)((slot_id-1) * ((uint64_t)config->tx_guard_delay
-                            + (dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)))))))<< 16);
+                            + (uwb_usecs_to_dwt_usecs(uwb_phy_frame_duration(inst, sizeof(nrng_response_frame_t)))))))<< 16);
 
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
@@ -245,21 +245,21 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->src_address = inst->my_short_address;
                 frame->code = DWT_DS_TWR_NRNG_T1;
                 frame->slot_id = inst->slot_id;
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = -dw1000_read_carrier_integrator(inst);
 #endif
-                dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_response_frame_t));
-                dw1000_write_tx_fctrl(inst, sizeof(nrng_response_frame_t), 0);
-                dw1000_set_wait4resp(inst, true);
-                uint16_t timeout =  config->tx_holdoff_delay + (uint16_t)(frame->end_slot_id - slot_id + 1) * (dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t))
+                uwb_write_tx(inst, frame->array, 0, sizeof(nrng_response_frame_t));
+                uwb_write_tx_fctrl(inst, sizeof(nrng_response_frame_t), 0);
+                uwb_set_wait4resp(inst, true);
+                uint16_t timeout =  config->tx_holdoff_delay + (uint16_t)(frame->end_slot_id - slot_id + 1) * (uwb_phy_frame_duration(inst, sizeof(nrng_response_frame_t))
                                     + config->rx_timeout_period
                                     + config->tx_guard_delay);
                                     
-                dw1000_set_rx_timeout(inst, timeout);
-                dw1000_set_delay_start(inst, response_tx_delay);
-                if (dw1000_start_tx(inst).start_tx_error){
+                uwb_set_rx_timeout(inst, timeout);
+                uwb_set_delay_start(inst, response_tx_delay);
+                if (uwb_start_tx(inst).start_tx_error){
                     os_sem_release(&nrng->sem);
                     if (cbs!=NULL && cbs->start_tx_error_cb)
                         cbs->start_tx_error_cb(inst, cbs);
@@ -286,14 +286,14 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 if(idx < (nnodes-1)){
                     // At the start the device will wait for the entire nnodes to respond as a single huge timeout.
                     // When a node respond we will recalculate the remaining time to be waited for as (total_nodes - completed_nodes)*(phy_duaration + guard_delay)
-                    uint16_t phy_duration = dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t));
+                    uint16_t phy_duration = uwb_phy_frame_duration(inst, sizeof(nrng_response_frame_t));
                     uint16_t timeout = ((phy_duration + dw1000_dwt_usecs_to_usecs(config->tx_guard_delay)) * (end_slot_id - node_slot_id));
-                    dw1000_set_rx_timeout(inst, timeout);
+                    uwb_set_rx_timeout(inst, timeout);
                     if (inst->config.dblbuffon_enabled == 0 || inst->config.rxauto_enable == 0) 
-                        dw1000_start_rx(inst);
+                        uwb_start_rx(inst);
                 }else{
                     if (inst->config.dblbuffon_enabled) 
-                        dw1000_stop_rx(inst);
+                        uwb_stop_rx(inst);
                 }
 
                 nrng_frame_t * frame = nrng->frames[idx][FIRST_FRAME_IDX];
@@ -316,7 +316,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->code = DWT_DS_TWR_NRNG_T2;
                 frame->start_slot_id = temp_frame.start_slot_id;
                 frame->end_slot_id = temp_frame.end_slot_id;
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = dw1000_read_carrier_integrator(inst);
@@ -328,16 +328,16 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 nrng->t1_final_flag = 1;
                 if(idx == (nnodes - 1))
                 {
-                    uint16_t timeout = (((nnodes) * (dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_final_frame_t))))
+                    uint16_t timeout = (((nnodes) * (uwb_usecs_to_dwt_usecs(uwb_phy_frame_duration(inst, sizeof(nrng_final_frame_t))))
                                 + (nnodes - 1)*(config->tx_guard_delay))
                             + config->tx_holdoff_delay         // Remote side turn arroud time.
                             + config->rx_timeout_period);
-                    dw1000_set_rx_timeout(inst, timeout);
+                    uwb_set_rx_timeout(inst, timeout);
 
-                    dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
-                    dw1000_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0);
-                    dw1000_set_wait4resp(inst, true);
-                    if (dw1000_start_tx(inst).start_tx_error){
+                    uwb_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
+                    uwb_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0);
+                    uwb_set_wait4resp(inst, true);
+                    if (uwb_start_tx(inst).start_tx_error){
                         os_sem_release(&nrng->sem);
                         if (cbs!=NULL && cbs->start_tx_error_cb)
                             cbs->start_tx_error_cb(inst, cbs);
@@ -363,29 +363,29 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 uint64_t request_timestamp = dw1000_read_rxtime(inst);
                 uint64_t response_tx_delay = request_timestamp + (((uint64_t)config->tx_holdoff_delay
                             + (uint64_t)((inst->slot_id-1) * ((uint64_t)config->tx_guard_delay
-                                    + dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_final_frame_t))))))<< 16);
+                                    + uwb_usecs_to_dwt_usecs(uwb_phy_frame_duration(inst, sizeof(nrng_final_frame_t))))))<< 16);
                 frame->request_timestamp = dw1000_read_txtime_lo(inst); // This corresponds to when the original request was actually sent
                 frame->response_timestamp = dw1000_read_rxtime_lo(inst);  // This corresponds to the response just received
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
                 frame->code = DWT_DS_TWR_NRNG_FINAL;
                 frame->slot_id = slot_id;
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = -dw1000_read_carrier_integrator(inst);
 #endif
-                dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_final_frame_t));
-                dw1000_write_tx_fctrl(inst, sizeof(nrng_final_frame_t), 0);
-                dw1000_set_delay_start(inst, response_tx_delay);
-                if (dw1000_start_tx(inst).start_tx_error){
+                uwb_write_tx(inst, frame->array, 0, sizeof(nrng_final_frame_t));
+                uwb_write_tx_fctrl(inst, sizeof(nrng_final_frame_t), 0);
+                uwb_set_delay_start(inst, response_tx_delay);
+                if (uwb_start_tx(inst).start_tx_error){
                     os_sem_release(&nrng->sem);
                     if (cbs!=NULL && cbs->start_tx_error_cb)
                         cbs->start_tx_error_cb(inst, cbs);
                 }else{
                     STATS_INC(g_stat, complete);
                     os_sem_release(&nrng->sem);
-                    dw1000_mac_interface_t * cbs = NULL;
+                    struct uwb_mac_interface * cbs = NULL;
                     if(!(SLIST_EMPTY(&inst->interface_cbs))){
                         SLIST_FOREACH(cbs, &inst->interface_cbs, next){
                             if (cbs!=NULL && cbs->complete_cb)
@@ -413,14 +413,14 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 if(idx < nnodes-1){
                     // At the start the device will wait for the entire nnodes to respond as a single huge timeout.
                     // When a node respond we will recalculate the remaining time to be waited for as (total_nodes - completed_nodes)*(phy_duaration + guard_delay)
-                    uint16_t phy_duration = dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_final_frame_t));
+                    uint16_t phy_duration = uwb_phy_frame_duration(inst, sizeof(nrng_final_frame_t));
                     uint16_t timeout = ((phy_duration + config->tx_guard_delay) * (end_slot_id - node_slot_id));
-                    dw1000_set_rx_timeout(inst, timeout);
+                    uwb_set_rx_timeout(inst, timeout);
                     if (inst->config.dblbuffon_enabled == 0 || inst->config.rxauto_enable == 0) 
-                        dw1000_start_rx(inst);
+                        uwb_start_rx(inst);
                 }else{
                      if (inst->config.dblbuffon_enabled)  
-                        dw1000_stop_rx(inst);
+                        uwb_stop_rx(inst);
                 }
                 nrng_frame_t *frame = nrng->frames[idx][SECOND_FRAME_IDX];
 
@@ -434,7 +434,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 {
                     STATS_INC(g_stat, complete);
                     os_sem_release(&nrng->sem);
-                    dw1000_mac_interface_t * cbs = NULL;
+                    struct uwb_mac_interface * cbs = NULL;
                     if(!(SLIST_EMPTY(&inst->interface_cbs))){
                         SLIST_FOREACH(cbs, &inst->interface_cbs, next){
                             if (cbs!=NULL && cbs->complete_cb)
@@ -454,26 +454,26 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 }
 
 static void 
-send_final_msg(dw1000_dev_instance_t * inst , nrng_frame_t * frame)
+send_final_msg(struct uwb_dev * inst , nrng_frame_t * frame)
 {
     //printf("final_cb\n");
     assert(inst->nrng);
     dw1000_nrng_instance_t * nrng = inst->nrng;
     dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, DWT_DS_TWR_NRNG);
     uint16_t nnodes = nrng->nnodes;
-    dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
-    dw1000_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0);
-    dw1000_set_wait4resp(inst, true);
-    uint16_t timeout = (((nnodes) * (dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_final_frame_t))))
+    uwb_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
+    uwb_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0);
+    uwb_set_wait4resp(inst, true);
+    uint16_t timeout = (((nnodes) * (uwb_usecs_to_dwt_usecs(uwb_phy_frame_duration(inst, sizeof(nrng_final_frame_t))))
             + (nnodes - 1)*(config->tx_guard_delay))
             + config->tx_holdoff_delay         // Remote side turn arroud time.
             + config->rx_timeout_period);
-    dw1000_set_rx_timeout(inst, timeout);
+    uwb_set_rx_timeout(inst, timeout);
 
     nrng->resp_count = 0;
     nrng->t1_final_flag = 0;
 
-    if (dw1000_start_tx(inst).start_tx_error)
+    if (uwb_start_tx(inst).start_tx_error)
         os_sem_release(&nrng->sem);
 }
 
