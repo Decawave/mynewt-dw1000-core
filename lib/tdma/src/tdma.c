@@ -179,7 +179,7 @@ tdma_free(tdma_instance_t * inst){
  */
 
 void tdma_pkg_init(void){
-#if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
+#if MYNEWT_VAL(UWB_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"tdma_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
 

@@ -85,7 +85,7 @@ static struct rng_config_list g_rng_cfgs = {
  */
 void twr_ss_nrng_pkg_init(void)
 {
-#if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
+#if MYNEWT_VAL(UWB_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"ss_nrng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
     struct uwb_dev *udev;

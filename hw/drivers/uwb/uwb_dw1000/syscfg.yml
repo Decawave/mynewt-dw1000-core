@@ -90,9 +90,6 @@ syscfg.defs:
         description: >
           Default Device ID, defaults to last 16 bit of prodid if set to 0 here
         value: 0
-    DW1000_PKG_INIT_LOG:
-        description: 'Enable init messages showing each package has been initialised'
-        value:  1
     TIME_TO_RX_STABLE:
         description: 'Idle to RX-RF-Block stable in us'
         value:  ((uint64_t)6)

@@ -46,6 +46,7 @@
 #include <newtmgr/newtmgr.h>
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
+#include <uwb/uwb.h>
 #include <dw1000/dw1000_dev.h>
 #include <dw1000/dw1000_hal.h>
 #if MYNEWT_VAL(NMGR_UWB_ENABLED)
@@ -256,6 +257,7 @@ static int
 uwbcfg_cli_cmd(int argc, char **argv)
 {
     const char* sending = "sending new cfg to %x:\n";
+    struct uwb_dev *udev = uwb_dev_idx_lookup(0);
     
     if (argc < 2) {
         console_printf("Too few args\n");
@@ -275,7 +277,7 @@ uwbcfg_cli_cmd(int argc, char **argv)
         console_printf(sending, addr);
         struct os_mbuf *om = get_txcfg_mbuf(fields, 0);
         if (!om) return 0;
-        nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NMGR_UWB);
+        nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)uwb_mac_find_cb_inst_ptr(udev, UWBEXT_NMGR_UWB);
         uwb_nmgr_queue_tx(nmgruwb, addr, NMGR_CMD_STATE_SEND, om);
     } else if(!strcmp(argv[1], "txcfg")) {
          /* uwbcfg txcfg 0xffff channel=5:prf=64:rx_sfdtype=1 */
@@ -288,7 +290,7 @@ uwbcfg_cli_cmd(int argc, char **argv)
         console_printf(sending, addr);
         struct os_mbuf *om = get_txcfg_mbuf(0, argv[3]);
         if (!om) return 0;
-        nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NMGR_UWB);
+        nmgr_uwb_instance_t *nmgruwb = (nmgr_uwb_instance_t*)uwb_mac_find_cb_inst_ptr(udev, UWBEXT_NMGR_UWB);
         uwb_nmgr_queue_tx(nmgruwb, addr, NMGR_CMD_STATE_SEND, om);
         
     } else {

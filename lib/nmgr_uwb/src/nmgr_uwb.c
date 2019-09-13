@@ -165,7 +165,7 @@ nmgr_uwb_init(struct uwb_dev* dev)
 void nmgr_uwb_pkg_init(void)
 {
     SYSINIT_ASSERT_ACTIVE();
-#if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
+#if MYNEWT_VAL(UWB_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"nmgr_uwb_init\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
 
