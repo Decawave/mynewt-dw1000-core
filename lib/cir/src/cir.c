@@ -88,33 +88,35 @@ cir_complete_ev_cb(struct os_event *ev) {
 #endif //CIR_VERBOSE
 
 
+/*! 
+ * @fn cir_remap_fp_index(cir_instance_t *cir0, cir_instance_t *cir1)
+ *
+ * @brief Map cir0's fp_idx into cir1 and return it
+ * 
+ * input parameters
+ * @param cir0 - The cir which fp_index will be remapped
+ * @param cir1 - The mapping target cir
+ *
+ * output parameters
+ *
+ * returns float cir0.fp_idx as it would have been inside cir1
+ */
 float
-cir_fp_index_diff(cir_instance_t *cir0, cir_instance_t *cir1)
+cir_remap_fp_index(cir_instance_t *cir0, cir_instance_t *cir1)
 {
     /* Correct aligment using raw timestamp and resampler delays */
-    double raw_ts_diff = ((int64_t) cir1->raw_ts + ((int64_t)cir1->resampler_delay)*8 -
-                           ((int64_t)cir0->raw_ts + ((int64_t)cir0->resampler_delay)*8))/64.0;
+    double raw_ts_diff = ((int64_t) cir0->raw_ts + ((int64_t)cir0->resampler_delay)*8 -
+                           ((int64_t)cir1->raw_ts + ((int64_t)cir1->resampler_delay)*8))/64.0;
+
     /* Compensate for different clock and rx-antenna delays */
     if (cir0->dev_inst && cir1->dev_inst) {
-        raw_ts_diff += ((int32_t)cir1->dev_inst->ext_clock_delay  - (int32_t)cir0->dev_inst->ext_clock_delay)/64.0f;
-        raw_ts_diff += ((int32_t)cir1->dev_inst->rx_antenna_delay - (int32_t)cir0->dev_inst->rx_antenna_delay)/64.0f;
+        raw_ts_diff += ((int32_t)cir0->dev_inst->ext_clock_delay  - (int32_t)cir1->dev_inst->ext_clock_delay)/64.0f;
+        raw_ts_diff += ((int32_t)cir0->dev_inst->rx_antenna_delay - (int32_t)cir1->dev_inst->rx_antenna_delay)/64.0f;
     }
 
-    float fp_diff = cir1->fp_idx - (cir0->fp_idx - raw_ts_diff);
-
-#if 0
-    printf("# delta fpid:%d, rtsd:%d(/100) fpd:%d, rsdly[%d,%d] antd:%ld\n",
-           (int)fp_diff,
-           (int)(100*raw_ts_diff),
-           (int)(cir0->fp_idx - cir1->fp_idx),
-           cir0->resampler_delay, cir1->resampler_delay,
-           (int32_t)cir1->dev_inst->rx_antenna_delay - (int32_t)cir0->dev_inst->rx_antenna_delay
-        );
-#endif
-
-    return fp_diff;
+    float fp_idx_0_given_1 = cir0->fp_idx + raw_ts_diff;
+    return fp_idx_0_given_1;
 }
-
 
 bool
 cir_reread_from_cir(dw1000_dev_instance_t * inst, cir_instance_t *master_cir)
@@ -125,8 +127,8 @@ cir_reread_from_cir(dw1000_dev_instance_t * inst, cir_instance_t *master_cir)
     }
     cir_instance_t * cir = inst->cir;
 
-    /* Correct aligment using raw timestamp and resampler delays */
-    float fp_idx_override  = cir->fp_idx - cir_fp_index_diff(master_cir, cir);
+    /* Correct aligment by remapping master_cir's fp_idx into our cir */
+    float fp_idx_override  = cir_remap_fp_index(master_cir, cir);
 
     /* Sanity check, only a fp_index within the accumulator makes sense */
     if(fp_idx_override < MYNEWT_VAL(CIR_OFFSET) || (fp_idx_override + MYNEWT_VAL(CIR_SIZE)) > 1023) {
@@ -140,19 +142,6 @@ cir_reread_from_cir(dw1000_dev_instance_t * inst, cir_instance_t *master_cir)
 
     dw1000_read_accdata(inst, (uint8_t *)&cir->cir, (fp_idx - MYNEWT_VAL(CIR_OFFSET)) * sizeof(cir_complex_t), sizeof(cir_t));
 
-#if 0
-    printf("\n# fpidx_override=%lld (%d)\n", (int64_t)fp_idx_override, (int)cir->fp_idx);
-    int64_t raw_ts_diff = ((int64_t)cir->raw_ts + ((int64_t)cir->resampler_delay)*8 -
-                           ((int64_t)master_cir->raw_ts + ((int64_t)master_cir->resampler_delay)*8))/64;
-    int64_t ts_diff = (int64_t)hal_dw1000_inst(0)->rxtimestamp - (int64_t)hal_dw1000_inst(1)->rxtimestamp;
-    printf("# delta fpid[%d]:%d, rtsd:%d, tsd:%dmm fpd:%d, rsdly[%d,%d]\n",
-           inst->idx,
-           fp_idx - (int)cir->fp_idx,
-           (int)raw_ts_diff, (int)(ts_diff*4.7f),
-           (int)(master_cir->fp_idx - cir->fp_idx),
-           master_cir->resampler_delay, cir->resampler_delay
-        );
-#endif
     /* No need to re-read rc-phase, it hasn't changed */
     cir->angle = atan2f((float)cir->cir.array[MYNEWT_VAL(CIR_OFFSET)].imag, (float)cir->cir.array[MYNEWT_VAL(CIR_OFFSET)].real);
     cir->status.valid = 1;
@@ -198,23 +187,11 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
          * each other (or rather their antennas).
          * */
         cir_instance_t * master_cir = hal_dw1000_inst(0)->cir;
-        int fp_idx_from_master  = cir->fp_idx - cir_fp_index_diff(master_cir, cir);
+        float fp_idx_from_master  = cir_remap_fp_index(master_cir, cir);
 
-#if 0
-        int64_t raw_ts_diff = ((int64_t)cir->raw_ts + ((int64_t)cir->resampler_delay)*8 -
-                               ((int64_t)master_cir->raw_ts + ((int64_t)master_cir->resampler_delay)*8))/64;
-        int64_t ts_diff = (int64_t)hal_dw1000_inst(0)->rxtimestamp - (int64_t)hal_dw1000_inst(1)->rxtimestamp;
-        printf("# delta fpid[%d]:%d, rtsd:%d, tsd:%dmm fpd:%d, rsdly[%d,%d]\n",
-               inst->idx,
-               fp_idx_from_master - fp_idx,
-               (int)raw_ts_diff, (int)(ts_diff*4.7f),
-               (int)(master_cir->fp_idx - cir->fp_idx),
-               master_cir->resampler_delay, cir->resampler_delay
-            );
-#endif
         /* Check if our first path comes before the master's first path.
          * If so, reread the master's CIR data if possible */
-        if (fp_idx_from_master - fp_idx > MYNEWT_VAL(CIR_PDOA_SLAVE_MAX_LEAD)) {
+        if (fp_idx_from_master - cir->fp_idx > MYNEWT_VAL(CIR_PDOA_SLAVE_MAX_LEAD)) {
             bool b = cir_reread_from_cir(hal_dw1000_inst(0), cir);
             if (!b) {
                 return true;
@@ -222,7 +199,7 @@ cir_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         } else {
             /* Override our local LDE with master's LDE */
             cir->status.lde_override = 1;
-            fp_idx = fp_idx_from_master;
+            fp_idx = (uint16_t)floorf(fp_idx_from_master + 0.5f);
         }
     }
 
