@@ -61,15 +61,6 @@ extern "C" {
 #define BROADCAST_ADDRESS          0xffff  //!< Broad cast addresss
 
 
-//! Structure of DW1000 attributes.
-typedef struct _dw1000_cmd{
-    uint32_t reg:6;                   //!< Indicates the register to be read or write into 
-    uint32_t subindex:1;              //!< Indicates offset address of the register 
-    uint32_t operation:1;             //!< Read or Write operation 
-    uint32_t extended:1;              //!< If subaddress is morethan 128 
-    uint32_t subaddress:15;           //!< Indicates subaddress of register 
-}dw1000_cmd_t;
-
 //! Device control status bits.
 typedef struct _dw1000_dev_control_t{
     uint32_t wait4resp_enabled:1;           //!< Wait for the response
