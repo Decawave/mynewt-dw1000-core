@@ -371,7 +371,7 @@ lease_expiry_cb(struct dpl_event * ev)
 
     DIAGMSG("{\"utime\": %lu,\"msg\": \"pan_lease_expired\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
     if (pan->control.postprocess) {
-        dpl_eventq_put(&((dw1000_dev_instance_t*)pan->dev_inst)->eventq, &pan->postprocess_event);
+        dpl_eventq_put(&pan->dev_inst->eventq, &pan->postprocess_event);
     }
 }
 
@@ -477,7 +477,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 
     /* Postprocess, all roles */
     if (pan->control.postprocess) {
-        dpl_eventq_put(&((dw1000_dev_instance_t*)inst)->eventq, &pan->postprocess_event);
+        dpl_eventq_put(&inst->eventq, &pan->postprocess_event);
     }
 
     /* Release sem */

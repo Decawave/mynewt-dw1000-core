@@ -68,7 +68,6 @@ STATS_NAME_END(mac_stat_section)
 #endif
 
 int dw1000_cli_register(void);
-static void * dw1000_interrupt_task(void *arg);
 static void dw1000_interrupt_ev_cb(struct dpl_event *ev);
 static void dw1000_irq(void *arg);
 
@@ -1196,26 +1195,16 @@ void
 dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
 {
     /* Check if the tasks are already initiated */
-    if (!dpl_eventq_inited(&inst->eventq))
+    if (!dpl_eventq_inited(&inst->uwb_dev.eventq))
     {
-        /* Use a dedicate event queue for timer and interrupt events */
-        dpl_eventq_init(&inst->eventq);
-        /*
-         * Create the task to process timer and interrupt events from the
-         * my_timer_interrupt_eventq event queue.
-         */
+        /* Initialise task structures in uwb_dev */
+        uwb_task_init(&inst->uwb_dev, dw1000_interrupt_ev_cb);
 
-        dpl_event_init(&inst->interrupt_ev, dw1000_interrupt_ev_cb, (void *)inst);
-        dpl_task_init(&inst->task_str, "dw1000_irq",
-                     dw1000_interrupt_task,
-                     (void *) inst,
-                     inst->uwb_dev.task_prio, DPL_WAIT_FOREVER,
-                     inst->task_stack,
-                     DW1000_DEV_TASK_STACK_SZ);
         /* Enable pull-down on IRQ to not get spurious interrupts when dw1000 is sleeping */
         hal_gpio_irq_init(inst->irq_pin, dw1000_irq, inst, HAL_GPIO_TRIG_RISING, HAL_GPIO_PULL_DOWN);
         hal_gpio_irq_enable(inst->irq_pin);
-    }    
+    }
+    /* Setup interrupt mask */
     dw1000_phy_interrupt_mask(inst,          SYS_MASK_MCPLOCK | SYS_MASK_MRXDFR | SYS_MASK_MLDEERR |  SYS_MASK_MTXFRS  | SYS_MASK_ALL_RX_TO   | SYS_MASK_ALL_RX_ERR | SYS_MASK_MTXBERR, false);
     dw1000_write_reg(inst, SYS_STATUS_ID, 0, SYS_STATUS_SLP2INIT | SYS_STATUS_CPLOCK| SYS_STATUS_RXDFR | SYS_STATUS_LDEERR | SYS_STATUS_TXFRS | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR | SYS_STATUS_TXBERR, sizeof(uint32_t));
     dw1000_phy_interrupt_mask(inst,          SYS_MASK_MCPLOCK | SYS_MASK_MRXDFR | SYS_MASK_MLDEERR | SYS_MASK_MTXFRS  | SYS_MASK_ALL_RX_TO   | SYS_MASK_ALL_RX_ERR | SYS_MASK_MTXBERR, true);
@@ -1229,25 +1218,10 @@ dw1000_tasks_init(struct _dw1000_dev_instance_t * inst)
  * @return void
  */
 static void 
-dw1000_irq(void *arg){
-    dw1000_dev_instance_t * inst = arg;
-    dpl_eventq_put(&inst->eventq, &inst->interrupt_ev);   
-}
-
-/**
- * API to execute each of the interrupt in queue.
- *
- * @param arg  Pointer to the queue of interrupts.
- * @return void
- */
-static void *
-dw1000_interrupt_task(void *arg)
+dw1000_irq(void *arg)
 {
     dw1000_dev_instance_t * inst = arg;
-    while (1) {
-        dpl_eventq_run(&inst->eventq);
-    }
-    return NULL;
+    dpl_eventq_put(&inst->uwb_dev.eventq, &inst->uwb_dev.interrupt_ev);
 }
 
 

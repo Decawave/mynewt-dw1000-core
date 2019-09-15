@@ -21,10 +21,13 @@
 #define __UWB_H__
 
 #include <os/os_dev.h>
+#include <dpl/dpl.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define UWB_DEV_TASK_STACK_SZ (MYNEWT_VAL(UWB_DEV_TASK_STACK_SZ))
 
 //! Extension ids for services.
 typedef enum uwb_extension_id {
@@ -498,6 +501,11 @@ struct uwb_dev {
 
     /* Interrupt handling */
     uint8_t task_prio;                          //!< Priority of the interrupt task
+    struct dpl_eventq eventq;                   //!< Structure of dpl_eventq that has event queue
+    struct dpl_event interrupt_ev;              //!< Structure of dpl_event that trigger interrupts
+    struct dpl_task task_str;                   //!< Structure of dpl_task that has interrupt task
+    dpl_stack_t task_stack[UWB_DEV_TASK_STACK_SZ] //!< Stack of the interrupt task
+        __attribute__((aligned(DPL_STACK_ALIGNMENT)));
 
     /* RX data from latest frame received */
     union {
@@ -917,6 +925,8 @@ void* uwb_mac_find_cb_inst_ptr(struct uwb_dev *dev, uint16_t id);
 struct uwb_mac_interface *uwb_mac_get_interface(struct uwb_dev* dev, uwb_extension_id_t id);
     
 struct uwb_dev* uwb_dev_idx_lookup(int idx);
+
+void uwb_task_init(struct uwb_dev * inst, void (*irq_ev_cb)(struct dpl_event*));
 
 #ifdef __cplusplus
 }

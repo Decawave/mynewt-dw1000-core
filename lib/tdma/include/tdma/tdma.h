@@ -92,7 +92,7 @@ typedef struct _tdma_instance_t{
     struct dpl_eventq eventq;                //!< Structure of events
     struct dpl_task task_str;                //!< Structure of tasks
     uint8_t task_prio;                       //!< Priority of tasks
-    dpl_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]   //!< Stack size of each task
+    dpl_stack_t task_stack[UWB_DEV_TASK_STACK_SZ]   //!< Stack size of each task
         __attribute__((aligned(DPL_STACK_ALIGNMENT)));
 #if MYNEWT_VAL(TDMA_SANITY_INTERVAL) > 0
     struct dpl_callout sanity_cb;            //!< Structure of sanity_cb

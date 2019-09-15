@@ -58,9 +58,6 @@ extern "C" {
 #define DWT_ERROR   (-1)             //!< DWT Error
 #define DWT_TIME_UNITS          (1.0/499.2e6/128.0) //!< DWT time units calculation
 
-#define DW1000_DEV_TASK_PRIO        MYNEWT_VAL(DW1000_DEV_TASK_PRIO)   //!< Priority for DW1000 Dev Task
-#define DW1000_DEV_TASK_STACK_SZ    MYNEWT_VAL(DW1000_DEV_TASK_STACK_SZ) //!< Stack size for DW1000 Dev Task
-
 #define BROADCAST_ADDRESS          0xffff  //!< Broad cast addresss
 
 
@@ -139,11 +136,6 @@ typedef struct _dw1000_dev_instance_t{
     uint32_t sys_status;           //!< SYS_STATUS_ID for current event
     
     struct hal_spi_settings spi_settings;  //!< Structure of SPI settings in hal layer 
-    struct dpl_eventq eventq;     //!< Structure of os_eventq that has event queue 
-    struct dpl_event interrupt_ev;//!< Structure of os_event that trigger interrupts 
-    struct dpl_task task_str;     //!< Structure of os_task that has interrupt task 
-    dpl_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ]  //!< Stack of the interrupt task 
-        __attribute__((aligned(DPL_STACK_ALIGNMENT)));
 #if MYNEWT_VAL(CIR_ENABLED)
     struct _cir_instance_t * cir;                  //!< CIR instance
 #endif
@@ -161,7 +153,7 @@ typedef struct _dw1000_dev_instance_t{
 //! SPI parameters
 struct dw1000_dev_cfg {
     struct dpl_sem *spi_sem;                        //!< Pointer to os_sem structure to lock spi bus
-    int spi_num;                                   //!< SPI number
+    int spi_num;                                    //!< SPI number
 };
 
 typedef void (* dw1000_dev_cb_t)(dw1000_dev_instance_t * inst);

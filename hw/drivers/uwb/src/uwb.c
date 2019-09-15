@@ -127,3 +127,51 @@ uwb_mac_find_cb_inst_ptr(struct uwb_dev *dev, uint16_t id)
     }
     return 0;
 }
+
+/**
+ * API to execute each of the interrupt in queue.
+ *
+ * @param arg  Pointer to the queue of interrupts.
+ * @return void
+ */
+static void *
+uwb_interrupt_task(void *arg)
+{
+    struct uwb_dev * inst = (struct uwb_dev *)arg;
+    while (1) {
+        dpl_eventq_run(&inst->eventq);
+    }
+    return NULL;
+}
+
+/**
+ * The UWB processing of interrupts in a task context instead of the interrupt context such that other interrupts 
+ * and high priority tasks are not blocked waiting for the interrupt handler to complete processing. 
+ * This uwb softstack needs to coexists with other stacks and sensors interfaces. 
+ *
+ * @param inst      Pointer to struct uwb_dev.
+ * @param irq_ev_cb Pointer to function processing interrupt
+ *
+ * @return void
+ */
+void
+uwb_task_init(struct uwb_dev * inst, void (*irq_ev_cb)(struct dpl_event*))
+{
+    /* Check if the task is already initiated */
+    if (!dpl_eventq_inited(&inst->eventq))
+    {
+        /* Use a dedicate event queue for timer and interrupt events */
+        dpl_eventq_init(&inst->eventq);
+        /*
+         * Create the task to process timer and interrupt events from the
+         * my_timer_interrupt_eventq event queue.
+         */
+        dpl_event_init(&inst->interrupt_ev, irq_ev_cb, (void *)inst);
+        dpl_task_init(&inst->task_str, "uwb_irq",
+                     uwb_interrupt_task,
+                     (void *) inst,
+                     inst->task_prio, DPL_WAIT_FOREVER,
+                     inst->task_stack,
+                     UWB_DEV_TASK_STACK_SZ);
+    }
+}
