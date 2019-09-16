@@ -32,7 +32,7 @@
 extern "C" {
 #endif
 
-void nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base);
+void nrng_encode(struct nrng_instance * nrng, uint8_t seq_num, uint16_t base);
 
 #ifdef __cplusplus
 }

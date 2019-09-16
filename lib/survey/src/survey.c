@@ -137,7 +137,7 @@ survey_init(struct uwb_dev * inst, uint16_t nnodes, uint16_t nframes){
         /* Lookup the other instances we will need */
         survey->dev_inst = inst;
         survey->ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
-        survey->nrng = (dw1000_nrng_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_NRNG);
+        survey->nrng = (struct nrng_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_NRNG);
 
         dpl_error_t err = dpl_sem_init(&survey->sem, 0x1); 
         assert(err == DPL_OK);
@@ -314,10 +314,10 @@ survey_request(survey_instance_t * survey, uint64_t dx_time)
     STATS_INC(survey->stat, request);
     
     uint32_t slot_mask = ~(~0UL << (survey->nnodes));
-    dw1000_nrng_request_delay_start(survey->nrng, 0xffff, dx_time, DWT_SS_TWR_NRNG, slot_mask, 0);
+    nrng_request_delay_start(survey->nrng, 0xffff, dx_time, DWT_SS_TWR_NRNG, slot_mask, 0);
     
     survey_nrngs_t * nrngs = survey->nrngs[(survey->idx)%survey->nframes];
-    nrngs->nrng[slot_id]->mask = dw1000_nrng_get_ranges(survey->nrng, 
+    nrngs->nrng[slot_id]->mask = nrng_get_ranges(survey->nrng, 
                                 nrngs->nrng[slot_id]->rng, 
                                 survey->nnodes, 
                                 survey->nrng->idx
@@ -336,7 +336,7 @@ survey_listen(survey_instance_t * survey, uint64_t dx_time){
     uint16_t timeout = uwb_phy_frame_duration(survey->dev_inst, sizeof(nrng_request_frame_t))
                         + survey->nrng->config.rx_timeout_delay;
     uwb_set_rx_timeout(survey->dev_inst, timeout + 0x1000);
-    dw1000_nrng_listen(survey->nrng, UWB_BLOCKING);
+    nrng_listen(survey->nrng, UWB_BLOCKING);
 
     return survey->status;
 }
@@ -345,7 +345,7 @@ survey_listen(survey_instance_t * survey, uint64_t dx_time){
 /**
  * API to broadcasts survey results
  *
- * @param inst pointer to _dw1000_dev_instance_t.
+ * @param inst pointer to survey_instance_t * survey.
  * @param dx_time time to start broadcast
  * @return survey_status_t
  * 
@@ -399,7 +399,7 @@ survey_broadcaster(survey_instance_t * survey, uint64_t dx_time){
 /**
  * API to receive survey broadcasts
  *
- * @param inst pointer to _dw1000_dev_instance_t.
+ * @param inst pointer to survey_instance_t * survey.
  * @param dx_time time to start received
  * @return survey_status_t
  * 
@@ -435,7 +435,7 @@ survey_receiver(survey_instance_t * survey, uint64_t dx_time){
 /**
  * API for receive survey broadcasts.
  * 
- * @param inst pointer to dw1000_dev_instance_t
+ * @param inst pointer to struct uwb_dev
  * @param cbs pointer tostruct uwb_mac_interface
  * @return true on sucess
  */
@@ -499,7 +499,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /**
  * API for transmission complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
@@ -521,7 +521,7 @@ tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /**
  * API for timeout complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
@@ -544,7 +544,7 @@ rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /** 
  * API for reset_cb of survey interface
  *
- * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @param inst   Pointer to struct uwb_dev. 
  * @return true on sucess
  */
 static bool

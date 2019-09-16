@@ -98,10 +98,10 @@ static struct rng_config_list g_rng_cfgs = {
 void twr_ds_nrng_pkg_init(void){
 
     printf("{\"utime\": %lu,\"msg\": \"twr_ds_nrng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-    dw1000_nrng_instance_t *nrng = (dw1000_nrng_instance_t*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_NRNG);
+    struct nrng_instance *nrng = (struct nrng_instance*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_NRNG);
     g_cbs.inst_ptr = nrng;
     uwb_mac_append_interface(uwb_dev_idx_lookup(0), &g_cbs);
-    dw1000_nrng_append_config(nrng, &g_rng_cfgs);
+    nrng_append_config(nrng, &g_rng_cfgs);
 
     int rc = stats_init(
     STATS_HDR(g_stat),
@@ -146,7 +146,7 @@ rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs){
         case DWT_DS_TWR_NRNG ... DWT_DS_TWR_NRNG_FINAL:
         {
           assert(inst->nrng);
-          dw1000_nrng_instance_t * nrng = inst->nrng;
+          struct nrng_instance * nrng = inst->nrng;
           if(nrng->device_type == DWT_NRNG_INITIATOR){ // only if the device is an initiator
               if(nrng->resp_count && nrng->t1_final_flag){
                   nrng_frame_t * frame = nrng->frames[nrng->idx][SECOND_FRAME_IDX];
@@ -187,7 +187,7 @@ rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs){
     }
     STATS_INC(g_stat, rx_error);
     assert(inst->nrng);
-    dw1000_nrng_instance_t * nrng = inst->nrng;
+    struct nrng_instance * nrng = inst->nrng;
     if(os_sem_get_count(&nrng->sem) == 0){
         os_error_t err = os_sem_release(&nrng->sem);
         assert(err == OS_OK);
@@ -215,8 +215,8 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
     }
 
     assert(inst->nrng);
-    dw1000_nrng_instance_t * nrng = inst->nrng;
-    struct uwb_rng_config * config = dw1000_nrng_get_config(inst, DWT_DS_TWR_NRNG);
+    struct nrng_instance * nrng = inst->nrng;
+    struct uwb_rng_config * config = nrng_get_config(inst, DWT_DS_TWR_NRNG);
     switch(inst->nrng->code){
         case DWT_DS_TWR_NRNG:
             {
@@ -458,8 +458,8 @@ send_final_msg(struct uwb_dev * inst , nrng_frame_t * frame)
 {
     //printf("final_cb\n");
     assert(inst->nrng);
-    dw1000_nrng_instance_t * nrng = inst->nrng;
-    struct uwb_rng_config * config = dw1000_nrng_get_config(inst, DWT_DS_TWR_NRNG);
+    struct nrng_instance * nrng = inst->nrng;
+    struct uwb_rng_config * config = nrng_get_config(inst, DWT_DS_TWR_NRNG);
     uint16_t nnodes = nrng->nnodes;
     uwb_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
     uwb_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0);

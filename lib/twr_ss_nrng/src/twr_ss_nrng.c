@@ -90,10 +90,10 @@ void twr_ss_nrng_pkg_init(void)
 #endif
     struct uwb_dev *udev;
     udev = uwb_dev_idx_lookup(0);
-    dw1000_nrng_instance_t *nrng = (dw1000_nrng_instance_t*)uwb_mac_find_cb_inst_ptr(udev, UWBEXT_NRNG);
+    struct nrng_instance *nrng = (struct nrng_instance*)uwb_mac_find_cb_inst_ptr(udev, UWBEXT_NRNG);
     g_cbs.inst_ptr = nrng;
     uwb_mac_append_interface(udev, &g_cbs);
-    dw1000_nrng_append_config(nrng, &g_rng_cfgs);
+    nrng_append_config(nrng, &g_rng_cfgs);
 }
 
 
@@ -122,7 +122,7 @@ twr_ss_nrng_free(struct uwb_dev * inst)
 static bool 
 rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *)cbs->inst_ptr;
+    struct nrng_instance * nrng = (struct nrng_instance *)cbs->inst_ptr;
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
     
@@ -146,7 +146,7 @@ rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 static bool 
 rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *)cbs->inst_ptr;
+    struct nrng_instance * nrng = (struct nrng_instance *)cbs->inst_ptr;
     if(dpl_sem_get_count(&nrng->sem) == 1)
         return false;
 
@@ -176,7 +176,7 @@ rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 static bool
 reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *)cbs->inst_ptr;
+    struct nrng_instance * nrng = (struct nrng_instance *)cbs->inst_ptr;
     if(dpl_sem_get_count(&nrng->sem) == 0){
         dpl_error_t err = dpl_sem_release(&nrng->sem);
         assert(err == DPL_OK);
@@ -197,7 +197,7 @@ reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 static bool 
 rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *)cbs->inst_ptr;
+    struct nrng_instance * nrng = (struct nrng_instance *)cbs->inst_ptr;
 
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
@@ -208,7 +208,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
         return false;
     }
 
-    struct uwb_rng_config * config = dw1000_nrng_get_config(nrng, DWT_SS_TWR_NRNG);
+    struct uwb_rng_config * config = nrng_get_config(nrng, DWT_SS_TWR_NRNG);
     nrng_request_frame_t * _frame = (nrng_request_frame_t * )inst->rxbuf;
 
     if (_frame->dst_address != inst->my_short_address && _frame->dst_address != BROADCAST_ADDRESS)

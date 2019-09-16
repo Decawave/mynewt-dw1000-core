@@ -99,7 +99,7 @@ typedef struct _survey_config_t{
 typedef struct _survey_instance_t{
     struct uwb_dev * dev_inst;                  //!< Pointer to struct uwb_dev
     struct uwb_ccp_instance * ccp;              //!< Pointer to uwb_ccp_instance
-    struct _dw1000_nrng_instance_t * nrng;      //!< Pointer to _dw1000_nrng_instance_t
+    struct nrng_instance * nrng;                //!< Pointer to _dw1000_nrng_instance_t
     STATS_SECT_DECL(survey_stat_section) stat;  //!< Stats instance
     struct uwb_mac_interface cbs;               //!< MAC Layer Callbacks
     void (* survey_complete_cb) (struct dpl_event *ev); //!< Optional Callback for post processing

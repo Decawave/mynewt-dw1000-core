@@ -127,7 +127,7 @@ dw1000_dump_registers(struct _dw1000_dev_instance_t * inst)
         console_printf("{\"rng->sem\"=\"0x%0X\"}\n", dpl_sem_get_count(&rng->sem));
 #endif
 #if MYNEWT_VAL(NRNG_ENABLED)
-    dw1000_nrng_instance_t *nrng = (dw1000_nrng_instance_t*)uwb_mac_find_cb_inst_ptr(&inst->uwb_dev, UWBEXT_NRNG);
+    struct nrng_instance *nrng = (struct nrng_instance*)uwb_mac_find_cb_inst_ptr(&inst->uwb_dev, UWBEXT_NRNG);
     if (nrng)
         console_printf("{\"nrng->sem\"=\"0x%0X\"}\n", dpl_sem_get_count(&nrng->sem));
 #endif

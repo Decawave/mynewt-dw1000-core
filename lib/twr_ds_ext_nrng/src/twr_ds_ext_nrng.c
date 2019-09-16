@@ -152,7 +152,7 @@ rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs){
     switch(inst->nrng->code){
         case DWT_DS_TWR_NRNG_EXT ... DWT_DS_TWR_NRNG_EXT_FINAL:
             {
-                dw1000_nrng_instance_t * nrng = inst->nrng;
+                struct nrng_instance * nrng = inst->nrng;
                 if(nrng->device_type == DWT_NRNG_INITIATOR){ // only if the device is an initiator
                     if(nrng->resp_count && nrng->t1_final_flag){
                         nrng_frame_t * frame = nrng->frames[nrng->idx][SECOND_FRAME_IDX];
@@ -195,7 +195,7 @@ rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs){
     }
     STATS_INC(g_stat, rx_error);
     assert(inst->nrng);
-    dw1000_nrng_instance_t * nrng = inst->nrng;
+    struct nrng_instance * nrng = inst->nrng;
     os_error_t err = os_sem_release(&nrng->sem);
     assert(err == OS_OK);
     return true;
@@ -218,8 +218,8 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 	return false;
     }
     assert(inst->nrng);
-    dw1000_nrng_instance_t * nrng = inst->nrng;
-    struct uwb_rng_config * config = dw1000_nrng_get_config(inst, DWT_DS_TWR_NRNG_EXT);
+    struct nrng_instance * nrng = inst->nrng;
+    struct uwb_rng_config * config = nrng_get_config(inst, DWT_DS_TWR_NRNG_EXT);
     switch(inst->nrng->code){
         case DWT_DS_TWR_NRNG_EXT:
             {
@@ -440,8 +440,8 @@ static void
 send_final_msg(dw1000_dev_instance_t * inst , nrng_frame_t * frame){
     //printf("final_cb\n");
     assert(inst->nrng);
-    dw1000_nrng_instance_t * nrng = inst->nrng;
-    struct uwb_rng_config * config = dw1000_nrng_get_config(inst, DWT_DS_TWR_NRNG_EXT);
+    struct nrng_instance * nrng = inst->nrng;
+    struct uwb_rng_config * config = nrng_get_config(inst, DWT_DS_TWR_NRNG_EXT);
     uint16_t nnodes = nrng->nnodes;
     uwb_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
     uwb_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0);
@@ -461,7 +461,7 @@ send_final_msg(dw1000_dev_instance_t * inst , nrng_frame_t * frame){
 
 static bool
 tx_final_cb(dw1000_dev_instance_t * inst, struct uwb_mac_interface *cbs){
-    dw1000_nrng_instance_t * nrng = inst->nrng;
+    struct nrng_instance * nrng = inst->nrng;
     nrng_frame_t * frame = nrng->frames[nrng->idx%(nrng->nframes/FRAMES_PER_RANGE)][SECOND_FRAME_IDX];
 
     frame->cartesian.x = MYNEWT_VAL(LOCAL_COORDINATE_X);

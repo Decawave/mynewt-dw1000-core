@@ -104,10 +104,10 @@ static struct rng_config_list g_rng_cfgs = {
 void twr_ss_ext_nrng_pkg_init(void)
 {
     printf("{\"utime\": %lu,\"msg\": \"ss_ext_nrng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-    dw1000_nrng_instance_t *nrng = (dw1000_nrng_instance_t*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_NRNG);
+    struct nrng_instance *nrng = (struct nrng_instance*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_NRNG);
     g_cbs.inst_ptr = nrng;
     uwb_mac_append_interface(uwb_dev_idx_lookup(0), &g_cbs);
-    dw1000_nrng_append_config(nrng, &g_rng_cfgs);
+    nrng_append_config(nrng, &g_rng_cfgs);
 
     int rc = stats_init(
     STATS_HDR(g_stat),
@@ -172,8 +172,8 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 	    return false;
     assert(inst->nrng);
     struct uwb_rng_instance * rng = inst->rng;
-    dw1000_nrng_instance_t * nrng = inst->nrng;
-    struct uwb_rng_config * config = dw1000_nrng_get_config(inst, DWT_SS_TWR_NRNG_EXT);
+    struct nrng_instance * nrng = inst->nrng;
+    struct uwb_rng_config * config = nrng_get_config(inst, DWT_SS_TWR_NRNG_EXT);
     uint16_t slot_idx;
 
     switch(rng->code){
@@ -298,7 +298,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 
 static bool
 tx_final_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbscbs){
-    dw1000_nrng_instance_t * nrng = inst->nrng;
+    struct nrng_instance * nrng = inst->nrng;
     nrng_frame_t * frame = nrng->frames[nrng->idx%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
 
     frame->cartesian.x = MYNEWT_VAL(LOCAL_COORDINATE_X);

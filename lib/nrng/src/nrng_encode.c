@@ -24,7 +24,6 @@
 #include <stdio.h>
 #include <uwb_rng/uwb_rng.h>
 #include <json/json.h>
-#include <dw1000/dw1000_mac.h>
 #include <nrng/nrng_encode.h>
 
 #if MYNEWT_VAL(NRNG_VERBOSE)
@@ -62,7 +61,7 @@ json_write(void *buf, char* data, int len) {
 
 
 void
-nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base){
+nrng_encode(struct nrng_instance * nrng, uint8_t seq_num, uint16_t base){
 
     struct json_encoder encoder;
     struct json_value value;
@@ -108,7 +107,7 @@ nrng_encode(dw1000_nrng_instance_t * nrng, uint8_t seq_num, uint16_t base){
             uint16_t idx = BitIndex(nrng->slot_mask, 1UL << i, SLOT_POSITION); 
             nrng_frame_t * frame = nrng->frames[(base + idx)%nrng->nframes];
             if (frame->code == DWT_SS_TWR_NRNG_FINAL && frame->seq_num == seq_num){
-                float range = uwb_rng_tof_to_meters(dw1000_nrng_twr_to_tof_frames(nrng->dev_inst, frame, frame));
+                float range = uwb_rng_tof_to_meters(nrng_twr_to_tof_frames(nrng->dev_inst, frame, frame));
 #if MYNEWT_VAL(FLOAT_USER)
                 char float_string[16];
                 sprintf(float_string,"%f",range);
