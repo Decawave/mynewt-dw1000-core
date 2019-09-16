@@ -11,9 +11,9 @@
 
 // #define VERBOSE
 
-#if MYNEWT_VAL(PAN_ENABLED)
+#if MYNEWT_VAL(UWB_PAN_ENABLED)
 #include <uwb/uwb.h>
-#include <pan/pan.h>
+#include <uwb_pan/uwb_pan.h>
 #include <uwb_ccp/uwb_ccp.h>
 
 #endif
@@ -137,7 +137,7 @@ panm_init_fcb(void)
 }
 #endif
 
-#if MYNEWT_VAL(PAN_ENABLED)
+#if MYNEWT_VAL(UWB_PAN_ENABLED)
 static void
 panmaster_dw1000_cb(struct dpl_event * ev)
 {
@@ -145,9 +145,9 @@ panmaster_dw1000_cb(struct dpl_event * ev)
     assert(ev != NULL);
     assert(dpl_event_get_arg(ev));
 
-    dw1000_pan_instance_t * pan = (dw1000_pan_instance_t *)ev->ev.ev_arg;
+    struct uwb_pan_instance * pan = (struct uwb_pan_instance *)ev->ev.ev_arg;
 
-    if (pan->config->role != PAN_ROLE_MASTER) {
+    if (pan->config->role != UWB_PAN_ROLE_MASTER) {
         return;
     }
 
@@ -223,12 +223,12 @@ panmaster_pkg_init(void)
         PANMASTER_NODE_IDX_DEFAULT(node_idx[i]);
     }
 
-#if MYNEWT_VAL(PAN_ENABLED)
+#if MYNEWT_VAL(UWB_PAN_ENABLED)
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    dw1000_pan_instance_t * pan = (dw1000_pan_instance_t*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_PAN);
+    struct uwb_pan_instance * pan = (struct uwb_pan_instance*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_PAN);
     assert(pan);
-    dw1000_pan_set_postprocess(pan, panmaster_dw1000_cb);
+    uwb_pan_set_postprocess(pan, panmaster_dw1000_cb);
 #endif
 
 #endif

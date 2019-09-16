@@ -21,6 +21,8 @@ syscfg.defs:
     PANMASTER_MAXNUM_NODES:
         description: 'Max number of nodes to support'
         value: 128
+        restrictions:
+          - 'UWB_PAN_ENABLED'
     PANMASTER_SORT_AT_INIT:
         description: 'Sort database at startup'
         value: 1

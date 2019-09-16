@@ -17,15 +17,18 @@
 # under the License.
 #
 
-pkg.name: lib/pan
-pkg.description: Signal processing toolbox
+pkg.name: lib/uwb_pan
+pkg.description: Private Area Network management, address and slot control. 
 pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
-    - dw1000
     - uwb
-
+    - pan
+    
 pkg.deps:
+    - "@mynewt-dw1000-core/hw/drivers/uwb"
+  
+pkg.deps.UWB_PAN_VERSION_ENABLED:
     - "@apache-mynewt-core/mgmt/imgmgr"
     - "@apache-mynewt-core/boot/bootutil"
 
@@ -36,4 +39,4 @@ pkg.cflags:
 pkg.lflags:
     - "-lm"
 pkg.init:
-    pan_pkg_init: 404
+    uwb_pan_pkg_init: 404

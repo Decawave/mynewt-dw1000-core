@@ -32,7 +32,7 @@ pkg.deps:
     - "@apache-mynewt-core/sys/stats/full"
     - "@apache-mynewt-core/sys/config"
     - "@apache-mynewt-core/time/datetime"
-    - "@mynewt-dw1000-core/lib/pan"
+    - "@mynewt-dw1000-core/lib/uwb_pan"
     
 pkg.deps.PANMASTER_NFFS:
     - "@apache-mynewt-core/fs/fs"

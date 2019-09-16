@@ -20,7 +20,7 @@
  */
 
 /**
- * @file dw1000_pan.h
+ * @file uwb_pan.h
  * @author paul kettle
  * @date 2018
  * @brief Personal Area Network
@@ -29,8 +29,8 @@
  *
  */
 
-#ifndef _DW1000_PAN_H_
-#define _DW1000_PAN_H_
+#ifndef _UWB_PAN_H_
+#define _UWB_PAN_H_
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -43,17 +43,17 @@ extern "C" {
 #include <uwb/uwb_ftypes.h>
 #include <dw1000/dw1000_regs.h>
 #include <dw1000/dw1000_dev.h>
-#if MYNEWT_VAL(PAN_VERSION_ENABLED)
+#if MYNEWT_VAL(UWB_PAN_VERSION_ENABLED)
 #include <bootutil/image.h>
 #endif
 
 //! Roles available for PAN
-typedef enum _dw1000_pan_role_t{
-    PAN_ROLE_INVALID = 0,                   //!< Pan master mode
-    PAN_ROLE_MASTER,                        //!< Pan master mode
-    PAN_ROLE_SLAVE,                         //!< Pan slave mode
-    PAN_ROLE_RELAY                          //!< Pan relay mode
-}dw1000_pan_role_t;
+typedef enum _uwb_pan_role_t{
+    UWB_PAN_ROLE_INVALID = 0,                   //!< Pan master mode
+    UWB_PAN_ROLE_MASTER,                        //!< Pan master mode
+    UWB_PAN_ROLE_SLAVE,                         //!< Pan slave mode
+    UWB_PAN_ROLE_RELAY                          //!< Pan relay mode
+}uwb_pan_role_t;
 
 //! Network Roles
 typedef enum {
@@ -64,12 +64,12 @@ typedef enum {
 
 
 //! Pan package codes.
-typedef enum _dw1000_pan_modes_t{
+typedef enum _uwb_pan_modes_t{
     DWT_PAN_INVALID = 0,             //!< Invalid Pan message
     DWT_PAN_REQ,                     //!< Pan request
     DWT_PAN_RESP,                    //!< Pan response
     DWT_PAN_RESET,                   //!< Pan reset, in case of master restart
-}dw1000_pan_code_t;
+}uwb_pan_code_t;
 
 //! Union of response frame format
 typedef union{
@@ -83,7 +83,7 @@ typedef union{
         uint16_t role;                       //!< Requested role in network
         uint16_t lease_time;                 //!< Requested lease time in seconds
         union {
-#if MYNEWT_VAL(PAN_VERSION_ENABLED)
+#if MYNEWT_VAL(UWB_PAN_VERSION_ENABLED)
             struct image_version fw_ver;     //!< Firmware version running
 #endif
             struct {
@@ -97,56 +97,56 @@ typedef union{
 }pan_frame_t;
 
 //! Pan status parameters
-typedef struct _dw1000_pan_status_t{
+typedef struct _uwb_pan_status_t{
     uint16_t selfmalloc:1;                 //!< Internal flag for memory garbage collection
     uint16_t initialized:1;                //!< Instance allocated
     uint16_t valid:1;                      //!< Set for valid parameters
     uint16_t start_tx_error:1;             //!< Set for start transmit error
     uint16_t lease_expired:1;              //!< Set when lease has expired
-}dw1000_pan_status_t;
+}uwb_pan_status_t;
 
 //! Pan configure parameters
-typedef struct _dw1000_pan_config_t{
+typedef struct _uwb_pan_config_t{
     uint32_t rx_holdoff_delay;        //!< Delay between frames, in UWB usec.
     uint16_t rx_timeout_period;       //!< Receive response timeout, in UWB usec.
     uint32_t tx_holdoff_delay:28;     //!< Delay between frames, in UWB usec.
-    uint32_t role:4;                  //!< dw1000_pan_role_t
+    uint32_t role:4;                  //!< uwb_pan_role_t
     uint16_t lease_time;              //!< Lease time in seconds
     uint16_t network_role;            //!< Network application role (Anchor/Tag...)
-}dw1000_pan_config_t;
+}uwb_pan_config_t;
 
 //! Pan control parameters
-typedef struct _dw1000_pan_control_t{
+typedef struct _uwb_pan_control_t{
     uint16_t postprocess:1;           //!< Pan postprocess
-}dw1000_pan_control_t;
+}uwb_pan_control_t;
 
 //! Pan instance parameters
-typedef struct _dw1000_pan_instance_t{
+struct uwb_pan_instance{
     struct uwb_dev * dev_inst;                   //!< pointer to struct uwb_dev
     struct uwb_mac_interface cbs;                //!< MAC Layer Callbacks
     struct dpl_sem sem;                          //!< Structure containing os semaphores
-    dw1000_pan_status_t status;                  //!< DW1000 pan status parameters
-    dw1000_pan_control_t control;                //!< DW1000 pan control parameters
+    uwb_pan_status_t status;                  //!< DW1000 pan status parameters
+    uwb_pan_control_t control;                //!< DW1000 pan control parameters
     struct dpl_event postprocess_event;           //!< Structure of postprocess event
     struct dpl_callout pan_lease_callout_expiry;  //!< Structure of lease_callout_expiry
-    dw1000_pan_config_t * config;                //!< DW1000 pan config parameters
+    uwb_pan_config_t * config;                //!< DW1000 pan config parameters
     uint16_t nframes;                            //!< Number of buffers defined to store the data
     uint16_t idx;                                //!< Indicates number of DW1000 instances
     pan_frame_t * frames[];                      //!< Buffers to pan frames
-}dw1000_pan_instance_t;
+};
 
-dw1000_pan_instance_t * dw1000_pan_init(struct uwb_dev * inst,  dw1000_pan_config_t * config, uint16_t nframes);
-void dw1000_pan_free(dw1000_pan_instance_t *pan);
-void dw1000_pan_set_postprocess(dw1000_pan_instance_t *pan, dpl_event_fn * postprocess);
-void dw1000_pan_start(dw1000_pan_instance_t * pan, dw1000_pan_role_t role, network_role_t network_role);
-struct uwb_dev_status dw1000_pan_listen(dw1000_pan_instance_t * pan, uwb_dev_modes_t mode);
-dw1000_pan_status_t dw1000_pan_blink(dw1000_pan_instance_t * pan, uint16_t role, uwb_dev_modes_t mode, uint64_t delay);
-dw1000_pan_status_t dw1000_pan_reset(dw1000_pan_instance_t * pan, uint64_t delay);
-uint32_t dw1000_pan_lease_remaining(dw1000_pan_instance_t * pan);
+struct uwb_pan_instance * uwb_pan_init(struct uwb_dev * inst,  uwb_pan_config_t * config, uint16_t nframes);
+void uwb_pan_free(struct uwb_pan_instance *pan);
+void uwb_pan_set_postprocess(struct uwb_pan_instance *pan, dpl_event_fn * postprocess);
+void uwb_pan_start(struct uwb_pan_instance * pan, uwb_pan_role_t role, network_role_t network_role);
+struct uwb_dev_status uwb_pan_listen(struct uwb_pan_instance * pan, uwb_dev_modes_t mode);
+uwb_pan_status_t uwb_pan_blink(struct uwb_pan_instance * pan, uint16_t role, uwb_dev_modes_t mode, uint64_t delay);
+uwb_pan_status_t uwb_pan_reset(struct uwb_pan_instance * pan, uint64_t delay);
+uint32_t uwb_pan_lease_remaining(struct uwb_pan_instance * pan);
 
-void dw1000_pan_slot_timer_cb(struct dpl_event * ev);
+void uwb_pan_slot_timer_cb(struct dpl_event * ev);
 
 #ifdef __cplusplus
 }
 #endif
-#endif /* _DW1000_PAN_H_ */
+#endif /* _UWB_PAN_H_ */
