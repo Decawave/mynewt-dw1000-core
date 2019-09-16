@@ -185,7 +185,7 @@ void nmgr_uwb_pkg_init(void)
 #if MYNEWT_VAL(DW1000_DEVICE_2)
     udev = uwb_dev_idx_lookup(2);
     nmgr_transport_init(uwb_transport(2), nmgr_resp_cb, nmgr_uwb_mtu_2);
-    g_cbs[2].inst_ptr = nmgr_uwb_init(hal_dw1000_inst(2));
+    g_cbs[2].inst_ptr = nmgr_uwb_init(udev);
     uwb_mac_append_interface(udev, &g_cbs[2]);
 #endif
 }
@@ -193,7 +193,7 @@ void nmgr_uwb_pkg_init(void)
 /**
  * API for receive timeout callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
@@ -251,7 +251,7 @@ early_exit:
 /**
  * API for receive complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
@@ -362,7 +362,7 @@ tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  *
  * @param nmgruwb pointer to struct _nmgr_uwb_instance_t
  * @param mode UWB_BLOCKING or UWB_NONBLOCKING
- * @param inst Pointer to dw1000_dev_instance_t.
+ * @param inst Pointer to struct uwb_dev.
  *
  * @return struct uwb_dev_status
  */

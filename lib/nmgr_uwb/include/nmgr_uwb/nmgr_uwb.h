@@ -43,8 +43,6 @@ extern "C" {
 #include <hal/hal_spi.h>
 #include <uwb/uwb.h>
 #include <uwb/uwb_ftypes.h>
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
 
 #define NMGR_UWB_MTU_STD (128 -  sizeof(struct _ieee_std_frame_t) - sizeof(uint16_t) - 2/*CRC*/)
 #define NMGR_UWB_MTU_EXT (1023 - sizeof(struct _ieee_std_frame_t) - sizeof(uint16_t) - 2/*CRC*/)
