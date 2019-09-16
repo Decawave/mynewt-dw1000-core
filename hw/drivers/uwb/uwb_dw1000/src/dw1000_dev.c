@@ -686,6 +686,24 @@ uwb_dw1000_get_fppl(struct uwb_dev * dev)
     return dw1000_get_fppl((dw1000_dev_instance_t *)dev);
 }
 
+inline static float
+uwb_dw1000_calc_rssi(struct uwb_dev * dev, struct uwb_dev_rxdiag * diag)
+{
+    return dw1000_calc_rssi((dw1000_dev_instance_t *)dev, (struct _dw1000_dev_rxdiag_t*)diag);
+}
+
+inline static float
+uwb_dw1000_calc_fppl(struct uwb_dev * dev, struct uwb_dev_rxdiag * diag)
+{
+    return dw1000_calc_fppl((dw1000_dev_instance_t *)dev, (struct _dw1000_dev_rxdiag_t*)diag);
+}
+
+inline static float
+uwb_dw1000_estimate_los(struct uwb_dev * dev, float rssi, float fppl)
+{
+    return dw1000_estimate_los(rssi, fppl);
+}
+
 static const struct uwb_driver_funcs dw1000_uwb_funcs = {
     .uf_mac_config = uwb_dw1000_mac_config,
     .uf_txrf_config = uwb_dw1000_txrf_config,
@@ -713,6 +731,9 @@ static const struct uwb_driver_funcs dw1000_uwb_funcs = {
     .uf_set_panid = uwb_dw1000_set_panid,
     .uf_get_rssi = uwb_dw1000_get_rssi,
     .uf_get_fppl = uwb_dw1000_get_fppl,
+    .uf_calc_rssi = uwb_dw1000_calc_rssi,
+    .uf_calc_fppl = uwb_dw1000_calc_fppl,
+    .uf_estimate_los = uwb_dw1000_estimate_los,
 };
 
 /**
@@ -733,9 +754,14 @@ dw1000_dev_init(struct os_dev *odev, void *arg)
 
     struct dw1000_dev_cfg *cfg = (struct dw1000_dev_cfg*)arg;
     struct uwb_dev *udev = (struct uwb_dev*)odev;
-    udev->uw_funcs = &dw1000_uwb_funcs;
-
     dw1000_dev_instance_t *inst = (dw1000_dev_instance_t *)odev;
+
+    /* Setup common uwb interface */
+    udev->uw_funcs = &dw1000_uwb_funcs;
+    udev->rxdiag = (struct uwb_dev_rxdiag*)&inst->rxdiag;
+    udev->rxdiag->rxd_len = sizeof(inst->rxdiag);
+    /* Check size requirements */
+    assert(sizeof(inst->rxdiag) <= MYNEWT_VAL(UWB_DEV_RXDIAG_MAXLEN));
     
     if (inst == NULL ) {
         inst = (dw1000_dev_instance_t *) malloc(sizeof(dw1000_dev_instance_t));

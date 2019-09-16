@@ -33,6 +33,6 @@ void twr_encode(twr_frame_t * frame);
 void _twr_encode(twr_frame_t * frame);
 void raz_encode(twr_frame_t * frame);
 void _raz_encode(twr_frame_t * frame);
-void diag_encode(struct _dw1000_dev_instance_t * inst);
-void _diag_encode(struct _dw1000_dev_instance_t * inst);
+void diag_encode(struct uwb_dev * inst);
+void _diag_encode(struct uwb_dev * inst);
 #endif

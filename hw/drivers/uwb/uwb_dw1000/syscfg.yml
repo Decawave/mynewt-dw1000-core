@@ -1,5 +1,9 @@
 
 syscfg.defs:
+    UWB_DW1000_API_CHECKS:
+        value: 1
+        restrictions:
+          - '(UWB_DEV_RXDIAG_MAXLEN > 19)'
     DW1000_HAL_SPI_BUFFER_SIZE:
         description: >
           Size of spi read/write buffer, sets the 
@@ -87,3 +91,4 @@ syscfg.defs:
     TIME_TO_RX_STABLE:
         description: 'Idle to RX-RF-Block stable in us'
         value:  ((uint64_t)6)
+

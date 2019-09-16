@@ -323,7 +323,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
                 frame->carrier_integrator  = inst->carrier_integrator;
 #endif
                 if(inst->config.rxdiag_enable) {
-                    memcpy(&frame->diag, &((dw1000_dev_instance_t*)inst)->rxdiag, sizeof(struct _dw1000_dev_rxdiag_t));
+                    memcpy(&frame->diag, inst->rxdiag, inst->rxdiag->rxd_len);
                 }
                 if(idx == nrng->nnodes-1){
                      uwb_set_rx_timeout(inst, 1); // Triger timeout event

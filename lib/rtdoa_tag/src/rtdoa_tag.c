@@ -216,7 +216,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
             rtdoa_frame_t * frame = (rtdoa_frame_t *) rtdoa->frames[(++rtdoa->idx)%rtdoa->nframes];
             rtdoa->req_frame = frame;
             memcpy(frame->array, inst->rxbuf, sizeof(rtdoa_request_frame_t));
-            memcpy(&frame->diag, &hal_dw1000_inst(0)->rxdiag, sizeof(dw1000_dev_rxdiag_t));
+            memcpy(&frame->diag, inst->rxdiag, inst->rxdiag->rxd_len);
             
             /* Deliberately in local timeframe */
             frame->rx_timestamp = inst->rxtimestamp;
@@ -262,7 +262,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
             
             rtdoa_frame_t * frame = (rtdoa_frame_t *) rtdoa->frames[(++rtdoa->idx)%rtdoa->nframes];
             memcpy(frame->array, inst->rxbuf, sizeof(rtdoa_request_frame_t));
-            memcpy(&frame->diag, &hal_dw1000_inst(0)->rxdiag, sizeof(dw1000_dev_rxdiag_t));
+            memcpy(&frame->diag, inst->rxdiag, inst->rxdiag->rxd_len);
             frame->rx_timestamp = inst->rxtimestamp;
             break; 
         }

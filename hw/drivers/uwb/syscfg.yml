@@ -11,3 +11,6 @@ syscfg.defs:
     UWB_PKG_INIT_LOG:
         description: 'Enable init messages showing each package has been initialised'
         value:  1
+    UWB_DEV_RXDIAG_MAXLEN:
+        description: 'Maximum size of rxdiag structure'
+        value:  20

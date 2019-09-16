@@ -115,7 +115,7 @@ rng_encode(struct uwb_rng_instance * rng) {
 #if MYNEWT_VAL(RNG_VERBOSE) > 1
     if(rng->dev_inst->config.rxdiag_enable){
         printf(", ");
-        _diag_encode((dw1000_dev_instance_t*)rng->dev_inst);
+        _diag_encode(rng->dev_inst);
     }
 #endif
 
@@ -272,7 +272,7 @@ raz_encode(twr_frame_t * frame){
 
 
 /*!
- * @fn diag_encode(struct _dw1000_dev_instance_t * inst) {
+ * @fn diag_encode(struct uwb_dev * inst) {
  *
  * @brief JSON encoding twr_frames support the folowing json objects: 
  * {"diag": {"rssi": "-79.906","nlos": "0.836"}}
@@ -283,7 +283,8 @@ raz_encode(twr_frame_t * frame){
  */
 
 void
-_diag_encode(struct _dw1000_dev_instance_t * inst) {
+_diag_encode(struct uwb_dev * inst)
+{
     struct json_encoder encoder;
     struct json_value value;
     int rc;
@@ -295,9 +296,9 @@ _diag_encode(struct _dw1000_dev_instance_t * inst) {
     rc = json_encode_object_key(&encoder, "diag");  
     rc |= json_encode_object_start(&encoder);  
 
-    float rssi = dw1000_get_rssi(inst);
-    float fppl = dw1000_get_fppl(inst);
-    float nlos = dw1000_estimate_los(rssi, fppl);
+    float rssi = uwb_get_rssi(inst);
+    float fppl = uwb_get_fppl(inst);
+    float nlos = uwb_estimate_los(inst, rssi, fppl);
 
 #if MYNEWT_VAL(FLOAT_USER)
     char float_string[32]={0};
@@ -323,7 +324,7 @@ sprintf(float_string,"%f",nlos);
 }
 
 void
-diag_encode(struct _dw1000_dev_instance_t * inst){
+diag_encode(struct uwb_dev * inst){
 
     struct json_encoder encoder;
     int rc;

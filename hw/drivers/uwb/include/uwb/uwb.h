@@ -93,6 +93,14 @@ struct uwb_dev_status {
     uint32_t rx_restarted:1;          //!< RX restarted since last received packet
 };
 
+/** API parent structure for rx diagnostics. Used to store values for later
+ * processing if needed in a device agnostic way.
+ */
+struct uwb_dev_rxdiag {
+    uint16_t rxd_len;                 //!< length of rxdiag structure
+    uint32_t features;                //!< Features covered by rxdiag structure
+} __attribute__((__packed__, aligned(1)));
+
 //! physical attributes per IEEE802.15.4-2011 standard, Table 101
 struct uwb_phy_attributes {
     float Tpsym;
@@ -451,7 +459,7 @@ typedef void (*uwb_set_panid_func_t)(struct uwb_dev * dev, uint16_t pan_id);
  *
  * @param inst  Pointer to struct uwb_dev.
  *
- * @return rssi on success
+ * @return rssi (dBm) on success
  */
 typedef float (*uwb_get_rssi_func_t)(struct uwb_dev * dev);
 
@@ -461,10 +469,40 @@ typedef float (*uwb_get_rssi_func_t)(struct uwb_dev * dev);
  *
  * @param inst  Pointer to struct uwb_dev.
  *
- * @return fppl on success
+ * @return fppl (dBm) on success
  */
 typedef float (*uwb_get_fppl_func_t)(struct uwb_dev * inst);
 
+/**
+ * Calculate rssi from an rxdiag structure
+ *
+ * @param inst  Pointer to struct uwb_dev.
+ * @param diag  Pointer to struct uwb_dev_rxdiag.
+ *
+ * @return rssi (dBm) on success
+ */
+typedef float (*uwb_calc_rssi_func_t)(struct uwb_dev * dev, struct uwb_dev_rxdiag * diag);
+
+/**
+ * Calculate First Path Power Level (fppl) from an rxdiag structure
+ *
+ * @param inst  Pointer to struct uwb_dev.
+ * @param diag  Pointer to struct uwb_dev_rxdiag.
+ *
+ * @return fppl (dBm) on success
+ */
+typedef float (*uwb_calc_fppl_func_t)(struct uwb_dev * dev, struct uwb_dev_rxdiag * diag);
+
+/**
+ * Give a rough estimate of how likely the received packet is
+ * line of sight (LOS).
+ *
+ * @param rssi rssi as calculated by uwb_calc_rssi
+ * @param fppl fppl as calculated by uwb_calc_fppl
+ *
+ * @return 1.0 for likely LOS, 0.0 for non-LOS, with a sliding scale in between.
+ */
+typedef float (*uwb_estimate_los_func_t)(struct uwb_dev * dev, float rssi, float fppl);
 
 struct uwb_driver_funcs {
     uwb_mac_config_func_t uf_mac_config;
@@ -493,6 +531,9 @@ struct uwb_driver_funcs {
     uwb_set_panid_func_t uf_set_panid;
     uwb_get_rssi_func_t uf_get_rssi;
     uwb_get_fppl_func_t uf_get_fppl;
+    uwb_calc_rssi_func_t uf_calc_rssi;
+    uwb_calc_fppl_func_t uf_calc_fppl;
+    uwb_estimate_los_func_t uf_estimate_los;
 };
 
 struct uwb_dev {
@@ -515,6 +556,7 @@ struct uwb_dev {
     uint16_t frame_len;                         //!< Reported frame length
     uint64_t rxtimestamp;                       //!< Receive timestamp
     int32_t carrier_integrator;                 //!< Carrier integrator
+    struct uwb_dev_rxdiag *rxdiag;              //!< Pointer to rx diagnostics structure
     uint8_t rxbuf[MYNEWT_VAL(UWB_RX_BUFFER_SIZE)]; //!< Local receive buffer
 
     /* Device parameters */
@@ -543,8 +585,6 @@ struct uwb_dev {
 
 #if 0
     // TODO
-    dw1000_calc_fppl
-    dw1000_calc_rssi
     dw1000_dev_configure_sleep
     dw1000_dev_enter_sleep_after_tx
     hal_dw1000_rw_noblock_wait
@@ -895,7 +935,7 @@ static inline void uwb_set_panid(struct uwb_dev * dev, uint16_t pan_id)
  *
  * @param inst  Pointer to struct uwb_dev.
  *
- * @return rssi on success
+ * @return rssi (dBm) on success
  */
 static inline float uwb_get_rssi(struct uwb_dev * dev)
 {
@@ -908,13 +948,52 @@ static inline float uwb_get_rssi(struct uwb_dev * dev)
  *
  * @param inst  Pointer to struct uwb_dev.
  *
- * @return fppl on success
+ * @return fppl (dBm) on success
  */
 static inline float uwb_get_fppl(struct uwb_dev * dev)
 {
     return (dev->uw_funcs->uf_get_fppl(dev));
 }
 
+/**
+ * Calculate rssi from an rxdiag structure
+ *
+ * @param inst  Pointer to struct uwb_dev.
+ * @param diag  Pointer to struct uwb_dev_rxdiag.
+ *
+ * @return rssi (dBm) on success
+ */
+static inline float uwb_calc_rssi(struct uwb_dev * dev, struct uwb_dev_rxdiag * diag)
+{
+    return (dev->uw_funcs->uf_calc_rssi(dev, diag));
+}
+
+/**
+ * Calculate First Path Power Level (fppl) from an rxdiag structure
+ *
+ * @param inst  Pointer to struct uwb_dev.
+ * @param diag  Pointer to struct uwb_dev_rxdiag.
+ *
+ * @return fppl (dBm) on success
+ */
+static inline float uwb_calc_fppl(struct uwb_dev * dev, struct uwb_dev_rxdiag * diag)
+{
+    return (dev->uw_funcs->uf_calc_fppl(dev, diag));
+}
+
+/**
+ * Give a rough estimate of how likely the received packet is
+ * line of sight (LOS).
+ *
+ * @param rssi rssi as calculated by uwb_calc_rssi
+ * @param fppl fppl as calculated by uwb_calc_fppl
+ *
+ * @return 1.0 for likely LOS, 0.0 for non-LOS, with a sliding scale in between.
+ */
+static inline float uwb_estimate_los(struct uwb_dev * dev, float rssi, float fppl)
+{
+    return (dev->uw_funcs->uf_estimate_los(dev, rssi, fppl));
+}
 
 #define uwb_dwt_usecs_to_usecs(_t) (double)( (_t) * (0x10000UL/(128*499.2)))
 #define uwb_usecs_to_dwt_usecs(_t) (double)( (_t) / uwb_dwt_usecs_to_usecs(1.0))

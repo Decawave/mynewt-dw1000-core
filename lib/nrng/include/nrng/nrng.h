@@ -98,7 +98,10 @@ typedef union {
 typedef union {
     struct _nrng_frame_t{
         struct _nrng_final_frame_t;
-        struct _dw1000_dev_rxdiag_t diag;
+        union {
+            struct uwb_dev_rxdiag diag;
+            uint8_t diag_storage[MYNEWT_VAL(UWB_DEV_RXDIAG_MAXLEN)];
+        };
 #if MYNEWT_VAL(TWR_DS_EXT_NRNG_ENABLED)
         union {
             struct _twr_data_t;                            //!< Structure of twr_data

@@ -113,7 +113,7 @@ int8_t otPlatRadioGetRssi(otInstance *aInstance){
 #endif
     (void)aInstance;
 
-    return (int8_t)dw1000_calc_rssi(g_ot_inst->dev_inst, &g_ot_inst->dev_inst->rxdiag);
+    return (int8_t)uwb_get_rssi(g_ot_inst->dev_inst);
 }
 
 otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel){

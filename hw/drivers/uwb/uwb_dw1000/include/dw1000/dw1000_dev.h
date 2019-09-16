@@ -79,6 +79,7 @@ typedef struct _dw1000_dev_control_t{
 
 //! DW1000 receiver diagnostics parameters.
 typedef struct _dw1000_dev_rxdiag_t{
+    struct uwb_dev_rxdiag;
     union {
         struct _rx_time {
             uint32_t    fp_idx:16;          //!< First path index (10.6 bits fixed point integer)

@@ -87,7 +87,10 @@ typedef union {
     struct _rtdoa_frame_t{
         struct _rtdoa_request_frame_t;
         uint64_t rx_timestamp;
-        struct _dw1000_dev_rxdiag_t diag;
+        union {
+            struct uwb_dev_rxdiag diag;
+            uint8_t diag_storage[MYNEWT_VAL(UWB_DEV_RXDIAG_MAXLEN)];
+        };
     } __attribute__((__packed__, aligned(1)));
     uint8_t array[sizeof(struct _rtdoa_frame_t)];
 } rtdoa_frame_t;
