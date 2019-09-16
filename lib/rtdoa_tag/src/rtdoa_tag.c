@@ -132,7 +132,7 @@ rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /**
  * API for receive timeout callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
@@ -154,7 +154,7 @@ rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /** 
  * API for reset_cb of rtdoa interface
  *
- * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @param inst   Pointer to struct uwb_dev. 
  * @return true on sucess
  */
 static bool
@@ -173,7 +173,7 @@ reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /**
  * API for receive complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */

@@ -22,7 +22,7 @@ pkg.description: UWB Transport Layer for NewtMgr
 pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
-    - dw1000
+    - uwb
     - nmgr
 
 pkg.cflags:

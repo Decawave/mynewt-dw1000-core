@@ -144,7 +144,7 @@ rtdoa_set_frames(struct rtdoa_instance *rtdoa, uint16_t nframes)
 /**
  * API to assign the config parameters
  *
- * @param inst    Pointer to dw1000_dev_instance_t. 
+ * @param inst    struct rtdoa_instance
  * @param config  Pointer to struct uwb_rng_config.
  *
  * @return struct uwb_dev_status 
@@ -160,7 +160,7 @@ rtdoa_config(struct rtdoa_instance *rtdoa, struct uwb_rng_config * config){
 /** 
  * Help function to calculate the delay between cascading requests
  * 
- * @param inst Pointer to dw1000_dev_instance_t * 
+ * @param inst Pointer to struct uwb_dev
  * @param slot_id 0 for master, and increasing
  * @return void
  */
@@ -181,7 +181,7 @@ rtdoa_usecs_to_response(struct uwb_dev * inst, rtdoa_request_frame_t * req,
  * Function for transforming local rtdoa timestamps into the reference frame timestamp
  * domain.
  *
- * @param inst Pointer to dw1000_dev_instance_t *
+ * @param inst Pointer to struct uwb_dev
  * @param slot_id 0 for master, and increasing
  * @return void
  */

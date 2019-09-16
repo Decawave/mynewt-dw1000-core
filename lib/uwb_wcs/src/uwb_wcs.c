@@ -70,7 +70,7 @@ static const double g_T = 1e-6l * MYNEWT_VAL(UWB_CCP_PERIOD);  // peroid in sec
  * @fn uwb_wcs_init(struct uwb_wcs_instance * inst,  struct uwb_ccp_instance * ccp)
  *
  * @brief Allocate resources for the clkcal calibration tasks. Binds resources 
- * to dw1000_ccp interface and instantiate timescale instance if in use.      
+ * to uwb_ccp interface and instantiate timescale instance if in use.
  *
  * input parameters
  * @param inst - clkcal_instance_t *
@@ -239,7 +239,7 @@ uwb_wcs_set_postprocess(struct uwb_wcs_instance * inst, dpl_event_fn * postproce
 /**
  * API to compensate for local frequency to reference frequency clock skew
  *
- * @param inst  Pointer to _dw1000_dev_instance_t. 
+ * @param inst  Pointer to struct uwb_wcs_instance * wcs.
  * @param dtu_time uint64_t time in decawave transeiver units of time (dtu)
  *
  * @return time
@@ -310,7 +310,7 @@ uint64_t uwb_wcs_local_to_master(struct uwb_wcs_instance * wcs, uint64_t dtu_tim
  * With UWB_WCS_ENABLED the adjust_timer API compensates all local timestamps values for local local drift.
  * This simplifies the TWR problem by mitigiating the need for double sided exchanges.
  *
- * @param inst  Pointer to _dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev * inst.
  * @return time
  */
 
@@ -323,7 +323,7 @@ inline uint64_t uwb_wcs_read_systime(struct uwb_dev * inst){
 /**
  * API to read system time at lower offset address.
  *
- * @param inst  Pointer to _dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev * inst.
  * 
  * @return time 
  */
@@ -337,7 +337,7 @@ inline uint32_t uwb_wcs_read_systime_lo(struct uwb_dev * inst){
 /**
  * API to read receive time.
  *
- * @param inst  Pointer to _dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev * inst.
  *
  * @return time
  */
@@ -353,7 +353,7 @@ uint64_t uwb_wcs_read_rxtime(struct uwb_dev * inst){
 /**
  * API to read receive time at lower offset address.
  *
- * @param inst  Pointer to _dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev * inst.
  *
  * @return time
  */
@@ -367,7 +367,7 @@ uint32_t uwb_wcs_read_rxtime_lo(struct uwb_dev * inst){
 /**
  * API to read transmission time.
  *
- * @param inst  Pointer to _dw1000_dev_instance_t. 
+ * @param inst  Pointer to struct uwb_dev * inst. 
  *
  * @return time
  * 
@@ -382,7 +382,7 @@ uint64_t uwb_wcs_read_txtime(struct uwb_dev * inst){
 /**
  * API to read transmit time at lower offset address
  *
- * @param inst  Pointer to _dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev * inst.
  *
  * @return time
  */
@@ -397,9 +397,9 @@ uint32_t uwb_wcs_read_txtime_lo(struct uwb_dev * inst){
  * 
  * With UWB_WCS_ENABLED the wsc_ timer API transforms all local timestamps to the master clock timedomain, effectivly compensating for offset and drift. 
  * This simplifies the TDOA multilateration problem by referencing all times to a shared timedomain. Note all local timer event are still in the local timedomain 
- * and as such all dx_delay calcaultion should use the dw1000_ or adj_ api.  
+ * and as such all dx_delay calcaultion should use the uwb_ or adj_ api.
  *
- * @param inst  Pointer to _dw1000_dev_instance_t. 
+ * @param inst  Pointer to struct uwb_dev * inst. 
  * @return time
  */
 
@@ -427,7 +427,7 @@ uint64_t uwb_wcs_read_systime_master64(struct uwb_dev * inst){
 /**
  * API to read system time at lower offset address.
  *
- * @param inst  Pointer to _dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev * inst.
  * 
  * @return time 
  */
@@ -441,7 +441,7 @@ uint32_t uwb_wcs_read_systime_lo_master(struct uwb_dev * inst){
 /**
  * API to read receive time.
  *
- * @param inst  Pointer to _dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev * inst.
  *
  * @return time
  */
@@ -457,7 +457,7 @@ uint64_t uwb_wcs_read_rxtime_master(struct uwb_dev * inst){
 /**
  * API to read receive time at lower offset address.
  *
- * @param inst  Pointer to _dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev * inst.
  *
  * @return time
  */
