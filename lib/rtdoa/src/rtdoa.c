@@ -30,12 +30,12 @@
 #include <uwb/uwb.h>
 #include <uwb/uwb_ftypes.h>
 #include <rtdoa/rtdoa.h>
-#include <rng/rng.h>
+#include <uwb_rng/uwb_rng.h>
 #include <uwb_wcs/uwb_wcs.h>
 #if MYNEWT_VAL(UWB_CCP_ENABLED)
 #include <uwb_ccp/uwb_ccp.h>
 #endif
-#include <rng/slots.h>
+#include <uwb_rng/slots.h>
 
 #if MYNEWT_VAL(RTDOA_STATS)
 STATS_NAME_START(rtdoa_stat_section)
@@ -56,7 +56,7 @@ STATS_NAME_END(rtdoa_stat_section)
 #endif
 
 struct rtdoa_instance *
-rtdoa_init(struct uwb_dev * inst, dw1000_rng_config_t * config, uint16_t nframes)
+rtdoa_init(struct uwb_dev * inst, struct uwb_rng_config * config, uint16_t nframes)
 {
     assert(inst);
 
@@ -103,7 +103,7 @@ rtdoa_init(struct uwb_dev * inst, dw1000_rng_config_t * config, uint16_t nframes
 /**
  * API to free the allocated resources.
  *
- * @param inst  Pointer to dw1000_rng_instance_t.
+ * @param inst  Pointer to struct uwb_rng_instance.
  *
  * @return void 
  */
@@ -145,14 +145,14 @@ rtdoa_set_frames(struct rtdoa_instance *rtdoa, uint16_t nframes)
  * API to assign the config parameters
  *
  * @param inst    Pointer to dw1000_dev_instance_t. 
- * @param config  Pointer to dw1000_rng_config_t.
+ * @param config  Pointer to struct uwb_rng_config.
  *
  * @return struct uwb_dev_status 
  */
 struct uwb_dev_status
-rtdoa_config(struct rtdoa_instance *rtdoa, dw1000_rng_config_t * config){
+rtdoa_config(struct rtdoa_instance *rtdoa, struct uwb_rng_config * config){
     assert(config);
-    memcpy(&rtdoa->config, config, sizeof(dw1000_rng_config_t));
+    memcpy(&rtdoa->config, config, sizeof(struct uwb_rng_config));
     return rtdoa->dev_inst->status;
 }
 
@@ -166,7 +166,7 @@ rtdoa_config(struct rtdoa_instance *rtdoa, dw1000_rng_config_t * config){
  */
 uint32_t
 rtdoa_usecs_to_response(struct uwb_dev * inst, rtdoa_request_frame_t * req,
-                        uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration)
+                        uint16_t nslots, struct uwb_rng_config * config, uint32_t duration)
 {    
     uint32_t ret = 0;
     /* Repeat part */
@@ -258,7 +258,7 @@ rtdoa_tdoa_between_frames(struct rtdoa_instance *rtdoa,
             /* rxts stored in frames as local timestamp, recalc into reference frame domain */
             uint64_t rx_ts = rtdoa_local_to_master64(rtdoa->dev_inst, resp_frame->rx_timestamp, rtdoa->req_frame);
             tof = (int64_t)rx_ts - (int64_t)resp_frame->tx_timestamp;
-            diff_m = dw1000_rng_tof_to_meters(tof);
+            diff_m = uwb_rng_tof_to_meters(tof);
 
             //printf("r[%x-%x]: %llx %llx %16llx %llx\n", req_frame->src_address, resp_frame->src_address,
             //       rx_ts, resp_frame->tx_timestamp, tof, req_frame->tx_timestamp);

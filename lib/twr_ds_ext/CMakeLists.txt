@@ -34,8 +34,8 @@ add_library(libdsp ALIAS dsp)
 get_target_property(libdsp_INCLUDE_DIRECTORIES libdsp INCLUDE_DIRECTORIES)
 add_library(libeuclid ALIAS euclid)
 get_target_property(libeuclid_INCLUDE_DIRECTORIES libeuclid INCLUDE_DIRECTORIES)
-add_library(librng ALIAS rng)
-get_target_property(librng_INCLUDE_DIRECTORIES librng INCLUDE_DIRECTORIES)
+add_library(libuwb_rng ALIAS uwb_rng)
+get_target_property(libuwb_rng_INCLUDE_DIRECTORIES libuwb_rng INCLUDE_DIRECTORIES)
 
 include(GNUInstallDirs)
 target_include_directories(${PROJECT_NAME} 
@@ -49,7 +49,7 @@ target_include_directories(${PROJECT_NAME}
       PRIVATE ${libuwb_dw1000_INCLUDE_DIRECTORIES}
       PRIVATE ${libdsp_INCLUDE_DIRECTORIES}
       PRIVATE ${libeuclid_INCLUDE_DIRECTORIES}
-      PRIVATE ${librng_INCLUDE_DIRECTORIES}
+      PRIVATE ${libuwb_rng_INCLUDE_DIRECTORIES}
 )
 
 # Install library

@@ -77,7 +77,7 @@ STATS_NAME_END(twr_ds_nrng_stat_section)
 
 static STATS_SECT_DECL(twr_ds_nrng_stat_section) g_stat;
 
-static dw1000_rng_config_t g_config = {
+static struct uwb_rng_config g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(TWR_DS_NRNG_TX_HOLDOFF),         // Send Time delay in usec.
     .rx_timeout_period = MYNEWT_VAL(TWR_DS_NRNG_RX_TIMEOUT),        // Receive response timeout in usec
     .tx_guard_delay = MYNEWT_VAL(TWR_DS_NRNG_TX_GUARD_DELAY)        // Guard delay to be added between each frame from node
@@ -118,7 +118,7 @@ void twr_ds_nrng_pkg_init(void){
 /**
  * API to free the allocated resources.
  *
- * @param inst  Pointer to dw1000_rng_instance_t.
+ * @param inst  Pointer to struct uwb_rng_instance.
  *
  * @return void 
  */
@@ -216,7 +216,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 
     assert(inst->nrng);
     dw1000_nrng_instance_t * nrng = inst->nrng;
-    dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, DWT_DS_TWR_NRNG);
+    struct uwb_rng_config * config = dw1000_nrng_get_config(inst, DWT_DS_TWR_NRNG);
     switch(inst->nrng->code){
         case DWT_DS_TWR_NRNG:
             {
@@ -459,7 +459,7 @@ send_final_msg(struct uwb_dev * inst , nrng_frame_t * frame)
     //printf("final_cb\n");
     assert(inst->nrng);
     dw1000_nrng_instance_t * nrng = inst->nrng;
-    dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, DWT_DS_TWR_NRNG);
+    struct uwb_rng_config * config = dw1000_nrng_get_config(inst, DWT_DS_TWR_NRNG);
     uint16_t nnodes = nrng->nnodes;
     uwb_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
     uwb_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0);

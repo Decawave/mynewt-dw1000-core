@@ -33,7 +33,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <dw1000/dw1000_dev.h>
-#include <rng/slots.h>
+#include <uwb_rng/slots.h>
 
 /**
  * Help function to calculate the number of slots within a bitmask

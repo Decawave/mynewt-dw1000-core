@@ -44,7 +44,7 @@
 #include <uwb_wcs/uwb_wcs.h>
 #endif
 #include <dsp/polyval.h>
-#include <rng/slots.h>
+#include <uwb_rng/slots.h>
 
 #define WCS_DTU MYNEWT_VAL(WCS_DTU)
 
@@ -66,7 +66,7 @@ static struct  uwb_mac_interface g_cbs = {
     .reset_cb = reset_cb
 };
 
-static dw1000_rng_config_t g_config = {
+static struct uwb_rng_config g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(TWR_SS_NRNG_TX_HOLDOFF),         // Send Time delay in usec.
     .rx_timeout_delay = MYNEWT_VAL(TWR_SS_NRNG_RX_TIMEOUT),        // Receive response timeout in usec
     .tx_guard_delay = MYNEWT_VAL(TWR_SS_NRNG_TX_GUARD_DELAY)        // Guard delay to be added between each frame from node
@@ -100,7 +100,7 @@ void twr_ss_nrng_pkg_init(void)
 /**
  * API to free the allocated resources.
  *
- * @param inst  Pointer to dw1000_rng_instance_t.
+ * @param inst  Pointer to struct uwb_rng_instance.
  *
  * @return void 
  */
@@ -208,7 +208,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
         return false;
     }
 
-    dw1000_rng_config_t * config = dw1000_nrng_get_config(nrng, DWT_SS_TWR_NRNG);
+    struct uwb_rng_config * config = dw1000_nrng_get_config(nrng, DWT_SS_TWR_NRNG);
     nrng_request_frame_t * _frame = (nrng_request_frame_t * )inst->rxbuf;
 
     if (_frame->dst_address != inst->my_short_address && _frame->dst_address != BROADCAST_ADDRESS)

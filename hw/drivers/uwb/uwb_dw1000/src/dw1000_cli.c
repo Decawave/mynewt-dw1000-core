@@ -35,11 +35,11 @@
 
 #include <shell/shell.h>
 #include <console/console.h>
-#if MYNEWT_VAL(CCP_ENABLED)
-#include <ccp/ccp.h>
+#if MYNEWT_VAL(UWB_CCP_ENABLED)
+#include <uwb_ccp/uwb_ccp.h>
 #endif
-#if MYNEWT_VAL(RNG_ENABLED)
-#include <rng/rng.h>
+#if MYNEWT_VAL(UWB_RNG_ENABLED)
+#include <uwb_rng/uwb_rng.h>
 #endif
 #if MYNEWT_VAL(NRNG_ENABLED)
 #include <nrng/nrng.h>
@@ -121,8 +121,8 @@ dw1000_dump_registers(struct _dw1000_dev_instance_t * inst)
         }
     }
     console_printf("{\"inst->tx_sem\"=\"0x%0X\"}\n", dpl_sem_get_count(&inst->tx_sem));
-#if MYNEWT_VAL(RNG_ENABLED)
-    dw1000_rng_instance_t *rng = (dw1000_rng_instance_t*)uwb_mac_find_cb_inst_ptr(&inst->uwb_dev, UWBEXT_RNG);
+#if MYNEWT_VAL(UWB_RNG_ENABLED)
+    struct uwb_rng_instance *rng = (struct uwb_rng_instance*)uwb_mac_find_cb_inst_ptr(&inst->uwb_dev, UWBEXT_RNG);
     if (rng)
         console_printf("{\"rng->sem\"=\"0x%0X\"}\n", dpl_sem_get_count(&rng->sem));
 #endif
@@ -131,8 +131,8 @@ dw1000_dump_registers(struct _dw1000_dev_instance_t * inst)
     if (nrng)
         console_printf("{\"nrng->sem\"=\"0x%0X\"}\n", dpl_sem_get_count(&nrng->sem));
 #endif
-#if MYNEWT_VAL(CCP_ENABLED)
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)uwb_mac_find_cb_inst_ptr(&inst->uwb_dev, UWBEXT_CCP);
+#if MYNEWT_VAL(UWB_CCP_ENABLED)
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(&inst->uwb_dev, UWBEXT_CCP);
     if (ccp)
         console_printf("{\"ccp->sem\"=\"0x%0X\"}\n", dpl_sem_get_count(&ccp->sem));
 #endif

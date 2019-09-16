@@ -24,9 +24,9 @@
 #include <stdio.h>
 #include <math.h>
 #include <json/json.h>
-#include <rng/rng.h>
+#include <uwb_rng/uwb_rng.h>
 #include <dw1000/dw1000_mac.h>
-#include <rng/rng_encode.h>
+#include <uwb_rng/rng_encode.h>
 
 #if MYNEWT_VAL(UWB_WCS_ENABLED)
 #include <uwb_wcs/uwb_wcs.h>
@@ -71,12 +71,12 @@ json_write(void *buf, char* data, int len) {
  * @brief JSON encoding of range
  * {"utime": 208317053, "twr": {"rng": "0.703","uid": "1234"},"uid": "55a6", "diag": {"rssi": "-79.675","los": "1.000"}}
  * input parameters
- * @param rng     Pointer of dw1000_rng_instance_t.
+ * @param rng     Pointer of struct uwb_rng_instance.
  * output parameters
  * returns void
  */
 void
-rng_encode(dw1000_rng_instance_t * rng) {
+rng_encode(struct uwb_rng_instance * rng) {
 
     struct json_encoder encoder;
     struct json_value value;
@@ -88,8 +88,8 @@ rng_encode(dw1000_rng_instance_t * rng) {
     
     twr_frame_t * frame = rng->frames[rng->idx_current];
     
-    float time_of_flight = dw1000_rng_twr_to_tof(rng, rng->idx_current);
-    frame->spherical.range = dw1000_rng_tof_to_meters(time_of_flight);
+    float time_of_flight = uwb_rng_twr_to_tof(rng, rng->idx_current);
+    frame->spherical.range = uwb_rng_tof_to_meters(time_of_flight);
 
     rc = json_encode_object_start(&encoder);
 #if MYNEWT_VAL(UWB_WCS_ENABLED)

@@ -48,7 +48,7 @@ pkg.deps:
 #    - "@mynewt-dw1000-core/mgmt/bcast_ota"
 #    - "@mynewt-dw1000-core/lib/panmaster"
 #    - "@mynewt-dw1000-apps/lib/bleprph"
-    - "@mynewt-dw1000-core/lib/rng"
+    - "@mynewt-dw1000-core/lib/uwb_rng"
     - "@mynewt-dw1000-core/lib/twr_ss"
     - "@mynewt-dw1000-core/lib/twr_ss_ext"
     - "@mynewt-dw1000-core/lib/twr_ds"

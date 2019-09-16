@@ -26,9 +26,9 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <rng/rng.h>
+#include <uwb_rng/uwb_rng.h>
 
-void rng_encode(dw1000_rng_instance_t * rng);
+void rng_encode(struct uwb_rng_instance * rng);
 void twr_encode(twr_frame_t * frame);
 void _twr_encode(twr_frame_t * frame);
 void raz_encode(twr_frame_t * frame);

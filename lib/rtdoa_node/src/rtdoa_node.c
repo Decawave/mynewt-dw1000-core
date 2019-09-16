@@ -35,7 +35,7 @@
 #include <rtdoa/rtdoa.h>
 #include <rtdoa_node/rtdoa_node.h>
 #include <dsp/polyval.h>
-#include <rng/slots.h>
+#include <uwb_rng/slots.h>
 
 #define WCS_DTU MYNEWT_VAL(WCS_DTU)
 
@@ -44,7 +44,7 @@
 #define DIAGMSG(s,u)
 #endif
 
-static dw1000_rng_config_t g_config = {
+static struct uwb_rng_config g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(RTDOA_TX_HOLDOFF),       // Send Time delay in usec.
     .rx_timeout_delay = MYNEWT_VAL(RTDOA_RX_TIMEOUT),       // Receive response timeout in usec
     .tx_guard_delay = MYNEWT_VAL(RTDOA_TX_GUARD_DELAY)
@@ -92,7 +92,7 @@ void rtdoa_node_pkg_init(void)
 /**
  * API to free the allocated resources.
  *
- * @param inst  Pointer to dw1000_rng_instance_t.
+ * @param inst  Pointer to struct uwb_rng_instance.
  *
  * @return void 
  */
@@ -162,7 +162,7 @@ tx_rtdoa_response(struct rtdoa_instance * rtdoa)
     /* This function executes on the device that responds to a rtdoa request */
 
     struct uwb_dev * inst = rtdoa->dev_inst;
-    dw1000_rng_config_t * config = &rtdoa->config;
+    struct uwb_rng_config * config = &rtdoa->config;
 
     /* Rx-timestamp will be compensated for relay */
     uint64_t dx_time = rtdoa->req_frame->rx_timestamp;
@@ -328,7 +328,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
         return false;
     }
 
-    //dw1000_rng_config_t * config = &rtdoa->config;
+    //struct uwb_rng_config * config = &rtdoa->config;
     rtdoa_request_frame_t * _frame = (rtdoa_request_frame_t * )inst->rxbuf;
 
     if (_frame->dst_address != inst->my_short_address && _frame->dst_address != BROADCAST_ADDRESS)

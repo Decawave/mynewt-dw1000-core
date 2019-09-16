@@ -33,7 +33,7 @@ pkg.lflags:
     - "-lm"
 
 pkg.deps:
-    - "@mynewt-dw1000-core/lib/rng"
+    - "@mynewt-dw1000-core/lib/uwb_rng"
 
 pkg.init:
     twr_ss_pkg_init: 406

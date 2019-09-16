@@ -46,7 +46,7 @@ extern "C" {
 #include <nranges/nranges.h>
 void twr_ds_ext_nrng_pkg_init(void);
 void twr_ds_nrng_free(dw1000_dev_instance_t * inst);
-dw1000_rng_config_t * twr_ds_ext_nrng_config(dw1000_dev_instance_t * inst);
+struct uwb_rng_config * twr_ds_ext_nrng_config(dw1000_dev_instance_t * inst);
 
 #ifdef __cplusplus
 }

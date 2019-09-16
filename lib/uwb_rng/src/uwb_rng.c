@@ -44,9 +44,9 @@
 //#include <dw1000/dw1000_stats.h>
 #include <dsp/polyval.h>
 
-#if MYNEWT_VAL(RNG_ENABLED)
-#include <rng/rng.h>
-#include <rng/rng_encode.h>
+#if MYNEWT_VAL(UWB_RNG_ENABLED)
+#include <uwb_rng/uwb_rng.h>
+#include <uwb_rng/rng_encode.h>
 #endif
 #if MYNEWT_VAL(UWB_WCS_ENABLED)
 #include <uwb_wcs/uwb_wcs.h>
@@ -104,7 +104,7 @@ static float rng_bias_poly_PRF16[] ={
         1.754924e-05, 4.106182e-03, 3.061584e-01, 7.189425e+00,
      	};
 
-static dw1000_rng_config_t g_config = {
+static struct uwb_rng_config g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(RNG_TX_HOLDOFF),       // Send Time delay in usec.
     .rx_timeout_delay = MYNEWT_VAL(RNG_RX_TIMEOUT)       // Receive response timeout in usec
 };
@@ -168,7 +168,18 @@ static twr_frame_t g_twr_2[] = {
         .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
         .PANID = MYNEWT_VAL(PANID),                 // PAN ID (0xDECA)
         .code = DWT_TWR_INVALID,
+    },
+    [2] = {
+        .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
+        .PANID = MYNEWT_VAL(PANID),                  // PAN ID (0xDECA)
+        .code = DWT_TWR_INVALID
+    },
+    [3] = {
+        .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
+        .PANID = MYNEWT_VAL(PANID),                  // PAN ID (0xDECA)
+        .code = DWT_TWR_INVALID,
     }
+
 };
 #endif
 
@@ -210,25 +221,25 @@ static struct uwb_mac_interface g_cbs[] = {
 };
 
 /**
- * @fn dw1000_rng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes)
+ * @fn uwb_rng_init(struct uwb_dev * inst, struct uwb_rng_config * config, uint16_t nframes)
  * @brief API to initialise the ranging by setting all the required configurations and callbacks.
  *
- * @param inst      Pointer to dw1000_dev_instance_t.
- * @param config    Pointer to the structure dw1000_rng_config_t.
+ * @param inst      Pointer to struct uwb_dev.
+ * @param config    Pointer to the structure struct uwb_rng_config.
  * @param nframes   Number of buffers defined to store the ranging data.
  *
- * @return dw1000_rng_instance_t
+ * @return struct uwb_rng_instance
  */
-dw1000_rng_instance_t *
-dw1000_rng_init(struct uwb_dev * dev, dw1000_rng_config_t * config, uint16_t nframes)
+struct uwb_rng_instance *
+uwb_rng_init(struct uwb_dev * dev, struct uwb_rng_config * config, uint16_t nframes)
 {
     assert(dev);
 
-    dw1000_rng_instance_t *rng = (dw1000_rng_instance_t*)uwb_mac_find_cb_inst_ptr(dev, UWBEXT_RNG);
+    struct uwb_rng_instance *rng = (struct uwb_rng_instance*)uwb_mac_find_cb_inst_ptr(dev, UWBEXT_RNG);
     if (rng == NULL ) {
-        rng = (dw1000_rng_instance_t *) malloc(sizeof(dw1000_rng_instance_t) + nframes * sizeof(twr_frame_t *)); // struct + flexible array member
+        rng = (struct uwb_rng_instance *) malloc(sizeof(struct uwb_rng_instance) + nframes * sizeof(twr_frame_t *)); // struct + flexible array member
         assert(rng);
-        memset(rng, 0, sizeof(dw1000_rng_instance_t));
+        memset(rng, 0, sizeof(struct uwb_rng_instance));
         rng->status.selfmalloc = 1;
         rng->nframes = nframes;
     }
@@ -241,10 +252,10 @@ dw1000_rng_init(struct uwb_dev * dev, dw1000_rng_config_t * config, uint16_t nfr
     assert(err == DPL_OK);
 
     if (config != NULL ) {
-        dw1000_rng_config(rng, config);
+        uwb_rng_config(rng, config);
     }
 
-    rng->control = (dw1000_rng_control_t){
+    rng->control = (uwb_rng_control_t){
         .delay_start_enabled = 0,
     };
     rng->idx = 0xFFFF;
@@ -271,15 +282,15 @@ dw1000_rng_init(struct uwb_dev * dev, dw1000_rng_config_t * config, uint16_t nfr
 }
 
 /**
- * @fn dw1000_rng_free(dw1000_rng_instance_t * inst)
+ * @fn uwb_rng_free(struct uwb_rng_instance * inst)
  * @brief API to free the allocated resources.
  *
- * @param inst  Pointer to dw1000_rng_instance_t.
+ * @param inst  Pointer to struct uwb_rng_instance.
  *
  * @return void
  */
 void
-dw1000_rng_free(dw1000_rng_instance_t * rng){
+uwb_rng_free(struct uwb_rng_instance * rng){
 
     assert(rng);
     if (rng->status.selfmalloc)
@@ -289,87 +300,88 @@ dw1000_rng_free(dw1000_rng_instance_t * rng){
 }
 
 /**
- * @fn rng_pkg_init(void)
+ * @fn uwb_rng_pkg_init(void)
  * @brief API to initialise the rng package.
  *
  * @return void
  */
 
 void
-rng_pkg_init(void){
+uwb_rng_pkg_init(void)
+{
 #if MYNEWT_VAL(UWB_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"rng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
 
-    dw1000_rng_instance_t *rng;
+    struct uwb_rng_instance *rng;
     struct uwb_dev *udev;
 #if MYNEWT_VAL(DW1000_DEVICE_0)
     udev = uwb_dev_idx_lookup(0);
-    g_cbs[0].inst_ptr = rng = dw1000_rng_init(udev, &g_config, sizeof(g_twr_0)/sizeof(twr_frame_t));
-    dw1000_rng_set_frames(rng, g_twr_0, sizeof(g_twr_0)/sizeof(twr_frame_t));
+    g_cbs[0].inst_ptr = rng = uwb_rng_init(udev, &g_config, sizeof(g_twr_0)/sizeof(twr_frame_t));
+    uwb_rng_set_frames(rng, g_twr_0, sizeof(g_twr_0)/sizeof(twr_frame_t));
     uwb_mac_append_interface(udev, &g_cbs[0]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
     udev = uwb_dev_idx_lookup(1);
-    g_cbs[1].inst_ptr = rng = dw1000_rng_init(udev, &g_config, sizeof(g_twr_1)/sizeof(twr_frame_t));
-    dw1000_rng_set_frames(rng, g_twr_1, sizeof(g_twr_1)/sizeof(twr_frame_t));
+    g_cbs[1].inst_ptr = rng = uwb_rng_init(udev, &g_config, sizeof(g_twr_1)/sizeof(twr_frame_t));
+    uwb_rng_set_frames(rng, g_twr_1, sizeof(g_twr_1)/sizeof(twr_frame_t));
     uwb_mac_append_interface(udev, &g_cbs[1]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
     udev = uwb_dev_idx_lookup(2);
-    g_cbs[2].inst_ptr = rng = dw1000_rng_init(udev, &g_config, sizeof(g_twr_2)/sizeof(twr_frame_t));
-    dw1000_rng_set_frames(rng, g_twr_2, sizeof(g_twr_2)/sizeof(twr_frame_t));
+    g_cbs[2].inst_ptr = rng = uwb_rng_init(udev, &g_config, sizeof(g_twr_2)/sizeof(twr_frame_t));
+    uwb_rng_set_frames(rng, g_twr_2, sizeof(g_twr_2)/sizeof(twr_frame_t));
     uwb_mac_append_interface(udev, &g_cbs[2]);
 #endif
 
 }
 
 /**
- * @fn dw1000_rng_set_frames(dw1000_rng_instance_t * inst, twr_frame_t twr[], uint16_t nframes)
+ * @fn uwb_rng_set_frames(struct uwb_rng_instance * inst, twr_frame_t twr[], uint16_t nframes)
  * @brief API to set the pointer to the twr buffers.
  *
- * @param inst      Pointer to dw1000_rng_instance_t.
+ * @param inst      Pointer to struct uwb_rng_instance.
  * @param twr[]     Pointer to twr buffers.
  * @param nframes   Number of buffers defined to store the ranging data.
  *
  * @return void
  */
 inline void
-dw1000_rng_set_frames(dw1000_rng_instance_t * rng, twr_frame_t twr[], uint16_t nframes){
+uwb_rng_set_frames(struct uwb_rng_instance * rng, twr_frame_t twr[], uint16_t nframes){
     assert(nframes <= rng->nframes);
     for (uint16_t i = 0; i < nframes; i++)
         rng->frames[i] = &twr[i];
 }
 
 /**
- * @fn dw1000_rng_config(dw1000_rng_instance_t * inst, dw1000_rng_config_t * config)
+ * @fn uwb_rng_config(struct uwb_rng_instance * inst, struct uwb_rng_config * config)
  * @brief API to assign the config parameters to range instance.
  *
- * @param inst    Pointer to dw1000_rng_instance_t.
- * @param config  Pointer to dw1000_rng_config_t.
+ * @param inst    Pointer to struct uwb_rng_instance.
+ * @param config  Pointer to struct uwb_rng_config.
  *
  * @return struct uwb_dev_status
  */
 struct uwb_dev_status
-dw1000_rng_config(dw1000_rng_instance_t * rng, dw1000_rng_config_t * config){
+uwb_rng_config(struct uwb_rng_instance * rng, struct uwb_rng_config * config){
     assert(config);
 
-    memcpy(&rng->config, config, sizeof(dw1000_rng_config_t));
+    memcpy(&rng->config, config, sizeof(struct uwb_rng_config));
     return rng->dev_inst->status;
 }
 
 /**
- * @fn dw1000_rng_get_config(dw1000_rng_instance_t * inst, dw1000_rng_modes_t code)
- * @brief API to get configuration using dw1000_rng_modes_t.
+ * @fn uwb_rng_get_config(struct uwb_rng_instance * inst, uwb_rng_modes_t code)
+ * @brief API to get configuration using uwb_rng_modes_t.
  *
- * @param inst          Pointer to dw1000_rng_instance_t.
+ * @param inst          Pointer to struct uwb_rng_instance.
  * @param code          Represents mode of ranging DWT_SS_TWR enables single sided two way ranging DWT_DS_TWR enables double sided
  * two way ranging DWT_DS_TWR_EXT enables double sided two way ranging with extended frame.
  *
- * @return dw1000_rng_config_t
+ * @return struct uwb_rng_config
  */
-dw1000_rng_config_t *
-dw1000_rng_get_config(dw1000_rng_instance_t * rng, dw1000_rng_modes_t code)
+struct uwb_rng_config *
+uwb_rng_get_config(struct uwb_rng_instance * rng, uwb_rng_modes_t code)
 {
     struct rng_config_list * cfgs;
 
@@ -386,12 +398,12 @@ dw1000_rng_get_config(dw1000_rng_instance_t * rng, dw1000_rng_modes_t code)
 /**
  * Add config extension different rng services.
  *
- * @param rng        Pointer to dw1000_rng_instance_t.
+ * @param rng        Pointer to struct uwb_rng_instance.
  * @param callbacks  callback instance.
  * @return void
  */
 void
-dw1000_rng_append_config(dw1000_rng_instance_t * rng, struct rng_config_list *cfgs)
+uwb_rng_append_config(struct uwb_rng_instance * rng, struct rng_config_list *cfgs)
 {
     assert(rng);
 
@@ -411,12 +423,12 @@ dw1000_rng_append_config(dw1000_rng_instance_t * rng, struct rng_config_list *cf
 /**
  * API to remove specified callbacks.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_rng_instance.
  * @param id    ID of the service.
  * @return void
  */
 void
-dw1000_rng_remove_config(dw1000_rng_instance_t * rng, dw1000_rng_modes_t code)
+uwb_rng_remove_config(struct uwb_rng_instance * rng, uwb_rng_modes_t code)
 {
     assert(rng);
     struct rng_config_list * cfgs = NULL;
@@ -430,10 +442,10 @@ dw1000_rng_remove_config(dw1000_rng_instance_t * rng, dw1000_rng_modes_t code)
 
 
 /**
- * @fn dw1000_rng_request(dw1000_rng_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t code)
+ * @fn uwb_rng_request(struct uwb_rng_instance * inst, uint16_t dst_address, uwb_rng_modes_t code)
  * @brief API to initialise range request.
  *
- * @param inst          Pointer to dw1000_rng_instance_t.
+ * @param inst          Pointer to struct uwb_rng_instance.
  * @param dst_address   Address of the receiver to whom range request to be sent.
  * @param code          Represents mode of ranging DWT_SS_TWR enables single sided two way ranging DWT_DS_TWR enables double sided
  * two way ranging DWT_DS_TWR_EXT enables double sided two way ranging with extended frame.
@@ -441,7 +453,7 @@ dw1000_rng_remove_config(dw1000_rng_instance_t * rng, dw1000_rng_modes_t code)
  * @return struct uwb_dev_status
  */
 struct uwb_dev_status
-dw1000_rng_request(dw1000_rng_instance_t * rng, uint16_t dst_address, dw1000_rng_modes_t code)
+uwb_rng_request(struct uwb_rng_instance * rng, uint16_t dst_address, uwb_rng_modes_t code)
 {
     // This function executes on the device that initiates a request 
     RNG_STATS_INC(rng_request);
@@ -449,7 +461,7 @@ dw1000_rng_request(dw1000_rng_instance_t * rng, uint16_t dst_address, dw1000_rng
     assert(err == DPL_OK);
 
     struct uwb_dev * inst = rng->dev_inst;
-    dw1000_rng_config_t * config = dw1000_rng_get_config(rng, code);
+    struct uwb_rng_config * config = uwb_rng_get_config(rng, code);
 
     twr_frame_t * frame  = rng->frames[(rng->idx+1)%rng->nframes];
 
@@ -509,16 +521,16 @@ dw1000_rng_request(dw1000_rng_instance_t * rng, uint16_t dst_address, dw1000_rng
 }
 
 /**
- * @fn dw1000_rng_listen(dw1000_rng_instance_t * inst, uwb_dev_modes_t mode)
+ * @fn uwb_rng_listen(struct uwb_rng_instance * inst, uwb_dev_modes_t mode)
  * @brief API to listen rng request.
  *
- * @param inst          Pointer to dw1000_rng_instance_t.
+ * @param inst          Pointer to struct uwb_rng_instance.
  * @param mode          uwb_dev_modes_t of UWB_BLOCKING and UWB_NONBLOCKING
  *
  * @return struct uwb_dev_status
  */
 struct uwb_dev_status
-dw1000_rng_listen(dw1000_rng_instance_t * rng, uwb_dev_modes_t mode)
+uwb_rng_listen(struct uwb_rng_instance * rng, uwb_dev_modes_t mode)
 {
     dpl_error_t err = dpl_sem_pend(&rng->sem,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
@@ -547,10 +559,10 @@ dw1000_rng_listen(dw1000_rng_instance_t * rng, uwb_dev_modes_t mode)
 }
 
 /**
- * @fn dw1000_rng_request_delay_start(dw1000_rng_instance_t * inst, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t code)
+ * @fn uwb_rng_request_delay_start(struct uwb_rng_instance * inst, uint16_t dst_address, uint64_t delay, uwb_rng_modes_t code)
  * @brief API to configure dw1000 to start transmission after certain delay.
  *
- * @param inst          Pointer to dw1000_rng_instance_t.
+ * @param inst          Pointer to struct uwb_rng_instance.
  * @param dst_address   Address of the receiver to whom range request to be sent.
  * @param delay         Time until which request has to be resumed.
  * @param code          Represents mode of ranging DWT_SS_TWR enables single sided two way ranging DWT_DS_TWR enables double sided
@@ -559,18 +571,18 @@ dw1000_rng_listen(dw1000_rng_instance_t * rng, uwb_dev_modes_t mode)
  * @return struct uwb_dev_status
  */
 struct uwb_dev_status
-dw1000_rng_request_delay_start(dw1000_rng_instance_t * rng, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t code)
+uwb_rng_request_delay_start(struct uwb_rng_instance * rng, uint16_t dst_address, uint64_t delay, uwb_rng_modes_t code)
 {
     rng->control.delay_start_enabled = 1;
     rng->delay = delay;
-    dw1000_rng_request(rng, dst_address, code);
+    uwb_rng_request(rng, dst_address, code);
     rng->control.delay_start_enabled = 0;
 
    return rng->dev_inst->status;
 }
 
 /**
- * @fn dw1000_rng_path_loss(float Pt, float G, float fc, float R)
+ * @fn uwb_rng_path_loss(float Pt, float G, float fc, float R)
  * @brief calculate rng path loss using range parameters and return signal level.
  * and allocated PANIDs and SLOTIDs.
  *
@@ -582,24 +594,24 @@ dw1000_rng_request_delay_start(dw1000_rng_instance_t * rng, uint16_t dst_address
  * @return Pr received signal level dBm
  */
 float
-dw1000_rng_path_loss(float Pt, float G, float fc, float R){
+uwb_rng_path_loss(float Pt, float G, float fc, float R){
     float Pr = Pt + 2 * G + 20 * log10(299792458.0l/1.000293l) - 20 * log10(4 * M_PI * fc * R);
     return Pr;
 }
 
 /**
- * @fn dw1000_rng_bias_correction(dw1000_dev_instance_t * inst, float Pr)
+ * @fn uwb_rng_bias_correction(struct uwb_dev * inst, float Pr)
  * @brief API for bias correction polynomial.
  *
- * @param inst   Pointer to dw1000_dev_instance_t.
+ * @param inst   Pointer to struct uwb_dev.
  * @param pr     Variable that calculates range path loss.
  *
  * @return Bias value
  */
 float
-dw1000_rng_bias_correction(dw1000_dev_instance_t * inst, float Pr){
+uwb_rng_bias_correction(struct uwb_dev * dev, float Pr){
     float bias;
-    switch(inst->uwb_dev.config.prf){
+    switch(dev->config.prf){
         case DWT_PRF_16M:
             bias = polyval(rng_bias_poly_PRF16, Pr, sizeof(rng_bias_poly_PRF16)/sizeof(float));
             break;
@@ -612,62 +624,18 @@ dw1000_rng_bias_correction(dw1000_dev_instance_t * inst, float Pr){
     return bias;
 }
 
-#if MYNEWT_VAL(DW1000_RANGE)
 
 /**
- * @fn dw1000_rng_twr_to_tof(twr_frame_t *fframe, twr_frame_t *nframe)
+ * @fn uwb_rng_twr_to_tof(struct uwb_rng_instance * rng, uint16_t idx)
  * @brief API to calculate time of flight based on type of ranging.
  *
- * @param fframe   Pointer to the first twr frame.
- * @param nframe   Poinetr to the second twr frame.
- *
- * @return Time of flight in float
- */
-float
-dw1000_rng_twr_to_tof(twr_frame_t *fframe, twr_frame_t *nframe){
-    float ToF = 0;
-    uint64_t T1R, T1r, T2R, T2r;
-    int64_t nom,denom;
-
-    assert(fframe != NULL);
-    assert(nframe != NULL);
-
-    twr_frame_t * first_frame = fframe;
-    twr_frame_t * frame = nframe;
-
-    switch(frame->code){
-        case DWT_SS_TWR ... DWT_SS_TWR_END:
-        case DWT_SS_TWR_EXT ... DWT_SS_TWR_EXT_END:
-            ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
-                    -  (first_frame->transmission_timestamp - first_frame->reception_timestamp))/2.;
-        break;
-        case DWT_DS_TWR ... DWT_DS_TWR_END:
-        case DWT_DS_TWR_EXT ... DWT_DS_TWR_EXT_END:
-            T1R = (first_frame->response_timestamp - first_frame->request_timestamp);
-            T1r = (first_frame->transmission_timestamp  - first_frame->reception_timestamp);
-            T2R = (frame->response_timestamp - frame->request_timestamp);
-            T2r = (frame->transmission_timestamp - frame->reception_timestamp);
-            nom = T1R * T2R  - T1r * T2r;
-            denom = T1R + T2R  + T1r + T2r;
-            ToF = (float) (nom) / denom;
-            break;
-        default: break;
-    }
-    return ToF;
-}
-#else
-
-/**
- * @fn dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng, uint16_t idx)
- * @brief API to calculate time of flight based on type of ranging.
- *
- * @param rng  Pointer to dw1000_rng_instance_t.
+ * @param rng  Pointer to struct uwb_rng_instance.
  * @param idx  Position of rng frame
  *
  * @return Time of flight in float
  */
 float
-dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng, uint16_t idx)
+uwb_rng_twr_to_tof(struct uwb_rng_instance * rng, uint16_t idx)
 {
     float ToF = 0;
     uint64_t T1R, T1r, T2R, T2r;
@@ -706,10 +674,9 @@ dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng, uint16_t idx)
     }
     return ToF;
 }
-#endif
 
 /**
- * @fn dw1000_rng_tof_to_meters(float ToF)
+ * @fn uwb_rng_tof_to_meters(float ToF)
  * @brief API to calculate range in meters from time-of-flight based on type of ranging.
  *
  * @param ToF Time of flight in float.
@@ -717,12 +684,12 @@ dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng, uint16_t idx)
  * @return range in meters
  */
 float
-dw1000_rng_tof_to_meters(float ToF) {
+uwb_rng_tof_to_meters(float ToF) {
     return (float)(ToF * (299792458.0l/1.000293l) * (1.0/499.2e6/128.0)); //!< Converts time of flight to meters.
 }
 
 /**
- * @fn dw1000_rng_is_los(float rssi, float fppl)
+ * @fn uwb_rng_is_los(float rssi, float fppl)
  * @brief API to estimate likelyhood of Line of sight from rssi and fppl
  *        Taken from 4.7 of DW1000 manual
  * @param rssi
@@ -731,7 +698,7 @@ dw1000_rng_tof_to_meters(float ToF) {
  * @return Likelyhood of LOS (1.0 very likely, 0.0 not likely)
  */
 float
-dw1000_rng_is_los(float rssi, float fppl)
+uwb_rng_is_los(float rssi, float fppl)
 {
     float d = fabs(rssi-fppl);
     if (d<6) return 1.0;
@@ -741,7 +708,7 @@ dw1000_rng_is_los(float rssi, float fppl)
 
 
 /**
- * @fn dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code)
+ * @fn uwb_rng_twr_to_tof_sym(twr_frame_t twr[], uwb_rng_modes_t code)
  * @brief API to calculate time of flight for symmetric type of ranging.
  *
  * @param twr[]  Pointer to twr buffers.
@@ -751,7 +718,7 @@ dw1000_rng_is_los(float rssi, float fppl)
  * @return Time of flight
  */
 uint32_t
-dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code){
+uwb_rng_twr_to_tof_sym(twr_frame_t twr[], uwb_rng_modes_t code){
     uint32_t ToF = 0;
     uint64_t T1R, T1r, T2R, T2r;
 
@@ -776,7 +743,7 @@ dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code){
  * @fn rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for receive timeout callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
@@ -784,7 +751,7 @@ dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code){
 static bool 
 rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
+    struct uwb_rng_instance * rng = (struct uwb_rng_instance *)cbs->inst_ptr;
     if(dpl_sem_get_count(&rng->sem) == 1)
         return false;
 
@@ -810,7 +777,7 @@ rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @fn reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for reset_cb of rng interface
  *
- * @param inst   Pointer to dw1000_dev_instance_t.
+ * @param inst   Pointer to struct uwb_dev.
  * @param cbs    Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
@@ -818,7 +785,7 @@ rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 static bool
 reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
+    struct uwb_rng_instance * rng = (struct uwb_rng_instance *)cbs->inst_ptr;
     if(dpl_sem_get_count(&rng->sem) == 0){
         dpl_error_t err = dpl_sem_release(&rng->sem);
         assert(err == DPL_OK);
@@ -833,7 +800,7 @@ reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @fn rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for receive complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
@@ -844,7 +811,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
 
-    dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
+    struct uwb_rng_instance * rng = (struct uwb_rng_instance *)cbs->inst_ptr;
     if(dpl_sem_get_count(&rng->sem) == 1){
         // unsolicited inbound
         RNG_STATS_INC(rx_unsolicited);
@@ -883,7 +850,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @fn tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for transmission complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
@@ -894,7 +861,7 @@ tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
     
-    dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
+    struct uwb_rng_instance * rng = (struct uwb_rng_instance *)cbs->inst_ptr;
     if(dpl_sem_get_count(&rng->sem) == 1) {
         // unsolicited inbound
         return false;
@@ -925,7 +892,7 @@ complete_ev_cb(struct dpl_event *ev) {
     assert(ev != NULL);
     assert(dpl_event_get_arg(ev));
 
-    dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)dpl_event_get_arg(ev);
+    struct uwb_rng_instance * rng = (struct uwb_rng_instance *)dpl_event_get_arg(ev);
     rng_encode(rng);
 }
 
@@ -935,7 +902,7 @@ static struct dpl_event rng_event;
  * @fn complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for rng complete callback and put complete_event_cb in queue.
  *
- * @param inst   Pointer to dw1000_dev_instance_t.
+ * @param inst   Pointer to struct uwb_dev.
  * @param cbs    Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
@@ -943,7 +910,7 @@ static struct dpl_event rng_event;
 static bool
 complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
+    struct uwb_rng_instance * rng = (struct uwb_rng_instance *)cbs->inst_ptr;
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
 

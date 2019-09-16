@@ -20,7 +20,7 @@
  */
 
 /**
- * @file dw1000_rng.h
+ * @file uwb_rng.h
  * @athor paul kettle
  * @date 2018
  * @brief Range
@@ -29,8 +29,8 @@
  *
  */
 
-#ifndef __RNG_H_
-#define __RNG_H_
+#ifndef __UWB_RNG_H_
+#define __UWB_RNG_H_
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -46,7 +46,7 @@ extern "C" {
 #include <dw1000/dw1000_dev.h>
 #include <euclid/triad.h>
 #include <stats/stats.h>
-#include <rng/slots.h>
+#include <uwb_rng/slots.h>
 
 #if MYNEWT_VAL(RNG_STATS)
 STATS_SECT_START(rng_stat_section)
@@ -63,21 +63,21 @@ STATS_SECT_END
 #endif
 
 //! Range configuration parameters.
-typedef struct _dw1000_rng_config_t{
+struct uwb_rng_config{
    uint32_t rx_holdoff_delay;        //!< Delay between frames, in UWB usec.
    uint32_t tx_holdoff_delay;        //!< Delay between frames, in UWB usec.
    uint32_t tx_guard_delay;          //!< Delay between frames from subsequent nodes, in UWB sec.
    uint16_t rx_timeout_delay;        //!< Receive response timeout, in UWB usec.
    uint16_t bias_correction:1;       //!< Enable range bias correction polynomial
-}dw1000_rng_config_t;
+};
 
 //! Range control parameters.
-typedef struct _dw1000_rng_control_t{
+typedef struct _uwb_rng_control_t{
     uint16_t delay_start_enabled:1;  //!< Set for enabling delayed start
-}dw1000_rng_control_t;
+}uwb_rng_control_t;
 
 //! Ranging modes.
-typedef enum _dw1000_rng_modes_t{
+typedef enum _uwb_rng_modes_t{
     DWT_TWR_INVALID = 0,             //!< Invalid TWR
     DWT_SS_TWR = 0x10,               //!< Single sided TWR 
     DWT_SS_TWR_T1,                   //!< Response for single sided TWR 
@@ -123,15 +123,15 @@ typedef enum _dw1000_rng_modes_t{
     DWT_RTDOA_INVALID = 0x80,
     DWT_RTDOA_REQUEST,
     DWT_RTDOA_RESP,
-}dw1000_rng_modes_t;
+}uwb_rng_modes_t;
 
 //! Range status parameters
-typedef struct _dw1000_rng_status_t{
+typedef struct _uwb_rng_status_t{
     uint16_t selfmalloc:1;           //!< Internal flag for memory garbage collection
     uint16_t initialized:1;          //!< Instance allocated
     uint16_t mac_error:1;            //!< Error caused due to frame filtering
     uint16_t invalid_code_error:1;   //!< Error due to invalid code
-}dw1000_rng_status_t;
+}uwb_rng_status_t;
 
 //!  TWR final frame format
 typedef struct _twr_frame_final_t{
@@ -152,12 +152,12 @@ typedef struct _twr_data_t{
 
 //! TWR frame format
 typedef union {
-//! Structure of TWR frame
+    //! Structure of TWR frame
     struct _twr_frame_t{
-//! Structure of TWR final frame
+        //! Structure of TWR final frame
         struct _twr_frame_final_t;
         union {
-//! Structure of TWR data
+            //! Structure of TWR data
             struct _twr_data_t;                            //!< Structure of twr_data
             uint8_t payload[sizeof(struct _twr_data_t)];   //!< Payload of size twr_data
         };
@@ -167,12 +167,12 @@ typedef union {
 
 struct rng_config_list {
     uint16_t rng_code;
-    dw1000_rng_config_t *config;
+    struct uwb_rng_config *config;
     SLIST_ENTRY(rng_config_list) next;
 };
     
 //! Structure of range instance
-typedef struct _dw1000_rng_instance_t{
+struct uwb_rng_instance{
     struct uwb_dev * dev_inst;              //!< Structure of uwb_dev
 #if MYNEWT_VAL(UWB_WCS_ENABLED)
     struct uwb_ccp_instance * ccp_inst;     //!< Structure of CCP
@@ -184,40 +184,36 @@ typedef struct _dw1000_rng_instance_t{
     uint16_t seq_num;                       //!< Local sequence number
     struct dpl_sem sem;                     //!< Structure of semaphores
     uint64_t delay;                         //!< Delay in transmission
-    dw1000_rng_config_t config;             //!< Structure of range config
-    dw1000_rng_control_t control;           //!< Structure of range control
-    dw1000_rng_status_t status;             //!< Structure of range status
+    struct uwb_rng_config config;           //!< Structure of range config
+    uwb_rng_control_t control;              //!< Structure of range control
+    uwb_rng_status_t status;                //!< Structure of range status
     uint16_t idx;                           //!< Input index to circular buffer 
     uint16_t idx_current;                   //!< Output index to circular buffer 
     uint16_t nframes;                       //!< Number of buffers defined to store the ranging data
     SLIST_HEAD(, rng_config_list) rng_configs;
     twr_frame_t * frames[];                 //!< Pointer to twr buffers
-}dw1000_rng_instance_t;
+};
 
     
 void rng_pkg_init(void);
-dw1000_rng_instance_t * dw1000_rng_init(struct uwb_dev * dev, dw1000_rng_config_t * config, uint16_t nframes);
-void dw1000_rng_free(dw1000_rng_instance_t * rng);
-struct uwb_dev_status dw1000_rng_config(struct _dw1000_rng_instance_t * rng, dw1000_rng_config_t * config);
-struct uwb_dev_status dw1000_rng_request(struct _dw1000_rng_instance_t * rng, uint16_t dst_address, dw1000_rng_modes_t protocal);
-struct uwb_dev_status dw1000_rng_listen(struct _dw1000_rng_instance_t * rng, uwb_dev_modes_t mode);
-struct uwb_dev_status dw1000_rng_request_delay_start(struct _dw1000_rng_instance_t * rng, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t protocal);
-dw1000_rng_config_t * dw1000_rng_get_config(struct _dw1000_rng_instance_t * rng, dw1000_rng_modes_t code);
-void dw1000_rng_set_frames(struct _dw1000_rng_instance_t * rng, twr_frame_t twr[], uint16_t nframes);
-#if MYNEWT_VAL(DW1000_RANGE)
-float dw1000_rng_twr_to_tof(twr_frame_t *fframe, twr_frame_t *nframe);
-#else
-float dw1000_rng_twr_to_tof(dw1000_rng_instance_t * rng, uint16_t idx);
-#endif
-float dw1000_rng_tof_to_meters(float ToF);
-float dw1000_rng_is_los(float rssi, float fppl);
+struct uwb_rng_instance * uwb_rng_init(struct uwb_dev * dev, struct uwb_rng_config * config, uint16_t nframes);
+void uwb_rng_free(struct uwb_rng_instance * rng);
+struct uwb_dev_status uwb_rng_config(struct uwb_rng_instance * rng, struct uwb_rng_config * config);
+struct uwb_dev_status uwb_rng_request(struct uwb_rng_instance * rng, uint16_t dst_address, uwb_rng_modes_t protocal);
+struct uwb_dev_status uwb_rng_listen(struct uwb_rng_instance * rng, uwb_dev_modes_t mode);
+struct uwb_dev_status uwb_rng_request_delay_start(struct uwb_rng_instance * rng, uint16_t dst_address, uint64_t delay, uwb_rng_modes_t protocal);
+struct uwb_rng_config * uwb_rng_get_config(struct uwb_rng_instance * rng, uwb_rng_modes_t code);
+void uwb_rng_set_frames(struct uwb_rng_instance * rng, twr_frame_t twr[], uint16_t nframes);
+float uwb_rng_twr_to_tof(struct uwb_rng_instance * rng, uint16_t idx);
+float uwb_rng_tof_to_meters(float ToF);
+float uwb_rng_is_los(float rssi, float fppl);
 
-float dw1000_rng_path_loss(float Pt, float G, float fc, float R);
-float dw1000_rng_bias_correction(dw1000_dev_instance_t * inst, float Pr);
-uint32_t dw1000_rng_twr_to_tof_sym(twr_frame_t twr[], dw1000_rng_modes_t code);
+float uwb_rng_path_loss(float Pt, float G, float fc, float R);
+float uwb_rng_bias_correction(struct uwb_dev * dev, float Pr);
+uint32_t uwb_rng_twr_to_tof_sym(twr_frame_t twr[], uwb_rng_modes_t code);
 
-void dw1000_rng_append_config(dw1000_rng_instance_t * rng, struct rng_config_list *cfgs);
-void dw1000_rng_remove_config(dw1000_rng_instance_t * rng, dw1000_rng_modes_t code);
+void uwb_rng_append_config(struct uwb_rng_instance * rng, struct rng_config_list *cfgs);
+void uwb_rng_remove_config(struct uwb_rng_instance * rng, uwb_rng_modes_t code);
 
     
 #ifdef __cplusplus

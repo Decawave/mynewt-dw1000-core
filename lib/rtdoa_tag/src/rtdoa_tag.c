@@ -36,7 +36,7 @@
 #include <rtdoa_tag/rtdoa_tag.h>
 #include <uwb_wcs/uwb_wcs.h>
 #include <dsp/polyval.h>
-#include <rng/slots.h>
+#include <uwb_rng/slots.h>
 
 #define WCS_DTU MYNEWT_VAL(WCS_DTU)
 
@@ -45,7 +45,7 @@
 #define DIAGMSG(s,u)
 #endif
 
-static dw1000_rng_config_t g_config = {
+static struct uwb_rng_config g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(RTDOA_TX_HOLDOFF),       // Send Time delay in usec.
     .rx_timeout_delay = MYNEWT_VAL(RTDOA_RX_TIMEOUT),       // Receive response timeout in usec
     .tx_guard_delay = MYNEWT_VAL(RTDOA_TX_GUARD_DELAY)
@@ -93,7 +93,7 @@ rtdoa_tag_pkg_init(void)
 /**
  * API to free the allocated resources.
  *
- * @param inst  Pointer to dw1000_rng_instance_t.
+ * @param inst  Pointer to struct uwb_rng_instance.
  *
  * @return void 
  */

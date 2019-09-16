@@ -17,8 +17,8 @@
 # under the License.
 #
 
-pkg.name: lib/rng
-pkg.description: TWR library superset 
+pkg.name: lib/uwb_rng
+pkg.description: UWB TWR library superset 
 pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
@@ -37,5 +37,5 @@ pkg.deps:
     - "@mynewt-dw1000-core/lib/euclid"
     - "@mynewt-dw1000-core/lib/dsp"
 pkg.init:
-    rng_pkg_init: 404
+    uwb_rng_pkg_init: 404
 

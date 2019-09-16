@@ -38,7 +38,7 @@ struct uwb_dev_status rtdoa_request(struct rtdoa_instance *rtdoa, uint64_t delay
 
 void rtdoa_node_pkg_init(void);
 void rtdoa_node_free(struct uwb_dev * inst);
-dw1000_rng_config_t * rtdoa_node_config(struct uwb_dev * inst);
+struct uwb_rng_config * rtdoa_node_config(struct uwb_dev * inst);
 
 #ifdef __cplusplus
 }

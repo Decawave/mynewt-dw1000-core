@@ -56,9 +56,9 @@
 #include <uwb_wcs/uwb_wcs.h>
 #endif
 #if MYNEWT_VAL(NRNG_ENABLED)
-#include <rng/rng.h>
+#include <uwb_rng/uwb_rng.h>
 #include <nrng/nrng.h>
-#include <rng/slots.h>
+#include <uwb_rng/slots.h>
 #endif
 #if MYNEWT_VAL(SURVEY_VERBOSE)
 static void survey_complete_cb(struct dpl_event *ev);

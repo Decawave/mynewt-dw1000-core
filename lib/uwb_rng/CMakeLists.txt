@@ -1,4 +1,4 @@
-project(rng VERSION ${VERSION} LANGUAGES C)
+project(uwb_rng VERSION ${VERSION} LANGUAGES C)
 
 file(GLOB ${PROJECT_NAME}_SOURCES 
     src/*.c
@@ -35,8 +35,8 @@ add_library(libdsp ALIAS dsp)
 get_target_property(libdsp_INCLUDE_DIRECTORIES libdsp INCLUDE_DIRECTORIES)
 add_library(libeuclid ALIAS euclid)
 get_target_property(libeuclid_INCLUDE_DIRECTORIES libeuclid INCLUDE_DIRECTORIES)
-add_library(librng ALIAS rng)
-get_target_property(librng_INCLUDE_DIRECTORIES librng INCLUDE_DIRECTORIES)
+add_library(libuwb_rng ALIAS uwb_rng)
+get_target_property(libuwb_rng_INCLUDE_DIRECTORIES libuwb_rng INCLUDE_DIRECTORIES)
 add_library(libcir ALIAS cir)
 get_target_property(libcir_INCLUDE_DIRECTORIES libcir INCLUDE_DIRECTORIES)
 #add_library(libtwr_ss ALIAS twr_ss)
@@ -59,7 +59,7 @@ target_include_directories(${PROJECT_NAME}
       PRIVATE ${libdpl_os_INCLUDE_DIRECTORIES}
       PRIVATE ${libuwb_dw1000_INCLUDE_DIRECTORIES}
       PRIVATE ${libdsp_INCLUDE_DIRECTORIES}
-      PRIVATE ${librng_INCLUDE_DIRECTORIES}
+      PRIVATE ${libuwb_rng_INCLUDE_DIRECTORIES}
       PRIVATE ${libeuclid_INCLUDE_DIRECTORIES}
       PRIVATE ${libcir_INCLUDE_DIRECTORIES}
 

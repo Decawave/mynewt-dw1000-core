@@ -43,7 +43,7 @@ extern "C" {
 
 #include <dw1000/dw1000_dev.h>
 #include <uwb/uwb_ftypes.h>
-#include <rng/rng.h>
+#include <uwb_rng/uwb_rng.h>
 
 void twr_ds_pkg_init(void);
 void twr_ds_free(dw1000_dev_instance_t * inst);

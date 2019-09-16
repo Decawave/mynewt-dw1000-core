@@ -1,7 +1,7 @@
 
 syscfg.defs:
-      RNG_ENABLED:
-        description: 'Enable toplevel ranging services'
+      UWB_RNG_ENABLED:
+        description: 'Enable toplevel UWB ranging services'
         value: 1
       RNG_TX_HOLDOFF:
         description: 'worstcase tx holdoff delay for all TWR modes (usec)'

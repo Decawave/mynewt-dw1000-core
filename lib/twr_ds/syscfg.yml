@@ -3,7 +3,7 @@ syscfg.defs:
       TWR_DS_ENABLED:
         description: 'Enable toplevel ranging services'
         value: 1
-        restrictions: RNG_ENABLED
+        restrictions: UWB_RNG_ENABLED
       TWR_DS_TX_HOLDOFF:
         description: 'tx holdoff delay for DS TWR (usec)'
         value: ((uint32_t)0x0400)

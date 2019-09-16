@@ -34,6 +34,6 @@ pkg.lflags:
 
 pkg.deps:
     - "@apache-mynewt-core/encoding/json"
-    - "@mynewt-dw1000-core/lib/rng"
+    - "@mynewt-dw1000-core/lib/uwb_rng"
     - "@mynewt-dw1000-core/hw/drivers/uwb"
 

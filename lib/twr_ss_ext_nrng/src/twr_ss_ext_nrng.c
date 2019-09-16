@@ -49,7 +49,7 @@
 #include <uwb_wcs/uwb_wcs.h>
 #endif
 #include <dsp/polyval.h>
-#include <rng/slots.h>
+#include <uwb_rng/slots.h>
 
 #define WCS_DTU MYNEWT_VAL(WCS_DTU)
 
@@ -83,7 +83,7 @@ STATS_NAME_END(twr_ss_ext_nrng_stat_section)
 
 static STATS_SECT_DECL(twr_ss_ext_nrng_stat_section) g_stat;
 
-static dw1000_rng_config_t g_config = {
+static struct uwb_rng_config g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(TWR_SS_EXT_NRNG_TX_HOLDOFF),         // Send Time delay in usec.
     .rx_timeout_delay = MYNEWT_VAL(TWR_SS_EXT_NRNG_RX_TIMEOUT),        // Receive response timeout in usec
     .tx_guard_delay = MYNEWT_VAL(TWR_SS_EXT_NRNG_TX_GUARD_DELAY)        // Guard delay to be added between each frame from node
@@ -120,7 +120,7 @@ void twr_ss_ext_nrng_pkg_init(void)
 /**
  * API to free the allocated resources.
  *
- * @param inst  Pointer to dw1000_rng_instance_t.
+ * @param inst  Pointer to struct uwb_rng_instance.
  *
  * @return void
  */
@@ -144,7 +144,7 @@ rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs){
     if(inst->fctrl != FCNTL_IEEE_RANGE_16){
         return false;
     }
-    dw1000_rng_instance_t * rng = inst->rng;
+    struct uwb_rng_instance * rng = inst->rng;
     if(os_sem_get_count(&rng->sem) == 0){
         STATS_INC(g_stat, rx_error);
         os_error_t err = os_sem_release(&rng->sem);
@@ -171,9 +171,9 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
     if (os_sem_get_count(&inst->rng->sem) == 1) // unsolicited inbound
 	    return false;
     assert(inst->nrng);
-    dw1000_rng_instance_t * rng = inst->rng;
+    struct uwb_rng_instance * rng = inst->rng;
     dw1000_nrng_instance_t * nrng = inst->nrng;
-    dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, DWT_SS_TWR_NRNG_EXT);
+    struct uwb_rng_config * config = dw1000_nrng_get_config(inst, DWT_SS_TWR_NRNG_EXT);
     uint16_t slot_idx;
 
     switch(rng->code){

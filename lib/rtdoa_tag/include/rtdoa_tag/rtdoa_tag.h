@@ -35,7 +35,7 @@ extern "C" {
 #include <rtdoa/rtdoa.h>
 
 void rtdoa_tag_free(struct uwb_dev * inst);
-dw1000_rng_config_t * rtdoa_tag_config(struct uwb_dev * inst);
+struct uwb_rng_config * rtdoa_tag_config(struct uwb_dev * inst);
 
 #ifdef __cplusplus
 }

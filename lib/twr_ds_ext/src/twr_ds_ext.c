@@ -39,7 +39,7 @@
 
 #include <stats/stats.h>
 #include <uwb/uwb.h>
-#include <rng/rng.h>
+#include <uwb_rng/uwb_rng.h>
 #include <dsp/polyval.h>
 
 //#define DIAGMSG(s,u) printf(s,u)
@@ -94,7 +94,7 @@ STATS_NAME_END(twr_ds_ext_stat_section)
 
 static STATS_SECT_DECL(twr_ds_ext_stat_section) g_stat;
 
-static dw1000_rng_config_t g_config = {
+static struct uwb_rng_config g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(TWR_DS_EXT_TX_HOLDOFF),         // Send Time delay in usec.
     .rx_timeout_delay = MYNEWT_VAL(TWR_DS_EXT_RX_TIMEOUT)       // Receive response timeout in usec
 };
@@ -131,20 +131,20 @@ void twr_ds_ext_pkg_init(void){
     printf("{\"utime\": %lu,\"msg\": \"twr_ds_ext_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
-    g_cbs[0].inst_ptr = (dw1000_rng_instance_t*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_RNG);
+    g_cbs[0].inst_ptr = (struct uwb_rng_instance*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_RNG);
     assert(g_cbs[0].inst_ptr);
     uwb_mac_append_interface(uwb_dev_idx_lookup(0), &g_cbs[0]);
-    dw1000_rng_append_config(g_cbs[0].inst_ptr, &g_rng_cfgs[0]);
+    uwb_rng_append_config(g_cbs[0].inst_ptr, &g_rng_cfgs[0]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_1)
-    g_cbs[1].inst_ptr = (dw1000_rng_instance_t*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(1), UWBEXT_RNG);
+    g_cbs[1].inst_ptr = (struct uwb_rng_instance*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(1), UWBEXT_RNG);
     uwb_mac_append_interface(uwb_dev_idx_lookup(1), &g_cbs[1]);
-    dw1000_rng_append_config(g_cbs[1].inst_ptr, &g_rng_cfgs[1]);
+    uwb_rng_append_config(g_cbs[1].inst_ptr, &g_rng_cfgs[1]);
 #endif
 #if MYNEWT_VAL(DW1000_DEVICE_2)
-    g_cbs[2].inst_ptr = (dw1000_rng_instance_t*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(2), UWBEXT_RNG);
+    g_cbs[2].inst_ptr = (struct uwb_rng_instance*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(2), UWBEXT_RNG);
     uwb_mac_append_interface(uwb_dev_idx_lookup(2), &g_cbs[2]);
-    dw1000_rng_append_config(g_cbs[2].inst_ptr, &g_rng_cfgs[2]);
+    uwb_rng_append_config(g_cbs[2].inst_ptr, &g_rng_cfgs[2]);
 #endif
   
     int rc = stats_init(
@@ -161,7 +161,7 @@ void twr_ds_ext_pkg_init(void){
 /**
  * API to free the allocated resources.
  *
- * @param inst  Pointer to dw1000_rng_instance_t.
+ * @param inst  Pointer to struct uwb_rng_instance.
  *
  * @return void 
  */
@@ -181,7 +181,7 @@ twr_ds_ext_free(struct uwb_dev * inst){
 static bool
 tx_final_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
+    struct uwb_rng_instance * rng = (struct uwb_rng_instance *)cbs->inst_ptr;
     twr_frame_t * frame = rng->frames[(rng->idx)%rng->nframes];
 
     frame->cartesian.x = MYNEWT_VAL(LOCAL_COORDINATE_X);
@@ -190,9 +190,9 @@ tx_final_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
   
 #if MYNEWT_VAL(DW1000_BIAS_CORRECTION_ENABLED)
     if (inst->config.bias_correction_enable){ 
-        float range = dw1000_rng_tof_to_meters(dw1000_rng_twr_to_tof(rng,rng->idx)); 
-        float bias = 2 * dw1000_rng_bias_correction(inst, 
-                    dw1000_rng_path_loss(
+        float range = uwb_rng_tof_to_meters(uwb_rng_twr_to_tof(rng,rng->idx)); 
+        float bias = 2 * uwb_rng_bias_correction(inst, 
+                    uwb_rng_path_loss(
                         MYNEWT_VAL(DW1000_DEVICE_TX_PWR),
                         MYNEWT_VAL(DW1000_DEVICE_ANT_GAIN),
                         MYNEWT_VAL(DW1000_DEVICE_FREQ),
@@ -201,7 +201,7 @@ tx_final_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
         frame->spherical.range = range - bias;
     }
 #else
-    frame->spherical.range = dw1000_rng_tof_to_meters(dw1000_rng_twr_to_tof(rng,rng->idx));
+    frame->spherical.range = uwb_rng_tof_to_meters(uwb_rng_twr_to_tof(rng,rng->idx));
 #endif
     frame->spherical_variance.range = MYNEWT_VAL(RANGE_VARIANCE);
     frame->spherical_variance.azimuth = -1;
@@ -235,7 +235,7 @@ start_tx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 static bool
 reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
+    struct uwb_rng_instance * rng = (struct uwb_rng_instance *)cbs->inst_ptr;
     if(dpl_sem_get_count(&rng->sem) == 0){
         STATS_INC(g_stat, reset);
         dpl_error_t err = dpl_sem_release(&rng->sem);
@@ -260,7 +260,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
    if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
 
-    dw1000_rng_instance_t * rng = (dw1000_rng_instance_t *)cbs->inst_ptr;
+    struct uwb_rng_instance * rng = (struct uwb_rng_instance *)cbs->inst_ptr;
     if(dpl_sem_get_count(&rng->sem) == 1){ 
         // unsolicited inbound
         return false;

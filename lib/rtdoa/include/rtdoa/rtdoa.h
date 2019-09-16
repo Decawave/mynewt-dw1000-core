@@ -31,9 +31,9 @@
 #include <euclid/triad.h>
 #include <stats/stats.h>
 
-#if MYNEWT_VAL(RNG_ENABLED)
-#include <rng/rng.h>
-#include <rng/slots.h>
+#if MYNEWT_VAL(UWB_RNG_ENABLED)
+#include <uwb_rng/uwb_rng.h>
+#include <uwb_rng/slots.h>
 #endif
 
 #if MYNEWT_VAL(RTDOA_STATS)
@@ -106,9 +106,9 @@ struct rtdoa_instance{
     uint16_t nframes;
     struct os_sem sem;                          //!< Structure of semaphores
     struct uwb_mac_interface cbs;               //!< MAC Layer Callbacks
-    dw1000_rng_status_t status;
-    dw1000_rng_control_t control;
-    dw1000_rng_config_t config;
+    uwb_rng_status_t status;
+    uwb_rng_control_t control;
+    struct uwb_rng_config config;
     uint16_t idx;
     rtdoa_frame_t * req_frame;
     rtdoa_frame_t * frames[];
@@ -118,15 +118,15 @@ struct rtdoa_instance{
 extern "C" {
 #endif
 
-struct rtdoa_instance * rtdoa_init(struct uwb_dev * inst, dw1000_rng_config_t * config, uint16_t nframes);
+struct rtdoa_instance * rtdoa_init(struct uwb_dev * inst, struct uwb_rng_config * config, uint16_t nframes);
 float rtdoa_tdoa_between_frames(struct rtdoa_instance *rtdoa, rtdoa_frame_t *req_frame, rtdoa_frame_t *resp_frame);
 
 void rtdoa_set_frames(struct rtdoa_instance *rtdoa, uint16_t nframes);
-struct uwb_dev_status rtdoa_config(struct rtdoa_instance *rtdoa, dw1000_rng_config_t * config);
+struct uwb_dev_status rtdoa_config(struct rtdoa_instance *rtdoa, struct uwb_rng_config * config);
 
 struct uwb_dev_status rtdoa_listen(struct rtdoa_instance * rtdoa, uwb_dev_modes_t mode, uint64_t delay, uint16_t timeout);
 uint32_t rtdoa_usecs_to_response(struct uwb_dev * inst, rtdoa_request_frame_t * req,
-                                 uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration);
+                                 uint16_t nslots, struct uwb_rng_config * config, uint32_t duration);
 uint64_t rtdoa_local_to_master64(struct uwb_dev * inst, uint64_t dtu_time, rtdoa_frame_t *req_frame);
 
 #ifdef __cplusplus

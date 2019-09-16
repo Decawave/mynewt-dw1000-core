@@ -42,7 +42,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include <rng/slots.h>
+#include <uwb_rng/slots.h>
 #include <stats/stats.h>
 
 typedef struct _survey_nrng_t{
