@@ -271,8 +271,8 @@ retry:
     rc = hal_spi_enable(inst->spi_num);
     assert(rc == 0);
 
-    inst->device_id = dw1000_read_reg(inst, DEV_ID_ID, 0, sizeof(uint32_t));
-    inst->uwb_dev.status.initialized = (inst->device_id == DWT_DEVICE_ID);
+    inst->uwb_dev.device_id = dw1000_read_reg(inst, DEV_ID_ID, 0, sizeof(uint32_t));
+    inst->uwb_dev.status.initialized = (inst->uwb_dev.device_id == DWT_DEVICE_ID);
     if (!inst->uwb_dev.status.initialized && --timeout)
     {
         /* In case dw1000 was sleeping */
@@ -538,6 +538,37 @@ uwb_dw1000_txrf_config(struct uwb_dev *dev, struct uwb_dev_txrf_config *config)
     dw1000_phy_config_txrf((dw1000_dev_instance_t *)dev, config);
 }
 
+inline static void
+uwb_dw1000_sleep_config(struct uwb_dev *dev)
+{
+    dw1000_dev_configure_sleep((dw1000_dev_instance_t *)dev);
+}
+
+inline static struct uwb_dev_status
+uwb_dw1000_enter_sleep(struct uwb_dev *dev)
+{
+    return dw1000_dev_enter_sleep((dw1000_dev_instance_t *)dev);
+}
+
+inline static struct uwb_dev_status
+uwb_dw1000_enter_sleep_after_tx(struct uwb_dev *dev, uint8_t enable)
+{
+    return dw1000_dev_enter_sleep_after_tx((dw1000_dev_instance_t *)dev, enable);
+}
+
+inline static struct uwb_dev_status
+uwb_dw1000_enter_sleep_after_rx(struct uwb_dev *dev, uint8_t enable)
+{
+    return dw1000_dev_enter_sleep_after_rx((dw1000_dev_instance_t *)dev, enable);
+}
+
+inline static struct uwb_dev_status
+uwb_dw1000_wakeup(struct uwb_dev *dev)
+{
+    return dw1000_dev_wakeup((dw1000_dev_instance_t *)dev);
+}
+
+
 inline static struct uwb_dev_status
 uwb_dw1000_set_rx_timeout(struct uwb_dev *dev, uint32_t timeout)
 {
@@ -707,6 +738,11 @@ uwb_dw1000_estimate_los(struct uwb_dev * dev, float rssi, float fppl)
 static const struct uwb_driver_funcs dw1000_uwb_funcs = {
     .uf_mac_config = uwb_dw1000_mac_config,
     .uf_txrf_config = uwb_dw1000_txrf_config,
+    .uf_sleep_config = uwb_dw1000_sleep_config,
+    .uf_enter_sleep = uwb_dw1000_enter_sleep,
+    .uf_enter_sleep_after_tx = uwb_dw1000_enter_sleep_after_tx,
+    .uf_enter_sleep_after_rx = uwb_dw1000_enter_sleep_after_rx,
+    .uf_wakeup = uwb_dw1000_wakeup,
     .uf_set_rx_timeout = uwb_dw1000_set_rx_timeout,
     .uf_adj_rx_timeout = uwb_dw1000_adj_rx_timeout,
     .uf_set_delay_start = uwb_dw1000_set_delay_start,

@@ -114,7 +114,6 @@ typedef struct _dw1000_dev_instance_t{
 
     struct dpl_sem tx_sem;                      //!< semphore for low level mac/phy functions
     struct dpl_mutex mutex;                     //!< os_mutex
-    uint32_t device_id;                         //!< Device id  
     uint32_t part_id;                           //!< Identifier of a particular part design
     uint32_t lot_id;                            //!< Identification number assigned to a particular quantity
 

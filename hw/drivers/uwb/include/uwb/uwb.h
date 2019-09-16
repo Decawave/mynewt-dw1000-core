@@ -216,6 +216,62 @@ typedef struct uwb_dev_status (*uwb_mac_config_func_t)(struct uwb_dev * dev, str
 typedef void (*uwb_txrf_config_func_t)(struct uwb_dev * dev, struct uwb_dev_txrf_config *config);
 
 /**
+ *  Configure the device for both DEEP_SLEEP and SLEEP modes, and on-wake mode
+ *  i.e., before entering the sleep, the device can be programmed for TX or RX, then upon "waking up" the TX/RX settings
+ *  will be preserved and the device can immediately perform the desired action TX/RX.
+ *
+ * NOTE: e.g. Tag operation - after deep sleep, the device needs to just load the TX buffer and send the frame.
+ *
+ * @param inst  Pointer to struct uwb_dev.
+ *
+ * @return void
+ */
+typedef void (*uwb_sleep_config_func_t)(struct uwb_dev * dev);
+
+/**
+ * API to enter device into sleep mode.
+ *
+ * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @return struct uwb_dev_status
+ */
+typedef struct uwb_dev_status (*uwb_enter_sleep_func_t)(struct uwb_dev * dev);
+
+/** 
+ * Set the auto TX to sleep bit. This means that after a frame
+ * transmission the device will enter deep sleep mode. The uwb_sleep_config() function
+ * needs to be called before this to configure the on-wake settings.
+ *
+ * NOTE: the IRQ line has to be low/inactive (i.e. no pending events)
+ *
+ * @param inst       Pointer to struct uwb_dev.
+ * @param enable     1 to configure the device to enter deep sleep after TX, 
+ *                   0 to disables the configuration.
+ * @return struct uwb_dev_status
+ */
+typedef struct uwb_dev_status (*uwb_enter_sleep_after_tx_func_t)(struct uwb_dev * dev, uint8_t enable);
+
+/**
+ *  Sets the auto RX to sleep bit. This means that after a frame
+ *  received the device will enter deep sleep mode. The dev_configure_sleep() function
+ *  needs to be called before this to configure the on-wake settings.
+ *
+ * NOTE: the IRQ line has to be low/inactive (i.e. no pending events).
+ * @param inst       Pointer to struct uwb_dev.
+ * @param enable     1 to configure the device to enter deep sleep after TX, 
+ *                   0 to disables the configuration
+ * @return struct uwb_dev_status
+ */
+typedef struct uwb_dev_status (*uwb_enter_sleep_after_rx_func_t)(struct uwb_dev * dev, uint8_t enable);
+
+/**
+ * Wakeup device from sleep to init.
+ *
+ * @param inst  struct uwb_dev.
+ * @return struct uwb_dev_status
+ */
+typedef struct uwb_dev_status (*uwb_wakeup_func_t)(struct uwb_dev * dev);
+
+/**
  * Set Receive Wait Timeout period.
  *
  * @param dev       pointer to struct uwb_dev.
@@ -507,6 +563,11 @@ typedef float (*uwb_estimate_los_func_t)(struct uwb_dev * dev, float rssi, float
 struct uwb_driver_funcs {
     uwb_mac_config_func_t uf_mac_config;
     uwb_txrf_config_func_t uf_txrf_config;
+    uwb_sleep_config_func_t uf_sleep_config;
+    uwb_enter_sleep_func_t uf_enter_sleep;
+    uwb_enter_sleep_after_tx_func_t uf_enter_sleep_after_tx;
+    uwb_enter_sleep_after_rx_func_t uf_enter_sleep_after_rx;
+    uwb_wakeup_func_t uf_wakeup;
     uwb_set_rx_timeout_func_t uf_set_rx_timeout;
     uwb_adj_rx_timeout_func_t uf_adj_rx_timeout;
     uwb_set_delay_start_func_t uf_set_delay_start;
@@ -573,6 +634,7 @@ struct uwb_dev {
     uint16_t pan_id;                            //!< Private network interface id
     uint16_t slot_id;                           //!< Slot id
     uint16_t cell_id;                           //!< Cell id
+    uint32_t device_id;                         //!< Device id
     uint16_t rx_antenna_delay;                  //!< Receive antenna delay
     uint16_t tx_antenna_delay;                  //!< Transmit antenna delay
     int32_t ext_clock_delay;                    //!< External clock delay
@@ -584,11 +646,8 @@ struct uwb_dev {
 };
 
 #if 0
-    // TODO
-    dw1000_dev_configure_sleep
-    dw1000_dev_enter_sleep_after_tx
     hal_dw1000_rw_noblock_wait
-    dw1000_read_rawrxtime ???
+    dw1000_read_rawrxtime ??? (only nmgr_uwb)
     dw1000_set_dblrxbuff 
     dw1000_calc_clock_offset_ratio
     rxttcko
@@ -620,6 +679,81 @@ static inline void
 uwb_txrf_config(struct uwb_dev * dev, struct uwb_dev_txrf_config *config)
 {
     return (dev->uw_funcs->uf_txrf_config(dev, config));
+}
+
+/**
+ *  Configure the device for both DEEP_SLEEP and SLEEP modes, and on-wake mode
+ *  i.e., before entering the sleep, the device can be programmed for TX or RX, then upon "waking up" the TX/RX settings
+ *  will be preserved and the device can immediately perform the desired action TX/RX.
+ *
+ * NOTE: e.g. Tag operation - after deep sleep, the device needs to just load the TX buffer and send the frame.
+ *
+ * @param inst  Pointer to struct uwb_dev.
+ *
+ * @return void
+ */
+static inline void uwb_sleep_config(struct uwb_dev * dev)
+{
+    return (dev->uw_funcs->uf_sleep_config(dev));
+}
+
+/**
+ * API to enter device into sleep mode.
+ *
+ * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @return struct uwb_dev_status
+ */
+static inline struct uwb_dev_status
+uwb_enter_sleep(struct uwb_dev * dev)
+{
+    return (dev->uw_funcs->uf_enter_sleep(dev));
+}
+
+/** 
+ * Set the auto TX to sleep bit. This means that after a frame
+ * transmission the device will enter deep sleep mode. The uwb_sleep_config() function
+ * needs to be called before this to configure the on-wake settings.
+ *
+ * NOTE: the IRQ line has to be low/inactive (i.e. no pending events)
+ *
+ * @param inst       Pointer to struct uwb_dev.
+ * @param enable     1 to configure the device to enter deep sleep after TX, 
+ *                   0 to disables the configuration.
+ * @return struct uwb_dev_status
+ */
+static inline struct uwb_dev_status
+uwb_enter_sleep_after_tx(struct uwb_dev * dev, uint8_t enable)
+{
+    return (dev->uw_funcs->uf_enter_sleep_after_tx(dev, enable));
+}
+
+/**
+ *  Sets the auto RX to sleep bit. This means that after a frame
+ *  received the device will enter deep sleep mode. The dev_configure_sleep() function
+ *  needs to be called before this to configure the on-wake settings.
+ *
+ * NOTE: the IRQ line has to be low/inactive (i.e. no pending events).
+ * @param inst       Pointer to struct uwb_dev.
+ * @param enable     1 to configure the device to enter deep sleep after TX, 
+ *                   0 to disables the configuration
+ * @return struct uwb_dev_status
+ */
+static inline struct uwb_dev_status
+uwb_enter_sleep_after_rx(struct uwb_dev * dev, uint8_t enable)
+{
+    return (dev->uw_funcs->uf_enter_sleep_after_rx(dev, enable));
+}
+
+/**
+ * Wakeup device from sleep to init.
+ *
+ * @param inst  struct uwb_dev.
+ * @return struct uwb_dev_status
+ */
+static inline struct uwb_dev_status
+uwb_wakeup(struct uwb_dev * dev)
+{
+    return (dev->uw_funcs->uf_wakeup(dev));
 }
 
 /**
