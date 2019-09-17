@@ -435,7 +435,7 @@ nmgr_uwb_tx(struct _nmgr_uwb_instance_t *nmgruwb, uint16_t dst_addr, uint16_t co
 
         /* The uwb_write_tx can do a dma transfer, make sure we wait
          * until that's finished before updating the buffer */
-        hal_dw1000_rw_noblock_wait((dw1000_dev_instance_t*)inst, OS_TIMEOUT_NEVER);
+        uwb_hal_noblock_wait(inst, OS_TIMEOUT_NEVER);
         os_mbuf_copydata(m, mbuf_offset, cpy_len, buf);
         uwb_write_tx(inst, buf, device_offset, cpy_len);
         mbuf_offset += cpy_len;

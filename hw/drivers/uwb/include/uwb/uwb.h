@@ -91,6 +91,7 @@ struct uwb_dev_status {
     uint32_t sem_force_released:1;    //!< Semaphore was released in forcetrxoff
     uint32_t overrun_error:1;         //!< Dblbuffer overrun detected
     uint32_t rx_restarted:1;          //!< RX restarted since last received packet
+    uint32_t ext_sync:1;              //!< External sync successful
 };
 
 /** API parent structure for rx diagnostics. Used to store values for later
@@ -191,8 +192,8 @@ struct uwb_dev_config{
     uint32_t wakeup_rx_enable:1;            //!< Enables wakeup_rx_enable
     uint32_t sleep_enable:1;                //!< Enables sleep_enable bit
     uint32_t cir_enable:1;                  //!< Enables reading CIR as default
-    uint32_t pmem_enable:1;                 //!< Enables reading Preamble memory as default behaviour
     uint32_t cir_pdoa_slave:1;              //!< This instance is acting as a pdoa slave
+    uint32_t blocking_spi_transfers:1;      //!< Disables non-blocking reads and writes
 };
 
 /**
@@ -270,6 +271,17 @@ typedef struct uwb_dev_status (*uwb_enter_sleep_after_rx_func_t)(struct uwb_dev 
  * @return struct uwb_dev_status
  */
 typedef struct uwb_dev_status (*uwb_wakeup_func_t)(struct uwb_dev * dev);
+
+/**
+ * Enable/Disable the double receive buffer mode.
+ *
+ * @param inst    Pointer to struct uwb_dev.
+ * @param enable  1 to enable, 0 to disable the double buffer mode.
+ *
+ * @return struct uwb_dev_status
+ *
+ */
+typedef struct uwb_dev_status (*uwb_set_dblrxbuff_func_t)(struct uwb_dev * dev, bool enable);
 
 /**
  * Set Receive Wait Timeout period.
@@ -377,6 +389,15 @@ typedef struct uwb_dev_status (*uwb_write_tx_func_t)(struct uwb_dev* dev, uint8_
  * @return void
  */
 typedef void (*uwb_write_tx_fctrl_func_t)(struct uwb_dev* dev, uint16_t tx_frame_length, uint16_t tx_buffer_offset);
+
+/**
+ * Wait for a DMA transfer
+ *
+ * @param inst  Pointer to struct uwb_dev.
+ * @param timeout  Time in os_ticks to wait, use DPL_TIMEOUT_NEVER to wait indefinitely
+ * @return void
+ */
+typedef dpl_error_t (*uwb_hal_noblock_wait_func_t)(struct uwb_dev * dev, dpl_time_t timeout);
 
 /**
  * Enable wait for response feature.
@@ -492,6 +513,14 @@ typedef uint16_t (*uwb_phy_SHR_duration_func_t)(struct uwb_dev* dev);
 typedef void (*uwb_phy_forcetrxoff_func_t)(struct uwb_dev* dev);
 
 /**
+ * Reset the UWB receiver.
+ *
+ * @param inst   Pointer to struct uwb_dev.
+ * @return void
+ */
+typedef void (*uwb_phy_rx_reset_func_t)(struct uwb_dev * dev);
+
+/**
  * Enable rx regardless of hpdwarning
  *
  * @param inst    Pointer to struct uwb_dev.
@@ -508,6 +537,16 @@ typedef struct uwb_dev_status (*uwb_set_on_error_continue_func_t)(struct uwb_dev
  *
  */
 typedef void (*uwb_set_panid_func_t)(struct uwb_dev * dev, uint16_t pan_id);
+
+/**
+ * Calculate the clock offset ratio from the carrior integrator value
+ *
+ * @param inst           Pointer to struct uwb_dev.
+ * @param integrator_val Carrier integrator value
+ *
+ * @return float   the relative clock offset ratio
+ */
+typedef float (*uwb_calc_clock_offset_ratio_func_t)(struct uwb_dev * inst, int32_t integrator_val);
 
 /**
  * Calculate rssi from last RX in dBm. 
@@ -560,6 +599,15 @@ typedef float (*uwb_calc_fppl_func_t)(struct uwb_dev * dev, struct uwb_dev_rxdia
  */
 typedef float (*uwb_estimate_los_func_t)(struct uwb_dev * dev, float rssi, float fppl);
 
+/**
+ * Synchronise clock to external clock if present
+ *
+ * @param inst  Pointer to struct uwb_dev.
+ *
+ * @return struct uwb_dev_status
+ */
+typedef struct uwb_dev_status (*uwb_sync_to_ext_clock_func_t)(struct uwb_dev * dev);
+
 struct uwb_driver_funcs {
     uwb_mac_config_func_t uf_mac_config;
     uwb_txrf_config_func_t uf_txrf_config;
@@ -568,6 +616,7 @@ struct uwb_driver_funcs {
     uwb_enter_sleep_after_tx_func_t uf_enter_sleep_after_tx;
     uwb_enter_sleep_after_rx_func_t uf_enter_sleep_after_rx;
     uwb_wakeup_func_t uf_wakeup;
+    uwb_set_dblrxbuff_func_t uf_set_dblrxbuf;
     uwb_set_rx_timeout_func_t uf_set_rx_timeout;
     uwb_adj_rx_timeout_func_t uf_adj_rx_timeout;
     uwb_set_delay_start_func_t uf_set_delay_start;
@@ -576,6 +625,7 @@ struct uwb_driver_funcs {
     uwb_stop_rx_func_t uf_stop_rx;
     uwb_write_tx_func_t uf_write_tx;
     uwb_write_tx_fctrl_func_t uf_write_tx_fctrl;
+    uwb_hal_noblock_wait_func_t uf_hal_noblock_wait;
     uwb_set_wait4resp_func_t uf_set_wait4resp;
     uwb_set_wait4resp_delay_func_t uf_set_wait4resp_delay;
     uwb_set_rxauto_disable_func_t uf_set_rxauto_disable;
@@ -588,18 +638,26 @@ struct uwb_driver_funcs {
     uwb_phy_frame_duration_func_t uf_phy_frame_duration;
     uwb_phy_SHR_duration_func_t uf_phy_SHR_duration;
     uwb_phy_forcetrxoff_func_t uf_phy_forcetrxoff;
+    uwb_phy_rx_reset_func_t uf_phy_rx_reset;
     uwb_set_on_error_continue_func_t uf_set_on_error_continue;
     uwb_set_panid_func_t uf_set_panid;
+    uwb_calc_clock_offset_ratio_func_t uf_calc_clock_offset_ratio;
     uwb_get_rssi_func_t uf_get_rssi;
     uwb_get_fppl_func_t uf_get_fppl;
     uwb_calc_rssi_func_t uf_calc_rssi;
     uwb_calc_fppl_func_t uf_calc_fppl;
     uwb_estimate_los_func_t uf_estimate_los;
+    uwb_sync_to_ext_clock_func_t uf_sync_to_ext_clock;
+};
+
+struct uwb_driver_dyn_funcs {
+    uwb_sync_to_ext_clock_func_t uf_sync_to_ext_clock;
 };
 
 struct uwb_dev {
     struct os_dev uw_dev;
     const struct uwb_driver_funcs *uw_funcs;
+    struct uwb_driver_dyn_funcs uw_dyn_funcs;
 
     /* Interrupt handling */
     uint8_t task_prio;                          //!< Priority of the interrupt task
@@ -645,12 +703,11 @@ struct uwb_dev {
     struct uwb_phy_attributes attrib;
 };
 
+
 #if 0
-    hal_dw1000_rw_noblock_wait
-    dw1000_read_rawrxtime ??? (only nmgr_uwb)
-    dw1000_set_dblrxbuff 
-    dw1000_calc_clock_offset_ratio
+    // TODO
     rxttcko
+    cir -> cir_dw1000
 #endif
 
 /**
@@ -729,7 +786,7 @@ uwb_enter_sleep_after_tx(struct uwb_dev * dev, uint8_t enable)
 
 /**
  *  Sets the auto RX to sleep bit. This means that after a frame
- *  received the device will enter deep sleep mode. The dev_configure_sleep() function
+ *  received the device will enter deep sleep mode. The uwb_sleep_config() function
  *  needs to be called before this to configure the on-wake settings.
  *
  * NOTE: the IRQ line has to be low/inactive (i.e. no pending events).
@@ -754,6 +811,21 @@ static inline struct uwb_dev_status
 uwb_wakeup(struct uwb_dev * dev)
 {
     return (dev->uw_funcs->uf_wakeup(dev));
+}
+
+/**
+ * Enable/Disable the double receive buffer mode.
+ *
+ * @param inst    Pointer to struct uwb_dev.
+ * @param enable  1 to enable, 0 to disable the double buffer mode.
+ *
+ * @return struct uwb_dev_status
+ *
+ */
+static inline struct uwb_dev_status
+uwb_set_dblrxbuff(struct uwb_dev * dev, bool enable)
+{
+    return (dev->uw_funcs->uf_set_dblrxbuf(dev, enable));
 }
 
 /**
@@ -888,6 +960,19 @@ static inline struct uwb_dev_status uwb_write_tx(struct uwb_dev* dev, uint8_t *t
 static inline void uwb_write_tx_fctrl(struct uwb_dev* dev, uint16_t tx_frame_length, uint16_t tx_buffer_offset)
 {
     return (dev->uw_funcs->uf_write_tx_fctrl(dev, tx_frame_length, tx_buffer_offset));
+}
+
+/**
+ * Wait for a DMA transfer
+ *
+ * @param inst     Pointer to struct uwb_dev.
+ * @param timeout  Time in os_ticks to wait, use DPL_TIMEOUT_NEVER to wait indefinitely
+ * @return void
+ */
+static inline dpl_error_t
+uwb_hal_noblock_wait(struct uwb_dev * dev, dpl_time_t timeout)
+{
+    return (dev->uw_funcs->uf_hal_noblock_wait(dev, timeout));
 }
 
 /**
@@ -1040,6 +1125,18 @@ static inline void uwb_phy_forcetrxoff(struct uwb_dev* dev)
 }
 
 /**
+ * Reset the UWB receiver.
+ *
+ * @param inst   Pointer to struct uwb_dev.
+ * @return void
+ */
+static inline void
+uwb_phy_rx_reset(struct uwb_dev * dev)
+{
+    return (dev->uw_funcs->uf_phy_rx_reset(dev));
+}
+
+/**
  * Enable rx regardless of hpdwarning
  * TODO: also for tx?
  * @param inst    Pointer to struct uwb_dev.
@@ -1061,6 +1158,20 @@ static inline struct uwb_dev_status uwb_set_on_error_continue(struct uwb_dev * d
 static inline void uwb_set_panid(struct uwb_dev * dev, uint16_t pan_id)
 {
     return (dev->uw_funcs->uf_set_panid(dev, pan_id));
+}
+
+/**
+ * Calculate the clock offset ratio from the carrior integrator value
+ *
+ * @param inst           Pointer to struct uwb_dev.
+ * @param integrator_val Carrier integrator value
+ *
+ * @return float   the relative clock offset ratio
+ */
+static inline float
+uwb_calc_clock_offset_ratio(struct uwb_dev * dev, int32_t integrator_val)
+{
+    return (dev->uw_funcs->uf_calc_clock_offset_ratio(dev, integrator_val));
 }
 
 /**
@@ -1117,7 +1228,7 @@ static inline float uwb_calc_fppl(struct uwb_dev * dev, struct uwb_dev_rxdiag * 
 
 /**
  * Give a rough estimate of how likely the received packet is
- * line of sight (LOS).
+ * line of sight (LOS). Taken from 4.7 of DW1000 manual
  *
  * @param rssi rssi as calculated by uwb_calc_rssi
  * @param fppl fppl as calculated by uwb_calc_fppl
@@ -1127,6 +1238,23 @@ static inline float uwb_calc_fppl(struct uwb_dev * dev, struct uwb_dev_rxdiag * 
 static inline float uwb_estimate_los(struct uwb_dev * dev, float rssi, float fppl)
 {
     return (dev->uw_funcs->uf_estimate_los(dev, rssi, fppl));
+}
+
+/**
+ * Synchronise clock to external clock if present
+ *
+ * @param inst  Pointer to struct uwb_dev.
+ *
+ * @return struct uwb_dev_status
+ */
+static inline struct uwb_dev_status
+uwb_sync_to_ext_clock(struct uwb_dev * dev)
+{
+    if (dev->uw_dyn_funcs.uf_sync_to_ext_clock) {
+        return (dev->uw_dyn_funcs.uf_sync_to_ext_clock(dev));
+    } else {
+        return dev->status;
+    }
 }
 
 #define uwb_dwt_usecs_to_usecs(_t) (double)( (_t) * (0x10000UL/(128*499.2)))

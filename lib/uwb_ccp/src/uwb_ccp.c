@@ -505,7 +505,8 @@ uwb_ccp_set_postprocess(struct uwb_ccp_instance * ccp, dpl_event_fn * postproces
  * @return void
  */
 static void
-ccp_postprocess(struct dpl_event * ev){
+ccp_postprocess(struct dpl_event * ev)
+{
     assert(ev != NULL);
     assert(dpl_event_get_arg(ev));
 
@@ -522,7 +523,7 @@ ccp_postprocess(struct dpl_event * ev){
     delta = delta & ((uint64_t)1<<63)?delta & 0xFFFFFFFFFF :delta;
 
 #if MYNEWT_VAL(UWB_CCP_VERBOSE)
-    float clock_offset = dw1000_calc_clock_offset_ratio(ccp->dev_inst, frame->carrier_integrator);
+    float clock_offset = uwb_calc_clock_offset_ratio(ccp->dev_inst, frame->carrier_integrator);
     printf("{\"utime\": %lu,\"ccp\":[\"%llX\",\"%llX\"],\"clock_offset\": %lu,\"seq_num\" :%d}\n",
         os_cputime_ticks_to_usecs(os_cputime_get32()),
         (uint64_t)frame->transmission_timestamp,

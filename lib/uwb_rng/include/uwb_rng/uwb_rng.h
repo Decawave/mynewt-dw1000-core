@@ -206,7 +206,6 @@ struct uwb_rng_config * uwb_rng_get_config(struct uwb_rng_instance * rng, uwb_rn
 void uwb_rng_set_frames(struct uwb_rng_instance * rng, twr_frame_t twr[], uint16_t nframes);
 float uwb_rng_twr_to_tof(struct uwb_rng_instance * rng, uint16_t idx);
 float uwb_rng_tof_to_meters(float ToF);
-float uwb_rng_is_los(float rssi, float fppl);
 
 float uwb_rng_path_loss(float Pt, float G, float fc, float R);
 float uwb_rng_bias_correction(struct uwb_dev * dev, float Pr);

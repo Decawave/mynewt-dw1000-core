@@ -71,12 +71,6 @@ extern uint8_t _ram_start;
 #define LIS2MDL_IRQ_PIN    (17)
 #define LSM6DSL_IRQ1_PIN   (19)
 
-#if MYNEWT_VAL(DW1000_DEVICE_0) || MYNEWT_VAL(DW1000_DEVICE_1)
-#include <dw1000/dw1000_dev.h>
-void hal_bsp_dw_clk_sync(dw1000_dev_instance_t * inst[], uint8_t n);
-void hal_bsp_dw_sync_set_cb(bool (* cb) (struct _dw1000_dev_instance_t *));
-#endif
-
 #ifdef __cplusplus
 }
 #endif

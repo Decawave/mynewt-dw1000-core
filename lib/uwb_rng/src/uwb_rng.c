@@ -654,7 +654,7 @@ uwb_rng_twr_to_tof(struct uwb_rng_instance * rng, uint16_t idx)
             struct uwb_wcs_instance * wcs = ccp->wcs;
             float skew = wcs->skew;
 #else
-            float skew = dw1000_calc_clock_offset_ratio((dw1000_dev_instance_t*)inst, first_frame->carrier_integrator);
+            float skew = uwb_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);
 #endif
             ToF = ((frame->response_timestamp - frame->request_timestamp)
                     -  (frame->transmission_timestamp - frame->reception_timestamp) * (1.0f - skew))/2.;
@@ -687,25 +687,6 @@ float
 uwb_rng_tof_to_meters(float ToF) {
     return (float)(ToF * (299792458.0l/1.000293l) * (1.0/499.2e6/128.0)); //!< Converts time of flight to meters.
 }
-
-/**
- * @fn uwb_rng_is_los(float rssi, float fppl)
- * @brief API to estimate likelyhood of Line of sight from rssi and fppl
- *        Taken from 4.7 of DW1000 manual
- * @param rssi
- * @param fppl
- *
- * @return Likelyhood of LOS (1.0 very likely, 0.0 not likely)
- */
-float
-uwb_rng_is_los(float rssi, float fppl)
-{
-    float d = fabs(rssi-fppl);
-    if (d<6) return 1.0;
-    if (d>10) return 0.0;
-    return 1.0 - (d-6)/4.0;
-}
-
 
 /**
  * @fn uwb_rng_twr_to_tof_sym(twr_frame_t twr[], uwb_rng_modes_t code)

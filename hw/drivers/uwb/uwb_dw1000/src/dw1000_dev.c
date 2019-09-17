@@ -67,7 +67,8 @@ typedef struct _dw1000_cmd{
  */
 
 struct uwb_dev_status
-dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length){
+dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uint8_t * buffer, uint16_t length)
+{
     assert(reg <= 0x3F); // Record number is limited to 6-bits.
     assert((subaddress <= 0x7FFF) && ((subaddress + length) <= 0x7FFF)); // Index and sub-addressable area are limited to 15-bits.
 
@@ -89,7 +90,8 @@ dw1000_read(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, uin
     /* Possible issue here when reading shorter amounts of data
      * using the nonblocking read with double buffer. Asserts on 
      * mutex releases seen in calling function when reading frames of length 8 */
-    if (length < MYNEWT_VAL(DW1000_DEVICE_SPI_RD_MAX_NOBLOCK)) {
+    if (length < MYNEWT_VAL(DW1000_DEVICE_SPI_RD_MAX_NOBLOCK) ||
+        inst->uwb_dev.config.blocking_spi_transfers) {
         hal_dw1000_read(inst, header, len, buffer, length);
     } else {
         hal_dw1000_read_noblock(inst, header, len, buffer, length);
@@ -131,7 +133,7 @@ dw1000_write(dw1000_dev_instance_t * inst, uint16_t reg, uint16_t subaddress, ui
 
     uint8_t len = cmd.subaddress?(cmd.extended?3:2):1; 
     /* Only use non-blocking write if the length of the write justifies it */
-    if (len+length < 4) {
+    if (len+length < 4 || inst->uwb_dev.config.blocking_spi_transfers) {
         hal_dw1000_write(inst, header, len, buffer, length);
     } else {
         hal_dw1000_write_noblock(inst, header, len, buffer, length);
@@ -568,6 +570,11 @@ uwb_dw1000_wakeup(struct uwb_dev *dev)
     return dw1000_dev_wakeup((dw1000_dev_instance_t *)dev);
 }
 
+inline static struct uwb_dev_status
+uwb_dw1000_set_dblrxbuf(struct uwb_dev *dev, bool enable)
+{
+    return dw1000_set_dblrxbuff((dw1000_dev_instance_t *)dev, enable);
+}
 
 inline static struct uwb_dev_status
 uwb_dw1000_set_rx_timeout(struct uwb_dev *dev, uint32_t timeout)
@@ -619,6 +626,12 @@ uwb_dw1000_write_tx_fctrl(struct uwb_dev* dev, uint16_t tx_frame_length,
 {
     dw1000_write_tx_fctrl((dw1000_dev_instance_t *)dev, tx_frame_length,
                           tx_buffer_offset);
+}
+
+inline static dpl_error_t
+uwb_dw1000_hal_noblock_wait(struct uwb_dev* dev, dpl_time_t timeout)
+{
+    return hal_dw1000_rw_noblock_wait((dw1000_dev_instance_t *)dev, timeout);
 }
 
 inline static struct uwb_dev_status
@@ -693,6 +706,12 @@ uwb_dw1000_phy_forcetrxoff(struct uwb_dev* dev)
     return dw1000_phy_forcetrxoff((dw1000_dev_instance_t *)dev);
 }
 
+inline static void
+uwb_dw1000_phy_rx_reset(struct uwb_dev* dev)
+{
+    return dw1000_phy_rx_reset((dw1000_dev_instance_t *)dev);
+}
+
 inline static struct uwb_dev_status
 uwb_dw1000_set_on_error_continue(struct uwb_dev * dev, bool enable)
 {
@@ -703,6 +722,12 @@ inline static void
 uwb_dw1000_set_panid(struct uwb_dev * dev, uint16_t pan_id)
 {
     return dw1000_set_panid((dw1000_dev_instance_t *)dev, pan_id);
+}
+
+inline static float
+uwb_dw1000_calc_clock_offset_ratio(struct uwb_dev * dev, int32_t integrator_val)
+{
+    return dw1000_calc_clock_offset_ratio((dw1000_dev_instance_t *)dev, integrator_val);
 }
 
 inline static float
@@ -743,6 +768,7 @@ static const struct uwb_driver_funcs dw1000_uwb_funcs = {
     .uf_enter_sleep_after_tx = uwb_dw1000_enter_sleep_after_tx,
     .uf_enter_sleep_after_rx = uwb_dw1000_enter_sleep_after_rx,
     .uf_wakeup = uwb_dw1000_wakeup,
+    .uf_set_dblrxbuf = uwb_dw1000_set_dblrxbuf,
     .uf_set_rx_timeout = uwb_dw1000_set_rx_timeout,
     .uf_adj_rx_timeout = uwb_dw1000_adj_rx_timeout,
     .uf_set_delay_start = uwb_dw1000_set_delay_start,
@@ -751,6 +777,7 @@ static const struct uwb_driver_funcs dw1000_uwb_funcs = {
     .uf_stop_rx = uwb_dw1000_stop_rx,
     .uf_write_tx = uwb_dw1000_write_tx,
     .uf_write_tx_fctrl = uwb_dw1000_write_tx_fctrl,
+    .uf_hal_noblock_wait = uwb_dw1000_hal_noblock_wait,
     .uf_set_wait4resp = uwb_dw1000_set_wait4resp,
     .uf_set_wait4resp_delay = uwb_dw1000_set_wait4resp_delay,
     .uf_set_rxauto_disable = uwb_dw1000_set_rxauto_disable,
@@ -763,8 +790,10 @@ static const struct uwb_driver_funcs dw1000_uwb_funcs = {
     .uf_phy_frame_duration = uwb_dw1000_phy_frame_duration,
     .uf_phy_SHR_duration = uwb_dw1000_phy_SHR_duration,
     .uf_phy_forcetrxoff = uwb_dw1000_phy_forcetrxoff,
+    .uf_phy_rx_reset = uwb_dw1000_phy_rx_reset,
     .uf_set_on_error_continue = uwb_dw1000_set_on_error_continue,
     .uf_set_panid = uwb_dw1000_set_panid,
+    .uf_calc_clock_offset_ratio = uwb_dw1000_calc_clock_offset_ratio,
     .uf_get_rssi = uwb_dw1000_get_rssi,
     .uf_get_fppl = uwb_dw1000_get_fppl,
     .uf_calc_rssi = uwb_dw1000_calc_rssi,

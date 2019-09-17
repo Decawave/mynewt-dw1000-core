@@ -408,6 +408,51 @@ sensor_dev_create(void)
     
 }
 
+#if MYNEWT_VAL(DW1000_DEVICE_0) || MYNEWT_VAL(DW1000_DEVICE_1)
+
+static struct uwb_dev_status
+hal_bsp_dw_clk_sync(struct uwb_dev * dev)
+{
+#if !MYNEWT_VAL(DW1000_DEVICE_0) || !MYNEWT_VAL(DW1000_DEVICE_1)
+    return;
+#endif
+    int n=2;
+    dw1000_dev_instance_t * inst[2];
+    for(int i=0;i<n;i++) {
+        inst[i] = hal_dw1000_inst(i);
+    }
+
+    /* Prepare for sync */
+    hal_gpio_init_out(MYNEWT_VAL(DW1000_PDOA_SYNC), 0);
+    hal_gpio_init_out(MYNEWT_VAL(DW1000_PDOA_SYNC_CLR), 1);
+    hal_gpio_init_out(MYNEWT_VAL(DW1000_PDOA_SYNC_EN), 1);
+
+    for (uint8_t i = 0; i < n; i++ ) {
+        dw1000_phy_external_sync(inst[i],33, true);
+    }
+
+    hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC), 1);
+    /* Only needs to be active for 1 period of 38.4MHz => < 1usec */
+    os_cputime_delay_usecs(1);
+    hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC), 0);
+
+    for (uint8_t i = 0; i < n; i++ ) {
+        /* Verify that chip was synced */
+        uint32_t status = dw1000_read_reg(inst[i], SYS_STATUS_ID, 0, sizeof(uint32_t));
+        inst[i]->uwb_dev.status.ext_sync = (status&SYS_STATUS_ESYNCR) != 0;
+
+        /* Clear sync status and ext sync registers */
+        dw1000_write_reg(inst[i], SYS_STATUS_ID, 0, status&SYS_STATUS_ESYNCR, sizeof(uint32_t));
+        dw1000_phy_external_sync(inst[i],0, false);
+    }
+
+    hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC_CLR), 0);
+    hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC_EN), 0);
+
+    return dev->status;
+}
+#endif
+
 
 void hal_bsp_init(void)
 {
@@ -445,6 +490,8 @@ void hal_bsp_init(void)
     rc = os_dev_create((struct os_dev *) dw1000_0, "dw1000_0",
       OS_DEV_INIT_PRIMARY, 0, dw1000_dev_init, (void *)&dw1000_0_cfg);
     assert(rc == 0);
+    /* Set external sync function */
+    dw1000_0->uwb_dev.uw_dyn_funcs.uf_sync_to_ext_clock = hal_bsp_dw_clk_sync;
 #endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_1)
@@ -452,6 +499,8 @@ void hal_bsp_init(void)
     rc = os_dev_create((struct os_dev *) dw1000_1, "dw1000_1",
       OS_DEV_INIT_PRIMARY, 0, dw1000_dev_init, (void *)&dw1000_1_cfg);
     assert(rc == 0);
+    /* Set external sync function */
+    dw1000_1->uwb_dev.uw_dyn_funcs.uf_sync_to_ext_clock = hal_bsp_dw_clk_sync;
 #endif
 
 #if MYNEWT_VAL(SPI_2_MASTER)
@@ -473,50 +522,3 @@ void hal_bsp_init(void)
     sensor_dev_create();
 }
 
-#if MYNEWT_VAL(DW1000_DEVICE_0) || MYNEWT_VAL(DW1000_DEVICE_1)
-
-struct os_event dw1000_sync_ev;
-bool (* hal_sync_complete_cb) (struct _dw1000_dev_instance_t *) = 0;
-
-void
-hal_bsp_dw_sync_set_cb(bool (* cb) (struct _dw1000_dev_instance_t *))
-{
-    hal_sync_complete_cb = cb;
-}
-
-
-void
-hal_bsp_dw_clk_sync(dw1000_dev_instance_t * inst[], uint8_t n)
-{
-    /* Prepare for sync */
-    hal_gpio_init_out(MYNEWT_VAL(DW1000_PDOA_SYNC), 0);
-    hal_gpio_init_out(MYNEWT_VAL(DW1000_PDOA_SYNC_CLR), 1);
-    hal_gpio_init_out(MYNEWT_VAL(DW1000_PDOA_SYNC_EN), 1);
-
-    for (uint8_t i = 0; i < n; i++ ) {
-        dw1000_phy_external_sync(inst[i],33, true);
-    }
-
-    hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC), 1);
-    /* Only needs to be active for 1 period of 38.4MHz => < 1usec */
-    os_cputime_delay_usecs(1);
-    hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC), 0);
-
-    for (uint8_t i = 0; i < n; i++ ) {
-        /* Verify that chip was synced */
-        uint32_t status = dw1000_read_reg(inst[i], SYS_STATUS_ID, 0, sizeof(uint32_t));
-        assert(status&SYS_STATUS_ESYNCR);
-        /* Clear sync status and ext sync registers */
-        dw1000_write_reg(inst[i], SYS_STATUS_ID, 0, status&SYS_STATUS_ESYNCR, sizeof(uint32_t));
-        dw1000_phy_external_sync(inst[i],0, false);
-    }
-
-    hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC_CLR), 0);
-    hal_gpio_write(MYNEWT_VAL(DW1000_PDOA_SYNC_EN), 0);
-
-    if (hal_sync_complete_cb) {
-        hal_sync_complete_cb(inst[0]);
-    }
-}
-
-#endif

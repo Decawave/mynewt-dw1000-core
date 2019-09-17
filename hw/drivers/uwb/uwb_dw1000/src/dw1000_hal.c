@@ -99,8 +99,8 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                     .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
                     .rxauto_enable = 1,        //!< On error re-enable
                     .cir_enable = 0,           //!< Default behavior for CIR interface
-                    .pmem_enable = 0,          //!< Default behavior for Preamble detection memory
-                    .cir_pdoa_slave = 0        //!< First instance should not act as pdoa slave
+                    .cir_pdoa_slave = 0,       //!< First instance should not act as pdoa slave
+                    .blocking_spi_transfers = 0, //!< Nonblocking spi transfers allowed by default
                 },
             },
             .rst_pin  = MYNEWT_VAL(DW1000_DEVICE_0_RST),
@@ -164,8 +164,8 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                     .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
                     .rxauto_enable = 1,        //!< On error re-enable rx
                     .cir_enable = 0,           //!< Default behavior for CIR interface
-                    .pmem_enable = 0,          //!< Default behavior for Preamble detection memory
-                    .cir_pdoa_slave = 1        //!< Second instance should act as pdoa slave
+                    .cir_pdoa_slave = 1,       //!< Second instance should act as pdoa slave
+                    .blocking_spi_transfers = 0, //!< Nonblocking spi transfers allowed by default
                 },
             },
             .rst_pin  = MYNEWT_VAL(DW1000_DEVICE_1_RST),
@@ -228,8 +228,8 @@ static dw1000_dev_instance_t hal_dw1000_instances[]= {
                     .wakeup_rx_enable = 1,     //!< Wakeup to Rx state
                     .rxauto_enable = 1,        //!< On error re-enable rx
                     .cir_enable = 0,           //!< Default behavior for CIR interface
-                    .pmem_enable = 0,          //!< Default behavior for Preamble detection memory
-                    .cir_pdoa_slave = 1        //!< Second instance should act as pdoa slave
+                    .cir_pdoa_slave = 1,       //!< Second instance should act as pdoa slave
+                    .blocking_spi_transfers = 0, //!< Nonblocking spi transfers allowed by default
                 },
             },
             .spi_sem = 0,
