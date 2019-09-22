@@ -654,7 +654,8 @@ uwb_rng_twr_to_tof(struct uwb_rng_instance * rng, uint16_t idx)
             struct uwb_wcs_instance * wcs = ccp->wcs;
             float skew = wcs->skew;
 #else
-            float skew = uwb_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);
+            float skew = uwb_calc_clock_offset_ratio(inst, first_frame->carrier_integrator,
+                                                     UWB_CR_CARRIER_INTEGRATOR);
 #endif
             ToF = ((frame->response_timestamp - frame->request_timestamp)
                     -  (frame->transmission_timestamp - frame->reception_timestamp) * (1.0f - skew))/2.;

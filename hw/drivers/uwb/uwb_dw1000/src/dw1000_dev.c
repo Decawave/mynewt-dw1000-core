@@ -724,10 +724,15 @@ uwb_dw1000_set_panid(struct uwb_dev * dev, uint16_t pan_id)
     return dw1000_set_panid((dw1000_dev_instance_t *)dev, pan_id);
 }
 
-inline static float
-uwb_dw1000_calc_clock_offset_ratio(struct uwb_dev * dev, int32_t integrator_val)
+static float
+uwb_dw1000_calc_clock_offset_ratio(struct uwb_dev * dev, int32_t val, uwb_cr_types_t type)
 {
-    return dw1000_calc_clock_offset_ratio((dw1000_dev_instance_t *)dev, integrator_val);
+    if (type == UWB_CR_CARRIER_INTEGRATOR) {
+        return dw1000_calc_clock_offset_ratio((dw1000_dev_instance_t *)dev, val);
+    } else if (type == UWB_CR_RXTTCKO) {
+        return dw1000_calc_clock_offset_ratio_ttco((dw1000_dev_instance_t *)dev, val);
+    }
+    return 0.0f;
 }
 
 inline static float

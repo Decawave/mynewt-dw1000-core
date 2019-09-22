@@ -161,10 +161,14 @@ void uwb_wcs_update_cb(struct dpl_event * ev)
             /* Update pointer in case realloc happens in timescale_init */
             states = (timescale_states_t *) (timescale->eke->x);
             states->time = (double) wcs->master_epoch.lo;
-            states->skew = (1.0l + (double ) uwb_calc_clock_offset_ratio(ccp->dev_inst, frame->carrier_integrator)) * MYNEWT_VAL(UWB_WCS_DTU);
+            states->skew = (1.0l + (double ) uwb_calc_clock_offset_ratio(
+                                ccp->dev_inst, frame->carrier_integrator,
+                                UWB_CR_CARRIER_INTEGRATOR)) * MYNEWT_VAL(UWB_WCS_DTU);
             wcs->status.valid = wcs->status.initialized = 1;
         }else{
-            double skew = (1.0l + (double ) uwb_calc_clock_offset_ratio(ccp->dev_inst, frame->carrier_integrator)) * MYNEWT_VAL(UWB_WCS_DTU);
+            double skew = (1.0l + (double ) uwb_calc_clock_offset_ratio(
+                               ccp->dev_inst, frame->carrier_integrator,
+                               UWB_CR_CARRIER_INTEGRATOR)) * MYNEWT_VAL(UWB_WCS_DTU);
             double T = wcs->observed_interval / WCS_DTU ; // observed interval in seconds, master reference
             //previous_frame->transmission_timestamp = (frame->transmission_timestamp + ((uint64_t)inst->ccp->period << 16)) & 0x0FFFFFFFFFFUL;
             //double T = 1e-6l * frame->transmission_interval * wcs->nT;   // interval in seconds referenced to master

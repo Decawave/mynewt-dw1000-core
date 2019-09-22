@@ -94,6 +94,12 @@ struct uwb_dev_status {
     uint32_t ext_sync:1;              //!< External sync successful
 };
 
+    //! IDs for blocking/non-blocking mode .
+typedef enum {
+    UWB_CR_CARRIER_INTEGRATOR,       //!< Clock ratio from Carrier integrator
+    UWB_CR_RXTTCKO                   //!< Clock ratio from Receiver time tracking offset
+} uwb_cr_types_t;
+
 /** API parent structure for rx diagnostics. Used to store values for later
  * processing if needed in a device agnostic way.
  */
@@ -541,12 +547,13 @@ typedef void (*uwb_set_panid_func_t)(struct uwb_dev * dev, uint16_t pan_id);
 /**
  * Calculate the clock offset ratio from the carrior integrator value
  *
- * @param inst           Pointer to struct uwb_dev.
- * @param integrator_val Carrier integrator value
+ * @param inst    Pointer to struct uwb_dev.
+ * @param val     Carrier integrator value / TTCO value
+ * @param type    uwb_cr_types_t
  *
- * @return float   the relative clock offset ratio
+ * @return float  the relative clock offset ratio (nan or 0.0 for failed?)
  */
-typedef float (*uwb_calc_clock_offset_ratio_func_t)(struct uwb_dev * inst, int32_t integrator_val);
+typedef float (*uwb_calc_clock_offset_ratio_func_t)(struct uwb_dev * inst, int32_t integrator_val, uwb_cr_types_t type);
 
 /**
  * Calculate rssi from last RX in dBm. 
@@ -706,7 +713,6 @@ struct uwb_dev {
 
 #if 0
     // TODO
-    rxttcko
     cir -> cir_dw1000
 #endif
 
@@ -1164,14 +1170,15 @@ static inline void uwb_set_panid(struct uwb_dev * dev, uint16_t pan_id)
  * Calculate the clock offset ratio from the carrior integrator value
  *
  * @param inst           Pointer to struct uwb_dev.
- * @param integrator_val Carrier integrator value
+ * @param val            Carrier integrator value / TTCO value
+ * @param type           uwb_cr_types_t
  *
  * @return float   the relative clock offset ratio
  */
 static inline float
-uwb_calc_clock_offset_ratio(struct uwb_dev * dev, int32_t integrator_val)
+uwb_calc_clock_offset_ratio(struct uwb_dev * dev, int32_t integrator_val, uwb_cr_types_t type)
 {
-    return (dev->uw_funcs->uf_calc_clock_offset_ratio(dev, integrator_val));
+    return (dev->uw_funcs->uf_calc_clock_offset_ratio(dev, integrator_val, type));
 }
 
 /**
