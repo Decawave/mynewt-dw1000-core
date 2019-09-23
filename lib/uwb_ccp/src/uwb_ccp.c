@@ -310,7 +310,7 @@ ccp_tasks_init(struct uwb_ccp_instance * inst)
  * @brief Sets the CB that estimate the tof in dw units to the node with euid provided as
  * paramater. Used to compensate for the tof from the clock source.
  *
- * @param inst        Pointer to dw1000_dev_instance_t
+ * @param inst        Pointer to struct uwb_ccp_instance
  * @param tof_comp_cb tof compensation callback
  *
  * @return void
@@ -610,7 +610,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
     ccp->period = (frame->transmission_interval >> 16);
     frame->carrier_integrator = inst->carrier_integrator;
     if (inst->config.rxttcko_enable) {
-        frame->rxttcko = ((struct _dw1000_dev_instance_t*)inst)->rxttcko;
+        frame->rxttcko = inst->rxttcko;
     } else {
         frame->rxttcko = 0;
     }
@@ -975,7 +975,7 @@ uwb_ccp_start(struct uwb_ccp_instance *ccp, uwb_ccp_role_t role)
  * @fn ccp_stop(struct ccp_instance * inst)
  * @brief API to stop clock calibration packets (CCP) blinks / receives.
  *
- * @param inst   Pointer to  dw1000_dev_instance_t.
+ * @param inst   Pointer to struct uwb_ccp_instance.
  * @return void
  */
 void

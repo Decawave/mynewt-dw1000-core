@@ -724,6 +724,18 @@ uwb_dw1000_set_panid(struct uwb_dev * dev, uint16_t pan_id)
     return dw1000_set_panid((dw1000_dev_instance_t *)dev, pan_id);
 }
 
+inline static void
+uwb_dw1000_set_uid(struct uwb_dev * dev, uint16_t uid)
+{
+    return dw1000_set_address16((dw1000_dev_instance_t *)dev, uid);
+}
+
+inline static void
+uwb_dw1000_set_euid(struct uwb_dev * dev, uint64_t euid)
+{
+    return dw1000_set_eui((dw1000_dev_instance_t *)dev, euid);
+}
+
 static float
 uwb_dw1000_calc_clock_offset_ratio(struct uwb_dev * dev, int32_t val, uwb_cr_types_t type)
 {
@@ -798,6 +810,8 @@ static const struct uwb_driver_funcs dw1000_uwb_funcs = {
     .uf_phy_rx_reset = uwb_dw1000_phy_rx_reset,
     .uf_set_on_error_continue = uwb_dw1000_set_on_error_continue,
     .uf_set_panid = uwb_dw1000_set_panid,
+    .uf_set_uid = uwb_dw1000_set_uid,
+    .uf_set_euid = uwb_dw1000_set_euid,
     .uf_calc_clock_offset_ratio = uwb_dw1000_calc_clock_offset_ratio,
     .uf_get_rssi = uwb_dw1000_get_rssi,
     .uf_get_fppl = uwb_dw1000_get_fppl,

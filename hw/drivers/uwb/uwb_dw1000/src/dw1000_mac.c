@@ -1350,7 +1350,7 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
             // The rxttcko is a poor replacement for the carrier_integrator but
             // better than nothing
             if (inst->uwb_dev.config.rxttcko_enable) {
-                inst->rxttcko = dw1000_read_time_tracking_offset(inst);
+                inst->uwb_dev.rxttcko = dw1000_read_time_tracking_offset(inst);
             }
 
             inst->uwb_dev.status.overrun_error = dw1000_checkoverrun(inst);

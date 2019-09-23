@@ -73,7 +73,7 @@ void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aA
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
 #endif
-    dw1000_set_eui(g_ot_inst->dev_inst, *((uint64_t *)aAddress->m8));
+    uwb_set_eui(g_ot_inst->dev_inst, *((uint64_t *)aAddress->m8));
     (void)aInstance;
 }
 
@@ -152,9 +152,7 @@ void otPlatRadioSetPanId(otInstance *aInstance, uint16_t aPanid){
 	printf("# %s #\n",__func__);
 #endif
     (void)aInstance;
-    dw1000_dev_instance_t* inst = g_ot_inst->dev_inst;
-    dw1000_set_panid(inst, aPanid);
-    inst->PANID = aPanid;
+    uwb_set_panid(g_ot_inst->dev_inst, aPanid);
 }
 
 

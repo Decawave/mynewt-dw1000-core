@@ -547,6 +547,24 @@ typedef struct uwb_dev_status (*uwb_set_on_error_continue_func_t)(struct uwb_dev
 typedef void (*uwb_set_panid_func_t)(struct uwb_dev * dev, uint16_t pan_id);
 
 /**
+ * Update UID in device
+ *
+ * @param inst    Pointer to struct uwb_dev.
+ * @param uint16_t uid
+ *
+ */
+typedef void (*uwb_set_uid_func_t)(struct uwb_dev * dev, uint16_t uid);
+
+/**
+ * Update EUID in device
+ *
+ * @param inst    Pointer to struct uwb_dev.
+ * @param uint64_t euid
+ *
+ */
+typedef void (*uwb_set_euid_func_t)(struct uwb_dev * dev, uint64_t euid);
+
+/**
  * Calculate the clock offset ratio from the carrior integrator value
  *
  * @param inst    Pointer to struct uwb_dev.
@@ -650,6 +668,8 @@ struct uwb_driver_funcs {
     uwb_phy_rx_reset_func_t uf_phy_rx_reset;
     uwb_set_on_error_continue_func_t uf_set_on_error_continue;
     uwb_set_panid_func_t uf_set_panid;
+    uwb_set_uid_func_t uf_set_uid;
+    uwb_set_euid_func_t uf_set_euid;
     uwb_calc_clock_offset_ratio_func_t uf_calc_clock_offset_ratio;
     uwb_get_rssi_func_t uf_get_rssi;
     uwb_get_fppl_func_t uf_get_fppl;
@@ -703,6 +723,7 @@ struct uwb_dev {
     uint16_t frame_len;                         //!< Reported frame length
     uint64_t rxtimestamp;                       //!< Receive timestamp
     int32_t carrier_integrator;                 //!< Carrier integrator (should prob not be here)
+    int32_t rxttcko;                            //!< Preamble Integrator
     struct uwb_dev_rxdiag *rxdiag;              //!< Pointer to rx diagnostics structure
     uint8_t rxbuf[MYNEWT_VAL(UWB_RX_BUFFER_SIZE)]; //!< Local receive buffer
 
@@ -1164,7 +1185,34 @@ static inline struct uwb_dev_status uwb_set_on_error_continue(struct uwb_dev * d
  */
 static inline void uwb_set_panid(struct uwb_dev * dev, uint16_t pan_id)
 {
+    dev->pan_id = pan_id;
     return (dev->uw_funcs->uf_set_panid(dev, pan_id));
+}
+
+/**
+ * Update UID in device
+ *
+ * @param inst    Pointer to struct uwb_dev.
+ * @param uint16_t uid
+ *
+ */
+static inline void uwb_set_uid(struct uwb_dev * dev, uint16_t uid)
+{
+    dev->uid = uid;
+    return (dev->uw_funcs->uf_set_uid(dev, uid));
+}
+
+/**
+ * Update EUID in device
+ *
+ * @param inst    Pointer to struct uwb_dev.
+ * @param uint64_t euid
+ *
+ */
+static inline void uwb_set_euid(struct uwb_dev * dev, uint64_t euid)
+{
+    dev->euid = euid;
+    return (dev->uw_funcs->uf_set_euid(dev, euid));
 }
 
 /**

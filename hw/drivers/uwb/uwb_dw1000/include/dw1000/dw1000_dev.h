@@ -114,7 +114,6 @@ typedef struct _dw1000_dev_instance_t{
     uint32_t part_id;                           //!< Identifier of a particular part design
     uint32_t lot_id;                            //!< Identification number assigned to a particular quantity
 
-    int32_t rxttcko;               //!< Preamble Integrator
     uint16_t otp_rev;              //!< OTP parameter revision
     uint8_t otp_vbat;              //!< OTP parameter for voltage 
     uint8_t otp_temp;              //!< OTP parameter for temperature
