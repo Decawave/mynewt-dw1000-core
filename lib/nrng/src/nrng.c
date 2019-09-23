@@ -478,7 +478,7 @@ nrng_listen(struct nrng_instance * nrng, uwb_dev_modes_t mode)
 
     // Download the CIR on the response    
 #if MYNEWT_VAL(CIR_ENABLED)   
-    cir_enable(((struct _dw1000_dev_instance_t*)nrng->dev_inst)->cir, true);
+    cir_enable(nrng->dev_inst->cir, true);
 #endif 
     
     NRNG_STATS_INC(nrng_listen);
@@ -532,7 +532,8 @@ nrng_twr_to_tof_frames(struct uwb_dev * inst, nrng_frame_t *first_frame, nrng_fr
             ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
                     -  (first_frame->transmission_timestamp - first_frame->reception_timestamp))/2.0f;
 #else
-            float skew = uwb_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);
+            float skew = uwb_calc_clock_offset_ratio(inst, first_frame->carrier_integrator,
+                                                     UWB_CR_CARRIER_INTEGRATOR);
             ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
                     -  (first_frame->transmission_timestamp - first_frame->reception_timestamp) * (1 - skew))/2.0f;
 #endif

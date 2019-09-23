@@ -128,7 +128,7 @@ typedef struct _dw1000_dev_instance_t{
     
     struct hal_spi_settings spi_settings;  //!< Structure of SPI settings in hal layer 
 #if MYNEWT_VAL(CIR_ENABLED)
-    struct _cir_instance_t * cir;                  //!< CIR instance
+    struct cir_dw1000_instance * cir;           //!< CIR instance (duplicate of uwb_dev->cir)
 #endif
     dw1000_dev_rxdiag_t rxdiag;                    //!< DW1000 receive diagnostics
     dw1000_dev_control_t control;                  //!< DW1000 device control parameters      

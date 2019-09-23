@@ -20,16 +20,16 @@
  */
 
 
-#ifndef _CIR_ENCODE_H_
-#define _CIR_ENCODE_H_
+#ifndef _CIR_DW1000_ENCODE_H_
+#define _CIR_DW1000_ENCODE_H_
 
 #include <stdlib.h>
 #include <stdint.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <json/json.h>
-#include <cir/cir.h>
+#include <cir_dw1000/cir_dw1000.h>
 
-void cir_encode(cir_instance_t * cir, char * name, uint16_t nsize);
+void cir_dw1000_encode(struct cir_dw1000_instance * cir, char * name, uint16_t nsize);
 
 #endif

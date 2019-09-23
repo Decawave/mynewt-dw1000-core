@@ -708,6 +708,9 @@ struct uwb_dev {
     struct uwb_dev_config config;               //!< Device configuration
     SLIST_HEAD(, uwb_mac_interface) interface_cbs;
     struct uwb_phy_attributes attrib;
+#if MYNEWT_VAL(CIR_ENABLED)
+    struct cir_instance *cir;                   //!< CIR instance
+#endif
 };
 
 

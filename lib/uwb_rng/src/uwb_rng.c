@@ -477,7 +477,7 @@ uwb_rng_request(struct uwb_rng_instance * rng, uint16_t dst_address, uwb_rng_mod
 
     // Download the CIR on the response
 #if MYNEWT_VAL(CIR_ENABLED)
-    cir_enable(((struct _dw1000_dev_instance_t*)inst)->cir, true);
+    cir_enable(inst->cir, true);
 #endif
 
     uwb_write_tx(inst, frame->array, 0, sizeof(ieee_rng_request_frame_t));
@@ -537,7 +537,7 @@ uwb_rng_listen(struct uwb_rng_instance * rng, uwb_dev_modes_t mode)
 
     // Download the CIR on the response    
 #if MYNEWT_VAL(CIR_ENABLED)   
-    cir_enable(((struct _dw1000_dev_instance_t*)rng->dev_inst)->cir, true);
+    cir_enable(rng->dev_inst->cir, true);
 #endif 
     uwb_set_rxauto_disable(rng->dev_inst, true);
 
@@ -897,10 +897,10 @@ complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
         return false;
 
     rng->idx_current = (rng->idx)%rng->nframes;
-    if (!dpl_event_is_queued(&rng_event)) {
+    if (!dpl_event_get_arg(&rng_event)) {
         dpl_event_init(&rng_event, complete_ev_cb, (void*) rng);
-        dpl_eventq_put(dpl_eventq_dflt_get(), &rng_event);
     }
+    dpl_eventq_put(dpl_eventq_dflt_get(), &rng_event);
     return false;
 }
 #endif

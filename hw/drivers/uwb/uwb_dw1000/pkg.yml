@@ -30,6 +30,9 @@ pkg.deps:
     - "@mynewt-dw1000-core/hw/drivers/uwb"
     - "@mynewt-dw1000-core/porting/dpl/mynewt"
 
+pkg.deps.CIR_ENABLED:
+    - "@mynewt-dw1000-core/lib/cir/cir_dw1000"
+
 pkg.apis:
     - UWB_HW_IMPL
 

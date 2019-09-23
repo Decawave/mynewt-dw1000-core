@@ -830,6 +830,10 @@ dw1000_dev_init(struct os_dev *odev, void *arg)
     udev->uw_funcs = &dw1000_uwb_funcs;
     udev->rxdiag = (struct uwb_dev_rxdiag*)&inst->rxdiag;
     udev->rxdiag->rxd_len = sizeof(inst->rxdiag);
+#if MYNEWT_VAL(CIR_ENABLED)
+    udev->cir = (struct cir_instance*)inst->cir;
+#endif
+
     /* Check size requirements */
     assert(sizeof(inst->rxdiag) <= MYNEWT_VAL(UWB_DEV_RXDIAG_MAXLEN));
     

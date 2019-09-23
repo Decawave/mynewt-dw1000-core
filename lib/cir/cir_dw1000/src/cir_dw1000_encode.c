@@ -22,7 +22,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
-#include <cir/cir_encode.h>
+#include <cir_dw1000/cir_dw1000_encode.h>
 #include <cir/cir.h>
 
 
@@ -65,8 +65,8 @@ json_write(void *buf, char* data, int len) {
 }
 
 void 
-cir_encode(cir_instance_t * cir, char * name, uint16_t nsize){
-
+cir_dw1000_encode(struct cir_dw1000_instance * cir, char * name, uint16_t nsize)
+{
     struct json_encoder encoder;
     struct json_value value;
     int rc;
