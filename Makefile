@@ -97,6 +97,9 @@ lib_only:
 all: generic cortex-m0 cortex-m3 cortex-m4 lib_only 
 
 clean:
+	rm -R -f bin
+	rm -R -f targets
+	rm -R -f include
 	rm -R -f build_*
 	rm -R -f ext_images
 	rm -R -f xcode

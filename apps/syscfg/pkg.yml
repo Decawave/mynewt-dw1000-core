@@ -44,7 +44,7 @@ pkg.deps:
 #    - "@mynewt-dw1000-core/lib/wcs"
 #    - "@mynewt-timescale-lib/lib/timescale"
     - "@mynewt-dw1000-core/lib/survey"
-#    - "@mynewt-dw1000-core/lib/nmgr_uwb"
+    - "@mynewt-dw1000-core/lib/nmgr_uwb"
 #    - "@mynewt-dw1000-core/mgmt/bcast_ota"
 #    - "@mynewt-dw1000-core/lib/panmaster"
 #    - "@mynewt-dw1000-apps/lib/bleprph"
