@@ -67,7 +67,7 @@ static struct uwb_mac_interface g_cbs[] = {
             .reset_cb = reset_cb,
             .final_cb = tx_final_cb
         },
-#if MYNEWT_VAL(DW1000_DEVICE_1) ||  MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_1) ||  MYNEWT_VAL(UWB_DEVICE_2)
         [1] = {
             .id = UWBEXT_RNG_SS_EXT,
             .rx_complete_cb = rx_complete_cb,
@@ -76,7 +76,7 @@ static struct uwb_mac_interface g_cbs[] = {
             .final_cb = tx_final_cb
         },
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
         [2] = {
             .id = UWBEXT_RNG_SS_EXT,
             .rx_complete_cb = rx_complete_cb,
@@ -111,13 +111,13 @@ static struct rng_config_list g_rng_cfgs[] = {
         .rng_code = DWT_SS_TWR_EXT,
         .config = &g_config
     },
-#if MYNEWT_VAL(DW1000_DEVICE_1) ||  MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_1) ||  MYNEWT_VAL(UWB_DEVICE_2)
     [1] = {
         .rng_code = DWT_SS_TWR_EXT,
         .config = &g_config
     },
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
     [2] = {
         .rng_code = DWT_SS_TWR_EXT,
         .config = &g_config
@@ -137,18 +137,18 @@ twr_ss_ext_pkg_init(void){
 
     printf("{\"utime\": %lu,\"msg\": \"twr_ss_ext_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
     g_cbs[0].inst_ptr = (struct uwb_rng_instance*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_RNG);
     assert(g_cbs[0].inst_ptr);
     uwb_mac_append_interface(uwb_dev_idx_lookup(0), &g_cbs[0]);
     uwb_rng_append_config(g_cbs[0].inst_ptr, &g_rng_cfgs[0]);
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
     g_cbs[1].inst_ptr = (struct uwb_rng_instance*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(1), UWBEXT_RNG);
     uwb_mac_append_interface(uwb_dev_idx_lookup(1), &g_cbs[1]);
     uwb_rng_append_config(g_cbs[1].inst_ptr, &g_rng_cfgs[1]);
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
     g_cbs[2].inst_ptr = (struct uwb_rng_instance*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(2), UWBEXT_RNG);
     uwb_mac_append_interface(uwb_dev_idx_lookup(2), &g_cbs[2]);
     uwb_rng_append_config(g_cbs[2].inst_ptr, &g_rng_cfgs[2]);

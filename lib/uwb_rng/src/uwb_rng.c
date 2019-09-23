@@ -109,7 +109,7 @@ static struct uwb_rng_config g_config = {
     .rx_timeout_delay = MYNEWT_VAL(RNG_RX_TIMEOUT)       // Receive response timeout in usec
 };
 
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
 static twr_frame_t g_twr_0[] = {
     [0] = {
         .fctrl = FCNTL_IEEE_RANGE_16,               // frame control (0x8841 to indicate a data frame using 16-bit addressing).
@@ -133,7 +133,7 @@ static twr_frame_t g_twr_0[] = {
     }
 };
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
 static twr_frame_t g_twr_1[] = {
     [0] = {
         .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
@@ -157,7 +157,7 @@ static twr_frame_t g_twr_1[] = {
     }
 };
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
 static twr_frame_t g_twr_2[] = {
     [0] = {
         .fctrl = FCNTL_IEEE_RANGE_16,                // frame control (0x8841 to indicate a data frame using 16-bit addressing).
@@ -194,7 +194,7 @@ static struct uwb_mac_interface g_cbs[] = {
 #endif
             .reset_cb = reset_cb
         },
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
         [1] = {
             .id = UWBEXT_RNG,
             .rx_complete_cb = rx_complete_cb,
@@ -206,7 +206,7 @@ static struct uwb_mac_interface g_cbs[] = {
             .reset_cb = reset_cb
         },
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
         [2] = {
             .id = UWBEXT_RNG,
             .rx_complete_cb = rx_complete_cb,
@@ -268,9 +268,9 @@ uwb_rng_init(struct uwb_dev * dev, struct uwb_rng_config * config, uint16_t nfra
                     STATS_NAME_INIT_PARMS(rng_stat_section)
             );
 
-#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
+#if  MYNEWT_VAL(UWB_DEVICE_0) && !MYNEWT_VAL(UWB_DEVICE_1)
         rc |= stats_register("rng", STATS_HDR(rng->stat));
-#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
+#elif  MYNEWT_VAL(UWB_DEVICE_0) && MYNEWT_VAL(UWB_DEVICE_1)
     if (dev->idx == 0)
         rc |= stats_register("rng0", STATS_HDR(rng->stat));
     else
@@ -315,19 +315,19 @@ uwb_rng_pkg_init(void)
 
     struct uwb_rng_instance *rng;
     struct uwb_dev *udev;
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
     udev = uwb_dev_idx_lookup(0);
     g_cbs[0].inst_ptr = rng = uwb_rng_init(udev, &g_config, sizeof(g_twr_0)/sizeof(twr_frame_t));
     uwb_rng_set_frames(rng, g_twr_0, sizeof(g_twr_0)/sizeof(twr_frame_t));
     uwb_mac_append_interface(udev, &g_cbs[0]);
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
     udev = uwb_dev_idx_lookup(1);
     g_cbs[1].inst_ptr = rng = uwb_rng_init(udev, &g_config, sizeof(g_twr_1)/sizeof(twr_frame_t));
     uwb_rng_set_frames(rng, g_twr_1, sizeof(g_twr_1)/sizeof(twr_frame_t));
     uwb_mac_append_interface(udev, &g_cbs[1]);
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
     udev = uwb_dev_idx_lookup(2);
     g_cbs[2].inst_ptr = rng = uwb_rng_init(udev, &g_config, sizeof(g_twr_2)/sizeof(twr_frame_t));
     uwb_rng_set_frames(rng, g_twr_2, sizeof(g_twr_2)/sizeof(twr_frame_t));

@@ -54,7 +54,7 @@
 #include <uwb_pan/uwb_pan.h>
 
 //! Buffers for pan frames
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
 static pan_frame_t g_pan_0[] = {
     [0] = {
         .fctrl = FCNTL_IEEE_BLINK_TAG_64,    // frame control (FCNTL_IEEE_BLINK_64 to indicate a data frame using 16-bit addressing).
@@ -65,7 +65,7 @@ static pan_frame_t g_pan_0[] = {
     }
 };
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
 static pan_frame_t g_pan_1[] = {
     [0] = {
         .fctrl = FCNTL_IEEE_BLINK_TAG_64,    // frame control (FCNTL_IEEE_BLINK_64 to indicate a data frame using 16-bit addressing).
@@ -76,7 +76,7 @@ static pan_frame_t g_pan_1[] = {
     }
 };
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
 static pan_frame_t g_pan_2[] = {
     [0] = {
         .fctrl = FCNTL_IEEE_BLINK_TAG_64,    // frame control (FCNTL_IEEE_BLINK_64 to indicate a data frame using 16-bit addressing).
@@ -143,7 +143,7 @@ static struct uwb_mac_interface g_cbs[] = {
             .rx_timeout_cb = rx_timeout_cb,
             .reset_cb = reset_cb
         },
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
         [1] = {
             .id = UWBEXT_PAN,
             .rx_complete_cb = rx_complete_cb,
@@ -152,7 +152,7 @@ static struct uwb_mac_interface g_cbs[] = {
             .reset_cb = reset_cb
         },
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
         [2] = {
             .id = UWBEXT_PAN,
             .rx_complete_cb = rx_complete_cb,
@@ -242,21 +242,21 @@ uwb_pan_pkg_init(void)
     rc |= stats_register("pan", STATS_HDR(g_stat));
     assert(rc == OS_OK);
 
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
     udev = uwb_dev_idx_lookup(0);
     g_cbs[0].inst_ptr = pan = uwb_pan_init(udev, &g_config, sizeof(g_pan_0)/sizeof(pan_frame_t));
     uwb_pan_set_frames(pan, g_pan_0, sizeof(g_pan_0)/sizeof(pan_frame_t));
     uwb_mac_append_interface(udev, &g_cbs[0]);
     dpl_callout_init(&pan->pan_lease_callout_expiry, dpl_eventq_dflt_get(), lease_expiry_cb, (void *) pan);
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
     udev = uwb_dev_idx_lookup(1);
     g_cbs[1].inst_ptr = pan = uwb_pan_init(udev, &g_config, sizeof(g_pan_1)/sizeof(pan_frame_t));
     uwb_pan_set_frames(pan, g_pan_1, sizeof(g_pan_1)/sizeof(pan_frame_t));
     uwb_mac_append_interface(udev, &g_cbs[1]);
     dpl_callout_init(&pan->pan_lease_callout_expiry, dpl_eventq_dflt_get(), lease_expiry_cb, (void *) pan);
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
     udev = uwb_dev_idx_lookup(2);
     g_cbs[2].inst_ptr = pan = uwb_pan_init(udev, &g_config, sizeof(g_pan_2)/sizeof(pan_frame_t));
     uwb_pan_set_frames(pan, g_pan_2, sizeof(g_pan_2)/sizeof(pan_frame_t));
@@ -681,7 +681,7 @@ uwb_pan_reset(struct uwb_pan_instance * pan, uint64_t delay)
  * need to call this function.
  *
  * @param inst    Pointer to struct uwb_dev.
- * @param role    uwb_pan_role_t of UWB_PAN_ROLE_MASTER, PAN_ROLE_SLAVE ,PAN_ROLE_RELAY.
+ * @param role    uwb_pan_role_t of UWB_PAN_ROLE_MASTER, UWB_PAN_ROLE_SLAVE ,PAN_ROLE_RELAY.
  * @param network_role network_role_t, The role in the network application (NETWORK_ROLE_ANCHOR, NETWORK_ROLE_TAG)
  *
  * @return void

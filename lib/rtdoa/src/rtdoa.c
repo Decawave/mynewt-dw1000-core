@@ -86,9 +86,9 @@ rtdoa_init(struct uwb_dev * inst, struct uwb_rng_config * config, uint16_t nfram
                     STATS_NAME_INIT_PARMS(rtdoa_stat_section)
             );
    
-#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
+#if  MYNEWT_VAL(UWB_DEVICE_0) && !MYNEWT_VAL(UWB_DEVICE_1)
     rc |= stats_register("rtdoa", STATS_HDR(rtdoa->stat));
-#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
+#elif  MYNEWT_VAL(UWB_DEVICE_0) && MYNEWT_VAL(UWB_DEVICE_1)
     if (inst == hal_dw1000_inst(0)) {
         rc |= stats_register("rtdoa0", STATS_HDR(rtdoa->stat));
     } else{

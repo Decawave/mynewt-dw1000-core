@@ -83,7 +83,7 @@ dw1000_lwip_config(dw1000_lwip_instance_t * lwip, dw1000_lwip_config_t * config)
  * @param config   Pointer to the structure dw1000_lwip_config_t to configure the delay parameters.
  * @param nframes  Number of frames to allocate memory for.
  * @param buf_len  Buffer length of each frame. 
- * @return dw1000_rng_instance_t
+ * @return struct uwb_rng_instance
  */
 dw1000_lwip_instance_t *
 dw1000_lwip_init(struct uwb_dev * inst, dw1000_lwip_config_t * config, uint16_t nframes, uint16_t buf_len)

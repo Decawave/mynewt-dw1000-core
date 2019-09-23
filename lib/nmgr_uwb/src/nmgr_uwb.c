@@ -43,10 +43,8 @@
 
 #include <dpl/dpl.h>
 #include <uwb/uwb.h>
+#include <uwb/uwb_mac.h>
 #include <uwb/uwb_ftypes.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_hal.h>
-
 #include <nmgr_uwb/nmgr_uwb.h>
 
 //#define DIAGMSG(s,u) printf(s,u)
@@ -65,20 +63,20 @@ static bool rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 static int nmgr_resp_cb(struct nmgr_transport *nt, struct os_mbuf *m);
 
 static struct nmgr_transport uwb_transport_0;
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
 static struct nmgr_transport uwb_transport_1;
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
 static struct nmgr_transport uwb_transport_2;
 #endif
 
 static struct nmgr_transport*
 uwb_transport(int idx) {
     if (idx == 0) return &uwb_transport_0;
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
     if (idx == 1) return &uwb_transport_1;
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
     if (idx == 2) return &uwb_transport_2;
 #endif
     return 0;
@@ -91,7 +89,7 @@ static struct uwb_mac_interface g_cbs[] = {
             .tx_complete_cb = tx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
         },
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
         [1] = {
             .id = UWBEXT_NMGR_UWB,
             .rx_complete_cb = rx_complete_cb,
@@ -99,7 +97,7 @@ static struct uwb_mac_interface g_cbs[] = {
             .rx_timeout_cb = rx_timeout_cb,
         },
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
         [2] = {
             .id = UWBEXT_NMGR_UWB,
             .rx_complete_cb = rx_complete_cb,
@@ -124,14 +122,14 @@ nmgr_uwb_mtu_0(struct os_mbuf *m)
 }
 
 
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
 static uint16_t
 nmgr_uwb_mtu_1(struct os_mbuf *m)
 {
     return nmgr_uwb_mtu(m, 1);
 }
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
 static uint16_t
 nmgr_uwb_mtu_2(struct os_mbuf *m)
 {
@@ -170,19 +168,19 @@ void nmgr_uwb_pkg_init(void)
 #endif
 
     struct uwb_dev* udev;
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
     udev = uwb_dev_idx_lookup(0);
     nmgr_transport_init(uwb_transport(0), nmgr_resp_cb, nmgr_uwb_mtu_0);
     g_cbs[0].inst_ptr = nmgr_uwb_init(udev);
     uwb_mac_append_interface(udev, &g_cbs[0]);
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
     udev = uwb_dev_idx_lookup(1);
     nmgr_transport_init(uwb_transport(1), nmgr_resp_cb, nmgr_uwb_mtu_1);
     g_cbs[1].inst_ptr = nmgr_uwb_init(udev);
     uwb_mac_append_interface(udev, &g_cbs[1]);
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
     udev = uwb_dev_idx_lookup(2);
     nmgr_transport_init(uwb_transport(2), nmgr_resp_cb, nmgr_uwb_mtu_2);
     g_cbs[2].inst_ptr = nmgr_uwb_init(udev);
@@ -229,7 +227,7 @@ nmgr_resp_cb(struct nmgr_transport *nt, struct os_mbuf *m)
     assert(nmgruwb);
     nmgr_uwb_frame_header_t *frame = &hdr->uwb_hdr;
 
-    if (hdr->uwb_hdr.dst_address == BROADCAST_ADDRESS) {
+    if (hdr->uwb_hdr.dst_address == UWB_BROADCAST_ADDRESS) {
         rc = os_mbuf_free_chain(m);
         assert(rc==0);
         goto early_exit;

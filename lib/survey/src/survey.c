@@ -211,7 +211,7 @@ survey_pkg_init(void)
 {
     printf("{\"utime\": %lu,\"msg\": \"survey_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
     survey_init(uwb_dev_idx_lookup(0), MYNEWT_VAL(SURVEY_NNODES), MYNEWT_VAL(SURVEY_NFRAMES));
 #endif
 }

@@ -45,10 +45,8 @@
 #include <mgmt/mgmt.h>
 #include <newtmgr/newtmgr.h>
 
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
 #include <uwb/uwb.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_hal.h>
 #if MYNEWT_VAL(NMGR_UWB_ENABLED)
 #include <nmgr_uwb/nmgr_uwb.h> 
 #endif

@@ -120,9 +120,9 @@ nrng_init(struct uwb_dev * inst, struct uwb_rng_config * config,
                     STATS_NAME_INIT_PARMS(nrng_stat_section)
             );
 
-#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
+#if  MYNEWT_VAL(UWB_DEVICE_0) && !MYNEWT_VAL(UWB_DEVICE_1)
         rc |= stats_register("nrng", STATS_HDR(nrng->stat));
-#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
+#elif  MYNEWT_VAL(UWB_DEVICE_0) && MYNEWT_VAL(UWB_DEVICE_1)
     if (inst->idx == 0)
         rc |= stats_register("nrng0", STATS_HDR(nrng->stat));
     else
@@ -319,17 +319,17 @@ void nrng_pkg_init(void)
 
     struct nrng_instance *nrng;
     struct uwb_dev *udev;
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
     udev = uwb_dev_idx_lookup(0);
     nrng = nrng_init(udev, &g_config, (nrng_device_type_t) MYNEWT_VAL(NRNG_DEVICE_TYPE), MYNEWT_VAL(NRNG_NFRAMES), MYNEWT_VAL(NRNG_NNODES));
     nrng_set_frames(nrng, MYNEWT_VAL(NRNG_NFRAMES));
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
     udev = uwb_dev_idx_lookup(1);
     nrng = nrng_init(udev, &g_config, (nrng_device_type_t) MYNEWT_VAL(NRNG_DEVICE_TYPE), MYNEWT_VAL(NRNG_NFRAMES), MYNEWT_VAL(NRNG_NNODES));
     nrng_set_frames(nrng, MYNEWT_VAL(NRNG_NFRAMES));
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
     udev = uwb_dev_idx_lookup(2);
     nrng = nrng_init(udev, &g_config, (nrng_device_type_t) MYNEWT_VAL(NRNG_DEVICE_TYPE), MYNEWT_VAL(NRNG_NFRAMES), MYNEWT_VAL(NRNG_NNODES));
     nrng_set_frames(nrng, MYNEWT_VAL(NRNG_NFRAMES));

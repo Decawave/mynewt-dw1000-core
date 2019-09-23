@@ -225,7 +225,7 @@ panmaster_pkg_init(void)
 
 #if MYNEWT_VAL(UWB_PAN_ENABLED)
 
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
     struct uwb_pan_instance * pan = (struct uwb_pan_instance*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_PAN);
     assert(pan);
     uwb_pan_set_postprocess(pan, panmaster_dw1000_cb);

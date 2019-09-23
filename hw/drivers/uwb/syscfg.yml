@@ -14,3 +14,18 @@ syscfg.defs:
     UWB_DEV_RXDIAG_MAXLEN:
         description: 'Maximum size of rxdiag structure'
         value:  20
+#    UWB_DEVICE_0:
+#        description: 'UWB_0 Device Enable'
+#        value:  0
+#    UWB_DEVICE_1:
+#        description: 'UWB_1 Device Enable'
+#        value:  0
+#    UWB_DEVICE_2:
+#        description: 'UWB_2 Device Enable'
+#        value:  0
+
+#syscfg.vals.DW1000_DEVICE_0:
+#    UWB_DEVICE_0: 1
+
+#syscfg.vals.DW1000_DEVICE_1:
+#    UWB_DEVICE_1: 1

@@ -206,13 +206,13 @@ ot_pkg_init(void){
 
     printf("{\"utime\": %lu,\"msg\": \"ot_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
     ot_init(uwb_dev_idx_lookup(0));
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
     ot_init(uwb_dev_idx_lookup(1));
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
     ot_init(uwb_dev_idx_lookup(2));
 #endif
 }

@@ -132,9 +132,9 @@ tdma_init(struct uwb_dev *dev, uint16_t nslots)
             );
     assert(rc == 0);
 
-#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
+#if  MYNEWT_VAL(UWB_DEVICE_0) && !MYNEWT_VAL(UWB_DEVICE_1)
     rc = stats_register("tdma", STATS_HDR(tdma->stat));
-#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
+#elif  MYNEWT_VAL(UWB_DEVICE_0) && MYNEWT_VAL(UWB_DEVICE_1)
     if (dev->idx == 0)
         rc |= stats_register("tdma0", STATS_HDR(tdma->stat));
     else
@@ -183,13 +183,13 @@ void tdma_pkg_init(void){
     printf("{\"utime\": %lu,\"msg\": \"tdma_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
 
-#if MYNEWT_VAL(DW1000_DEVICE_0) 
+#if MYNEWT_VAL(UWB_DEVICE_0) 
     tdma_init(uwb_dev_idx_lookup(0), MYNEWT_VAL(TDMA_NSLOTS));
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
     tdma_init(uwb_dev_idx_lookup(1), MYNEWT_VAL(TDMA_NSLOTS));
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
     tdma_init(uwb_dev_idx_lookup(2), MYNEWT_VAL(TDMA_NSLOTS));
 #endif
 

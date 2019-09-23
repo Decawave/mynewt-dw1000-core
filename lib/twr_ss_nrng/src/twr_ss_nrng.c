@@ -38,6 +38,7 @@
 #include <hal/hal_gpio.h>
 
 #include <uwb/uwb.h>
+#include <uwb/uwb_mac.h>
 #include <uwb/uwb_ftypes.h>
 #include <nrng/nrng.h>
 #if MYNEWT_VAL(UWB_WCS_ENABLED)
@@ -211,7 +212,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
     struct uwb_rng_config * config = nrng_get_config(nrng, DWT_SS_TWR_NRNG);
     nrng_request_frame_t * _frame = (nrng_request_frame_t * )inst->rxbuf;
 
-    if (_frame->dst_address != inst->my_short_address && _frame->dst_address != BROADCAST_ADDRESS)
+    if (_frame->dst_address != inst->my_short_address && _frame->dst_address != UWB_BROADCAST_ADDRESS)
         return true;
    
     NRNG_STATS_INC(rx_complete);

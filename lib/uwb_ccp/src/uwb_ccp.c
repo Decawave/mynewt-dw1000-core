@@ -414,9 +414,9 @@ uwb_ccp_init(struct uwb_dev* dev, uint16_t nframes){
             );
     assert(rc == 0);
 
-#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
+#if  MYNEWT_VAL(UWB_DEVICE_0) && !MYNEWT_VAL(UWB_DEVICE_1)
     rc = stats_register("ccp", STATS_HDR(ccp->stat));
-#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
+#elif  MYNEWT_VAL(UWB_DEVICE_0) && MYNEWT_VAL(UWB_DEVICE_1)
     if (dev->idx == 0)
         rc |= stats_register("ccp0", STATS_HDR(ccp->stat));
     else
@@ -469,13 +469,13 @@ void uwb_ccp_pkg_init(void){
     printf("{\"utime\": %lu,\"msg\": \"uwb_ccp_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
 
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
     uwb_ccp_init(uwb_dev_idx_lookup(0), 2);
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
     uwb_ccp_init(uwb_dev_idx_lookup(1), 2);
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
     uwb_ccp_init(uwb_dev_idx_lookup(2), 2);
 #endif
 }

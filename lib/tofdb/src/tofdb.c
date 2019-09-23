@@ -104,7 +104,7 @@ tofdb_pkg_init(void)
     /*  */
 #if MYNEWT_VAL(UWB_CCP_ENABLED)
     
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
     struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_CCP);
     uwb_ccp_set_tof_comp_cb(ccp, ccp_cb);
 #endif

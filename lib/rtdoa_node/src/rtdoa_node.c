@@ -29,6 +29,7 @@
 #include "bsp/bsp.h"
 
 #include <uwb/uwb.h>
+#include <uwb/uwb_mac.h>
 #include <uwb/uwb_ftypes.h>
 #include <uwb_ccp/uwb_ccp.h>
 #include <uwb_wcs/uwb_wcs.h>
@@ -78,7 +79,7 @@ void rtdoa_node_pkg_init(void)
 #if MYNEWT_VAL(UWB_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"rtdoa_node_pkg_init\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
     g_cbs.inst_ptr = rtdoa = rtdoa_init(uwb_dev_idx_lookup(0), &g_config, MYNEWT_VAL(RTDOA_NFRAMES));
     rtdoa_set_frames(rtdoa, MYNEWT_VAL(RTDOA_NFRAMES));
 #endif
@@ -120,7 +121,7 @@ rtdoa_request(struct rtdoa_instance *rtdoa, uint64_t delay)
     frame->seq_num = ++rtdoa->seq_num;
     frame->code = DWT_RTDOA_REQUEST;
     frame->src_address = inst->my_short_address;
-    frame->dst_address = BROADCAST_ADDRESS;
+    frame->dst_address = UWB_BROADCAST_ADDRESS;
     frame->slot_modulus = MYNEWT_VAL(RTDOA_NNODES);
     frame->rpt_count = 0;
     frame->rpt_max = MYNEWT_VAL(RTDOA_MAX_CASCADE_RPTS);
@@ -178,7 +179,7 @@ tx_rtdoa_response(struct rtdoa_instance * rtdoa)
     frame->seq_num = ++rtdoa->seq_num;
     frame->code = DWT_RTDOA_RESP;
     frame->src_address = inst->my_short_address;
-    frame->dst_address = BROADCAST_ADDRESS;
+    frame->dst_address = UWB_BROADCAST_ADDRESS;
     frame->slot_id = inst->slot_id%rtdoa->req_frame->slot_modulus + 1;
 
     uwb_set_delay_start(inst, (dx_time&0x000000FFFFFFFE00ULL));
@@ -331,7 +332,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
     //struct uwb_rng_config * config = &rtdoa->config;
     rtdoa_request_frame_t * _frame = (rtdoa_request_frame_t * )inst->rxbuf;
 
-    if (_frame->dst_address != inst->my_short_address && _frame->dst_address != BROADCAST_ADDRESS)
+    if (_frame->dst_address != inst->my_short_address && _frame->dst_address != UWB_BROADCAST_ADDRESS)
         return true;
    
     RTDOA_STATS_INC(rx_complete);

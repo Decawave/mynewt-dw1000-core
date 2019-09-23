@@ -28,8 +28,8 @@
 #include <hal/hal_gpio.h>
 #include "bsp/bsp.h"
 
-#include <dw1000/dw1000_hal.h>
 #include <uwb/uwb.h>
+#include <uwb/uwb_mac.h>
 #include <uwb/uwb_ftypes.h>
 #include <uwb_ccp/uwb_ccp.h>
 #include <rtdoa/rtdoa.h>
@@ -79,7 +79,7 @@ rtdoa_tag_pkg_init(void)
 #endif
 
     struct uwb_dev *udev = uwb_dev_idx_lookup(0);
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
     g_cbs.inst_ptr = rtdoa = rtdoa_init(udev, &g_config, MYNEWT_VAL(RTDOA_NFRAMES));
     rtdoa_set_frames(rtdoa, MYNEWT_VAL(RTDOA_NFRAMES));
 #endif
@@ -108,7 +108,7 @@ rtdoa_tag_free(struct uwb_dev * inst)
 /**
  * API for receive error callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
@@ -197,7 +197,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
     rtdoa_request_frame_t * _frame = (rtdoa_request_frame_t * )inst->rxbuf;
 
     if (_frame->dst_address != inst->my_short_address &&
-        _frame->dst_address != BROADCAST_ADDRESS) {
+        _frame->dst_address != UWB_BROADCAST_ADDRESS) {
         return true;
     }
    

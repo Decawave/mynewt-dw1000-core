@@ -74,9 +74,9 @@ cir_complete_ev_cb(struct os_event *ev) {
     }
     inst->cir->fp_power = dw1000_get_fppl(inst);
 
-#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
+#if  MYNEWT_VAL(UWB_DEVICE_0) && !MYNEWT_VAL(UWB_DEVICE_1)
     cir_dw1000_encode(inst->cir, "cir", MYNEWT_VAL(CIR_SIZE));
-#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
+#elif  MYNEWT_VAL(UWB_DEVICE_0) && MYNEWT_VAL(UWB_DEVICE_1)
     if (inst->uwb_dev.idx == 0)
         cir_dw1000_encode(inst->cir, "cir0", MYNEWT_VAL(CIR_SIZE));   
     else     
@@ -295,9 +295,9 @@ cir_dw1000_init(struct _dw1000_dev_instance_t * inst, struct cir_dw1000_instance
                 STATS_NAME_INIT_PARMS(cir_dw1000_stat_section)
             );
 
-#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
+#if  MYNEWT_VAL(UWB_DEVICE_0) && !MYNEWT_VAL(UWB_DEVICE_1)
     rc |= stats_register("cir", STATS_HDR(cir->stat));
-#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
+#elif  MYNEWT_VAL(UWB_DEVICE_0) && MYNEWT_VAL(UWB_DEVICE_1)
     if (inst == hal_dw1000_inst(0))
         rc |= stats_register("cir0", STATS_HDR(cir->stat));
     else
@@ -337,13 +337,13 @@ struct uwb_mac_interface cbs[] = {
             .id =  UWBEXT_CIR,
             .cir_complete_cb = cir_complete_cb
     },
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
     [1] = {
             .id =  UWBEXT_CIR,
             .cir_complete_cb = cir_complete_cb
     },
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
     [2] = {
             .id =  UWBEXT_CIR,
             .cir_complete_cb = cir_complete_cb
@@ -379,21 +379,21 @@ void cir_dw1000_pkg_init(void)
 #if MYNEWT_VAL(CIR_ENABLED)
     printf("{\"utime\": %lu,\"msg\": \"cir_dw1000_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
     dw1000_dev_instance_t * inst = hal_dw1000_inst(0);
     cbs[0].inst_ptr = inst->cir = cir_dw1000_init(inst, NULL);
     inst->uwb_dev.cir = (struct cir_instance*)inst->cir;
     inst->cir->cir_inst.cir_funcs = &cir_dw1000_funcs;
     uwb_mac_append_interface(&inst->uwb_dev, &cbs[0]);
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
     inst = hal_dw1000_inst(1);
     cbs[1].inst_ptr = inst->cir = cir_dw1000_init(inst, NULL);
     inst->uwb_dev.cir = (struct cir_instance*)inst->cir;
     inst->cir->cir_inst.cir_funcs = &cir_dw1000_funcs;
     uwb_mac_append_interface(&inst->uwb_dev, &cbs[1]);
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
     inst = hal_dw1000_inst(2);
     cbs[2].inst_ptr = inst->cir = cir_dw1000_init(inst, NULL);
     inst->uwb_dev.cir = (struct cir_instance*)inst->cir;

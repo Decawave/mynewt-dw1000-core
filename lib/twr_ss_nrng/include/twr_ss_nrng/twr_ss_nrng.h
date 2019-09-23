@@ -29,8 +29,8 @@
  *
  */
 
-#ifndef _DW1000_TWR_SS_NRNG_H_
-#define _DW1000_TWR_SS_NRNG_H_
+#ifndef _TWR_SS_NRNG_H_
+#define _TWR_SS_NRNG_H_
 
 #if MYNEWT_VAL(TWR_SS_NRNG_ENABLED)
 
@@ -53,4 +53,4 @@ void twr_ss_nrng_free(struct uwb_dev * inst);
 #endif
 
 #endif // TWR_SS_NRNG_ENABLED
-#endif //_DW1000_TWR_SS_NRNG_H_
+#endif //_TWR_SS_NRNG_H_

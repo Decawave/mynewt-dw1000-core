@@ -2,6 +2,9 @@
 syscfg.defs:
     UWB_DW1000_API_CHECKS:
         value: 1
+        description: >
+          Used to check that the UWB_DEV has been setup correctly
+          at compile time.
         restrictions:
           - '(UWB_DEV_RXDIAG_MAXLEN > 19)'
     DW1000_HAL_SPI_BUFFER_SIZE:
@@ -26,9 +29,6 @@ syscfg.defs:
     DW1000_DEVICE_ANT_GAIN:
         description: 'Antenna Gain dB'
         value: ((float)1.0f)
-    DW1000_DEVICE_FREQ:  
-        description: 'Center frequency Hz'
-        value: ((float)6489.6f)
     DW1000_RXTX_LEDS:
         description: 'Enable showing rx and tx activity on gpios'
         value: 1
@@ -91,4 +91,17 @@ syscfg.defs:
     TIME_TO_RX_STABLE:
         description: 'Idle to RX-RF-Block stable in us'
         value:  ((uint64_t)6)
+
+# TODO: find a better solution than this:
+syscfg.defs.DW1000_DEVICE_0:
+    UWB_DEVICE_0:
+      value: 1
+
+syscfg.defs.DW1000_DEVICE_1:
+    UWB_DEVICE_1:
+      value: 1
+
+syscfg.defs.DW1000_DEVICE_2:
+    UWB_DEVICE_2:
+      value: 1
 

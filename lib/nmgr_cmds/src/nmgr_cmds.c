@@ -87,14 +87,14 @@ static struct uwb_mac_interface g_cbs[] = {
             .rx_complete_cb = rx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
         },
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
         [1] = {
             .id = UWBEXT_NMGR_CMD,
             .rx_complete_cb = rx_complete_cb,
             .rx_timeout_cb = rx_timeout_cb,
         },
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
         [2] = {
             .id = UWBEXT_NMGR_CMD,
             .rx_complete_cb = rx_complete_cb,
@@ -187,17 +187,17 @@ void nmgr_cmds_pkg_init(void){
     nmgr_inst = (nmgr_cmd_instance_t*)malloc(sizeof(nmgr_cmd_instance_t));
     memset(nmgr_inst, 0x00, sizeof(nmgr_cmd_instance_t));    
 
-#if MYNEWT_VAL(DW1000_DEVICE_0)
+#if MYNEWT_VAL(UWB_DEVICE_0)
     SYSINIT_ASSERT_ACTIVE();
     g_cbs[0].inst_ptr = nmgr_inst->dev_inst = uwb_dev_idx_lookup(0);
     uwb_mac_append_interface(g_cbs[0].inst_ptr, &g_cbs[0]);
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_1)
+#if MYNEWT_VAL(UWB_DEVICE_1)
     SYSINIT_ASSERT_ACTIVE();
     g_cbs[1].inst_ptr = nmgr_inst->dev_inst = uwb_dev_idx_lookup(1);
     uwb_mac_append_interface(g_cbs[1].inst_ptr, &g_cbs[1]);
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
+#if MYNEWT_VAL(UWB_DEVICE_2)
     SYSINIT_ASSERT_ACTIVE();
     g_cbs[2].inst_ptr = nmgr_inst->dev_inst = uwb_dev_idx_lookup(2);
     uwb_mac_append_interface(g_cbs[2].inst_ptr, &g_cbs[2]);

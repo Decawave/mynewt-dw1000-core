@@ -58,9 +58,6 @@ extern "C" {
 #define DWT_ERROR   (-1)             //!< DWT Error
 #define DWT_TIME_UNITS          (1.0/499.2e6/128.0) //!< DWT time units calculation
 
-#define BROADCAST_ADDRESS          0xffff  //!< Broad cast addresss
-
-
 //! Device control status bits.
 typedef struct _dw1000_dev_control_t{
     uint32_t wait4resp_enabled:1;           //!< Wait for the response

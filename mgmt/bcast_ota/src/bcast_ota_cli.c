@@ -54,14 +54,9 @@
 #include <base64/hex.h>
 #include <base64/base64.h>
 
-#if MYNEWT_VAL(DW1000_DEVICE_0)
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_hal.h>
 #if MYNEWT_VAL(NMGR_UWB_ENABLED)
 #include <nmgr_uwb/nmgr_uwb.h> 
 #endif
-#endif
-
 static struct nmgr_transport nmgr_mstr_transport;
 
 static uint16_t

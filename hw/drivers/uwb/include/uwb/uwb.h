@@ -61,9 +61,10 @@ typedef enum uwb_extension_id {
 } uwb_extension_id_t;
 
 //! Device Roles
-#define UWB_ROLE_CCP_MASTER   (0x0001)
-#define UWB_ROLE_PAN_MASTER   (0x0002)
-#define UWB_ROLE_ANCHOR       (0x0004)
+#define UWB_ROLE_CCP_MASTER   (0x0001)  //!< Act as Clock Master for the network
+#define UWB_ROLE_PAN_MASTER   (0x0002)  //!< Act as Pan Master handing out slots and addresses
+#define UWB_ROLE_ANCHOR       (0x0004)  //!< Act as an Anchor, a non-mobile unit
+
 
 //! IDs for blocking/non-blocking mode .
 typedef enum _uwb_dev_modes_t{
@@ -96,8 +97,8 @@ struct uwb_dev_status {
 
     //! IDs for blocking/non-blocking mode .
 typedef enum {
-    UWB_CR_CARRIER_INTEGRATOR,       //!< Clock ratio from Carrier integrator
-    UWB_CR_RXTTCKO                   //!< Clock ratio from Receiver time tracking offset
+    UWB_CR_CARRIER_INTEGRATOR,        //!< Clock ratio from Carrier integrator
+    UWB_CR_RXTTCKO                    //!< Clock ratio from Receiver time tracking offset
 } uwb_cr_types_t;
 
 /** API parent structure for rx diagnostics. Used to store values for later
@@ -117,7 +118,8 @@ struct uwb_phy_attributes {
     uint8_t nphr;    
     uint16_t nsync;  
 };
-    
+
+/* Forward declaration */
 struct uwb_dev;
 
 //! Structure of extension callbacks structure common for mac layer.
@@ -141,7 +143,7 @@ struct uwb_mac_interface {
     SLIST_ENTRY(uwb_mac_interface) next;                                       //!< Next callback in the list
 };
 
-//! DW1000 receiver configuration parameters.
+//! Receiver configuration parameters.
 struct uwb_dev_rx_config {
     uint8_t pacLength;                      //!< Acquisition Chunk Size DWT_PAC8..DWT_PAC64 (Relates to RX preamble length)
     uint8_t preambleCodeIndex;              //!< RX preamble code
@@ -176,14 +178,14 @@ struct uwb_dev_txrf_config {
     };
 };
 
-//! DW1000 device configuration parameters.
+//! UWB device configuration parameters.
 struct uwb_dev_config{
     uint8_t channel;                        //!< channel number {1, 2, 3, 4, 5, 7, 9}
     uint8_t dataRate;                       //!< Data Rate {DWT_BR_110K, DWT_BR_850K or DWT_BR_6M8}
     uint8_t prf;                            //!< Pulse Repetition Frequency {DWT_PRF_16M or DWT_PRF_64M}
-    struct uwb_dev_rx_config rx;            //!< DW1000 receiver configuration parameters.
-    struct uwb_dev_tx_config tx;            //!< DW1000 transmitter configuration parameters.
-    struct uwb_dev_txrf_config txrf;        //!< DW1000 transmitter power configuration parameters.
+    struct uwb_dev_rx_config rx;            //!< UWB receiver configuration parameters.
+    struct uwb_dev_tx_config tx;            //!< UWB transmitter configuration parameters.
+    struct uwb_dev_txrf_config txrf;        //!< UWB transmitter power configuration parameters.
     uint32_t autoack_enabled:1;             //!< Enables automatic acknowledgement
     uint32_t autoack_delay_enabled:1;       //!< Enables automatic acknowledgement feature with delay
     uint32_t dblbuffon_enabled:1;           //!< Enables double buffer
@@ -238,7 +240,7 @@ typedef void (*uwb_sleep_config_func_t)(struct uwb_dev * dev);
 /**
  * API to enter device into sleep mode.
  *
- * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @param inst   Pointer to struct uwb_dev. 
  * @return struct uwb_dev_status
  */
 typedef struct uwb_dev_status (*uwb_enter_sleep_func_t)(struct uwb_dev * dev);
@@ -421,7 +423,7 @@ typedef struct uwb_dev_status (*uwb_set_wait4resp_func_t)(struct uwb_dev *dev, b
  * or 128 system clock cycles. This configuration may be used to save power by delaying the turn-on of the receiver, 
  * to align with the response time of the remote system, rather than turning on the receiver immediately after transmission completes.
  * 
- * @param inst   Pointer to _dw1000_dev_instance_t.
+ * @param inst   Pointer to struct uwb_dev.
  * @param delay  The delay is in UWB microseconds.
  *
  * @return struct uwb_dev_status
@@ -434,7 +436,7 @@ typedef struct uwb_dev_status (*uwb_set_wait4resp_delay_func_t)(struct uwb_dev *
  * 
  * @param dev      Pointer to struct uwb_dev.
  * @param disable  Disable mac-layer auto rx-reenable feature. The default behavior is rxauto enable, this API overrides default behavior
- * on an individual transaction such as in dw1000_rng_request or dw1000_rng_listen
+ * on an individual transaction.
  *
  */
 typedef struct uwb_dev_status (*uwb_set_rxauto_disable_func_t)(struct uwb_dev * dev, bool disable);
@@ -495,7 +497,7 @@ typedef uint32_t (*uwb_read_txtime_lo32_func_t)(struct uwb_dev* dev);
 /**
  * Calculate the frame duration (airtime) in usecs (not uwb usecs).
  * @param attrib    Pointer to struct uwb_phy_attributes_t *. The phy attritubes are part of the IEEE802.15.4-2011 standard. 
- * Note the morphology of the frame depends on the mode of operation, see the dw1000_hal.c for the default behaviour
+ * Note the morphology of the frame depends on the mode of operation, see the dw*000_hal.c for the default behaviour
  * @param nlen      The length of the frame to be transmitted/received excluding crc
  * @return uint16_t duration in usec (not uwb usec)
  */
@@ -504,7 +506,7 @@ typedef uint16_t (*uwb_phy_frame_duration_func_t)(struct uwb_dev* dev, uint16_t 
 /**
  * API to calculate the SHR (Preamble + SFD) duration. This is used to calculate the correct rx_timeout.
  * @param attrib    Pointer to struct uwb_phy_attributes *. The phy attritubes are part of the IEEE802.15.4-2011 standard. 
- * Note the morphology of the frame depends on the mode of operation, see the dw1000_hal.c for the default behaviour
+ * Note the morphology of the frame depends on the mode of operation, see the dw*000_hal.c for the default behaviour
  * @param nlen      The length of the frame to be transmitted/received excluding crc
  * @return uint16_t duration in usec (not uwb usec)
  */
@@ -674,20 +676,9 @@ struct uwb_dev {
     dpl_stack_t task_stack[UWB_DEV_TASK_STACK_SZ] //!< Stack of the interrupt task
         __attribute__((aligned(DPL_STACK_ALIGNMENT)));
 
-    /* RX data from latest frame received */
-    union {
-        uint16_t fctrl;                         //!< Reported frame control
-        uint8_t fctrl_array[sizeof(uint16_t)];  //!< Endianness safe interface
-    };
-    uint16_t frame_len;                         //!< Reported frame length
-    uint64_t rxtimestamp;                       //!< Receive timestamp
-    int32_t carrier_integrator;                 //!< Carrier integrator
-    struct uwb_dev_rxdiag *rxdiag;              //!< Pointer to rx diagnostics structure
-    uint8_t rxbuf[MYNEWT_VAL(UWB_RX_BUFFER_SIZE)]; //!< Local receive buffer
-
     /* Device parameters */
-    uint8_t idx;                                //!< instance number number {0, 1, 2 etc}
-    uint16_t role;                              //!< Roles for this device
+    uint8_t  idx;                               //!< instance number number {0, 1, 2 etc}
+    uint16_t role;                              //!< Roles for this device (bitfield)
     union {
         uint16_t my_short_address;              //!< Short address of tag/node
         uint16_t uid;
@@ -702,7 +693,19 @@ struct uwb_dev {
     uint32_t device_id;                         //!< Device id
     uint16_t rx_antenna_delay;                  //!< Receive antenna delay
     uint16_t tx_antenna_delay;                  //!< Transmit antenna delay
-    int32_t ext_clock_delay;                    //!< External clock delay
+    int32_t  ext_clock_delay;                   //!< External clock delay
+
+    /* RX data from latest frame received */
+    union {
+        uint16_t fctrl;                         //!< Reported frame control
+        uint8_t fctrl_array[sizeof(uint16_t)];  //!< Endianness safe interface
+    };
+    uint16_t frame_len;                         //!< Reported frame length
+    uint64_t rxtimestamp;                       //!< Receive timestamp
+    int32_t carrier_integrator;                 //!< Carrier integrator (should prob not be here)
+    struct uwb_dev_rxdiag *rxdiag;              //!< Pointer to rx diagnostics structure
+    uint8_t rxbuf[MYNEWT_VAL(UWB_RX_BUFFER_SIZE)]; //!< Local receive buffer
+
 
     struct uwb_dev_status status;               //!< Device status
     struct uwb_dev_config config;               //!< Device configuration
@@ -713,11 +716,6 @@ struct uwb_dev {
 #endif
 };
 
-
-#if 0
-    // TODO
-    cir -> cir_dw1000
-#endif
 
 /**
  * Configure the mac layer
@@ -766,7 +764,7 @@ static inline void uwb_sleep_config(struct uwb_dev * dev)
 /**
  * API to enter device into sleep mode.
  *
- * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @param inst   Pointer to struct uwb_dev. 
  * @return struct uwb_dev_status
  */
 static inline struct uwb_dev_status
@@ -1019,7 +1017,7 @@ static inline struct uwb_dev_status uwb_set_wait4resp_delay(struct uwb_dev * dev
  * 
  * @param inst   Pointer to struct uwb_dev.
  * @param disable  Disable mac-layer auto rx-reenable feature. The default behavior is rxauto enable, this API overrides default behavior
- * on an individual transaction such as in dw1000_rng_request or dw1000_rng_listen
+ * on an individual transaction.
  *
  */
 static inline struct uwb_dev_status uwb_set_rxauto_disable(struct uwb_dev * dev, bool disable)
@@ -1101,7 +1099,7 @@ static inline uint32_t uwb_read_txtime_lo32(struct uwb_dev* dev)
 /**
  * Calculate the frame duration (airtime) in usecs (not uwb usecs). 
  * @param attrib    Pointer to struct uwb_phy_attributes_t * struct. The phy attritubes are part of the IEEE802.15.4-2011 standard. 
- * Note the morphology of the frame depends on the mode of operation, see the dw1000_hal.c for the default behaviour
+ * Note the morphology of the frame depends on the mode of operation, see the dw*000_hal.c for the default behaviour
  * @param nlen      The length of the frame to be transmitted/received excluding crc
  * @return uint16_t duration in usec (not uwb usecs)
  */
@@ -1113,7 +1111,7 @@ static inline uint16_t uwb_phy_frame_duration(struct uwb_dev* dev, uint16_t nlen
 /**
  * API to calculate the SHR (Preamble + SFD) duration. This is used to calculate the correct rx_timeout.
  * @param attrib    Pointer to struct uwb_phy_attributes *. The phy attritubes are part of the IEEE802.15.4-2011 standard. 
- * Note the morphology of the frame depends on the mode of operation, see the dw1000_hal.c for the default behaviour
+ * Note the morphology of the frame depends on the mode of operation, see the dw*000_hal.c for the default behaviour
  * @param nlen      The length of the frame to be transmitted/received excluding crc
  * @return uint16_t duration in usec (not uwb usec)
  */
@@ -1238,7 +1236,7 @@ static inline float uwb_calc_fppl(struct uwb_dev * dev, struct uwb_dev_rxdiag * 
 
 /**
  * Give a rough estimate of how likely the received packet is
- * line of sight (LOS). Taken from 4.7 of DW1000 manual
+ * line of sight (LOS). Taken from 4.7 of DW1000 manual 2.12
  *
  * @param rssi rssi as calculated by uwb_calc_rssi
  * @param fppl fppl as calculated by uwb_calc_fppl

@@ -290,15 +290,15 @@ int
 uwbcfg_commit(void)
 {
     struct uwb_dev *inst;
-#if  MYNEWT_VAL(DW1000_DEVICE_0)
+#if  MYNEWT_VAL(UWB_DEVICE_0)
     inst = uwb_dev_idx_lookup(0);
     uwbcfg_commit_to_inst(inst, uwb_config);
 #endif
-#if  MYNEWT_VAL(DW1000_DEVICE_1)
+#if  MYNEWT_VAL(UWB_DEVICE_1)
     inst = uwb_dev_idx_lookup(1);
     uwbcfg_commit_to_inst(inst, uwb_config);
 #endif
-#if  MYNEWT_VAL(DW1000_DEVICE_2)
+#if  MYNEWT_VAL(UWB_DEVICE_2)
     inst = uwb_dev_idx_lookup(2);
     uwbcfg_commit_to_inst(inst, uwb_config);
 #endif

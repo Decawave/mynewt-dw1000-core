@@ -25,3 +25,4 @@ pkg.keywords:
     - uwb
 pkg.req_apis: 
     - UWB_HW_IMPL
+pkg.priority: -1
