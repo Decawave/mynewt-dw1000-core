@@ -17,8 +17,8 @@
 # under the License.
 #
 
-pkg.name: lib/lwip
-pkg.description: lwIP library
+pkg.name: lib/uwb_lwip
+pkg.description: UWB lwIP library
 pkg.author: "Paul Kettle <paul.kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
@@ -35,5 +35,5 @@ pkg.lflags:
 pkg.deps:
     - "@mynewt-dw1000-core/hw/drivers/uwb"
 
-pkg.deps.DW1000_LWIP:
+pkg.deps.UWB_LWIP_ENABLED:
     - "@mynewt-dw1000-core/net/ip/lwip_base"

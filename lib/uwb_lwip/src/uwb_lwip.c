@@ -20,7 +20,7 @@
  */
 
 /**
- * @file dw1000_lwip.c
+ * @file uwb_lwip.c
  * @author paul kettle
  * @date 2018
  * 
@@ -37,11 +37,11 @@
 #include <hal/hal_gpio.h>
 #include "bsp/bsp.h"
 
-#if MYNEWT_VAL(LWIP_ENABLED)
+#if MYNEWT_VAL(UWB_LWIP_ENABLED)
 
 #include <uwb/uwb.h>
 #include <uwb/uwb_ftypes.h>
-#include <lwip/lwip.h>
+#include <uwb_lwip/uwb_lwip.h>
 
 #include "sysinit/sysinit.h"
 
@@ -58,16 +58,16 @@ static bool rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs
 static bool tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
 static bool rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
 static bool rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
-dw1000_lwip_context_t cntxt;
+uwb_lwip_context_t cntxt;
 /**
  * API to assign the config parameters.
  *
- * @param inst     Pointer to dw1000_dev_instance_t.
- * @param config   Pointer to structure dw1000_lwip_config_t containing configuration values. 
+ * @param lwip     Pointer to uwb_lwip_instance_t.
+ * @param config   Pointer to structure uwb_lwip_config_t containing configuration values. 
  * @return struct uwb_dev_status
  */
 struct uwb_dev_status
-dw1000_lwip_config(dw1000_lwip_instance_t * lwip, dw1000_lwip_config_t * config)
+uwb_lwip_config(uwb_lwip_instance_t * lwip, uwb_lwip_config_t * config)
 {
 	assert(lwip);
 	assert(config);
@@ -79,22 +79,22 @@ dw1000_lwip_config(dw1000_lwip_instance_t * lwip, dw1000_lwip_config_t * config)
 /**
  * API to initialize the lwip service.
  *
- * @param inst     Pointer to dw1000_dev_instance_t.
- * @param config   Pointer to the structure dw1000_lwip_config_t to configure the delay parameters.
+ * @param inst     Pointer to struct uwb_dev.
+ * @param config   Pointer to the structure uwb_lwip_config_t to configure the delay parameters.
  * @param nframes  Number of frames to allocate memory for.
  * @param buf_len  Buffer length of each frame. 
  * @return struct uwb_rng_instance
  */
-dw1000_lwip_instance_t *
-dw1000_lwip_init(struct uwb_dev * inst, dw1000_lwip_config_t * config, uint16_t nframes, uint16_t buf_len)
+uwb_lwip_instance_t *
+uwb_lwip_init(struct uwb_dev * inst, uwb_lwip_config_t * config, uint16_t nframes, uint16_t buf_len)
 {
 	assert(inst);
-    dw1000_lwip_instance_t *lwip = (dw1000_lwip_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_LWIP);
+    uwb_lwip_instance_t *lwip = (uwb_lwip_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_LWIP);
 
 	if (lwip == NULL){
-		lwip  = (dw1000_lwip_instance_t *) malloc(sizeof(dw1000_lwip_instance_t) + nframes * sizeof(char *));
+		lwip  = (uwb_lwip_instance_t *) malloc(sizeof(uwb_lwip_instance_t) + nframes * sizeof(char *));
 		assert(lwip);
-		memset(lwip,0,sizeof(dw1000_lwip_instance_t) + nframes * sizeof(char *));
+		memset(lwip,0,sizeof(uwb_lwip_instance_t) + nframes * sizeof(char *));
 		lwip->status.selfmalloc = 1;
 		lwip->nframes = nframes;
 		lwip->buf_len = buf_len;
@@ -112,7 +112,7 @@ dw1000_lwip_init(struct uwb_dev * inst, dw1000_lwip_config_t * config, uint16_t 
 
 	if (config != NULL){
 		lwip->config = config;
-		dw1000_lwip_config(lwip, config);
+		uwb_lwip_config(lwip, config);
 	}
     lwip->dev_inst = inst;
     lwip->cbs = (struct uwb_mac_interface){
@@ -133,11 +133,11 @@ dw1000_lwip_init(struct uwb_dev * inst, dw1000_lwip_config_t * config, uint16_t 
 /**
  * API to initialize a PCB for raw lwip.
  *
- * @param   inst Pointer to dw1000_lwip_instance_t.   
+ * @param   inst Pointer to uwb_lwip_instance_t.   
  * @return void
  */
 void
-dw1000_pcb_init(dw1000_lwip_instance_t * lwip)
+uwb_pcb_init(uwb_lwip_instance_t * lwip)
 {
 	ip_addr_t ip6_tgt_addr[4];
 
@@ -155,11 +155,11 @@ dw1000_pcb_init(dw1000_lwip_instance_t * lwip)
 /**
  * API to mark lwip service as free.
  *
- * @param inst   Pointer to dw1000_lwip_instance_t.
+ * @param inst   Pointer to uwb_lwip_instance_t.
  * @return void
  */
 void 
-dw1000_lwip_free(dw1000_lwip_instance_t * lwip)
+uwb_lwip_free(uwb_lwip_instance_t * lwip)
 {
 	assert(lwip);
 	if (lwip->status.selfmalloc)
@@ -185,7 +185,7 @@ lwip_rx_cb(void *arg, struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *addr
     LWIP_UNUSED_ARG(addr);
     LWIP_ASSERT("p != NULL", p != NULL);
 
-    dw1000_lwip_instance_t * lwip = (dw1000_lwip_instance_t *)arg;
+    uwb_lwip_instance_t * lwip = (uwb_lwip_instance_t *)arg;
     if (pbuf_header( p, -PBUF_IP_HLEN)==0){
         lwip->payload_ptr = p->payload;
 
@@ -201,7 +201,7 @@ lwip_rx_cb(void *arg, struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *addr
 /**
  * API to confirm lwip receive complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  * @return void
  */
 static bool complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
@@ -217,13 +217,13 @@ static bool complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /**
  * API to send lwIP buffer to radio.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to uwb_lwip_instance_t.
  * @param p     lwIP Buffer to be sent to radio.
  * @param mode  Represents mode of blocking LWIP_BLOCKING : Wait for Tx to complete LWIP_NONBLOCKING : Don't wait for Tx to complete. 
  * @return struct uwb_dev_status
  */
 struct uwb_dev_status 
-dw1000_lwip_write(dw1000_lwip_instance_t * lwip, struct pbuf *p, dw1000_lwip_modes_t mode)
+uwb_lwip_write(uwb_lwip_instance_t * lwip, struct pbuf *p, uwb_lwip_modes_t mode)
 {
 	/* Semaphore lock for multi-threaded applications */
 	os_error_t err = os_sem_pend(&lwip->sem, OS_TIMEOUT_NEVER);
@@ -265,14 +265,14 @@ dw1000_lwip_write(dw1000_lwip_instance_t * lwip, struct pbuf *p, dw1000_lwip_mod
 }
 
 /**
- * API to put DW1000 radio in Receive mode.
+ * API to put UWB radio in Receive mode.
  *
- * @param inst     Pointer to dw1000_dev_instance_t.
+ * @param lwip     Pointer to uwb_lwip_instance_t.
  * @param timeout  Timeout value for radio in receive mode. 
  * @return void
  */
 void
-dw1000_lwip_start_rx(dw1000_lwip_instance_t * lwip, uint16_t timeout)
+uwb_lwip_start_rx(uwb_lwip_instance_t * lwip, uint16_t timeout)
 {
     os_error_t err = os_sem_pend(&lwip->data_sem, OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
@@ -283,13 +283,13 @@ dw1000_lwip_start_rx(dw1000_lwip_instance_t * lwip, uint16_t timeout)
 /**
  * API to confirm receive is complete. 
  * 
- * @param inst   Pointer to dw1000_dev_instance_t.
+ * @param inst   Pointer to struct uwb_dev.
  * @retrun void 
  */
 static bool 
 rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_lwip_instance_t * lwip = (dw1000_lwip_instance_t *)cbs->inst_ptr;
+    uwb_lwip_instance_t * lwip = (uwb_lwip_instance_t *)cbs->inst_ptr;
 	if(strncmp((char *)&inst->fctrl, "LW",2))
         return false;
 
@@ -316,7 +316,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
         lwip->lwip_netif.input((struct pbuf *)data_buf, &lwip->lwip_netif);
 	}
     else
-		dw1000_lwip_start_rx(lwip,0x0000);
+		uwb_lwip_start_rx(lwip,0x0000);
 
 	return true;
 }
@@ -324,13 +324,13 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /**
  * API to confirm transmit is complete. 
  *
- * @param inst    Pointer to dw1000_dev_instance_t.
+ * @param inst    Pointer to struct uwb_dev.
  * @return void
  */
 static bool 
 tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_lwip_instance_t * lwip = (dw1000_lwip_instance_t *)cbs->inst_ptr;
+    uwb_lwip_instance_t * lwip = (uwb_lwip_instance_t *)cbs->inst_ptr;
 	if(strncmp((char *)&inst->fctrl, "LW",2)) {
         return false;
     } else if (os_sem_get_count(&lwip->sem) == 0) {
@@ -345,13 +345,13 @@ tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /**
  * API for timeout in receive callback.
  *
- * @param inst   pointer to dw1000_dev_instance_t.
+ * @param inst   pointer to struct uwb_dev.
  * @param void
  */
 static bool 
 rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_lwip_instance_t * lwip = (dw1000_lwip_instance_t *)cbs->inst_ptr;
+    uwb_lwip_instance_t * lwip = (uwb_lwip_instance_t *)cbs->inst_ptr;
     if (os_sem_get_count(&lwip->data_sem) == 0){
 		os_error_t err = os_sem_release(&lwip->data_sem);
 		assert(err == OS_OK);
@@ -365,13 +365,13 @@ rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /**
  * API for error in receiving the data.
  *
- * @param inst   pointer to dw1000_dev_instance_t.
+ * @param inst   pointer to struct uwb_dev.
  * @return void
  */
 static bool 
 rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_lwip_instance_t * lwip = (dw1000_lwip_instance_t *)cbs->inst_ptr;
+    uwb_lwip_instance_t * lwip = (uwb_lwip_instance_t *)cbs->inst_ptr;
 
 	if (os_sem_get_count(&lwip->data_sem) == 0) {
 		os_error_t err = os_sem_release(&lwip->data_sem);
@@ -387,14 +387,14 @@ rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /**
  * API for radio Low level initialization function. 
  *
- * @param inst         Pointer to dw1000_dev_instance_t.
+ * @param inst         Pointer to struct uwb_dev.
  * @param txrf_config  Radio Tx and Rx configuration structure.
  * @param mac_config   Radio MAC configuration structure.
  * @return void
  */
 void 
-dw1000_low_level_init(struct uwb_dev * inst, struct uwb_dev_txrf_config * txrf_config,
-                      struct uwb_dev_config * mac_config)
+uwb_low_level_init(struct uwb_dev * inst, struct uwb_dev_txrf_config * txrf_config,
+                   struct uwb_dev_config * mac_config)
 {
 	uwb_txrf_config(inst, txrf_config);
 	uwb_mac_config(inst, mac_config) ;
@@ -403,49 +403,49 @@ dw1000_low_level_init(struct uwb_dev * inst, struct uwb_dev_txrf_config * txrf_c
 /**
  * API to configure lwIP network interface.
  *
- * @param inst         Pointer to dw1000_dev_instance_t.
- * @param dw1000_netif Network interface structure to be configured.
+ * @param lwip         Pointer to uwb_lwip_instance_t.
+ * @param uwb_netif    Network interface structure to be configured.
  * @param my_ip_addr   IP address of radio.
  * @param rx_status    Default mode status. 
  * @return void
  */
 void
-dw1000_netif_config(dw1000_lwip_instance_t * lwip, struct netif *dw1000_netif, ip_addr_t *my_ip_addr, bool rx_status)
+uwb_netif_config(uwb_lwip_instance_t * lwip, struct netif *uwb_netif, ip_addr_t *my_ip_addr, bool rx_status)
 {
-	netif_add(dw1000_netif, NULL, dw1000_netif_init, ip6_input);
-	IP_ADDR6_HOST(dw1000_netif->ip6_addr, 	my_ip_addr->addr[0], my_ip_addr->addr[1],
+	netif_add(uwb_netif, NULL, uwb_netif_init, ip6_input);
+	IP_ADDR6_HOST(uwb_netif->ip6_addr, 	my_ip_addr->addr[0], my_ip_addr->addr[1],
 						my_ip_addr->addr[2], my_ip_addr->addr[3]);
 
-	dw1000_netif->ip6_addr_state[0] = IP6_ADDR_VALID;
+	uwb_netif->ip6_addr_state[0] = IP6_ADDR_VALID;
 
-	netif_set_default(dw1000_netif);
-	netif_set_link_up(dw1000_netif);
-	netif_set_up(dw1000_netif);
+	netif_set_default(uwb_netif);
+	netif_set_link_up(uwb_netif);
+	netif_set_up(uwb_netif);
 
-	cntxt.rx_cb.recv = dw1000_lwip_start_rx; 
+	cntxt.rx_cb.recv = uwb_lwip_start_rx; 
 	lwip->lwip_netif.state = (void*)&cntxt;
 	
 	if(rx_status)
-		dw1000_lwip_start_rx(lwip, 0xffff);
+		uwb_lwip_start_rx(lwip, 0xffff);
 }
 
 /**
- * API to initialise dw1000_netif_init Network interface. 
+ * API to initialise uwb_netif_init Network interface. 
  *
- * @param dw1000_netif  Network interface structure to be initialized. 
+ * @param uwb_netif  Network interface structure to be initialized. 
  * @return Error status : Default ERR_OK 
  */
 err_t
-dw1000_netif_init(struct netif *dw1000_netif){
+uwb_netif_init(struct netif *uwb_netif){
 
-	LWIP_ASSERT("netif != NULL", (dw1000_netif != NULL));
+	LWIP_ASSERT("netif != NULL", (uwb_netif != NULL));
 
-	dw1000_netif->hostname = "twr_lwip";
-	dw1000_netif->name[0] = 'D';
-	dw1000_netif->name[1] = 'W';
-	dw1000_netif->hwaddr_len = 2;
-	dw1000_netif->input = dw1000_ll_input;
-	dw1000_netif->linkoutput = dw1000_ll_output;
+	uwb_netif->hostname = "twr_lwip";
+	uwb_netif->name[0] = 'D';
+	uwb_netif->name[1] = 'W';
+	uwb_netif->hwaddr_len = 2;
+	uwb_netif->input = uwb_ll_input;
+	uwb_netif->linkoutput = uwb_ll_output;
 
 	return ERR_OK;
 }
@@ -453,14 +453,14 @@ dw1000_netif_init(struct netif *dw1000_netif){
 /**
  * API to pass the payload to lwIP stack.
  *
- * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param lwip          Pointer to uwb_lwip_instance_t.
  * @param payload_size  Size of the payload to be sent.
  * @param payload       Pointer to the payload.
  * @param ipaddr        Pointer to the IP address of target device.
  * @return void
  */
 void 
-dw1000_lwip_send(dw1000_lwip_instance_t *lwip, uint16_t payload_size, char * payload, ip_addr_t * ipaddr)
+uwb_lwip_send(uwb_lwip_instance_t *lwip, uint16_t payload_size, char * payload, ip_addr_t * ipaddr)
 {
 	struct pbuf *pb = pbuf_alloc(PBUF_RAW, (u16_t)payload_size, PBUF_RAM);
 	assert(pb != NULL);
@@ -475,17 +475,17 @@ dw1000_lwip_send(dw1000_lwip_instance_t *lwip, uint16_t payload_size, char * pay
 /**
  * Low level output API to bridge 6lowpan and radio.
  *
- * @param dw1000_netif  Network interface.
+ * @param uwb_netif  Network interface.
  * @param p             Buffer to be sent to the radio. 
  * @return Error status
  */
 err_t 
-dw1000_ll_output(struct netif *dw1000_netif, struct pbuf *p)
+uwb_ll_output(struct netif *uwb_netif, struct pbuf *p)
 {
     struct uwb_dev *udev = uwb_dev_idx_lookup(0);
-    dw1000_lwip_instance_t *lwip = (dw1000_lwip_instance_t*)uwb_mac_find_cb_inst_ptr(udev, UWBEXT_LWIP);
+    uwb_lwip_instance_t *lwip = (uwb_lwip_instance_t*)uwb_mac_find_cb_inst_ptr(udev, UWBEXT_LWIP);
 
-	dw1000_lwip_write(lwip, p, LWIP_BLOCKING);
+	uwb_lwip_write(lwip, p, LWIP_BLOCKING);
 
 	err_t error = ERR_OK;
 
@@ -502,16 +502,16 @@ dw1000_ll_output(struct netif *dw1000_netif, struct pbuf *p)
  * Low level input API to bridge 6lowpan and radio.
  *
  * @param pt            Pointer to received buffer from radio.
- * @param dw1000_netif  Network interface. 
+ * @param uwb_netif  Network interface. 
  * @return Error status 
  */
 err_t
-dw1000_ll_input(struct pbuf *pt, struct netif *dw1000_netif){
+uwb_ll_input(struct pbuf *pt, struct netif *uwb_netif){
 
 	err_t error = ERR_OK;
 	pt->payload = pt + sizeof(struct pbuf)/sizeof(struct pbuf);
 
-	error = lowpan6_input(pt, dw1000_netif);
+	error = lowpan6_input(pt, uwb_netif);
 	print_error(error);
 
 	return error;
@@ -548,4 +548,4 @@ print_error(err_t error){
 	}
 }
 
-#endif  /* End MYNEWT_VAL(DW1000_LWIP) */
+#endif  /* End MYNEWT_VAL(UWB_LWIP) */
