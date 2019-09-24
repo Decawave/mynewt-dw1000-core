@@ -840,6 +840,14 @@ dw1000_dev_init(struct os_dev *odev, void *arg)
     struct uwb_dev *udev = (struct uwb_dev*)odev;
     dw1000_dev_instance_t *inst = (dw1000_dev_instance_t *)odev;
 
+    if (inst == NULL) {
+        inst = (dw1000_dev_instance_t *) malloc(sizeof(dw1000_dev_instance_t));
+        assert(inst);
+        memset(inst,0,sizeof(dw1000_dev_instance_t));
+        inst->uwb_dev.status.selfmalloc = 1;
+        udev = (struct uwb_dev*)inst;
+    }
+
     /* Setup common uwb interface */
     udev->uw_funcs = &dw1000_uwb_funcs;
     udev->rxdiag = (struct uwb_dev_rxdiag*)&inst->rxdiag;
@@ -850,13 +858,6 @@ dw1000_dev_init(struct os_dev *odev, void *arg)
 
     /* Check size requirements */
     assert(sizeof(inst->rxdiag) <= MYNEWT_VAL(UWB_DEV_RXDIAG_MAXLEN));
-    
-    if (inst == NULL ) {
-        inst = (dw1000_dev_instance_t *) malloc(sizeof(dw1000_dev_instance_t));
-        assert(inst);
-        memset(inst,0,sizeof(dw1000_dev_instance_t));
-        inst->uwb_dev.status.selfmalloc = 1;
-    }
 
     inst->spi_sem = cfg->spi_sem;
     inst->spi_num = cfg->spi_num;
