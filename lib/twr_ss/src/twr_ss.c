@@ -182,7 +182,7 @@ twr_ss_free(struct uwb_dev * dev)
  * @fn start_tx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for start tx error callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
@@ -198,7 +198,7 @@ start_tx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @fn reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for reset_cb of rng interface
  *
- * @param inst   Pointer to dw1000_dev_instance_t.
+ * @param inst   Pointer to struct uwb_dev.
  * @param cbs    Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
@@ -222,8 +222,8 @@ reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @fn rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for receive complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
- * @param cbs   Pointer to dw1000_mac_interace_t.
+ * @param inst  Pointer to struct uwb_dev.
+ * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
  */

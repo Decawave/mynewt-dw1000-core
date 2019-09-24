@@ -53,11 +53,11 @@
 #define DIAGMSG(s,u)
 #endif
 
-static bool rx_complete_cb(dw1000_dev_instance_t * inst, struct uwb_mac_interface *);
-static bool rx_timeout_cb(dw1000_dev_instance_t * inst, struct uwb_mac_interface *);
-static bool rx_error_cb(dw1000_dev_instance_t * inst, struct uwb_mac_interface *);
-static bool tx_final_cb(dw1000_dev_instance_t * inst, struct uwb_mac_interface *cbs);
-static void send_final_msg(dw1000_dev_instance_t * inst , nrng_frame_t * frame);
+static bool rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface *);
+static bool rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface *);
+static bool rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface *);
+static bool tx_final_cb(struct uwb_dev * inst, struct uwb_mac_interface *cbs);
+static void send_final_msg(struct uwb_dev * inst , nrng_frame_t * frame);
 
 static struct uwb_mac_interface g_cbs = {
             .id = UWBEXT_NRNG_DS_EXT,
@@ -117,7 +117,7 @@ void twr_ds_ext_nrng_pkg_init(void){
  * @return void 
  */
 void 
-twr_ds_ext_nrng_free(dw1000_dev_instance_t * inst){
+twr_ds_ext_nrng_free(struct uwb_dev * inst){
     assert(inst); 
     uwb_mac_remove_interface(inst, UWBEXT_NRNG_DS_EXT);
 }
@@ -125,12 +125,12 @@ twr_ds_ext_nrng_free(dw1000_dev_instance_t * inst){
 /**
  * API for get local config callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
 struct uwb_rng_config * 
-twr_ds_ext_nrng_config(dw1000_dev_instance_t * inst){
+twr_ds_ext_nrng_config(struct uwb_dev * inst){
     return &g_config;
 }
 
@@ -138,7 +138,7 @@ twr_ds_ext_nrng_config(dw1000_dev_instance_t * inst){
 /**
  * API for receive timeout callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
@@ -183,7 +183,7 @@ rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs){
 /**
  * API for receive error callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
@@ -204,7 +204,7 @@ rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs){
 /**
  * API for receive complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
@@ -437,7 +437,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 }
 
 static void 
-send_final_msg(dw1000_dev_instance_t * inst , nrng_frame_t * frame){
+send_final_msg(struct uwb_dev * inst , nrng_frame_t * frame){
     //printf("final_cb\n");
     assert(inst->nrng);
     struct nrng_instance * nrng = inst->nrng;
@@ -460,7 +460,7 @@ send_final_msg(dw1000_dev_instance_t * inst , nrng_frame_t * frame){
 }
 
 static bool
-tx_final_cb(dw1000_dev_instance_t * inst, struct uwb_mac_interface *cbs){
+tx_final_cb(struct uwb_dev * inst, struct uwb_mac_interface *cbs){
     struct nrng_instance * nrng = inst->nrng;
     nrng_frame_t * frame = nrng->frames[nrng->idx%(nrng->nframes/FRAMES_PER_RANGE)][SECOND_FRAME_IDX];
 

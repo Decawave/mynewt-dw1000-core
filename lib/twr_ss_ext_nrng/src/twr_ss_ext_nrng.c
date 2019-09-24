@@ -158,7 +158,7 @@ rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs){
 /**
  * API for receive complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */

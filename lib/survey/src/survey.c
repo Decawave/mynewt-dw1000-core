@@ -300,7 +300,7 @@ survey_slot_broadcast_cb(struct dpl_event *ev){
 /**
  * API to initiaate a nrng request from a node to node survey
  *
- * @param inst pointer to _dw1000_dev_instance_t.
+ * @param inst pointer to survey_instance_t.
  * @param dx_time time to start suevey
  * @return survey_status_t
  * 

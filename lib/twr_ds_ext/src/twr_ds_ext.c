@@ -174,7 +174,7 @@ twr_ds_ext_free(struct uwb_dev * inst){
 /**
  * API for final transmission to calculate range.
  *
- * @param inst   Pointer to dw1000_dev_instance_t.
+ * @param inst   Pointer to struct uwb_dev.
  *
  * @return void
  */
@@ -214,7 +214,7 @@ tx_final_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /**
  * API for receive start error callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
@@ -228,8 +228,8 @@ start_tx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 
 /** 
  * API for reset_cb of rng interface
- *å
- * @param inst   Pointer to dw1000_dev_instance_t. 
+ *
+ * @param inst   Pointer to struct uwb_dev. 
  * @return true on sucess
  */
 static bool
@@ -250,7 +250,7 @@ reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 /**
  * API for receive complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */

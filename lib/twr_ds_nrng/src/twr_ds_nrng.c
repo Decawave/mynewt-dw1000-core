@@ -54,7 +54,7 @@
 static bool rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
 static bool rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
 static bool rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
-static void send_final_msg(dw1000_dev_instance_t * inst , nrng_frame_t * frame);
+static void send_final_msg(struct uwb_dev * inst , nrng_frame_t * frame);
 
 static struct uwb_mac_interface g_cbs = {
             .id = UWBEXT_NRNG_DS,
@@ -132,7 +132,7 @@ twr_ds_nrng_free(struct uwb_dev * inst){
 /**
  * API for receive timeout callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
@@ -175,7 +175,7 @@ rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs){
 /**
  * API for receive error callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
@@ -198,7 +198,7 @@ rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs){
 /**
  * API for receive complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */

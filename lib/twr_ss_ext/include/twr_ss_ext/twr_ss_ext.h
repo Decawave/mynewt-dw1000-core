@@ -46,7 +46,7 @@ extern "C" {
 #include <uwb_rng/uwb_rng.h>
 
 void twr_ss_ext_pkg_init(void);
-void twr_ss_ext_free(dw1000_dev_instance_t * inst);
+void twr_ss_ext_free(struct uwb_dev * inst);
 
 #ifdef __cplusplus
 }

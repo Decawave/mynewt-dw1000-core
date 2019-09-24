@@ -163,7 +163,7 @@ twr_ss_ext_pkg_init(void){
 }
 
 /**
- * @fn twr_ss_ext_free(dw1000_dev_instance_t * inst)
+ * @fn twr_ss_ext_free(struct uwb_dev * inst)
  * @brief API to free the allocated resources.
  *
  * @param inst  Pointer to struct uwb_rng_instance.
@@ -180,7 +180,7 @@ twr_ss_ext_free(struct uwb_dev * inst){
  * @fn start_tx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for start tx error callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
@@ -196,7 +196,7 @@ start_tx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @fn reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for reset_cb of rng interface
  *
- * @param inst   Pointer to dw1000_dev_instance_t.
+ * @param inst   Pointer to struct uwb_dev.
  * @param cbs    Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
@@ -220,7 +220,7 @@ reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @fn rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for receive complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
@@ -329,7 +329,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @fn tx_final_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for final transmission to store coordinates.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess

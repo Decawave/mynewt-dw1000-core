@@ -84,11 +84,11 @@ static void * tdma_task(void *arg);
 #endif
 
 /**
- * @fn tdma_init(struct _dw1000_dev_instance_t * inst, uint32_t period, uint16_t nslots)
+ * @fn tdma_init(struct uwb_dev * dev, uint16_t nslots)
  * @brief API to initialise the tdma instance. Sets the clkcal postprocess and
  * assings the slot callback function for slot0.
  *
- * @param inst     Pointer to  _dw1000_dev_instance_t. 
+ * @param inst     Pointer to struct uwb_dev. 
  * @param nslots   Total slots to be allocated between two frames.
  *
  * @return tdma_instance_t*
@@ -272,7 +272,7 @@ tdma_task(void *arg){
  * @fn rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief Interrupt context tdma_rx_complete callback. Used to define eopch for tdma actavities
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return bool based on the totality of the handling which is false this implementation.
@@ -303,7 +303,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @fn tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief Interrupt context tdma_tx_complete callback. Used to define eopch for tdma actavities
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  * @param cbs   Pointer to struct uwb_mac_interface.
  *
  * @return bool based on the totality of the handling which is false this implementation.
@@ -478,7 +478,7 @@ tdma_stop(struct _tdma_instance_t * tdma)
 /**
  * Function for calculating the start of the slot for a tx operation
  *
- * @param inst       Pointer to struct _dw1000_dev_instance_t
+ * @param inst       Pointer to struct struct _tdma_instance_t
  * @param idx        Slot index
  *
  * @return dx_time   The time for a tx operation to start
@@ -503,7 +503,7 @@ tdma_tx_slot_start(struct _tdma_instance_t * tdma, float idx)
  * taking into account that the preamble needs to be sent before the
  * RMARKER, which marks the time of the frame, is sent.
  *
- * @param inst       Pointer to struct _dw1000_dev_instance_t
+ * @param inst       Pointer to struct _tdma_instance_t
  * @param idx        Slot index
  *
  * @return dx_time   The time for a rx operation to start
