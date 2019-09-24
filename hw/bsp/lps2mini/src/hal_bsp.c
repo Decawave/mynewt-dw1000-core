@@ -53,6 +53,7 @@ static struct mpu6500 mpu6500;
 
 #if MYNEWT_VAL(SPI_0_MASTER)
 struct dpl_sem g_spi0_sem;
+#endif
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
 /* 
@@ -63,8 +64,6 @@ static const struct dw1000_dev_cfg dw1000_0_cfg = {
     .spi_sem = &g_spi0_sem,
     .spi_num = 0,
 };
-#endif
-
 #endif
 
 
@@ -209,7 +208,7 @@ void hal_bsp_init(void)
     os_cputime_delay_usecs(10000);
 
     dw1000_0 = hal_dw1000_inst(0);
-    rc = os_dev_create((struct os_dev *) dw1000_0, "dw1000_0",
+    int rc = os_dev_create((struct os_dev *) dw1000_0, "dw1000_0",
       OS_DEV_INIT_PRIMARY, 0, dw1000_dev_init, (void *)&dw1000_0_cfg);
     assert(rc == 0);
 #else
