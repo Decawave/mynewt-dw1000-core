@@ -16,7 +16,7 @@
 # under the License.
 #
 
-# Package: hw/bsp/lps2nano
+# Package: hw/bsp/dwm1001_ncbwifi
 
 syscfg.defs:
     BSP_NRF52:

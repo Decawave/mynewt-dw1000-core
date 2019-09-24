@@ -20,17 +20,17 @@
 bsp.arch: cortex_m4
 bsp.compiler: '@apache-mynewt-core/compiler/arm-none-eabi-m4'
 bsp.linkerscript:
-    - 'hw/bsp/lps2nano_ncbwifi/nrf52xxaa.ld'
+    - 'hw/bsp/dwm1001_ncbwifi/nrf52xxaa.ld'
     - '@apache-mynewt-core/hw/mcu/nordic/nrf52xxx/nrf52.ld'
 bsp.linkerscript.BOOT_LOADER.OVERWRITE:
-    - 'hw/bsp/lps2nano_ncbwifi/boot-nrf52xxaa.ld'
+    - 'hw/bsp/dwm1001_ncbwifi/boot-nrf52xxaa.ld'
     - '@apache-mynewt-core/hw/mcu/nordic/nrf52xxx/nrf52.ld'
 
-bsp.part2linkerscript: "hw/bsp/lps2nano_ncbwifi/split-nrf52-thingy.ld"
-bsp.downloadscript: "hw/bsp/lps2nano_ncbwifi/lps2nano_ncbwifi_download.sh"
-bsp.debugscript: "hw/bsp/lps2nano_ncbwifi/lps2nano_ncbwifi_debug.sh"
-bsp.downloadscript.WINDOWS.OVERWRITE: "hw/bsp/lps2nano_ncbwifi/lps2nano_ncbwifi_download.cmd"
-bsp.debugscript.WINDOWS.OVERWRITE: "hw/bsp/lps2nano_ncbwifi/lps2nano_ncbwifi_debug.cmd"
+bsp.part2linkerscript: "hw/bsp/dwm1001_ncbwifi/split-nrf52-thingy.ld"
+bsp.downloadscript: "hw/bsp/dwm1001_ncbwifi/dwm1001_ncbwifi_download.sh"
+bsp.debugscript: "hw/bsp/dwm1001_ncbwifi/dwm1001_ncbwifi_debug.sh"
+bsp.downloadscript.WINDOWS.OVERWRITE: "hw/bsp/dwm1001_ncbwifi/dwm1001_ncbwifi_download.cmd"
+bsp.debugscript.WINDOWS.OVERWRITE: "hw/bsp/dwm1001_ncbwifi/dwm1001_ncbwifi_debug.cmd"
 
 bsp.flash_map:
     areas:
