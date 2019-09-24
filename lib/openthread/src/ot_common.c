@@ -19,7 +19,7 @@
 
 void __cxa_pure_virtual() { while (1); }
 
-static struct os_callout otc_task_callout;
+static struct dpl_callout otc_task_callout;
 static bool taskletprocess = false;
 
 ot_instance_t * ot_global_inst;
@@ -162,9 +162,9 @@ void otPlatRadioSetDefaultTxPower(otInstance *aInstance, int8_t aPower){
     (void)aPower;
 }
 
-static void tasklet_sched(struct os_event* ev)
+static void tasklet_sched(struct dpl_event* ev)
 {
-    ot_instance_t* ot = (ot_instance_t*)ev->ev_arg;
+    ot_instance_t* ot = (ot_instance_t*)dpl_event_get_arg(ev);
     otInstance* aInstance = ot->sInstance;
     if(taskletprocess == true){
         taskletprocess = false;
@@ -174,7 +174,7 @@ static void tasklet_sched(struct os_event* ev)
         else
         {
             taskletprocess = true;
-            os_callout_reset(&otc_task_callout,OS_TICKS_PER_SEC/32);
+            dpl_callout_reset(&otc_task_callout,DPL_TICKS_PER_SEC/32);
         }
     }
 }
@@ -183,24 +183,26 @@ void otTaskletsSignalPending(otInstance *aInstance)
 {
     taskletprocess = true;
     if(ot_global_inst->status.initialized == 1)
-        os_eventq_put(&ot_global_inst->eventq, &otc_task_callout.c_ev);
+        dpl_callout_reset(&otc_task_callout, 0);
     else{
         if(otTaskletsArePending(aInstance))
             otTaskletsProcess(aInstance);
         else
         {
             ot_global_inst->sInstance = aInstance;
-            os_callout_reset(&otc_task_callout,OS_TICKS_PER_SEC/32);
+            dpl_callout_reset(&otc_task_callout,DPL_TICKS_PER_SEC/32);
         }
     }
 }
 
-static void ot_task(void *arg)
+static void*
+ot_task(void *arg)
 {
     ot_instance_t *ot = (ot_instance_t*)arg;
     while (1) {
-        os_eventq_run(&ot->eventq);
+        dpl_eventq_run(&ot->eventq);
     }
+    return 0;
 }
 
 void
@@ -234,19 +236,19 @@ ot_init(struct uwb_dev * inst)
     ot->dev_inst = inst;
     ot->task_prio = inst->task_prio + 0x7;
 
-    os_error_t err = os_sem_init(&ot->sem, 0x01);
-    assert(err == OS_OK);
+    dpl_error_t err = dpl_sem_init(&ot->sem, 0x01);
+    assert(err == DPL_OK);
     ot_global_inst = ot;
 
-    os_eventq_init(&ot->eventq);
-    os_task_init(&ot->task_str, "ot_task",
+    dpl_eventq_init(&ot->eventq);
+    dpl_task_init(&ot->task_str, "ot_task",
             ot_task,
             (void *)ot,
             ot->task_prio,
-            OS_WAIT_FOREVER,
+            DPL_WAIT_FOREVER,
             ot->task_stack,
             sizeof(ot->task_stack)/sizeof(ot->task_stack[0]));
-    os_callout_init(&otc_task_callout, &ot->eventq, tasklet_sched , (void*)ot);
+    dpl_callout_init(&otc_task_callout, &ot->eventq, tasklet_sched , (void*)ot);
     RadioInit(ot);
 
     return ot;

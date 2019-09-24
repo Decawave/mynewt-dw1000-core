@@ -25,13 +25,13 @@ static bool gPromiscuous = false;
 static bool gTransmitdone = false;
 static bool gReceivedone = false;
 static uint8_t gChannel = 0;
-static struct os_event uwb_event = {0};
+static struct dpl_event uwb_event = {0};
 static ot_instance_t *g_ot_inst;
 
 static bool rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
 static bool tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
 static bool rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
-static void uwb_sched(struct os_event* ev);
+static void uwb_sched(struct dpl_event* ev);
 
 void RadioInit(ot_instance_t* ot){
     g_ot_inst = ot;
@@ -46,8 +46,7 @@ void RadioInit(ot_instance_t* ot){
 
     uwb_mac_append_interface(ot->dev_inst, &ot->cbs);
 
-    uwb_event.ev_cb  = uwb_sched;
-    uwb_event.ev_arg = (void*)ot;
+    dpl_event_init(&uwb_event, uwb_sched, (void*)ot);
 
     gTransmitFrame.mLength  = 0;
     gTransmitFrame.mPsdu    = gTransmitPsdu;
@@ -242,8 +241,9 @@ uint8_t otPlatRadioPrintBuf(uint8_t *abuffer){
      return 4;
 }
 
-static void uwb_sched(struct os_event* ev){
-    ot_instance_t* ot = (ot_instance_t*)ev->ev_arg;
+static void uwb_sched(struct dpl_event* ev)
+{
+    ot_instance_t* ot = (ot_instance_t*)dpl_event_get_arg(ev);
     otInstance* aInstance = ot->sInstance;
     if(gReceivedone == true){
         gReceivedone = false;
@@ -295,7 +295,7 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
     gReceiveError = OT_ERROR_NONE;
     memcpy(gReceiveFrame.mPsdu, inst->rxbuf, gReceiveFrame.mLength);
     gReceivedone = true;
-    os_eventq_put(&ot->eventq, &uwb_event);
+    dpl_eventq_put(&ot->eventq, &uwb_event);
 	return true;
 }
 
@@ -311,7 +311,7 @@ tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
     ot_instance_t * ot = (ot_instance_t *)cbs->inst_ptr;
     gTransmitdone = true;
     gTransmitError = OT_ERROR_NONE;
-    os_eventq_put(&ot->eventq, &uwb_event);
+    dpl_eventq_put(&ot->eventq, &uwb_event);
     return true;
 }
 

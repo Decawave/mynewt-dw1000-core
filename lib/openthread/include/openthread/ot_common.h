@@ -63,14 +63,14 @@ typedef struct _ot_status_t{
 typedef struct _ot_instance_t{
     struct uwb_dev * dev_inst;                         //!< Structure for uwb_dev instance 
     struct uwb_mac_interface cbs;                      //!< OT mac interface callbacks
-    struct os_sem sem;                                 //!< Structure for OS semaphores
+    struct dpl_sem sem;                                 //!< Structure for OS semaphores
     otInstance *sInstance;                             //!< Instance to OT stack
     ot_status_t status;                                //!< OT error status
-    struct os_eventq eventq;                           //!< Structure of os events
-    os_stack_t task_stack[UWB_DEV_TASK_STACK_SZ * 4]    //!< Stack size of each task
-        __attribute__((aligned(OS_STACK_ALIGNMENT)));
+    struct dpl_eventq eventq;                           //!< Structure of os events
+    dpl_stack_t task_stack[UWB_DEV_TASK_STACK_SZ * 4]    //!< Stack size of each task
+        __attribute__((aligned(DPL_STACK_ALIGNMENT)));
     uint8_t task_prio;                                 //!< Task priority
-    struct os_task task_str;                           //!< Structure for task
+    struct dpl_task task_str;                           //!< Structure for task
 }ot_instance_t;
 
 
