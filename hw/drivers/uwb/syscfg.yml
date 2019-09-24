@@ -1,0 +1,31 @@
+syscfg.defs:
+    UWB_DEV_TASK_PRIO:
+        description: 'Task priority (for instance 0)'
+        value:  0x10
+    UWB_DEV_TASK_STACK_SZ:
+        description: 'Size of interrupt task stack'
+        value: 256
+    UWB_RX_BUFFER_SIZE:
+        description: 'Size of the rx buffer in the uwb_dev'
+        value:  1024
+    UWB_PKG_INIT_LOG:
+        description: 'Enable init messages showing each package has been initialised'
+        value:  1
+    UWB_DEV_RXDIAG_MAXLEN:
+        description: 'Maximum size of rxdiag structure'
+        value:  20
+#    UWB_DEVICE_0:
+#        description: 'UWB_0 Device Enable'
+#        value:  0
+#    UWB_DEVICE_1:
+#        description: 'UWB_1 Device Enable'
+#        value:  0
+#    UWB_DEVICE_2:
+#        description: 'UWB_2 Device Enable'
+#        value:  0
+
+#syscfg.vals.DW1000_DEVICE_0:
+#    UWB_DEVICE_0: 1
+
+#syscfg.vals.DW1000_DEVICE_1:
+#    UWB_DEVICE_1: 1

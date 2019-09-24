@@ -1,9 +1,9 @@
 
 syscfg.defs:
       TWR_DS_EXT_ENABLED:
-        description: 'Enable doublel sided two way ranging'
+        description: 'Enable double sided two way ranging'
         value: 1
-        restrictions: RNG_ENABLED
+        restrictions: UWB_RNG_ENABLED
       TWR_DS_EXT_TX_HOLDOFF:
         description: 'tx holdoff delay for DS TWR extended frame (usec)'
         value: ((uint32_t)0x0600)

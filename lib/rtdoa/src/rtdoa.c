@@ -27,19 +27,15 @@
 #include "bsp/bsp.h"
 #include <math.h>
 
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_hal.h>
-#include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <rtdoa/rtdoa.h>
-#include <rng/rng.h>
-#include <wcs/wcs.h>
-#if MYNEWT_VAL(CCP_ENABLED)
-#include <ccp/ccp.h>
+#include <uwb_rng/uwb_rng.h>
+#include <uwb_wcs/uwb_wcs.h>
+#if MYNEWT_VAL(UWB_CCP_ENABLED)
+#include <uwb_ccp/uwb_ccp.h>
 #endif
-#include <rng/slots.h>
+#include <uwb_rng/slots.h>
 
 #if MYNEWT_VAL(RTDOA_STATS)
 STATS_NAME_START(rtdoa_stat_section)
@@ -59,16 +55,16 @@ STATS_NAME_START(rtdoa_stat_section)
 STATS_NAME_END(rtdoa_stat_section)
 #endif
 
-dw1000_rtdoa_instance_t *
-dw1000_rtdoa_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, uint16_t nframes)
+struct rtdoa_instance *
+rtdoa_init(struct uwb_dev * inst, struct uwb_rng_config * config, uint16_t nframes)
 {
     assert(inst);
 
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_RTDOA);
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_RTDOA);
     if (rtdoa == NULL ) {
-        rtdoa = (dw1000_rtdoa_instance_t*) malloc(sizeof(dw1000_rtdoa_instance_t) + nframes * sizeof(rtdoa_frame_t * )); 
+        rtdoa = (struct rtdoa_instance*) malloc(sizeof(struct rtdoa_instance) + nframes * sizeof(rtdoa_frame_t * )); 
         assert(rtdoa);
-        memset(rtdoa, 0, sizeof(dw1000_rtdoa_instance_t));
+        memset(rtdoa, 0, sizeof(struct rtdoa_instance));
         rtdoa->status.selfmalloc = 1;
     }
     os_error_t err = os_sem_init(&rtdoa->sem, 0x1); 
@@ -80,7 +76,7 @@ dw1000_rtdoa_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, ui
     rtdoa->seq_num = 0;
     
     if (config != NULL ){
-        dw1000_rtdoa_config(rtdoa, config);
+        rtdoa_config(rtdoa, config);
     }
 
 #if MYNEWT_VAL(RTDOA_STATS)
@@ -90,9 +86,9 @@ dw1000_rtdoa_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, ui
                     STATS_NAME_INIT_PARMS(rtdoa_stat_section)
             );
    
-#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
+#if  MYNEWT_VAL(UWB_DEVICE_0) && !MYNEWT_VAL(UWB_DEVICE_1)
     rc |= stats_register("rtdoa", STATS_HDR(rtdoa->stat));
-#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
+#elif  MYNEWT_VAL(UWB_DEVICE_0) && MYNEWT_VAL(UWB_DEVICE_1)
     if (inst == hal_dw1000_inst(0)) {
         rc |= stats_register("rtdoa0", STATS_HDR(rtdoa->stat));
     } else{
@@ -107,14 +103,16 @@ dw1000_rtdoa_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, ui
 /**
  * API to free the allocated resources.
  *
- * @param inst  Pointer to dw1000_rng_instance_t.
+ * @param inst  Pointer to struct uwb_rng_instance.
  *
  * @return void 
  */
 void
-dw1000_rtdoa_free(dw1000_rtdoa_instance_t * inst){
-
+rtdoa_free(struct rtdoa_instance * inst)
+{
     assert(inst);
+    uwb_mac_remove_interface(inst->dev_inst, inst->cbs.id);
+
     if (inst->status.selfmalloc){
         for(int i =0; i< inst->nframes; i++){
             free(inst->frames[i]);
@@ -126,8 +124,8 @@ dw1000_rtdoa_free(dw1000_rtdoa_instance_t * inst){
         inst->status.initialized = 0;
 }
 
-inline void
-dw1000_rtdoa_set_frames(struct _dw1000_rtdoa_instance_t *rtdoa, uint16_t nframes)
+void
+rtdoa_set_frames(struct rtdoa_instance *rtdoa, uint16_t nframes)
 {
     assert(nframes <= rtdoa->nframes);
     rtdoa_frame_t default_frame = {
@@ -146,15 +144,15 @@ dw1000_rtdoa_set_frames(struct _dw1000_rtdoa_instance_t *rtdoa, uint16_t nframes
 /**
  * API to assign the config parameters
  *
- * @param inst    Pointer to dw1000_dev_instance_t. 
- * @param config  Pointer to dw1000_rng_config_t.
+ * @param inst    struct rtdoa_instance
+ * @param config  Pointer to struct uwb_rng_config.
  *
- * @return dw1000_dev_status_t 
+ * @return struct uwb_dev_status 
  */
-dw1000_dev_status_t
-dw1000_rtdoa_config(struct _dw1000_rtdoa_instance_t *rtdoa, dw1000_rng_config_t * config){
+struct uwb_dev_status
+rtdoa_config(struct rtdoa_instance *rtdoa, struct uwb_rng_config * config){
     assert(config);
-    memcpy(&rtdoa->config, config, sizeof(dw1000_rng_config_t));
+    memcpy(&rtdoa->config, config, sizeof(struct uwb_rng_config));
     return rtdoa->dev_inst->status;
 }
 
@@ -162,13 +160,13 @@ dw1000_rtdoa_config(struct _dw1000_rtdoa_instance_t *rtdoa, dw1000_rng_config_t 
 /** 
  * Help function to calculate the delay between cascading requests
  * 
- * @param inst Pointer to dw1000_dev_instance_t * 
+ * @param inst Pointer to struct uwb_dev
  * @param slot_id 0 for master, and increasing
  * @return void
  */
 uint32_t
-rtdoa_usecs_to_response(dw1000_dev_instance_t * inst, rtdoa_request_frame_t * req,
-                        uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration)
+rtdoa_usecs_to_response(struct uwb_dev * inst, rtdoa_request_frame_t * req,
+                        uint16_t nslots, struct uwb_rng_config * config, uint32_t duration)
 {    
     uint32_t ret = 0;
     /* Repeat part */
@@ -183,15 +181,15 @@ rtdoa_usecs_to_response(dw1000_dev_instance_t * inst, rtdoa_request_frame_t * re
  * Function for transforming local rtdoa timestamps into the reference frame timestamp
  * domain.
  *
- * @param inst Pointer to dw1000_dev_instance_t *
+ * @param inst Pointer to struct uwb_dev
  * @param slot_id 0 for master, and increasing
  * @return void
  */
 uint64_t
-rtdoa_local_to_master64(dw1000_dev_instance_t * inst, uint64_t dtu_time, rtdoa_frame_t *req_frame)
+rtdoa_local_to_master64(struct uwb_dev * inst, uint64_t dtu_time, rtdoa_frame_t *req_frame)
 {
-    dw1000_ccp_instance_t *ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_CCP);
-    wcs_instance_t * wcs = ccp->wcs;
+    struct uwb_ccp_instance *ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_CCP);
+    struct uwb_wcs_instance * wcs = ccp->wcs;
 
     double delta = ((dtu_time & 0x0FFFFFFFFFFUL) - (req_frame->rx_timestamp&0x0FFFFFFFFFFUL)) & 0x0FFFFFFFFFFUL;
     uint64_t req_lo40 = (req_frame->tx_timestamp & 0x0FFFFFFFFFFUL);
@@ -208,28 +206,29 @@ rtdoa_local_to_master64(dw1000_dev_instance_t * inst, uint64_t dtu_time, rtdoa_f
 /**
  * API to listen as a slave node
  *
- * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param inst          Pointer to struct uwb_dev.
  *
- * @return dw1000_dev_status_t 
+ * @return struct uwb_dev_status 
  */
-dw1000_dev_status_t 
-dw1000_rtdoa_listen(dw1000_rtdoa_instance_t * rtdoa, dw1000_dev_modes_t mode, uint64_t delay, uint16_t timeout)
+struct uwb_dev_status 
+rtdoa_listen(struct rtdoa_instance * rtdoa, uwb_dev_modes_t mode,
+             uint64_t delay, uint16_t timeout)
 {
     os_error_t err = os_sem_pend(&rtdoa->sem,  OS_TIMEOUT_NEVER);
     assert(err == OS_OK);
 
     /* Setup start time and overall timeout */
-    dw1000_set_delay_start(rtdoa->dev_inst, delay);
-    dw1000_set_rx_timeout(rtdoa->dev_inst, timeout);
+    uwb_set_delay_start(rtdoa->dev_inst, delay);
+    uwb_set_rx_timeout(rtdoa->dev_inst, timeout);
     rtdoa->timeout = (delay + (((uint64_t)timeout)<<16))&0xFFFFFFFFFFUL;
 
     RTDOA_STATS_INC(rtdoa_listen);
-    if(dw1000_start_rx(rtdoa->dev_inst).start_rx_error){
+    if(uwb_start_rx(rtdoa->dev_inst).start_rx_error){
         err = os_sem_release(&rtdoa->sem);
         assert(err == OS_OK);
         RTDOA_STATS_INC(start_rx_error);
     }
-    if (mode == DWT_BLOCKING){
+    if (mode == UWB_BLOCKING){
         err = os_sem_pend(&rtdoa->sem, OS_TIMEOUT_NEVER); // Wait for completion of transactions 
         assert(err == OS_OK);
         err = os_sem_release(&rtdoa->sem);
@@ -240,7 +239,7 @@ dw1000_rtdoa_listen(dw1000_rtdoa_instance_t * rtdoa, dw1000_dev_modes_t mode, ui
 
 
 float
-rtdoa_tdoa_between_frames(struct _dw1000_rtdoa_instance_t *rtdoa,
+rtdoa_tdoa_between_frames(struct rtdoa_instance *rtdoa,
                           rtdoa_frame_t *req_frame, rtdoa_frame_t *resp_frame)
 {
     int64_t tof;
@@ -259,7 +258,7 @@ rtdoa_tdoa_between_frames(struct _dw1000_rtdoa_instance_t *rtdoa,
             /* rxts stored in frames as local timestamp, recalc into reference frame domain */
             uint64_t rx_ts = rtdoa_local_to_master64(rtdoa->dev_inst, resp_frame->rx_timestamp, rtdoa->req_frame);
             tof = (int64_t)rx_ts - (int64_t)resp_frame->tx_timestamp;
-            diff_m = dw1000_rng_tof_to_meters(tof);
+            diff_m = uwb_rng_tof_to_meters(tof);
 
             //printf("r[%x-%x]: %llx %llx %16llx %llx\n", req_frame->src_address, resp_frame->src_address,
             //       rx_ts, resp_frame->tx_timestamp, tof, req_frame->tx_timestamp);

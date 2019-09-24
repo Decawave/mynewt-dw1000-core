@@ -1,8 +1,6 @@
 #include <stdlib.h>
 
 #include "sysinit/sysinit.h"
-#include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_hal.h>
 #include "console/console.h"
 
 

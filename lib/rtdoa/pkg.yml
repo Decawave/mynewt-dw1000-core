@@ -22,7 +22,7 @@ pkg.description: TWR nrng library superset
 pkg.author: "Niklas Casaril <niklas@loligoelectronics.com>"
 pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
-    - dw1000
+    - uwb
     - rtdoa
 
 pkg.cflags:
@@ -34,5 +34,6 @@ pkg.lflags:
 
 pkg.deps:
     - "@apache-mynewt-core/encoding/json"
-    - "@mynewt-dw1000-core/lib/rng"
+    - "@mynewt-dw1000-core/lib/uwb_rng"
+    - "@mynewt-dw1000-core/hw/drivers/uwb"
 

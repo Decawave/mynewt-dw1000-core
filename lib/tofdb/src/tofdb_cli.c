@@ -31,7 +31,7 @@
 #include <shell/shell.h>
 #include <console/console.h>
 
-#include "rng/rng.h"
+#include "uwb_rng/uwb_rng.h"
 #include "tofdb/tofdb.h"
 
 struct tofdb_node* tofdb_get_nodes();
@@ -76,8 +76,8 @@ list_nodes()
         console_printf("%4x, ", nodes[i].addr);
         console_printf("%6ld, ", (uint32_t)nodes[i].tof);
         float ave = nodes[i].tof;
-        float stddev = dw1000_rng_tof_to_meters((uint32_t)sqrtf(nodes[i].sum_sq/nodes[i].num - ave*ave));
-        ave = dw1000_rng_tof_to_meters((uint32_t)(nodes[i].sum/nodes[i].num));
+        float stddev = uwb_rng_tof_to_meters((uint32_t)sqrtf(nodes[i].sum_sq/nodes[i].num - ave*ave));
+        ave = uwb_rng_tof_to_meters((uint32_t)(nodes[i].sum/nodes[i].num));
         console_printf("%3d.%03d, ", (int)ave, (int)(fabsf(ave-(int)ave)*1000));
         console_printf("%4ld, ", nodes[i].num);
         if (nodes[i].num>1) {

@@ -20,7 +20,7 @@
  */
 
 /**
- * @file twr_ds.h
+ * @file twr_ss_nrng.h
  * @author paul kettle
  * @date 2018
  * @brief Range 
@@ -29,8 +29,8 @@
  *
  */
 
-#ifndef _DW1000_TWR_SS_NRNG_H_
-#define _DW1000_TWR_SS_NRNG_H_
+#ifndef _TWR_SS_NRNG_H_
+#define _TWR_SS_NRNG_H_
 
 #if MYNEWT_VAL(TWR_SS_NRNG_ENABLED)
 
@@ -41,16 +41,16 @@
 extern "C" {
 #endif
 
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <nrng/nrng.h>
 
 void twr_ss_nrng_pkg_init(void);
-void twr_ss_nrng_free(dw1000_dev_instance_t * inst);
+void twr_ss_nrng_free(struct uwb_dev * inst);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // TWR_SS_ENABLED
-#endif //_DW1000_TWR_SS_NRNG_H_
+#endif // TWR_SS_NRNG_ENABLED
+#endif //_TWR_SS_NRNG_H_

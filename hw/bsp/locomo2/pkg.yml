@@ -51,4 +51,4 @@ pkg.deps.PWM:
     - '@mynewt_nordic/hw/drivers/pwm/pwm_nrf52'
 
 pkg.deps.DW1000_DEVICE_0:
-    - '@mynewt-dw1000-core/hw/drivers/dw1000'
+    - '@mynewt-dw1000-core/hw/drivers/uwb/uwb_dw1000'

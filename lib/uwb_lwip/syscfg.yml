@@ -1,0 +1,4 @@
+syscfg.defs:
+      UWB_LWIP_ENABLED:
+        description: 'Enable toplevel UWB lwIP services'
+        value: 1

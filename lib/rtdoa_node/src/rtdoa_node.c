@@ -28,18 +28,15 @@
 #include <hal/hal_gpio.h>
 #include "bsp/bsp.h"
 
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_hal.h>
-#include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_ftypes.h>
-#include <ccp/ccp.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_mac.h>
+#include <uwb/uwb_ftypes.h>
+#include <uwb_ccp/uwb_ccp.h>
+#include <uwb_wcs/uwb_wcs.h>
 #include <rtdoa/rtdoa.h>
 #include <rtdoa_node/rtdoa_node.h>
-#include <wcs/wcs.h>
 #include <dsp/polyval.h>
-#include <rng/slots.h>
+#include <uwb_rng/slots.h>
 
 #define WCS_DTU MYNEWT_VAL(WCS_DTU)
 
@@ -48,20 +45,20 @@
 #define DIAGMSG(s,u)
 #endif
 
-static dw1000_rng_config_t g_config = {
+static struct uwb_rng_config g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(RTDOA_TX_HOLDOFF),       // Send Time delay in usec.
     .rx_timeout_delay = MYNEWT_VAL(RTDOA_RX_TIMEOUT),       // Receive response timeout in usec
     .tx_guard_delay = MYNEWT_VAL(RTDOA_TX_GUARD_DELAY)
 };
 
-static bool tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
-static bool reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
 
-static dw1000_mac_interface_t g_cbs = {
-    .id = DW1000_RTDOA,
+static struct uwb_mac_interface g_cbs = {
+    .id = UWBEXT_RTDOA,
     .inst_ptr = 0,
     .tx_complete_cb = tx_complete_cb,
     .rx_complete_cb = rx_complete_cb,
@@ -78,39 +75,40 @@ static dw1000_mac_interface_t g_cbs = {
  */
 void rtdoa_node_pkg_init(void)
 {
-    struct _dw1000_rtdoa_instance_t *rtdoa = 0;
-#if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
+    struct rtdoa_instance *rtdoa = 0;
+#if MYNEWT_VAL(UWB_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"rtdoa_node_pkg_init\"}\n", os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_0)
-    g_cbs.inst_ptr = rtdoa = dw1000_rtdoa_init(hal_dw1000_inst(0), &g_config, MYNEWT_VAL(RTDOA_NFRAMES));
-    dw1000_rtdoa_set_frames(rtdoa, MYNEWT_VAL(RTDOA_NFRAMES));
+#if MYNEWT_VAL(UWB_DEVICE_0)
+    g_cbs.inst_ptr = rtdoa = rtdoa_init(uwb_dev_idx_lookup(0), &g_config, MYNEWT_VAL(RTDOA_NFRAMES));
+    rtdoa_set_frames(rtdoa, MYNEWT_VAL(RTDOA_NFRAMES));
 #endif
-    dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs);
+    uwb_mac_append_interface(uwb_dev_idx_lookup(0), &g_cbs);
 
     /* Assume that the ccp has been added to the dev instance before rtdoa */
-    rtdoa->ccp = (dw1000_ccp_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_CCP);
+    rtdoa->ccp = (struct uwb_ccp_instance*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_CCP);
 }
 
 
 /**
  * API to free the allocated resources.
  *
- * @param inst  Pointer to dw1000_rng_instance_t.
+ * @param inst  Pointer to struct uwb_rng_instance.
  *
  * @return void 
  */
 void 
-rtdoa_node_free(dw1000_dev_instance_t * inst){
+rtdoa_node_free(struct uwb_dev * inst)
+{
     assert(inst); 
-    dw1000_mac_remove_interface(inst, DW1000_RTDOA);
+    uwb_mac_remove_interface(inst, UWBEXT_RTDOA);
 }
 
-dw1000_dev_status_t
-dw1000_rtdoa_request(struct _dw1000_rtdoa_instance_t *rtdoa, uint64_t delay)
+struct uwb_dev_status
+rtdoa_request(struct rtdoa_instance *rtdoa, uint64_t delay)
 {
     assert(rtdoa);
-    dw1000_dev_instance_t * inst = rtdoa->dev_inst;
+    struct uwb_dev * inst = rtdoa->dev_inst;
     assert(inst);
     /* This function executes on the device that initiates the rtdoa sequence */
     os_error_t err = os_sem_pend(&rtdoa->sem,  OS_TIMEOUT_NEVER);
@@ -123,26 +121,26 @@ dw1000_rtdoa_request(struct _dw1000_rtdoa_instance_t *rtdoa, uint64_t delay)
     frame->seq_num = ++rtdoa->seq_num;
     frame->code = DWT_RTDOA_REQUEST;
     frame->src_address = inst->my_short_address;
-    frame->dst_address = BROADCAST_ADDRESS;
+    frame->dst_address = UWB_BROADCAST_ADDRESS;
     frame->slot_modulus = MYNEWT_VAL(RTDOA_NNODES);
     frame->rpt_count = 0;
     frame->rpt_max = MYNEWT_VAL(RTDOA_MAX_CASCADE_RPTS);
 
-    dw1000_set_delay_start(inst, delay);
+    uwb_set_delay_start(inst, delay);
 
     /* Calculate tx_timestamp, really use wcs here?!?! */
-    dw1000_ccp_instance_t *ccp = rtdoa->ccp;
-    wcs_instance_t * wcs = ccp->wcs;
-    frame->tx_timestamp = (wcs_local_to_master64(wcs, delay) & 0xFFFFFFFFFFFFFE00ULL);
+    struct uwb_ccp_instance *ccp = rtdoa->ccp;
+    struct uwb_wcs_instance * wcs = ccp->wcs;
+    frame->tx_timestamp = (uwb_wcs_local_to_master64(wcs, delay) & 0xFFFFFFFFFFFFFE00ULL);
     frame->tx_timestamp += inst->tx_antenna_delay;
     /* Also set the local rx_timestamp to allow us to also transmit in the next part */
     rtdoa->req_frame->rx_timestamp = frame->tx_timestamp;
 
-    dw1000_write_tx(inst, frame->array, 0, sizeof(rtdoa_request_frame_t));
-    dw1000_write_tx_fctrl(inst, sizeof(rtdoa_request_frame_t), 0);
-    dw1000_set_wait4resp(inst, false);
+    uwb_write_tx(inst, frame->array, 0, sizeof(rtdoa_request_frame_t));
+    uwb_write_tx_fctrl(inst, sizeof(rtdoa_request_frame_t), 0);
+    uwb_set_wait4resp(inst, false);
 
-    if (dw1000_start_tx(inst).start_tx_error) {
+    if (uwb_start_tx(inst).start_tx_error) {
         RTDOA_STATS_INC(start_tx_error);
         if (os_sem_get_count(&rtdoa->sem) == 0) {
             err = os_sem_release(&rtdoa->sem);
@@ -158,21 +156,21 @@ dw1000_rtdoa_request(struct _dw1000_rtdoa_instance_t *rtdoa, uint64_t delay)
 }
 
 
-static dw1000_dev_status_t
-tx_rtdoa_response(dw1000_rtdoa_instance_t * rtdoa)
+static struct uwb_dev_status
+tx_rtdoa_response(struct rtdoa_instance * rtdoa)
 {
     assert(rtdoa);
     /* This function executes on the device that responds to a rtdoa request */
 
-    dw1000_dev_instance_t * inst = rtdoa->dev_inst;
-    dw1000_rng_config_t * config = &rtdoa->config;
+    struct uwb_dev * inst = rtdoa->dev_inst;
+    struct uwb_rng_config * config = &rtdoa->config;
 
     /* Rx-timestamp will be compensated for relay */
     uint64_t dx_time = rtdoa->req_frame->rx_timestamp;
     /* usecs to dwt usecs? */
     uint8_t slot_idx = inst->slot_id % rtdoa->req_frame->slot_modulus + 1;
     dx_time += (rtdoa_usecs_to_response(inst, (rtdoa_request_frame_t*)rtdoa->req_frame, slot_idx, config,
-                                        dw1000_phy_frame_duration(&inst->attrib, sizeof(rtdoa_response_frame_t))) << 16);
+                                        uwb_phy_frame_duration(inst, sizeof(rtdoa_response_frame_t))) << 16);
 
     RTDOA_STATS_INC(rtdoa_response);
 
@@ -181,21 +179,21 @@ tx_rtdoa_response(dw1000_rtdoa_instance_t * rtdoa)
     frame->seq_num = ++rtdoa->seq_num;
     frame->code = DWT_RTDOA_RESP;
     frame->src_address = inst->my_short_address;
-    frame->dst_address = BROADCAST_ADDRESS;
+    frame->dst_address = UWB_BROADCAST_ADDRESS;
     frame->slot_id = inst->slot_id%rtdoa->req_frame->slot_modulus + 1;
 
-    dw1000_set_delay_start(inst, (dx_time&0x000000FFFFFFFE00ULL));
+    uwb_set_delay_start(inst, (dx_time&0x000000FFFFFFFE00ULL));
 
     /* Calculate tx-time */
     frame->tx_timestamp = rtdoa_local_to_master64(inst, (dx_time&0x000000FFFFFFFE00ULL) +
                                                   inst->tx_antenna_delay,
                                                   rtdoa->req_frame);
 
-    dw1000_write_tx(inst, frame->array, 0, sizeof(rtdoa_response_frame_t));
-    dw1000_write_tx_fctrl(inst, sizeof(rtdoa_response_frame_t), 0);
-    dw1000_set_wait4resp(inst, false);
+    uwb_write_tx(inst, frame->array, 0, sizeof(rtdoa_response_frame_t));
+    uwb_write_tx_fctrl(inst, sizeof(rtdoa_response_frame_t), 0);
+    uwb_set_wait4resp(inst, false);
 
-    if (dw1000_start_tx(inst).start_tx_error) {
+    if (uwb_start_tx(inst).start_tx_error) {
         RTDOA_STATS_INC(start_tx_error);
         if (os_sem_get_count(&rtdoa->sem) == 0) {
             os_error_t err = os_sem_release(&rtdoa->sem);
@@ -210,14 +208,14 @@ tx_rtdoa_response(dw1000_rtdoa_instance_t * rtdoa)
 /**
  * API for receive error callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
 static bool 
-rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance *)cbs->inst_ptr;
 
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
@@ -235,14 +233,14 @@ rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 /**
  * API for receive timeout callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
 static bool 
-rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance *)cbs->inst_ptr;
     if(os_sem_get_count(&rtdoa->sem) == 1) {
         return false;
     }
@@ -259,13 +257,13 @@ rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 /** 
  * API for reset_cb of rtdoa interface
  *
- * @param inst   Pointer to dw1000_dev_instance_t. 
+ * @param inst   Pointer to struct uwb_dev. 
  * @return true on sucess
  */
 static bool
-reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+reset_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance *)cbs->inst_ptr;
 
     if(os_sem_get_count(&rtdoa->sem) == 0){
         os_error_t err = os_sem_release(&rtdoa->sem);  
@@ -280,14 +278,14 @@ reset_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 /**
  * API for transmit complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
 static bool 
-tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance *)cbs->inst_ptr;
     assert(rtdoa);
     
     /* If we sent the request or a repeat of the request, send response now */
@@ -311,16 +309,16 @@ tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 /**
  * API for receive complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
 static bool 
-rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
-    dw1000_rtdoa_instance_t * rtdoa = (dw1000_rtdoa_instance_t *)cbs->inst_ptr;
-    dw1000_ccp_instance_t *ccp = rtdoa->ccp;
-    wcs_instance_t * wcs = ccp->wcs;
+    struct rtdoa_instance * rtdoa = (struct rtdoa_instance *)cbs->inst_ptr;
+    struct uwb_ccp_instance * ccp = rtdoa->ccp;
+    struct uwb_wcs_instance * wcs = ccp->wcs;
 
     if(inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
@@ -331,10 +329,10 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
         return false;
     }
 
-    //dw1000_rng_config_t * config = &rtdoa->config;
+    //struct uwb_rng_config * config = &rtdoa->config;
     rtdoa_request_frame_t * _frame = (rtdoa_request_frame_t * )inst->rxbuf;
 
-    if (_frame->dst_address != inst->my_short_address && _frame->dst_address != BROADCAST_ADDRESS)
+    if (_frame->dst_address != inst->my_short_address && _frame->dst_address != UWB_BROADCAST_ADDRESS)
         return true;
    
     RTDOA_STATS_INC(rx_complete);
@@ -374,13 +372,13 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     tx_frame.rpt_count++;
                     uint64_t tx_timestamp = inst->rxtimestamp + tx_frame.rpt_count*((uint64_t)ccp->config.tx_holdoff_dly<<16);
                     tx_timestamp &= 0x0FFFFFFFE00UL;
-                    dw1000_set_delay_start(inst, tx_timestamp);
+                    uwb_set_delay_start(inst, tx_timestamp);
                     tx_timestamp += inst->tx_antenna_delay;
 
                     tx_frame.tx_timestamp = rtdoa_local_to_master64(inst, tx_timestamp, rtdoa->req_frame);
-                    dw1000_write_tx_fctrl(inst, sizeof(tx_frame), 0);
-                    dw1000_write_tx(inst, tx_frame.array, 0, sizeof(tx_frame));
-                    if (dw1000_start_tx(inst).start_tx_error) {
+                    uwb_write_tx_fctrl(inst, sizeof(tx_frame), 0);
+                    uwb_write_tx(inst, tx_frame.array, 0, sizeof(tx_frame));
+                    if (uwb_start_tx(inst).start_tx_error) {
                         RTDOA_STATS_INC(tx_relay_error);
                         if(os_sem_get_count(&rtdoa->sem) == 0){
                             os_sem_release(&rtdoa->sem);

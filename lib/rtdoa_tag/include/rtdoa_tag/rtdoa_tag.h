@@ -19,8 +19,8 @@
  * under the License.
  */
 
-#ifndef _DW1000_RTDOA_TAG_H_
-#define _DW1000_RTDOA_TAG_H_
+#ifndef _UWBEXT_RTDOA_TAG_H_
+#define _UWBEXT_RTDOA_TAG_H_
 
 #if MYNEWT_VAL(RTDOA_TAG_ENABLED)
 
@@ -31,16 +31,15 @@
 extern "C" {
 #endif
 
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb.h>
 #include <rtdoa/rtdoa.h>
 
-void rtdoa_tag_free(dw1000_dev_instance_t * inst);
-dw1000_rng_config_t * rtdoa_tag_config(dw1000_dev_instance_t * inst);
+void rtdoa_tag_free(struct uwb_dev * inst);
+struct uwb_rng_config * rtdoa_tag_config(struct uwb_dev * inst);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif // RTDOA_TAG_ENABLED
-#endif //_DW1000_RTDOA_TAG_H_
+#endif //_UWBEXT_RTDOA_TAG_H_

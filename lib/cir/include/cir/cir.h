@@ -26,16 +26,10 @@
 #include <stdint.h>
 #include <os/os.h>
 #include <stats/stats.h>
-#include <dw1000/dw1000_dev.h>
+#include <uwb/uwb.h>
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-#if MYNEWT_VAL(CIR_STATS)
-STATS_SECT_START(cir_stat_section)
-    STATS_SECT_ENTRY(complete)
-STATS_SECT_END
 #endif
 
 typedef struct _cir_status_t{
@@ -45,42 +39,75 @@ typedef struct _cir_status_t{
     uint16_t lde_override:1;
 }cir_status_t;
 
-typedef union{
-    struct  _cir_complex_t{
-        int16_t real;
-        int16_t imag;
-    }__attribute__((__packed__));
-    uint8_t array[sizeof(struct _cir_complex_t)];
-}cir_complex_t;
+struct cir_instance;
 
-typedef struct _cir_t{
-    uint8_t dummy;  //Errata
-    struct _cir_complex_t array[MYNEWT_VAL(CIR_SIZE)]; 
-} __attribute__((packed, aligned(1))) cir_t;
+/**
+ * Get the Phase Difference of Arrival 
+ *
+ * @param master  Pointer to struct cir_instance.
+ * @param slave   Pointer to struct cir_instance (optional if receiver can extract pdoa with a single receiver).
+ *
+ * @return pdoa Phase difference of arrival in radians
+ */
+typedef float (*cir_get_pdoa_func_t)(struct cir_instance * master, struct cir_instance *slave);
 
+/**
+ * Enable/disable CIR for next RX cycle
+ *
+ * @param cir  Pointer to struct cir_instance.
+ * @param mode True = Enable, False = Disable
+ *
+ * @return pdoa Phase difference of arrival in radians
+ */
+typedef void (*cir_enable_func_t)(struct cir_instance * cir, bool mode);
 
-typedef struct _cir_instance_t{
-    struct _dw1000_dev_instance_t * dev_inst; //!< Structure of DW1000_dev_instance
-#if MYNEWT_VAL(CIR_STATS)
-    STATS_SECT_DECL(cir_stat_section) stat; //!< Stats instance
-#endif
+struct cir_driver_funcs {
+    cir_get_pdoa_func_t cf_cir_get_pdoa;
+    cir_enable_func_t cf_cir_enable;
+};
+
+struct cir_instance {
+    const struct cir_driver_funcs *cir_funcs;
     cir_status_t status;
-    uint16_t fp_amp1;
-    float fp_idx;
-    float fp_power;
-    float rcphase;
-    float angle;
-    uint64_t raw_ts;
-    uint8_t resampler_delay;
-    cir_t cir;
-}cir_instance_t; 
+};
 
-cir_instance_t * cir_init(struct _dw1000_dev_instance_t * inst, struct _cir_instance_t * cir);
-float cir_remap_fp_index(cir_instance_t *cir0, cir_instance_t *cir1);
-bool cir_reread_from_cir(dw1000_dev_instance_t * inst, cir_instance_t *master_cir);
-void cir_enable(struct _cir_instance_t * inst, bool mode);
-void cir_free(struct _cir_instance_t * inst);
-float cir_get_pdoa(struct _cir_instance_t * master, struct _cir_instance_t *slave);
+
+/**
+ * Get the Phase Difference of Arrival 
+ *
+ * @param master  Pointer to struct cir_instance.
+ * @param slave   Pointer to struct cir_instance (optional).
+ *
+ * @return pdoa Phase difference of arrival in radians
+ */
+static inline float
+cir_get_pdoa(struct cir_instance * master, struct cir_instance *slave)
+{
+    return (master->cir_funcs->cf_cir_get_pdoa(master, slave));
+}
+
+/**
+ * Enable CIR for next RX cycle
+ *
+ * @param cir  Pointer to struct cir_instance.
+ *
+ * @return pdoa Phase difference of arrival in radians
+ */
+static inline void
+cir_enable(struct cir_instance * cir, bool mode)
+{
+    (cir->cir_funcs->cf_cir_enable(cir, mode));
+}
+
+/**
+ * Calculate Angle of Arrival
+ *
+ * @param pdoa  Phase difference of arrival in radians
+ * @param wavelength  Wavelength in meters
+ * @param antenna_separation  Antenna separation in meters
+ *
+ * @return aoa Angle of arrival in radians
+ */
 float cir_calc_aoa(float pdoa, float wavelength, float antenna_separation);
 
 #ifdef __cplusplus

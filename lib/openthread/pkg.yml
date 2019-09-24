@@ -22,7 +22,6 @@ pkg.description: Open Thread Libraries
 pkg.author: "Paul Kettle <Paul.Kettle@decawave.com>"
 pkg.homepage: "http://www.decawave.com]/"
 pkg.keywords:
-    - dw1000
     - uwb
     - open-thread
 
@@ -31,6 +30,6 @@ pkg.cflags:
     - "-fms-extensions"
 
 pkg.deps:
-    - "@mynewt-dw1000-core/hw/drivers/dw1000"
+    - "@mynewt-dw1000-core/hw/drivers/uwb"
 pkg.init:
     ot_pkg_init: 410

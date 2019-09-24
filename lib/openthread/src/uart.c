@@ -3,8 +3,6 @@
 #include "sysinit/sysinit.h"
 
 #include "openthread/ot_common.h"
-#include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_hal.h>
 #include "console/console.h"
 #include <openthread/platform/logging.h>
 #include <openthread/platform/uart.h>

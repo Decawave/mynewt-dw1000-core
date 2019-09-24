@@ -1,8 +1,7 @@
 #include <stdlib.h>
 
 #include "sysinit/sysinit.h"
-#include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_hal.h>
+#include <uwb/uwb.h>
 #include "console/console.h"
 
 #include "openthread/ot_common.h"
@@ -29,29 +28,29 @@ static bool gPromiscuous = false;
 static bool gTransmitdone = false;
 static bool gReceivedone = false;
 static uint8_t gChannel = 0;
-static struct os_event dw1000_event;
+static struct os_event uwb_event;
 static ot_instance_t *g_ot_inst;
 
-static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static bool rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
-static void dw1000_sched(struct os_event* ev);
+static bool rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static void uwb_sched(struct os_event* ev);
 
 void RadioInit(ot_instance_t* ot){
     g_ot_inst = ot;
 
-    ot->cbs = (dw1000_mac_interface_t){
-        .id = DW1000_OT,
+    ot->cbs = (struct uwb_mac_interface){
+        .id = UWBEXT_OT,
         .inst_ptr = ot,
         .rx_complete_cb = rx_complete_cb,
         .rx_timeout_cb = rx_timeout_cb,
         .tx_complete_cb = tx_complete_cb,
     };
 
-    dw1000_mac_append_interface(ot->dev_inst, &ot->cbs);
+    uwb_mac_append_interface(ot->dev_inst, &ot->cbs);
 
-    dw1000_event.ev_cb  = dw1000_sched;
-    dw1000_event.ev_arg = (void*)ot;
+    uwb_event.ev_cb  = uwb_sched;
+    uwb_event.ev_arg = (void*)ot;
 
     gTransmitFrame.mLength  = 0;
     gTransmitFrame.mPsdu    = gTransmitPsdu;
@@ -74,7 +73,7 @@ void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aA
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
 #endif
-    dw1000_set_eui(g_ot_inst->dev_inst, *((uint64_t *)aAddress->m8));
+    uwb_set_eui(g_ot_inst->dev_inst, *((uint64_t *)aAddress->m8));
     (void)aInstance;
 }
 
@@ -113,7 +112,7 @@ int8_t otPlatRadioGetRssi(otInstance *aInstance){
 #endif
     (void)aInstance;
 
-    return (int8_t)dw1000_calc_rssi(g_ot_inst->dev_inst, &g_ot_inst->dev_inst->rxdiag);
+    return (int8_t)uwb_get_rssi(g_ot_inst->dev_inst);
 }
 
 otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel){
@@ -134,8 +133,8 @@ otError otPlatRadioReceive(otInstance *aInstance, uint8_t aChannel){
         if (!gIsReceiverEnabled){
 
             /* TBD: FIFO related changes if required */
-            dw1000_set_rx_timeout(g_ot_inst->dev_inst, 0);
-            if(!dw1000_start_rx(g_ot_inst->dev_inst).start_rx_error)
+            uwb_set_rx_timeout(g_ot_inst->dev_inst, 0);
+            if(!uwb_start_rx(g_ot_inst->dev_inst).start_rx_error)
             {
                 gIsReceiverEnabled = true;
             }
@@ -153,9 +152,7 @@ void otPlatRadioSetPanId(otInstance *aInstance, uint16_t aPanid){
 	printf("# %s #\n",__func__);
 #endif
     (void)aInstance;
-    dw1000_dev_instance_t* inst = g_ot_inst->dev_inst;
-    dw1000_set_panid(inst, aPanid);
-    inst->PANID = aPanid;
+    uwb_set_panid(g_ot_inst->dev_inst, aPanid);
 }
 
 
@@ -166,18 +163,18 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aPacket){
 #endif
     (void)aInstance;
     
-    dw1000_dev_instance_t* inst = g_ot_inst->dev_inst;
+    struct uwb_dev* inst = g_ot_inst->dev_inst;
     otError error = OT_ERROR_NONE;
 
     gState = OT_RADIO_STATE_TRANSMIT;
-    dw1000_stop_rx(inst);
+    uwb_stop_rx(inst);
     memcpy(gTransmitFrame.mPsdu, aPacket->mPsdu, aPacket->mLength);
 
-    dw1000_write_tx_fctrl(inst, aPacket->mLength, 0);
-    dw1000_write_tx(inst, aPacket->mPsdu, 0, aPacket->mLength);
-    dw1000_set_wait4resp(inst, true);
-    dw1000_set_rx_timeout(inst, 0);
-    if(dw1000_start_tx(inst).start_tx_error)
+    uwb_write_tx_fctrl(inst, aPacket->mLength, 0);
+    uwb_write_tx(inst, aPacket->mPsdu, 0, aPacket->mLength);
+    uwb_set_wait4resp(inst, true);
+    uwb_set_rx_timeout(inst, 0);
+    if(uwb_start_tx(inst).start_tx_error)
         error = OT_ERROR_FAILED;
 
     if (error == OT_ERROR_NONE)
@@ -228,7 +225,7 @@ otError otPlatRadioDisable(otInstance *aInstance){
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
 #endif
-    dw1000_phy_forcetrxoff(g_ot_inst->dev_inst);
+    uwb_phy_forcetrxoff(g_ot_inst->dev_inst);
     return OT_ERROR_NONE;
 }
 
@@ -249,7 +246,7 @@ uint8_t otPlatRadioPrintBuf(uint8_t *abuffer){
      return 4;
 }
 
-static void dw1000_sched(struct os_event* ev){
+static void uwb_sched(struct os_event* ev){
     ot_instance_t* ot = (ot_instance_t*)ev->ev_arg;
     otInstance* aInstance = ot->sInstance;
     if(gReceivedone == true){
@@ -290,7 +287,7 @@ static void dw1000_sched(struct os_event* ev){
 }
 
 static bool 
-rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     ot_instance_t * ot = (ot_instance_t *)cbs->inst_ptr;
 
@@ -302,22 +299,22 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     gReceiveError = OT_ERROR_NONE;
     memcpy(gReceiveFrame.mPsdu, inst->rxbuf, gReceiveFrame.mLength);
     gReceivedone = true;
-    os_eventq_put(&ot->eventq, &dw1000_event);
+    os_eventq_put(&ot->eventq, &uwb_event);
 	return true;
 }
 
 static bool 
-rx_timeout_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs){
 	return true;
 }
 
 static bool 
-tx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     ot_instance_t * ot = (ot_instance_t *)cbs->inst_ptr;
     gTransmitdone = true;
     gTransmitError = OT_ERROR_NONE;
-    os_eventq_put(&ot->eventq, &dw1000_event);
+    os_eventq_put(&ot->eventq, &uwb_event);
     return true;
 }
 
@@ -345,7 +342,7 @@ otRadioCaps otPlatRadioGetCaps(otInstance *aInstance){
     return OT_RADIO_CAPS_NONE;
 }
 
-void dw1000_auto_pending_bit_set(bool enabled){
+void uwb_auto_pending_bit_set(bool enabled){
 
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
@@ -353,7 +350,7 @@ void dw1000_auto_pending_bit_set(bool enabled){
 	(void)enabled;
 }
 
-bool dw1000_pending_bit_for_addr_set(const uint8_t *p_addr, bool extended){
+bool uwb_pending_bit_for_addr_set(const uint8_t *p_addr, bool extended){
 
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
@@ -364,7 +361,7 @@ bool dw1000_pending_bit_for_addr_set(const uint8_t *p_addr, bool extended){
      return 1;
 }
 
-void dw1000_pending_bit_for_addr_reset(bool extended){
+void uwb_pending_bit_for_addr_reset(bool extended){
 
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
@@ -379,7 +376,7 @@ void otPlatRadioClearSrcMatchExtEntries(otInstance *aInstance){
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
 #endif
-    dw1000_pending_bit_for_addr_reset(true);
+    uwb_pending_bit_for_addr_reset(true);
 }
 
 void otPlatRadioClearSrcMatchShortEntries(otInstance *aInstance){
@@ -389,7 +386,7 @@ void otPlatRadioClearSrcMatchShortEntries(otInstance *aInstance){
 #endif
     (void) aInstance;
 
-    dw1000_pending_bit_for_addr_reset(false);
+    uwb_pending_bit_for_addr_reset(false);
 }
 
 otError otPlatRadioAddSrcMatchShortEntry(otInstance *aInstance,
@@ -420,7 +417,7 @@ void otPlatRadioEnableSrcMatch(otInstance *aInstance, bool aEnable){
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
 #endif
-    dw1000_auto_pending_bit_set(aEnable);
+    uwb_auto_pending_bit_set(aEnable);
 }
 
 otError otPlatRadioClearSrcMatchShortEntry(otInstance *aInstance,

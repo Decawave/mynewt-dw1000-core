@@ -25,27 +25,25 @@
 #include <hal/hal_spi.h>
 #include <hal/hal_gpio.h>
 
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
+#include <uwb/uwb.h>
+#include <uwb/uwb_ftypes.h>
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_ftypes.h>
 #include <nrng/nrng.h>
-#include <rng/rng.h>
-#if MYNEWT_VAL(WCS_ENABLED)
-#include <wcs/wcs.h>
+#include <uwb_rng/uwb_rng.h>
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+#include <uwb_wcs/uwb_wcs.h>
 #endif
 #if MYNEWT_VAL(CIR_ENABLED)
 #include <cir/cir.h>
 #endif
-#include <rng/slots.h>
+#include <uwb_rng/slots.h>
 #if MYNEWT_VAL(NRNG_VERBOSE)
 #include <nrng/nrng_encode.h>
-static bool complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs);
+static bool complete_cb(struct uwb_dev * udev, struct uwb_mac_interface * cbs);
 #endif
 
-static dw1000_rng_config_t g_config = {
+static struct uwb_rng_config g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(NRNG_TX_HOLDOFF),         // Send Time delay in usec.
     .rx_timeout_delay = MYNEWT_VAL(NRNG_RX_TIMEOUT),       // Receive response timeout in usec
     .tx_guard_delay = MYNEWT_VAL(NRNG_TX_GUARD_DELAY)
@@ -68,26 +66,28 @@ STATS_NAME_END(nrng_stat_section)
 #endif
 
 /**
- * @fn dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1000_nrng_device_type_t type, uint16_t nframes, uint16_t nnodes)
+ * @fn nrng_init(struct uwb_dev * inst, struct uwb_rng_config * config, nrng_device_type_t type, uint16_t nframes, uint16_t nnodes)
  * @brief API to initialize nrng parameters and configuration.
  *
- * @param inst      Pointer to dw1000_dev_instance_t.
- * @param config    Pointer to the structure dw1000_rng_config_t.
- * @param type      dw1000_rng_device_type_t of DWT_NRNG_INITIATOR or DWT_NRNG_RESPONDER.
+ * @param inst      Pointer to struct uwb_dev.
+ * @param config    Pointer to the structure struct uwb_rng_config.
+ * @param type      uwb_rng_device_type_t of DWT_NRNG_INITIATOR or DWT_NRNG_RESPONDER.
  * @param nframes   Number of buffers defined to store the ranging data.
  * @param nnodes    number of nodes.
  *
- * @return dw1000_nrng_instance_t pointer
+ * @return struct nrng_instance pointer
  */
-dw1000_nrng_instance_t *
-dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1000_nrng_device_type_t type, uint16_t nframes, uint16_t nnodes){
+struct nrng_instance *
+nrng_init(struct uwb_dev * inst, struct uwb_rng_config * config,
+          nrng_device_type_t type, uint16_t nframes, uint16_t nnodes)
+{
     assert(inst);
 
-    dw1000_nrng_instance_t *nrng = (dw1000_nrng_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_NRNG);
+    struct nrng_instance *nrng = (struct nrng_instance*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_NRNG);
     if (nrng == NULL) {
-        nrng = (dw1000_nrng_instance_t*) malloc(sizeof(dw1000_nrng_instance_t) + nframes * sizeof(nrng_frame_t * )); 
+        nrng = (struct nrng_instance*) malloc(sizeof(struct nrng_instance) + nframes * sizeof(nrng_frame_t * )); 
         assert(nrng);
-        memset(nrng, 0, sizeof(dw1000_nrng_instance_t));
+        memset(nrng, 0, sizeof(struct nrng_instance));
         nrng->status.selfmalloc = 1;
     }
     dpl_error_t err = dpl_sem_init(&nrng->sem, 0x1); 
@@ -102,16 +102,16 @@ dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1
     nrng->seq_num = 0;
     
     if (config != NULL ){
-        dw1000_nrng_config(nrng, config);
+        nrng_config(nrng, config);
     }
-    nrng->cbs = (dw1000_mac_interface_t){
-        .id = DW1000_NRNG,
+    nrng->cbs = (struct uwb_mac_interface){
+        .id = UWBEXT_NRNG,
         .inst_ptr = nrng,
 #if MYNEWT_VAL(NRNG_VERBOSE)
         .complete_cb = complete_cb,
 #endif
     };
-    dw1000_mac_append_interface(inst, &nrng->cbs);
+    uwb_mac_append_interface(inst, &nrng->cbs);
 
 #if MYNEWT_VAL(NRNG_STATS)
     int rc = stats_init(
@@ -120,10 +120,10 @@ dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1
                     STATS_NAME_INIT_PARMS(nrng_stat_section)
             );
 
-#if  MYNEWT_VAL(DW1000_DEVICE_0) && !MYNEWT_VAL(DW1000_DEVICE_1)
+#if  MYNEWT_VAL(UWB_DEVICE_0) && !MYNEWT_VAL(UWB_DEVICE_1)
         rc |= stats_register("nrng", STATS_HDR(nrng->stat));
-#elif  MYNEWT_VAL(DW1000_DEVICE_0) && MYNEWT_VAL(DW1000_DEVICE_1)
-    if (inst == hal_dw1000_inst(0))
+#elif  MYNEWT_VAL(UWB_DEVICE_0) && MYNEWT_VAL(UWB_DEVICE_1)
+    if (inst->idx == 0)
         rc |= stats_register("nrng0", STATS_HDR(nrng->stat));
     else
         rc |= stats_register("nrng1", STATS_HDR(nrng->stat));
@@ -134,17 +134,19 @@ dw1000_nrng_init(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config, dw1
 }
 
 /**
- * @fn dw1000_nrng_free(dw1000_nrng_instance_t * inst)
+ * @fn nrng_free(struct nrng_instance * inst)
  * @brief API to free the allocated resources.
  *
- * @param inst  Pointer to dw1000_rng_instance_t.
+ * @param inst  Pointer to struct uwb_rng_instance.
  *
  * @return void
  */
 void
-dw1000_nrng_free(dw1000_nrng_instance_t * inst)
+nrng_free(struct nrng_instance * inst)
 {
     assert(inst);
+    uwb_mac_remove_interface(inst->dev_inst, inst->cbs.id);
+
     if (inst->status.selfmalloc){
         for(int i =0; i< inst->nframes; i++){
             free(inst->frames[i]);
@@ -157,16 +159,16 @@ dw1000_nrng_free(dw1000_nrng_instance_t * inst)
 }
 
 /**
- * @fn dw1000_nrng_set_frames(dw1000_dev_instance_t * inst, uint16_t nframes)
+ * @fn nrng_set_frames(struct nrng_instance * inst, uint16_t nframes)
  * @brief API to set the pointer to the nrng frame buffers.
  *
- * @param inst      Pointer to dw1000_dev_instance_t.
+ * @param inst      Pointer to struct nrng_instance.
  * @param nframes   Number of buffers defined to store the ranging data.
  *
  * @return void
  */
 inline void
-dw1000_nrng_set_frames(dw1000_nrng_instance_t * nrng, uint16_t nframes)
+nrng_set_frames(struct nrng_instance * nrng, uint16_t nframes)
 {
     assert(nframes <= nrng->nframes);
     nrng_frame_t default_frame = {
@@ -184,7 +186,7 @@ dw1000_nrng_set_frames(dw1000_nrng_instance_t * nrng, uint16_t nframes)
 /**
  * API to configure dw1000 to start transmission after certain delay.
  *
- * @param inst          Pointer to dw1000_dev_instance_t. 
+ * @param inst          Pointer to struct nrng_instance. 
  * @param ranges        []] to return results  
  * @param nranges       side of  ranges[]
  * @param code          base address of curcular buffer
@@ -192,7 +194,7 @@ dw1000_nrng_set_frames(dw1000_nrng_instance_t * nrng, uint16_t nframes)
  * @return valid mask
  */
 uint32_t
-dw1000_nrng_get_ranges(dw1000_nrng_instance_t * nrng, float ranges[], uint16_t nranges, uint16_t base)
+nrng_get_ranges(struct nrng_instance * nrng, float ranges[], uint16_t nranges, uint16_t base)
 {
     uint32_t mask = 0;
 
@@ -214,24 +216,24 @@ dw1000_nrng_get_ranges(dw1000_nrng_instance_t * nrng, float ranges[], uint16_t n
         if (mask & 1UL << i){
             uint16_t idx = BitIndex(nrng->slot_mask, 1UL << i, SLOT_POSITION); 
             nrng_frame_t * frame = nrng->frames[(base + idx)%nrng->nframes];
-            ranges[j++] = dw1000_rng_tof_to_meters(dw1000_nrng_twr_to_tof_frames(nrng->dev_inst, frame, frame));
+            ranges[j++] = uwb_rng_tof_to_meters(nrng_twr_to_tof_frames(nrng->dev_inst, frame, frame));
         }
     }
     return mask;
 }
 
 /**
- * @fn dw1000_nrng_get_config(dw1000_dev_instance_t * inst, dw1000_rng_modes_t code)
- * @brief API to get configuration using dw1000_rng_modes_t.
+ * @fn nrng_get_config(struct nrng_instance * nrng, uwb_rng_modes_t code)
+ * @brief API to get configuration using uwb_rng_modes_t.
  *
- * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param inst          Pointer to struct nrng_instance.
  * @param code          Represents mode of ranging DWT_SS_TWR enables single sided two way ranging DWT_DS_TWR enables double sided
  * two way ranging DWT_DS_TWR_EXT enables double sided two way ranging with extended frame.
  *
- * @return dw1000_rng_config_t
+ * @return struct uwb_rng_config
  */
-dw1000_rng_config_t *
-dw1000_nrng_get_config(dw1000_nrng_instance_t * nrng, dw1000_rng_modes_t code)
+struct uwb_rng_config *
+nrng_get_config(struct nrng_instance * nrng, uwb_rng_modes_t code)
 {
     struct rng_config_list * cfgs;
 
@@ -248,12 +250,12 @@ dw1000_nrng_get_config(dw1000_nrng_instance_t * nrng, dw1000_rng_modes_t code)
 /**
  * Add config extension for different rng services.
  *
- * @param rng        Pointer to dw1000_rng_instance_t.
+ * @param rng        Pointer to struct uwb_rng_instance.
  * @param callbacks  callback instance.
  * @return void
  */
 void
-dw1000_nrng_append_config(dw1000_nrng_instance_t * nrng, struct rng_config_list *cfgs)
+nrng_append_config(struct nrng_instance * nrng, struct rng_config_list *cfgs)
 {
     assert(nrng);
 
@@ -273,12 +275,12 @@ dw1000_nrng_append_config(dw1000_nrng_instance_t * nrng, struct rng_config_list 
 /**
  * API to remove config.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct nrng_instance.
  * @param id    ID of the service.
  * @return void
  */
 void
-dw1000_nrng_remove_config(dw1000_nrng_instance_t * nrng, dw1000_rng_modes_t code)
+nrng_remove_config(struct nrng_instance * nrng, uwb_rng_modes_t code)
 {
     assert(nrng);
     struct rng_config_list * cfgs = NULL;
@@ -291,124 +293,124 @@ dw1000_nrng_remove_config(dw1000_nrng_instance_t * nrng, dw1000_rng_modes_t code
 }
 
 /**
- * @fn dw1000_nrng_config(dw1000_dev_instance_t * inst, dw1000_rng_config_t * config)
+ * @fn nrng_config(struct nrng_instance * nrng, struct uwb_rng_config * config)
  * @brief API to assign the config parameters to range instance.
  *
- * @param inst    Pointer to dw1000_dev_instance_t.
- * @param config  Pointer to dw1000_rng_config_t.
+ * @param inst    Pointer to struct nrng_instance.
+ * @param config  Pointer to struct uwb_rng_config.
  *
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-dw1000_dev_status_t
-dw1000_nrng_config(dw1000_nrng_instance_t * nrng, dw1000_rng_config_t * config)
+struct uwb_dev_status
+nrng_config(struct nrng_instance * nrng, struct uwb_rng_config * config)
 {
-    dw1000_dev_instance_t * inst = nrng->dev_inst;
-    assert(inst);
     assert(config);
 
-    memcpy(&nrng->config, config, sizeof(dw1000_rng_config_t));
-    return inst->status;
+    memcpy(&nrng->config, config, sizeof(struct uwb_rng_config));
+    return nrng->dev_inst->status;
 }
 
 
 void nrng_pkg_init(void)
 {
-#if MYNEWT_VAL(DW1000_PKG_INIT_LOG)
+#if MYNEWT_VAL(UWB_PKG_INIT_LOG)
     printf("{\"utime\": %lu,\"msg\": \"nrng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 #endif
 
-    dw1000_nrng_instance_t *nrng;
-#if MYNEWT_VAL(DW1000_DEVICE_0)
-    nrng = dw1000_nrng_init(hal_dw1000_inst(0), &g_config, (dw1000_nrng_device_type_t) MYNEWT_VAL(NRNG_DEVICE_TYPE), MYNEWT_VAL(NRNG_NFRAMES), MYNEWT_VAL(NRNG_NNODES));
-    dw1000_nrng_set_frames(nrng, MYNEWT_VAL(NRNG_NFRAMES));
+    struct nrng_instance *nrng;
+    struct uwb_dev *udev;
+#if MYNEWT_VAL(UWB_DEVICE_0)
+    udev = uwb_dev_idx_lookup(0);
+    nrng = nrng_init(udev, &g_config, (nrng_device_type_t) MYNEWT_VAL(NRNG_DEVICE_TYPE), MYNEWT_VAL(NRNG_NFRAMES), MYNEWT_VAL(NRNG_NNODES));
+    nrng_set_frames(nrng, MYNEWT_VAL(NRNG_NFRAMES));
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_1)
-    nrng = dw1000_nrng_init(hal_dw1000_inst(1), &g_config, (dw1000_nrng_device_type_t) MYNEWT_VAL(NRNG_DEVICE_TYPE), MYNEWT_VAL(NRNG_NFRAMES), MYNEWT_VAL(NRNG_NNODES));
-    dw1000_nrng_set_frames(nrng, MYNEWT_VAL(NRNG_NFRAMES));
+#if MYNEWT_VAL(UWB_DEVICE_1)
+    udev = uwb_dev_idx_lookup(1);
+    nrng = nrng_init(udev, &g_config, (nrng_device_type_t) MYNEWT_VAL(NRNG_DEVICE_TYPE), MYNEWT_VAL(NRNG_NFRAMES), MYNEWT_VAL(NRNG_NNODES));
+    nrng_set_frames(nrng, MYNEWT_VAL(NRNG_NFRAMES));
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
-    nrng = dw1000_nrng_init(hal_dw1000_inst(2), &g_config, (dw1000_nrng_device_type_t) MYNEWT_VAL(NRNG_DEVICE_TYPE), MYNEWT_VAL(NRNG_NFRAMES), MYNEWT_VAL(NRNG_NNODES));
-    dw1000_nrng_set_frames(nrng, MYNEWT_VAL(NRNG_NFRAMES));
+#if MYNEWT_VAL(UWB_DEVICE_2)
+    udev = uwb_dev_idx_lookup(2);
+    nrng = nrng_init(udev, &g_config, (nrng_device_type_t) MYNEWT_VAL(NRNG_DEVICE_TYPE), MYNEWT_VAL(NRNG_NFRAMES), MYNEWT_VAL(NRNG_NNODES));
+    nrng_set_frames(nrng, MYNEWT_VAL(NRNG_NFRAMES));
 #endif
 
 }
 
 /**
- * @fn dw1000_nrng_request_delay_start(dw1000_dev_instance_t * inst, uint16_t dst_address, uint64_t delay, dw1000_rng_modes_t code, uint16_t slot_mask, uint16_t cell_id)
+ * @fn nrng_request_delay_start(struct nrng_instance * nrng, uint16_t dst_address, uint64_t delay, uwb_rng_modes_t code, uint16_t slot_mask, uint16_t cell_id)
  * @brief API to configure dw1000 to start transmission after certain delay.
  *
- * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param inst          Pointer to struct nrng_instance.
  * @param dst_address   Address of the receiver to whom range request to be sent.
  * @param delay         Time until which request has to be resumed.
  * @param code          Represents mode of ranging DWT_SS_TWR enables single sided two way ranging DWT_DS_TWR enables double sided
  * two way ranging DWT_DS_TWR_EXT enables double sided two way ranging with extended frame.
  * @param slot_mast     nrng_request_frame_t of masked slot number
  * @param cell_id       nrng_request_frame_t of cell id number
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-dw1000_dev_status_t
-dw1000_nrng_request_delay_start(dw1000_nrng_instance_t * nrng, uint16_t dst_address, uint64_t delay,
-                                dw1000_rng_modes_t code, uint16_t slot_mask, uint16_t cell_id)
+struct uwb_dev_status
+nrng_request_delay_start(struct nrng_instance * nrng, uint16_t dst_address, uint64_t delay,
+                                uwb_rng_modes_t code, uint16_t slot_mask, uint16_t cell_id)
 {
-    dw1000_dev_instance_t *inst = nrng->dev_inst;
-   
     nrng->control.delay_start_enabled = 1;
     nrng->delay = delay;
-    dw1000_nrng_request(nrng, dst_address, code, slot_mask, cell_id);
+    nrng_request(nrng, dst_address, code, slot_mask, cell_id);
     nrng->control.delay_start_enabled = 0;
 
-    return inst->status;
+    return nrng->dev_inst->status;
 }
 
 /**
- * @fn usecs_to_response(dw1000_dev_instance_t * inst, uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration)
+ * @fn usecs_to_response(struct uwb_dev * inst, uint16_t nslots, struct uwb_rng_config * config, uint32_t duration)
  * @brief Help function to calculate the delay between cascading requests
- *
- * @param inst         Pointer to dw1000_dev_instance_t *
+ * TODO: Change name to be globally ok (prepend nrng_?)
+ * @param inst         Pointer to struct uwb_dev *
  * @param nslots       number of slot
- * @param config       Pointer to dw1000_rng_config_t.
+ * @param config       Pointer to struct uwb_rng_config.
  * @param duration     Time delay between request.
  *
  * @return ret of uint32_t constant
  */
 uint32_t
-usecs_to_response(dw1000_dev_instance_t * inst, uint16_t nslots, dw1000_rng_config_t * config, uint32_t duration){
-    uint32_t ret = nslots * ( duration + (uint32_t) dw1000_dwt_usecs_to_usecs(config->tx_guard_delay));
+usecs_to_response(struct uwb_dev * inst, uint16_t nslots, struct uwb_rng_config * config, uint32_t duration){
+    uint32_t ret = nslots * ( duration + (uint32_t) uwb_dwt_usecs_to_usecs(config->tx_guard_delay));
     return ret;
 }
 
 /**
- * @fn dw1000_nrng_request(dw1000_dev_instance_t * inst, uint16_t dst_address, dw1000_rng_modes_t code, uint16_t slot_mask, uint16_t cell_id){
+ * @fn nrng_request(struct nrng_instance * nrng, uint16_t dst_address, uwb_rng_modes_t code, uint16_t slot_mask, uint16_t cell_id){
  * @brief API to initialise nrng request.
  *
- * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param inst          Pointer to struct nrng_instance.
  * @param dst_address   Address of the receiver to whom range request to be sent.
  * @param code          Represents mode of ranging DWT_SS_TWR enables single sided two way ranging DWT_DS_TWR enables double sided
  * two way ranging DWT_DS_TWR_EXT enables double sided two way ranging with extended frame.
  * @param slot_mast     nrng_request_frame_t of masked slot number
  * @param cell_id       nrng_request_frame_t of cell id number
  *
- * @return dw1000_dev_status_t
+ * @return struct uwb_dev_status
  */
-dw1000_dev_status_t
-dw1000_nrng_request(dw1000_nrng_instance_t * nrng, uint16_t dst_address, dw1000_rng_modes_t code, uint16_t slot_mask, uint16_t cell_id)
+struct uwb_dev_status
+nrng_request(struct nrng_instance * nrng, uint16_t dst_address, uwb_rng_modes_t code, uint16_t slot_mask, uint16_t cell_id)
 {
     // This function executes on the device that initiates a request
-    dw1000_dev_instance_t * inst = nrng->dev_inst;
+    struct uwb_dev * inst = nrng->dev_inst;
     assert(inst);
 
     dpl_error_t err = dpl_sem_pend(&nrng->sem,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
     NRNG_STATS_INC(nrng_request);
 
-    dw1000_rng_config_t * config = dw1000_nrng_get_config(nrng, code);
+    struct uwb_rng_config * config = nrng_get_config(nrng, code);
     nrng->nnodes = NumberOfBits(slot_mask); // Number of nodes involved in request
     nrng->idx += nrng->nnodes;
     nrng_request_frame_t * frame = (nrng_request_frame_t *) nrng->frames[nrng->idx%nrng->nframes];
 
     frame->seq_num = ++nrng->seq_num;
     frame->code = code;
-    frame->src_address = inst->my_short_address;
+    frame->src_address = inst->uid;
     frame->dst_address = dst_address;
 
 #if MYNEWT_VAL(CELL_ENABLED)
@@ -421,30 +423,30 @@ dw1000_nrng_request(dw1000_nrng_instance_t * nrng, uint16_t dst_address, dw1000_
     frame->start_slot_id = slot_mask;
 #endif
 
-    dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
-    dw1000_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0);
-    dw1000_set_wait4resp(inst, true);
+    uwb_write_tx(inst, frame->array, 0, sizeof(nrng_request_frame_t));
+    uwb_write_tx_fctrl(inst, sizeof(nrng_request_frame_t), 0);
+    uwb_set_wait4resp(inst, true);
 
     uint16_t timeout = config->tx_holdoff_delay         // Remote side turn arround time.
                         + usecs_to_response(inst,       // Remaining timeout
                             nrng->nnodes,               // no. of expected frames
                             config,
-                            dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_response_frame_t)) // in usec
+                            uwb_phy_frame_duration(inst, sizeof(nrng_response_frame_t)) // in usec
                         ) + config->rx_timeout_delay;     // TOF allowance.
-    dw1000_set_rx_timeout(inst, timeout);
+    uwb_set_rx_timeout(inst, timeout);
 
     if (nrng->control.delay_start_enabled)
-        dw1000_set_delay_start(inst, nrng->delay); 
+        uwb_set_delay_start(inst, nrng->delay); 
 
     // The DW1000 has a bug that render the hardware auto_enable feature useless when used in conjunction with the double buffering. 
     // Consequently, we inhibit this use-case in the PHY-Layer and instead manually perform reenable in the MAC-layer. 
     // This does impact the guard delay time as we need to allow time for the MAC-layer to respond.
 
-    if(inst->config.dblbuffon_enabled) 
+    if(inst->config.dblbuffon_enabled)
         assert(inst->config.rxauto_enable == 0);
     //dw1000_set_dblrxbuff(inst, true);  
     
-    if (dw1000_start_tx(inst).start_tx_error){
+    if (uwb_start_tx(inst).start_tx_error){
         NRNG_STATS_INC(start_tx_error);
         if (dpl_sem_get_count(&nrng->sem) == 0) {
             err = dpl_sem_release(&nrng->sem);
@@ -464,50 +466,48 @@ dw1000_nrng_request(dw1000_nrng_instance_t * nrng, uint16_t dst_address, dw1000_
 /**
  * API to initialise range request.
  *
- * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param inst          Pointer to struct nrng_instance.
  *
- * @return dw1000_dev_status_t 
+ * @return struct uwb_dev_status
  */
-dw1000_dev_status_t 
-dw1000_nrng_listen(dw1000_nrng_instance_t * nrng, dw1000_dev_modes_t mode)
+struct uwb_dev_status
+nrng_listen(struct nrng_instance * nrng, uwb_dev_modes_t mode)
 {
-    dw1000_dev_instance_t * inst = nrng->dev_inst;
-
     dpl_error_t err = dpl_sem_pend(&nrng->sem,  DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
 
     // Download the CIR on the response    
 #if MYNEWT_VAL(CIR_ENABLED)   
-    cir_enable(inst->cir, true);
+    cir_enable(nrng->dev_inst->cir, true);
 #endif 
     
     NRNG_STATS_INC(nrng_listen);
-    if(dw1000_start_rx(inst).start_rx_error){
+    if(uwb_start_rx(nrng->dev_inst).start_rx_error){
         err = dpl_sem_release(&nrng->sem);
         assert(err == DPL_OK);
         NRNG_STATS_INC(start_rx_error);
     }
-    if (mode == DWT_BLOCKING){
+    if (mode == UWB_BLOCKING){
         err = dpl_sem_pend(&nrng->sem, DPL_TIMEOUT_NEVER); // Wait for completion of transactions 
         assert(err == DPL_OK);
         err = dpl_sem_release(&nrng->sem);
         assert(err == DPL_OK);
     }
-   return inst->status;
+   return nrng->dev_inst->status;
 }
 
 /**
- * @fn dw1000_nrng_twr_to_tof_frames(struct _dw1000_dev_instance_t * inst, nrng_frame_t *first_frame, nrng_frame_t *final_frame){
+ * @fn nrng_twr_to_tof_frames(struct uwb_dev * inst, nrng_frame_t *first_frame, nrng_frame_t *final_frame){
  * @brief API to calculate time of flight based on type of ranging.
  *
- * @param inst          Pointer to dw1000_dev_instance_t.
+ * @param inst          Pointer to struct uwb_dev.
  * @param first_frame   Pointer to the first nrng frame.
  * @param final_frame   Poinetr to the final nrng frame.
  *
  * @return Time of flight in float
  */
 float
-dw1000_nrng_twr_to_tof_frames(struct _dw1000_dev_instance_t * inst, nrng_frame_t *first_frame, nrng_frame_t *final_frame)
+nrng_twr_to_tof_frames(struct uwb_dev * inst, nrng_frame_t *first_frame, nrng_frame_t *final_frame)
 {
     float ToF = 0;
     uint64_t T1R, T1r, T2R, T2r;
@@ -528,11 +528,12 @@ dw1000_nrng_twr_to_tof_frames(struct _dw1000_dev_instance_t * inst, nrng_frame_t
             break;
         case DWT_SS_TWR_NRNG ... DWT_SS_TWR_NRNG_FINAL:{
             assert(first_frame != NULL);
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
             ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
                     -  (first_frame->transmission_timestamp - first_frame->reception_timestamp))/2.0f;
 #else
-            float skew = dw1000_calc_clock_offset_ratio(inst, first_frame->carrier_integrator);
+            float skew = uwb_calc_clock_offset_ratio(inst, first_frame->carrier_integrator,
+                                                     UWB_CR_CARRIER_INTEGRATOR);
             ToF = ((first_frame->response_timestamp - first_frame->request_timestamp)
                     -  (first_frame->transmission_timestamp - first_frame->reception_timestamp) * (1 - skew))/2.0f;
 #endif
@@ -558,27 +559,27 @@ complete_ev_cb(struct dpl_event *ev) {
     assert(ev != NULL);
     assert(dpl_event_get_arg(ev));
 
-    dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *) dpl_event_get_arg(ev);
+    struct nrng_instance * nrng = (struct nrng_instance *) dpl_event_get_arg(ev);
     nrng_encode(nrng, nrng->seq_num, nrng->idx);
     nrng->slot_mask = 0; 
 }
 
 struct dpl_event nrng_event;
 /**
- * @fn complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+ * @fn complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
  * @brief API for nrng complete callback and put complete_event_cb in queue.
  *
- * @param inst   Pointer to dw1000_dev_instance_t.
- * @param cbs    Pointer to dw1000_mac_interface_t.
+ * @param inst   Pointer to struct uwb_dev.
+ * @param cbs    Pointer to struct uwb_mac_interface.
  *
  * @return true on sucess
  */
 static bool
-complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+complete_cb(struct uwb_dev * udev, struct uwb_mac_interface * cbs)
 {
-    if (inst->fctrl != FCNTL_IEEE_RANGE_16)
+    if (udev->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
-    dw1000_nrng_instance_t * nrng = (dw1000_nrng_instance_t *)cbs->inst_ptr;
+    struct nrng_instance * nrng = (struct nrng_instance *)cbs->inst_ptr;
     if(dpl_sem_get_count(&nrng->sem) == 0){
         dpl_event_init(&nrng_event, complete_ev_cb, (void*) nrng);
         dpl_eventq_put(dpl_eventq_dflt_get(), &nrng_event);

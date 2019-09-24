@@ -42,11 +42,11 @@ extern "C" {
 #endif
 
 #include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_ftypes.h>
-#include <rng/rng.h>
+#include <uwb/uwb_ftypes.h>
+#include <uwb_rng/uwb_rng.h>
 
 void twr_ss_pkg_init(void);
-void twr_ss_free(dw1000_dev_instance_t * inst);
+void twr_ss_free(struct uwb_dev * dev);
 
 #ifdef __cplusplus
 }

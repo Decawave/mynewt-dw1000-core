@@ -33,8 +33,8 @@ add_library(libdpl_os ALIAS dpl_os)
 get_target_property(libdpl_os_INCLUDE_DIRECTORIES libdpl_os INCLUDE_DIRECTORIES)
 add_library(libuwb_dw1000 ALIAS uwb_dw1000)
 get_target_property(libuwb_dw1000_INCLUDE_DIRECTORIES libuwb_dw1000 INCLUDE_DIRECTORIES)
-add_library(libccp ALIAS ccp)
-get_target_property(libccp_INCLUDE_DIRECTORIES libccp INCLUDE_DIRECTORIES)
+add_library(libuwb_ccp ALIAS uwb_ccp)
+get_target_property(libuwb_ccp_INCLUDE_DIRECTORIES libuwb_ccp INCLUDE_DIRECTORIES)
 
 include(GNUInstallDirs)
 target_include_directories(${PROJECT_NAME} 
@@ -46,7 +46,7 @@ target_include_directories(${PROJECT_NAME}
       PRIVATE ${libdpl_linux_INCLUDE_DIRECTORIES}
       PRIVATE ${libdpl_os_INCLUDE_DIRECTORIES}
       PRIVATE ${libuwb_dw1000_INCLUDE_DIRECTORIES}
-      PRIVATE ${libccp_INCLUDE_DIRECTORIES}
+      PRIVATE ${libuwb_ccp_INCLUDE_DIRECTORIES}
 )
 
 # Install library

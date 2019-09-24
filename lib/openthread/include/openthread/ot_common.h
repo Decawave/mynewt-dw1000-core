@@ -20,7 +20,7 @@
  */
 
 /**
- * @file dw1000_lwip.h
+ * @file ot_common.h
  * @author paul kettle
  * @date 2018
  * 
@@ -40,10 +40,7 @@ extern "C" {
 #endif
 
 #include <hal/hal_spi.h>
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_ftypes.h>
-#include <dw1000/dw1000_phy.h>
+#include <uwb/uwb_ftypes.h>
 
 #include <openthread/instance.h>
 
@@ -63,8 +60,8 @@ typedef struct _ot_status_t{
 }ot_status_t;
 
 typedef struct _ot_instance_t{
-    struct _dw1000_dev_instance_t * dev_inst;          //!< Structure for DW1000 instance 
-    dw1000_mac_interface_t cbs;                        //!< OT mac interface callbacks
+    struct uwb_dev * dev_inst;                         //!< Structure for uwb_dev instance 
+    struct uwb_mac_interface cbs;                      //!< OT mac interface callbacks
     struct os_sem sem;                                 //!< Structure for OS semaphores
     otInstance *sInstance;                             //!< Instance to OT stack
     ot_status_t status;                                //!< OT error status
@@ -77,14 +74,14 @@ typedef struct _ot_instance_t{
 
 
 ot_instance_t *
-ot_init(dw1000_dev_instance_t * inst);
-void ot_post_init(dw1000_dev_instance_t * inst, otInstance *aInstance);
+ot_init(struct uwb_dev * inst);
+void ot_post_init(struct uwb_dev * inst, otInstance *aInstance);
 
 void
 ot_free(ot_instance_t * inst);
 
 void RadioInit(ot_instance_t* inst);
-void PlatformInit(dw1000_dev_instance_t* inst);
+void PlatformInit(struct uwb_dev* inst);
 
 #ifdef __cplusplus
 }

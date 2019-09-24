@@ -20,20 +20,10 @@
 pkg.name: lib/cir
 pkg.description: Channel Impulse Response
 pkg.author: "Paul Kettle <Paul.Kettle@decawave.com>"
-pkg.homepage: "http://www.decawave.com]/"
+pkg.homepage: "http://www.decawave.com/"
 pkg.keywords:
-    - dw1000
     - uwb
     - cir
-    - pmem
     
-pkg.cflags:
-    - "-std=gnu99"
-    - "-fms-extensions"
-
-pkg.deps:
-    - "@mynewt-dw1000-core/hw/drivers/dw1000"
-    - "@apache-mynewt-core/encoding/json"
-        
-pkg.init:
-    cir_pkg_init: 405
+pkg.req_apis: 
+    - UWB_CIR_HW_IMPL

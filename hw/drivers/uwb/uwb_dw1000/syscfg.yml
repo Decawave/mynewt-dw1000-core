@@ -1,0 +1,107 @@
+
+syscfg.defs:
+    UWB_DW1000_API_CHECKS:
+        value: 1
+        description: >
+          Used to check that the UWB_DEV has been setup correctly
+          at compile time.
+        restrictions:
+          - '(UWB_DEV_RXDIAG_MAXLEN > 19)'
+    DW1000_HAL_SPI_BUFFER_SIZE:
+        description: >
+          Size of spi read/write buffer, sets the 
+          maximum allowed nonblocking read operation
+        value: 256
+    DW1000_DEVICE_SPI_RD_MAX_NOBLOCK:
+        description: >
+          Max size spi read in bytes that is always done with blocking io.
+          Reads longer than this value will be done with non-blocking io.
+        value: 9
+    DW1000_MAC_FILTERING:
+        description: 'Enable the mac filtering'
+        value: 0
+    DW1000_BIAS_CORRECTION_ENABLED:
+        description: 'Enable range bias correction polynomial'
+        value: 0
+    DW1000_DEVICE_TX_PWR:
+        description: 'Tx Power dBm'
+        value: ((float)-14.3f)
+    DW1000_DEVICE_ANT_GAIN:
+        description: 'Antenna Gain dB'
+        value: ((float)1.0f)
+    DW1000_RXTX_LEDS:
+        description: 'Enable showing rx and tx activity on gpios'
+        value: 1
+    DW1000_RXTX_GPIO:
+        description: 'Enable showing rx and tx activity on gpios'
+        value: 0
+    DW1000_RNG_INDICATE_LED:
+        description: 'Toggle LED_1 for every range packet received'
+        value: 0
+    DW1000_CLI:
+        description: 'Debug CLI interface'
+        value: 0
+    DW1000_MAC_STATS:
+        description: 'Enable stats for the dw1000 mac'
+        value: 1
+    LOCAL_COORDINATE_X:
+        description: >
+            Default Anchor X Coordinate  
+        value: ((float)0.0f)
+    LOCAL_COORDINATE_Y:
+        description: >
+            Default Anchor Y Coordinate  
+        value: ((float)0.0f)
+    LOCAL_COORDINATE_Z:
+        description: >
+            Default Anchor Z Coordinate  
+        value: ((float)0.0f)
+    RANGE_VARIANCE:
+        description: >
+            Range Measurement Variance 
+        value: ((float)5.4444e-04)
+    AZIMUTH_VARIANCE:
+        description: >
+            Azimuth Measurement Variance 
+        value: ((float)2.91e-2)
+    RANGE_PERIOD:
+        description: >
+            Ranging period
+        value: ((uint32_t)0x3000)
+    OS_LATENCY:
+        description: >
+            OS Latency Guardband (usec)
+        value: ((uint32_t)1000)
+    PANID:
+        description: >
+          Default Pan ID
+        value: ((const uint16_t)0xdeca)
+    DW_DEVICE_ID_0:
+        description: >
+          Default Device ID, defaults to last 16 bit of prodid if set to 0 here
+        value: 0
+    DW_DEVICE_ID_1:
+        description: >
+          Default Device ID, defaults to last 16 bit of prodid if set to 0 here
+        value: 0
+    DW_DEVICE_ID_2:
+        description: >
+          Default Device ID, defaults to last 16 bit of prodid if set to 0 here
+        value: 0
+    TIME_TO_RX_STABLE:
+        description: 'Idle to RX-RF-Block stable in us'
+        value:  ((uint64_t)6)
+
+# TODO: find a better solution than this:
+syscfg.defs.DW1000_DEVICE_0:
+    UWB_DEVICE_0:
+      value: 1
+
+syscfg.defs.DW1000_DEVICE_1:
+    UWB_DEVICE_1:
+      value: 1
+
+syscfg.defs.DW1000_DEVICE_2:
+    UWB_DEVICE_2:
+      value: 1
+

@@ -16,7 +16,7 @@ include(GNUInstallDirs)
 add_subdirectory(apps/syscfg)
 add_subdirectory(porting/dpl)
 add_subdirectory(porting/dpl_os)
-add_subdirectory(hw/drivers/dw1000)
+add_subdirectory(hw/drivers/uwb/uwb_dw1000)
 add_subdirectory(lib)
 
 if (CMAKE_BUILD_TYPE MATCHES "^[Rr]elease")

@@ -43,13 +43,13 @@
 #include <dw1000/dw1000_hal.h>
 #include <dw1000/dw1000_mac.h>
 #include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_ftypes.h>
+#include <uwb/uwb_ftypes.h>
 #include <rng/nrng.h>
-#if MYNEWT_VAL(WCS_ENABLED)
-#include <wcs/wcs.h>
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+#include <uwb_wcs/uwb_wcs.h>
 #endif
 #include <dsp/polyval.h>
-#include <rng/slots.h>
+#include <uwb_rng/slots.h>
 
 #define WCS_DTU MYNEWT_VAL(WCS_DTU)
 
@@ -58,12 +58,12 @@
 #define DIAGMSG(s,u)
 #endif
 
-static bool rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
-static bool rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *);
-static bool tx_final_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *cbs);
+static bool rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
+static bool tx_final_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbscbs);
 
-static dw1000_mac_interface_t g_cbs = {
-            .id = DW1000_NRNG_SS_EXT,
+static struct uwb_mac_interface g_cbs = {
+            .id = UWBEXT_NRNG_SS_EXT,
             .rx_complete_cb = rx_complete_cb,
             .rx_error_cb = rx_error_cb,
             .final_cb = tx_final_cb,
@@ -83,7 +83,7 @@ STATS_NAME_END(twr_ss_ext_nrng_stat_section)
 
 static STATS_SECT_DECL(twr_ss_ext_nrng_stat_section) g_stat;
 
-static dw1000_rng_config_t g_config = {
+static struct uwb_rng_config g_config = {
     .tx_holdoff_delay = MYNEWT_VAL(TWR_SS_EXT_NRNG_TX_HOLDOFF),         // Send Time delay in usec.
     .rx_timeout_delay = MYNEWT_VAL(TWR_SS_EXT_NRNG_RX_TIMEOUT),        // Receive response timeout in usec
     .tx_guard_delay = MYNEWT_VAL(TWR_SS_EXT_NRNG_TX_GUARD_DELAY)        // Guard delay to be added between each frame from node
@@ -101,13 +101,13 @@ static struct rng_config_list g_rng_cfgs = {
  * @return void
  */
 
-void twr_ss_ext_nrng_pkg_init(void){
-
+void twr_ss_ext_nrng_pkg_init(void)
+{
     printf("{\"utime\": %lu,\"msg\": \"ss_ext_nrng_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
-    dw1000_nrng_instance_t *nrng = (dw1000_nrng_instance_t*)dw1000_mac_find_cb_inst_ptr(hal_dw1000_inst(0), DW1000_NRNG);
+    struct nrng_instance *nrng = (struct nrng_instance*)uwb_mac_find_cb_inst_ptr(uwb_dev_idx_lookup(0), UWBEXT_NRNG);
     g_cbs.inst_ptr = nrng;
-    dw1000_mac_append_interface(hal_dw1000_inst(0), &g_cbs);
-    dw1000_nrng_append_config(nrng, &g_rng_cfgs);
+    uwb_mac_append_interface(uwb_dev_idx_lookup(0), &g_cbs);
+    nrng_append_config(nrng, &g_rng_cfgs);
 
     int rc = stats_init(
     STATS_HDR(g_stat),
@@ -120,14 +120,15 @@ void twr_ss_ext_nrng_pkg_init(void){
 /**
  * API to free the allocated resources.
  *
- * @param inst  Pointer to dw1000_rng_instance_t.
+ * @param inst  Pointer to struct uwb_rng_instance.
  *
  * @return void
  */
 void
-twr_ss_ext_nrng_free(dw1000_dev_instance_t * inst){
+twr_ss_ext_nrng_free(struct uwb_dev * inst)
+{
     assert(inst);
-    dw1000_mac_remove_interface(inst, DW1000_NRNG_SS_EXT);
+    uwb_mac_remove_interface(inst, UWBEXT_NRNG_SS_EXT);
 }
 
 /**
@@ -138,12 +139,12 @@ twr_ss_ext_nrng_free(dw1000_dev_instance_t * inst){
  * @return true on sucess
  */
 static bool
-rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
+rx_error_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs){
     /* Place holder */
     if(inst->fctrl != FCNTL_IEEE_RANGE_16){
         return false;
     }
-    dw1000_rng_instance_t * rng = inst->rng;
+    struct uwb_rng_instance * rng = inst->rng;
     if(os_sem_get_count(&rng->sem) == 0){
         STATS_INC(g_stat, rx_error);
         os_error_t err = os_sem_release(&rng->sem);
@@ -157,12 +158,12 @@ rx_error_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs){
 /**
  * API for receive complete callback.
  *
- * @param inst  Pointer to dw1000_dev_instance_t.
+ * @param inst  Pointer to struct uwb_dev.
  *
  * @return true on sucess
  */
 static bool
-rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
+rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 {
     if (inst->fctrl != FCNTL_IEEE_RANGE_16)
         return false;
@@ -170,9 +171,9 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
     if (os_sem_get_count(&inst->rng->sem) == 1) // unsolicited inbound
 	    return false;
     assert(inst->nrng);
-    dw1000_rng_instance_t * rng = inst->rng;
-    dw1000_nrng_instance_t * nrng = inst->nrng;
-    dw1000_rng_config_t * config = dw1000_nrng_get_config(inst, DWT_SS_TWR_NRNG_EXT);
+    struct uwb_rng_instance * rng = inst->rng;
+    struct nrng_instance * nrng = inst->nrng;
+    struct uwb_rng_config * config = nrng_get_config(inst, DWT_SS_TWR_NRNG_EXT);
     uint16_t slot_idx;
 
     switch(rng->code){
@@ -207,11 +208,11 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 uint64_t response_tx_delay = request_timestamp
                             + (((uint64_t)config->tx_holdoff_delay
                             + (uint64_t)(slot_idx * ((uint64_t)config->tx_guard_delay
-                            + (uint64_t)(dw1000_usecs_to_dwt_usecs(dw1000_phy_frame_duration(&inst->attrib, sizeof(nrng_frame_t)))))))<< 16);
+                            + (uint64_t)(uwb_usecs_to_dwt_usecs(uwb_phy_frame_duration(inst, sizeof(nrng_frame_t)))))))<< 16);
                 uint64_t response_timestamp = (response_tx_delay & 0xFFFFFFFE00UL) + inst->tx_antenna_delay;
 
-#if MYNEWT_VAL(WCS_ENABLED)
-                wcs_instance_t * wcs = inst->ccp->wcs;
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+                struct uwb_wcs_instance * wcs = inst->ccp->wcs;
                 frame->reception_timestamp = (uint32_t)(wcs_local_to_master(wcs, request_timestamp)) & 0xFFFFFFFFULL;
                 frame->transmission_timestamp = (uint32_t)(wcs_local_to_master(wcs, response_timestamp)) & 0xFFFFFFFFULL;
 #else
@@ -223,7 +224,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->code = DWT_SS_TWR_NRNG_EXT_T1;
                 frame->slot_id = slot_idx;
 
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = - inst->carrier_integrator;
@@ -232,12 +233,12 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 if (cbs!=NULL && cbs->final_cb)
                     cbs->final_cb(inst, cbs);
 
-                dw1000_write_tx(inst, frame->array, 0, sizeof(nrng_frame_t));
-                dw1000_write_tx_fctrl(inst, sizeof(nrng_frame_t), 0);
-                dw1000_set_wait4resp(inst, false);
-                dw1000_set_delay_start(inst, response_tx_delay);
+                uwb_write_tx(inst, frame->array, 0, sizeof(nrng_frame_t));
+                uwb_write_tx_fctrl(inst, sizeof(nrng_frame_t), 0);
+                uwb_set_wait4resp(inst, false);
+                uwb_set_delay_start(inst, response_tx_delay);
 
-                if (dw1000_start_tx(inst).start_tx_error){
+                if (uwb_start_tx(inst).start_tx_error){
                     os_sem_release(&rng->sem);
                     if (cbs!=NULL && cbs->start_tx_error_cb)
                         cbs->start_tx_error_cb(inst, cbs);
@@ -262,7 +263,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                     break;
 
                 if(idx < nrng->nnodes && inst->config.rxauto_enable == 0)
-                    dw1000_start_rx(inst);
+                    uwb_start_rx(inst);
                 nrng_frame_t * frame = nrng->frames[(nrng->idx + idx)%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
                 memcpy(frame, inst->rxbuf, sizeof(nrng_frame_t));
 
@@ -270,8 +271,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 if (inst->status.lde_error == 0)
                    response_timestamp = inst->rxtimestamp;
 
-#if MYNEWT_VAL(WCS_ENABLED)
-                wcs_instance_t * wcs = inst->ccp->wcs;
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
+                struct uwb_wcs_instance * wcs = inst->ccp->wcs;
                 frame->request_timestamp = wcs_local_to_master(wcs, dw1000_read_txtime(inst)) & 0xFFFFFFFFULL;
                 frame->response_timestamp = wcs_local_to_master(wcs, response_timestamp) & 0xFFFFFFFFULL;
 #else
@@ -281,7 +282,7 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
                 frame->dst_address = frame->src_address;
                 frame->src_address = inst->my_short_address;
                 frame->code = DWT_SS_TWR_NRNG_EXT_FINAL;
-#if MYNEWT_VAL(WCS_ENABLED)
+#if MYNEWT_VAL(UWB_WCS_ENABLED)
                 frame->carrier_integrator  = 0.0l;
 #else
                 frame->carrier_integrator  = inst->carrier_integrator;
@@ -296,8 +297,8 @@ rx_complete_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t * cbs)
 }
 
 static bool
-tx_final_cb(dw1000_dev_instance_t * inst, dw1000_mac_interface_t *cbs){
-    dw1000_nrng_instance_t * nrng = inst->nrng;
+tx_final_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbscbs){
+    struct nrng_instance * nrng = inst->nrng;
     nrng_frame_t * frame = nrng->frames[nrng->idx%(nrng->nframes/FRAMES_PER_RANGE)][FIRST_FRAME_IDX];
 
     frame->cartesian.x = MYNEWT_VAL(LOCAL_COORDINATE_X);

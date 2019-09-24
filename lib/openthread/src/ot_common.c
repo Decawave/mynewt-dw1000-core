@@ -1,8 +1,7 @@
 #include <stdlib.h>
 
 #include "sysinit/sysinit.h"
-#include <dw1000/dw1000_mac.h>
-#include <dw1000/dw1000_hal.h>
+#include <uwb/uwb.h>
 #include "console/console.h"
 
 #include <openthread/platform/logging.h>
@@ -24,7 +23,7 @@ static bool taskletprocess = false;
 
 ot_instance_t * ot_global_inst;
 
-void PlatformInit(struct _dw1000_dev_instance_t* inst){
+void PlatformInit(struct uwb_dev* inst){
 	inst->config.rx.phrMode = DWT_PHRMODE_EXT;
 	sysinit();
     return ;
@@ -207,22 +206,22 @@ ot_pkg_init(void){
 
     printf("{\"utime\": %lu,\"msg\": \"ot_pkg_init\"}\n",os_cputime_ticks_to_usecs(os_cputime_get32()));
 
-#if MYNEWT_VAL(DW1000_DEVICE_0)
-    ot_init(hal_dw1000_inst(0));
+#if MYNEWT_VAL(UWB_DEVICE_0)
+    ot_init(uwb_dev_idx_lookup(0));
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_1)
-    ot_init(hal_dw1000_inst(1));
+#if MYNEWT_VAL(UWB_DEVICE_1)
+    ot_init(uwb_dev_idx_lookup(1));
 #endif
-#if MYNEWT_VAL(DW1000_DEVICE_2)
-    ot_init(hal_dw1000_inst(2));
+#if MYNEWT_VAL(UWB_DEVICE_2)
+    ot_init(uwb_dev_idx_lookup(2));
 #endif
 }
 
 ot_instance_t *
-ot_init(dw1000_dev_instance_t * inst){
+ot_init(struct uwb_dev * inst){
 
 	assert(inst);
-    ot_instance_t *ot = (ot_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_OT);
+    ot_instance_t *ot = (ot_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_OT);
 
 	if (ot == NULL ){
 		ot  = (ot_instance_t *) malloc(sizeof(ot_instance_t));
@@ -245,15 +244,15 @@ ot_init(dw1000_dev_instance_t * inst){
             ot->task_prio,
             OS_WAIT_FOREVER,
             ot->task_stack,
-            DW1000_DEV_TASK_STACK_SZ * 4);
+            UWB_DEV_TASK_STACK_SZ * 4);
     os_callout_init(&task_callout, &ot->eventq, tasklet_sched , (void*)ot);
     RadioInit(ot);
 
     return ot;
 }
 
-void ot_post_init(dw1000_dev_instance_t* inst, otInstance *aInstance){
-    ot_instance_t *ot = (ot_instance_t*)dw1000_mac_find_cb_inst_ptr(inst, DW1000_OT);
+void ot_post_init(struct uwb_dev* inst, otInstance *aInstance){
+    ot_instance_t *ot = (ot_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_OT);
     assert(ot);
     ot_global_inst = ot;
     ot->sInstance = aInstance;
