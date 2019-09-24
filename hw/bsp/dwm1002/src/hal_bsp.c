@@ -414,7 +414,7 @@ static struct uwb_dev_status
 hal_bsp_dw_clk_sync(struct uwb_dev * dev)
 {
 #if !MYNEWT_VAL(DW1000_DEVICE_0) || !MYNEWT_VAL(DW1000_DEVICE_1)
-    return;
+    return dev->status;
 #endif
     int n=2;
     dw1000_dev_instance_t * inst[2];
