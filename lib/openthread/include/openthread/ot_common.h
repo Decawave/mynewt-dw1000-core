@@ -40,6 +40,7 @@ extern "C" {
 #endif
 
 #include <hal/hal_spi.h>
+#include <uwb/uwb.h>
 #include <uwb/uwb_ftypes.h>
 
 #include <openthread/instance.h>
@@ -66,7 +67,7 @@ typedef struct _ot_instance_t{
     otInstance *sInstance;                             //!< Instance to OT stack
     ot_status_t status;                                //!< OT error status
     struct os_eventq eventq;                           //!< Structure of os events
-    os_stack_t task_stack[DW1000_DEV_TASK_STACK_SZ * 4]    //!< Stack size of each task
+    os_stack_t task_stack[UWB_DEV_TASK_STACK_SZ * 4]    //!< Stack size of each task
         __attribute__((aligned(OS_STACK_ALIGNMENT)));
     uint8_t task_prio;                                 //!< Task priority
     struct os_task task_str;                           //!< Structure for task

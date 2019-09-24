@@ -5,12 +5,9 @@
 #include "console/console.h"
 
 #include "openthread/ot_common.h"
-//#include <openthread/types.h>
 #include <openthread/platform/uart.h>
 #include <openthread/platform/diag.h>
-//#include <openthread/platform/platform.h>
 #include <openthread/platform/alarm-milli.h>
-//#include <openthread/platform/usec-alarm.h>
 #include <openthread/platform/logging.h>
 #include <openthread/platform/radio.h>
 
@@ -28,7 +25,7 @@ static bool gPromiscuous = false;
 static bool gTransmitdone = false;
 static bool gReceivedone = false;
 static uint8_t gChannel = 0;
-static struct os_event uwb_event;
+static struct os_event uwb_event = {0};
 static ot_instance_t *g_ot_inst;
 
 static bool rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs);
@@ -73,7 +70,7 @@ void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aA
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
 #endif
-    uwb_set_eui(g_ot_inst->dev_inst, *((uint64_t *)aAddress->m8));
+    uwb_set_euid(g_ot_inst->dev_inst, *((uint64_t *)aAddress->m8));
     (void)aInstance;
 }
 
@@ -200,7 +197,6 @@ bool otPlatRadioIsEnabled(otInstance *aInstance)
 {
     (void)aInstance;
 
-	printf("# %s #\n",__func__);
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
 #endif
@@ -304,7 +300,8 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 }
 
 static bool 
-rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs){
+rx_timeout_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
+{
 	return true;
 }
 
@@ -320,8 +317,8 @@ tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
 
 otError otPlatRadioEnergyScan(otInstance *aInstance,
                               uint8_t aScanChannel,
-                              uint16_t aScanDuration){
-
+                              uint16_t aScanDuration)
+{
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
 #endif
@@ -332,8 +329,8 @@ otError otPlatRadioEnergyScan(otInstance *aInstance,
     return OT_ERROR_NOT_IMPLEMENTED;
 }
 
-otRadioCaps otPlatRadioGetCaps(otInstance *aInstance){
-
+otRadioCaps otPlatRadioGetCaps(otInstance *aInstance)
+{
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
 #endif
@@ -342,8 +339,8 @@ otRadioCaps otPlatRadioGetCaps(otInstance *aInstance){
     return OT_RADIO_CAPS_NONE;
 }
 
-void uwb_auto_pending_bit_set(bool enabled){
-
+void uwb_auto_pending_bit_set(bool enabled)
+{
 #if MYNEWT_VAL(OT_DEBUG)
 	printf("# %s #\n",__func__);
 #endif

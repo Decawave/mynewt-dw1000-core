@@ -2,6 +2,7 @@
 
 #include "sysinit/sysinit.h"
 #include <uwb/uwb.h>
+#include <uwb/uwb_mac.h>
 #include "console/console.h"
 
 #include <openthread/platform/logging.h>
@@ -18,21 +19,21 @@
 
 void __cxa_pure_virtual() { while (1); }
 
-struct os_callout task_callout;
+static struct os_callout otc_task_callout;
 static bool taskletprocess = false;
 
 ot_instance_t * ot_global_inst;
 
 void PlatformInit(struct uwb_dev* inst){
-	inst->config.rx.phrMode = DWT_PHRMODE_EXT;
-	sysinit();
+    inst->config.rx.phrMode = DWT_PHRMODE_EXT;
+    sysinit();
     return ;
 }
 
 otError otPlatRandomGetTrue(uint8_t *aOutput, uint16_t aOutputLength){
 
 #if MYNEWT_VAL(OT_DEBUG)
-	printf("# %s #\n",__func__);
+    printf("# %s #\n",__func__);
 #endif
     otError error = OT_ERROR_NONE;
 
@@ -65,7 +66,7 @@ uint32_t utilsFlashGetSize(void){
 uint32_t utilsFlashWrite(uint32_t aAddress, uint8_t *aData, uint32_t aSize){
 
 #if MYNEWT_VAL(OT_DEBUG)
-    printf("# %s #\n",__func__);
+    printf("# %s : 0x%lX #\n",__func__, aAddress);
 #endif
     const struct flash_area *fa;
     int area_id = OT_FLASH_AREA_ID;
@@ -107,7 +108,7 @@ uint32_t utilsFlashRead(uint32_t aAddress, uint8_t *aData, uint32_t aSize){
 otError utilsFlashInit(void){
  
 #if MYNEWT_VAL(OT_DEBUG)
-	printf("# %s #\n",__func__);
+    printf("# %s #\n",__func__);
 #endif
     return OT_ERROR_NONE;
 }
@@ -117,7 +118,7 @@ otError utilsFlashStatusWait(uint32_t aTimeout){
     otError error = OT_ERROR_NONE;
 
 #if MYNEWT_VAL(OT_DEBUG)
-	printf("# %s #\n",__func__);
+    printf("# %s #\n",__func__);
 #endif
     return error;
 }
@@ -145,7 +146,7 @@ otError utilsFlashErasePage(uint32_t aAddress){
 void otPlatReset(otInstance *aInstance){
 
 #if MYNEWT_VAL(OT_DEBUG)
-	printf("# %s #\n",__func__);
+    printf("# %s #\n",__func__);
 #endif
     (void)aInstance;
     hal_system_reset();
@@ -155,13 +156,14 @@ void otPlatRadioSetDefaultTxPower(otInstance *aInstance, int8_t aPower){
 
     // TBD for Setting Default transmit power
 #if MYNEWT_VAL(OT_DEBUG)
-	printf("# %s #\n",__func__);
+    printf("# %s #\n",__func__);
 #endif
     (void)aInstance;
     (void)aPower;
 }
 
-static void tasklet_sched(struct os_event* ev){
+static void tasklet_sched(struct os_event* ev)
+{
     ot_instance_t* ot = (ot_instance_t*)ev->ev_arg;
     otInstance* aInstance = ot->sInstance;
     if(taskletprocess == true){
@@ -172,7 +174,7 @@ static void tasklet_sched(struct os_event* ev){
         else
         {
             taskletprocess = true;
-            os_callout_reset(&task_callout,OS_TICKS_PER_SEC/32);
+            os_callout_reset(&otc_task_callout,OS_TICKS_PER_SEC/32);
         }
     }
 }
@@ -181,14 +183,14 @@ void otTaskletsSignalPending(otInstance *aInstance)
 {
     taskletprocess = true;
     if(ot_global_inst->status.initialized == 1)
-        os_eventq_put(&ot_global_inst->eventq, &task_callout.c_ev);
+        os_eventq_put(&ot_global_inst->eventq, &otc_task_callout.c_ev);
     else{
         if(otTaskletsArePending(aInstance))
             otTaskletsProcess(aInstance);
         else
         {
             ot_global_inst->sInstance = aInstance;
-            os_callout_reset(&task_callout,OS_TICKS_PER_SEC/32);
+            os_callout_reset(&otc_task_callout,OS_TICKS_PER_SEC/32);
         }
     }
 }
@@ -218,23 +220,22 @@ ot_pkg_init(void){
 }
 
 ot_instance_t *
-ot_init(struct uwb_dev * inst){
-
-	assert(inst);
+ot_init(struct uwb_dev * inst)
+{
+    assert(inst);
     ot_instance_t *ot = (ot_instance_t*)uwb_mac_find_cb_inst_ptr(inst, UWBEXT_OT);
 
-	if (ot == NULL ){
-		ot  = (ot_instance_t *) malloc(sizeof(ot_instance_t));
-		assert(ot);
+    if (ot == NULL){
+        ot  = (ot_instance_t *) malloc(sizeof(ot_instance_t));
+        assert(ot);
         memset(ot, 0x00, sizeof(ot_instance_t));
         ot->status.selfmalloc = 1;
-	}
-	ot->dev_inst = inst;
+    }
+    ot->dev_inst = inst;
     ot->task_prio = inst->task_prio + 0x7;
 
-	os_error_t err = os_sem_init(&ot->sem, 0x01);
-	assert(err == OS_OK);
-	
+    os_error_t err = os_sem_init(&ot->sem, 0x01);
+    assert(err == OS_OK);
     ot_global_inst = ot;
 
     os_eventq_init(&ot->eventq);
@@ -244,8 +245,8 @@ ot_init(struct uwb_dev * inst){
             ot->task_prio,
             OS_WAIT_FOREVER,
             ot->task_stack,
-            UWB_DEV_TASK_STACK_SZ * 4);
-    os_callout_init(&task_callout, &ot->eventq, tasklet_sched , (void*)ot);
+            sizeof(ot->task_stack)/sizeof(ot->task_stack[0]));
+    os_callout_init(&otc_task_callout, &ot->eventq, tasklet_sched , (void*)ot);
     RadioInit(ot);
 
     return ot;
