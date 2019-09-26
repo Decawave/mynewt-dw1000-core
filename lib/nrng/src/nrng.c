@@ -27,8 +27,6 @@
 
 #include <uwb/uwb.h>
 #include <uwb/uwb_ftypes.h>
-#include <dw1000/dw1000_hal.h>
-#include <dw1000/dw1000_mac.h>
 #include <nrng/nrng.h>
 #include <uwb_rng/uwb_rng.h>
 #if MYNEWT_VAL(UWB_WCS_ENABLED)

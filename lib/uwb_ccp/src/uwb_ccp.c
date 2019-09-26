@@ -38,7 +38,6 @@
 
 #include <uwb/uwb.h>
 #include <uwb/uwb_ftypes.h>
-#include <dw1000/dw1000_hal.h>
 #include <uwb_ccp/uwb_ccp.h>
 #if MYNEWT_VAL(UWB_WCS_ENABLED)
 #include <uwb_wcs/uwb_wcs.h>
@@ -744,7 +743,7 @@ tx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
     if (ccp->status.timer_enabled){
         os_cputime_timer_start(&ccp->timer, ccp->os_epoch
             - os_cputime_usecs_to_ticks(MYNEWT_VAL(OS_LATENCY))
-            + os_cputime_usecs_to_ticks(dw1000_dwt_usecs_to_usecs(ccp->period))
+            + os_cputime_usecs_to_ticks(uwb_dwt_usecs_to_usecs(ccp->period))
         );
     }
     ccp->status.valid |= ccp->idx > 1;

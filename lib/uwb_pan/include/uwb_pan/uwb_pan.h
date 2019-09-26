@@ -39,10 +39,8 @@
 extern "C" {
 #endif
 
-#include <hal/hal_spi.h>
+#include <uwb/uwb.h>
 #include <uwb/uwb_ftypes.h>
-#include <dw1000/dw1000_regs.h>
-#include <dw1000/dw1000_dev.h>
 #if MYNEWT_VAL(UWB_PAN_VERSION_ENABLED)
 #include <bootutil/image.h>
 #endif

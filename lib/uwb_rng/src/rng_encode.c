@@ -25,7 +25,6 @@
 #include <math.h>
 #include <json/json.h>
 #include <uwb_rng/uwb_rng.h>
-#include <dw1000/dw1000_mac.h>
 #include <uwb_rng/rng_encode.h>
 
 #if MYNEWT_VAL(UWB_WCS_ENABLED)

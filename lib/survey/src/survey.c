@@ -40,9 +40,6 @@
 #include <hal/hal_gpio.h>
 #include <stats/stats.h>
 
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_phy.h>
-#include <dw1000/dw1000_hal.h>
 #if MYNEWT_VAL(SURVEY_ENABLED)
 #include <survey/survey.h>
 #endif

@@ -43,7 +43,6 @@ extern "C" {
 #include <dpl/dpl.h>
 #include <uwb/uwb.h>
 #include <uwb/uwb_ftypes.h>
-#include <dw1000/dw1000_dev.h>
 #include <euclid/triad.h>
 #include <stats/stats.h>
 #include <uwb_rng/slots.h>
@@ -219,4 +218,4 @@ void uwb_rng_remove_config(struct uwb_rng_instance * rng, uwb_rng_modes_t code);
 }
 #endif
 
-#endif /* _DW1000_RNG_H_ */
+#endif /* _UWB_RNG_H_ */

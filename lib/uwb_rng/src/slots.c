@@ -32,7 +32,6 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
-#include <dw1000/dw1000_dev.h>
 #include <uwb_rng/slots.h>
 
 /**

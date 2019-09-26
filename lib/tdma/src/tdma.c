@@ -37,8 +37,7 @@
 #include "os/os.h"
 #include "os/queue.h"
 
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_hal.h>
+#include <uwb/uwb.h>
 #include <tdma/tdma.h>
 
 #if MYNEWT_VAL(UWB_CCP_ENABLED)

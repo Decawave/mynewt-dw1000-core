@@ -20,15 +20,15 @@
  */
 
 /**
- * @file dw1000_tdma.h
+ * @file tdma.h
  * @author paul kettle
  * @date 2018
  * @brief TDMA
  *
  * @details  This is the base class of tdma which initialises tdma instance, assigns slots for each node and does ranging continuously based on * addresses.
  */
-#ifndef _DW1000_TDMA_H_
-#define _DW1000_TDMA_H_
+#ifndef _TDMA_H_
+#define _TDMA_H_
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -40,8 +40,6 @@ extern "C" {
 #include <stats/stats.h>
 #include <uwb/uwb.h>
 #include <uwb/uwb_ftypes.h>
-#include <dw1000/dw1000_dev.h>
-#include <dw1000/dw1000_phy.h>
 #include <os/os.h>
 #include <uwb_ccp/uwb_ccp.h>
 
@@ -114,4 +112,4 @@ uint64_t tdma_rx_slot_start(struct _tdma_instance_t * tdma, float idx);
 }
 #endif
 
-#endif //_DW1000_TDMA_H_
+#endif //_TDMA_H_

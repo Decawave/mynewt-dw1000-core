@@ -24,7 +24,6 @@
 #include <stdio.h>
 #include <uwb_rng/uwb_rng.h>
 #include <json/json.h>
-#include <dw1000/dw1000_mac.h>
 #include <nrng/nrng_encode.h>
 #include <survey/survey_encode.h>
 

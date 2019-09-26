@@ -46,7 +46,6 @@
 #include <uwb/uwb.h>
 #include <uwb_ccp/uwb_ccp.h>
 #include <uwb_wcs/uwb_wcs.h>
-#include <dw1000/dw1000_mac.h>
 #include <timescale/timescale.h>
 
 #if MYNEWT_VAL(UWB_WCS_ENABLED)

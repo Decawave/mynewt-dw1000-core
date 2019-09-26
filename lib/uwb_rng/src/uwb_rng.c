@@ -39,9 +39,7 @@
 #include <stats/stats.h>
 
 #include <uwb/uwb.h>
-#include <dw1000/dw1000_hal.h>
-//#include <uwb/uwb_ftypes.h>
-//#include <dw1000/dw1000_stats.h>
+#include <uwb/uwb_mac.h>
 #include <dsp/polyval.h>
 
 #if MYNEWT_VAL(UWB_RNG_ENABLED)
