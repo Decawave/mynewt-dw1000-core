@@ -42,6 +42,13 @@ extern "C" {
 #define DWT_PLEN_256    0x24    //! Non-standard preamble length 256 symbols
 #define DWT_PLEN_128    0x14    //! Non-standard preamble length 128 symbols
 #define DWT_PLEN_64     0x04    //! Standard preamble length 64 symbols
+#define DWT_PLEN_32     0x00    //! When setting length 32 symbols this is 0x0,  which is programmed to byte 2 of the TX_FCTRL register
+
+//! constants for specifying the (Nominal) mean Pulse Repetition Frequency.
+//! These are defined for direct write (with a shift if necessary) to CHAN_CTRL and TX_FCTRL regs.
+#define DWT_PRF_16M     1   //!< UWB PRF 16 MHz
+#define DWT_PRF_64M     2   //!< UWB PRF 64 MHz
+#define DWT_PRF_SCP     3   //!< SCP UWB PRF ~100 MHz
 
 #define DWT_SFDTOC_DEF  0x1041  //!< Default SFD timeout value
 #define DWT_PHRMODE_STD 0x0     //!< standard PHR mode
@@ -63,15 +70,6 @@ extern "C" {
 #define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_4     (-1.0e6/4492.8e6)
 #define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_5     (-1.0e6/6489.6e6)
 #define DWT_HZ_TO_PPM_MULTIPLIER_CHAN_7     (-1.0e6/6489.6e6)
-
-//! Frame filtering configuration options.
-#define DWT_FF_NOTYPE_EN            0x000           //!< No frame types allowed (FF disabled)
-#define DWT_FF_COORD_EN             0x002           //!< Behave as coordinator (can receive frames with no dest address (PAN ID has to match))
-#define DWT_FF_BEACON_EN            0x004           //!< Beacon frames allowed
-#define DWT_FF_DATA_EN              0x008           //!< Data frames allowed
-#define DWT_FF_ACK_EN               0x010           //!< Ack frames allowed
-#define DWT_FF_MAC_EN               0x020           //!< MAC control frames allowed
-#define DWT_FF_RSVD_EN              0x040           //!< Reserved frame types allowed
 
 #ifdef __cplusplus
 }

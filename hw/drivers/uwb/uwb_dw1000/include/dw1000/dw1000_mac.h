@@ -39,6 +39,7 @@
 extern "C" {
 #endif
 
+#include <uwb/uwb_mac.h>
 #include <hal/hal_spi.h>
 #include <stats/stats.h>
 #include <dw1000/dw1000_dev.h>
@@ -61,18 +62,6 @@ extern "C" {
 #define DWT_PAC16       1   //!< PAC 16 (recommended for RX of preamble length  256
 #define DWT_PAC32       2   //!< PAC 32 (recommended for RX of preamble length  512
 #define DWT_PAC64       3   //!< PAC 64 (recommended for RX of preamble length 1024 and up
-
-//! constants for specifying TX Preamble length in symbols.
-//! These are defined to allow them be directly written into byte 2 of the TX_FCTRL register.
-//! (i.e. a four bit value destined for bits 20..18 but shifted left by 2 for byte alignment)
-#define DWT_PLEN_4096   0x0C    //! Standard preamble length 4096 symbols
-#define DWT_PLEN_2048   0x28    //! Non-standard preamble length 2048 symbols
-#define DWT_PLEN_1536   0x18    //! Non-standard preamble length 1536 symbols
-#define DWT_PLEN_1024   0x08    //! Standard preamble length 1024 symbols
-#define DWT_PLEN_512    0x34    //! Non-standard preamble length 512 symbols
-#define DWT_PLEN_256    0x24    //! Non-standard preamble length 256 symbols
-#define DWT_PLEN_128    0x14    //! Non-standard preamble length 128 symbols
-#define DWT_PLEN_64     0x04    //! Standard preamble length 64 symbols
 
 #define DWT_SFDTOC_DEF              0x1041  //!< Default SFD timeout value
 #define DWT_PHRMODE_STD             0x0     //!< standard PHR mode
