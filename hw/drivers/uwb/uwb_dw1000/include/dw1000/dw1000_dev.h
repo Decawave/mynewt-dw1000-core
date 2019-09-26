@@ -143,7 +143,6 @@ struct dw1000_dev_cfg {
     int spi_num;                                    //!< SPI number
 };
 
-typedef void (* dw1000_dev_cb_t)(dw1000_dev_instance_t * inst);
 int dw1000_dev_init(struct os_dev *odev, void *arg);
 int dw1000_dev_config(dw1000_dev_instance_t * inst);
 void dw1000_softreset(dw1000_dev_instance_t * inst);

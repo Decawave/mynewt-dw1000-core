@@ -132,18 +132,6 @@ extern "C" {
 #define MAC_FTYPE_ACK     0x2         //!<  MAC frame format - ACK parameter selection
 #define MAC_FTYPE_COMMAND 0x3         //!<  MAC frame format - COMMAND parameter selection
 
-
-//! Callback data of mac.
-typedef struct _dw1000_mac_cb_data_t {
-    uint32_t status;      //!< Initial value of register as ISR is entered
-    uint16_t datalength;  //!< Length of frame
-    uint8_t  fctrl[2];    //!< Frame control bytes
-    uint8_t  rx_flags;    //!< RX frame flags
-} dw1000_mac_cb_data_t;
-
-//! Callback type for all events.
-typedef void (*dw1000_mac_cb_t)(struct _dw1000_dev_instance_t * inst, const dw1000_mac_cb_data_t *);
-
 //! Mac device parameters.
 typedef struct _dw1000_mac_deviceentcnts_t{
     uint16_t PHE ;                    //!< Number of received header errors
@@ -180,7 +168,6 @@ struct uwb_dev_status dw1000_sync_rxbufptrs(struct _dw1000_dev_instance_t * inst
 struct uwb_dev_status dw1000_read_accdata(struct _dw1000_dev_instance_t * inst, uint8_t *buffer, uint16_t len, uint16_t accOffset);
 struct uwb_dev_status dw1000_enable_autoack(struct _dw1000_dev_instance_t * inst, uint8_t delay);
 struct uwb_dev_status dw1000_set_dblrxbuff(struct _dw1000_dev_instance_t * inst, bool flag);
-void dw1000_set_callbacks(struct _dw1000_dev_instance_t * inst, dw1000_dev_cb_t cb_TxDone, dw1000_dev_cb_t cb_RxOk, dw1000_dev_cb_t cb_RxTo, dw1000_dev_cb_t cb_RxErr);
 struct uwb_dev_status dw1000_set_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout);
 struct uwb_dev_status dw1000_adj_rx_timeout(struct _dw1000_dev_instance_t * inst, uint16_t timeout);
 
