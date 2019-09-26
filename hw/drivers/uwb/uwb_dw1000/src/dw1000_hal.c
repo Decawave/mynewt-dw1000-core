@@ -309,8 +309,14 @@ hal_dw1000_read(struct _dw1000_dev_instance_t * inst,
     hal_gpio_write(inst->ss_pin, 0);
 
     hal_spi_txrx(inst->spi_num, (void*)cmd, 0, cmd_size);
-    for(uint16_t i = 0; i < length; i++)
-        buffer[i] = hal_spi_tx_val(inst->spi_num, 0);
+    int step = (MYNEWT_VAL(DW1000_HAL_SPI_BUFFER_SIZE) > 255) ? 255 :
+        MYNEWT_VAL(DW1000_HAL_SPI_BUFFER_SIZE);
+    int bytes_left = length;
+    for (int offset = 0;offset<length;offset+=step) {
+        int bytes_to_read = (bytes_left > step) ? step : bytes_left;
+        bytes_left-=bytes_to_read;
+        hal_spi_txrx(inst->spi_num, (void*)tx_buffer, buffer+offset, bytes_to_read);
+    }
 
     hal_gpio_write(inst->ss_pin, 1);
 
@@ -433,7 +439,9 @@ hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint
     hal_gpio_write(inst->ss_pin, 0);
 
     hal_spi_txrx(inst->spi_num, (void*)cmd, 0, cmd_size);
-    hal_spi_txrx(inst->spi_num, (void*)buffer, 0, length);
+    if (length) {
+        hal_spi_txrx(inst->spi_num, (void*)buffer, 0, length);
+    }
      
     hal_gpio_write(inst->ss_pin, 1);
 
