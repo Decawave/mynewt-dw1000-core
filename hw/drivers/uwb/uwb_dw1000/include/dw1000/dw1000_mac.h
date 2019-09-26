@@ -52,11 +52,6 @@ extern "C" {
 #define DWT_BR_850K     1   //!< UWB bit rate 850 kbits/s
 #define DWT_BR_6M8      2   //!< UWB bit rate 6.8 Mbits/s
 
-//! constants for specifying the (Nominal) mean Pulse Repetition Frequency.
-//! These are defined for direct write (with a shift if necessary) to CHAN_CTRL and TX_FCTRL regs.
-#define DWT_PRF_16M     1   //!< UWB PRF 16 MHz
-#define DWT_PRF_64M     2   //!< UWB PRF 64 MHz
-
 //! constants for specifying Preamble Acquisition Chunk (PAC) Size in symbols.
 #define DWT_PAC8        0   //!< PAC  8 (recommended for RX of preamble length  128 and below
 #define DWT_PAC16       1   //!< PAC 16 (recommended for RX of preamble length  256
