@@ -119,7 +119,7 @@ struct stm32_hal_spi_cfg os_bsp_spi0m_cfg = {
     .mosi_pin = MCU_GPIO_PORTB(5),
     .irq_prio = 2,
 };
-struct os_sem g_spi0_sem;
+struct dpl_sem g_spi0_sem;
 #endif
 
 #if MYNEWT_VAL(ETH_0)
