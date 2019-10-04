@@ -68,7 +68,7 @@ static struct shell_cmd shell_dw1000_cmd = {
     .sc_cmd = "dw1000",
     .sc_cmd_func = dw1000_cli_cmd,
 #if MYNEWT_VAL(SHELL_CMD_HELP)
-    &cmd_dw1000_help
+    .help = &cmd_dw1000_help
 #endif
 };
 
