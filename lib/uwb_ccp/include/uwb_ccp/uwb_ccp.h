@@ -183,6 +183,7 @@ struct uwb_ccp_instance {
     struct dpl_event timer_event;                   //!< Event callback
     struct dpl_task task_str;                       //!< Task structure  
     uint8_t task_prio;                              //!< Priority based task
+    uint16_t blink_frame_duration;                  //!< CCP blink duration in uus
     dpl_stack_t task_stack[MYNEWT_VAL(UWB_CCP_TASK_STACK_SZ)]
         __attribute__((aligned(DPL_STACK_ALIGNMENT))); //!< Task stack size
     uwb_ccp_frame_t * frames[];                          //!< Buffers to uwb_ccp frames

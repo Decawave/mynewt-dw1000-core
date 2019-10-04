@@ -208,11 +208,16 @@ ccp_master_timer_ev_cb(struct dpl_event *ev)
 static void
 ccp_slave_timer_ev_cb(struct dpl_event *ev)
 {
+    uint64_t dx_time = 0;
     assert(ev != NULL);
     assert(dpl_event_get_arg(ev));
 
     struct uwb_ccp_instance * ccp = (struct uwb_ccp_instance *) dpl_event_get_arg(ev);
     struct uwb_dev * inst = ccp->dev_inst;
+
+    /* Precalc / update blink frame duration */
+    ccp->blink_frame_duration = uwb_phy_frame_duration(inst, sizeof(uwb_ccp_blink_frame_t));
+
 
     /* Sync lost since earlier, just set a long rx timeout and
      * keep listening */
@@ -225,21 +230,20 @@ ccp_slave_timer_ev_cb(struct dpl_event *ev)
     CCP_STATS_INC(slave_cnt);
 #if MYNEWT_VAL(UWB_WCS_ENABLED)
     struct uwb_wcs_instance * wcs = ccp->wcs;
-    uint64_t dx_time = ccp->local_epoch +
+    dx_time = ccp->local_epoch +
         (uint64_t) roundf((1.0l + wcs->skew) * (double)((uint64_t)ccp->period << 16)) -
         ((uint64_t)ceilf(uwb_usecs_to_dwt_usecs(uwb_phy_SHR_duration(inst))) << 16);
 #else
-    uint64_t dx_time = ccp->local_epoch 
-             + ((uint64_t)ccp->period << 16)
-             - ((uint64_t)ceilf(uwb_usecs_to_dwt_usecs(uwb_phy_SHR_duration(inst))) << 16);
+    dx_time = ccp->local_epoch
+        + ((uint64_t)ccp->period << 16)
+        - ((uint64_t)ceilf(uwb_usecs_to_dwt_usecs(uwb_phy_SHR_duration(inst))) << 16);
 #endif
 
-    uint16_t timeout = uwb_phy_frame_duration(inst, sizeof(uwb_ccp_blink_frame_t))
-                        + MYNEWT_VAL(XTALT_GUARD);
+    uint16_t timeout = ccp->blink_frame_duration + MYNEWT_VAL(XTALT_GUARD);
 
-#if MYNEWT_VAL(CCP_MAX_CASCADE_RPTS) != 0
+#if MYNEWT_VAL(UWB_CCP_MAX_CASCADE_RPTS) != 0
     /* Adjust timeout if we're using cascading ccp in anchors */
-    timeout += (ccp->config.tx_holdoff_dly + uwb_phy_frame_duration(inst, sizeof(uwb_ccp_blink_frame_t))) * MYNEWT_VAL(CCP_MAX_CASCADE_RPTS);
+    timeout += (ccp->config.tx_holdoff_dly + ccp->blink_frame_duration) * MYNEWT_VAL(UWB_CCP_MAX_CASCADE_RPTS);
 #endif
     uwb_set_rx_timeout(inst, timeout);
     uwb_set_delay_start(inst, dx_time);
@@ -257,7 +261,7 @@ reset_timer:
         + os_cputime_usecs_to_ticks(
             - MYNEWT_VAL(OS_LATENCY)
             + (uint32_t)uwb_dwt_usecs_to_usecs(ccp->period)
-            - uwb_phy_frame_duration(inst, sizeof(uwb_ccp_blink_frame_t))
+            - ccp->blink_frame_duration
             )
         );
 }
@@ -578,10 +582,10 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
     if (inst->frame_len >= sizeof(uwb_ccp_blink_frame_t) && inst->frame_len <= sizeof(frame->array))
         memcpy(frame->array, inst->rxbuf, sizeof(uwb_ccp_blink_frame_t));
     else
-        return false;
+        return true;
 
     if (inst->status.lde_error)
-        return false;
+        return true;
 
     /* A good ccp packet has been received, stop the receiver */
     uwb_stop_rx(inst); //Prevent timeout event
@@ -656,6 +660,9 @@ rx_complete_cb(struct uwb_dev * inst, struct uwb_mac_interface * cbs)
         tx_frame.rpt_count++;
         uint64_t tx_timestamp = frame->reception_timestamp;
         tx_timestamp += tx_frame.rpt_count*((uint64_t)ccp->config.tx_holdoff_dly<<16);
+
+        /* Shift frames so as to reduce risk of frames corrupting each other */
+        tx_timestamp += (inst->slot_id%4)*(((uint64_t)ccp->blink_frame_duration)<<16);
         tx_timestamp &= 0x0FFFFFFFE00UL;
         uwb_set_delay_start(inst, tx_timestamp);
 
@@ -834,7 +841,7 @@ reset_cb(struct uwb_dev *inst, struct uwb_mac_interface * cbs)
 
 /**
  * @fn ccp_send(struct uwb_ccp_instance *ccp, uwb_ccp_modes_t mode)
- * @brief Start clock calibration packets (CCP) blinks with a pulse repetition period of MYNEWT_VAL(CCP_PERIOD).
+ * @brief Start clock calibration packets (CCP) blinks with a pulse repetition period of MYNEWT_VAL(UWB_CCP_PERIOD).
  * Precise timing is achieved by adding a fixed period to the transmission time of the previous frame.
  * This removes the need to explicitly read the systime register and the assiciated non-deterministic latencies.
  * This function is static function for internl use. It will force a Half Period Delay Warning is called at
@@ -917,10 +924,7 @@ ccp_listen(struct uwb_ccp_instance *ccp, uwb_dev_modes_t mode)
 
     CCP_STATS_INC(listen);
 
-    ccp->status = (struct uwb_ccp_status){
-        .rx_timeout_error = 0,
-        .start_rx_error = 0
-    };
+    ccp->status.rx_timeout_error = 0;
     ccp->status.start_rx_error = uwb_start_rx(inst).start_rx_error;
     if (ccp->status.start_rx_error){
         err = dpl_sem_release(&ccp->sem);
