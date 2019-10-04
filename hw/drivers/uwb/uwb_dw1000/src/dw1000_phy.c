@@ -378,8 +378,9 @@ void dw1000_phy_forcetrxoff(struct _dw1000_dev_instance_t * inst)
     assert(err == OS_OK);
 
     inst->control.wait4resp_enabled = 0;
+    inst->control.rxauto_disable = false;
 
-        /* Reset semaphore if needed */
+    /* Reset semaphore if needed */
     if (dpl_sem_get_count(&inst->tx_sem) == 0) {
         os_error_t err = dpl_sem_release(&inst->tx_sem);
         assert(err == OS_OK);

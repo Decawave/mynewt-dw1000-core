@@ -1283,8 +1283,8 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
     inst->uwb_dev.status.txbuf_error = (inst->sys_status & SYS_STATUS_TXBERR) != 0;
 
     if(dpl_sem_get_count(&inst->tx_sem) == 0){
-            dpl_error_t err = dpl_sem_release(&inst->tx_sem);  
-            assert(err == DPL_OK); 
+        dpl_error_t err = dpl_sem_release(&inst->tx_sem);
+        assert(err == DPL_OK);
     }
     
     // leading edge detection complete
@@ -1472,6 +1472,7 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
         dw1000_phy_rx_reset(inst);
 
         inst->control.cir_enable = false;
+        inst->control.rxauto_disable = false;
         // Call the corresponding frame services callback if present
         struct uwb_mac_interface * cbs = NULL;
         if(!(SLIST_EMPTY(&inst->uwb_dev.interface_cbs))){ 
@@ -1498,7 +1499,7 @@ dw1000_interrupt_ev_cb(struct dpl_event *ev)
             dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_HRBT_OFFSET, 0b1, sizeof(uint8_t));
             dw1000_sync_rxbufptrs(inst);
         } else {
-            dw1000_phy_forcetrxoff(inst);
+            dw1000_write_reg(inst, SYS_CTRL_ID, SYS_CTRL_OFFSET, (uint8_t) SYS_CTRL_TRXOFF, sizeof(uint8_t));
             dw1000_phy_rx_reset(inst);
         }
         /* Restart the receiver even if rxauto is not enabled. Timeout remain active if set.
@@ -1644,10 +1645,7 @@ dw1000_estimate_los(float rssi, float fppl)
 
 
 /**
- * With ADAPTIVE_TIMESCALE_ENABLED all time local clock are adjusted to master clock frequency. 
- * The compensated local clock value is offset from the master clock, but the frequency is adjusted 
- * such that any derived time differences values will be the same. WCS_ENABLE && ADAPTIVE_TIMESCALE_ENABLED  
- * is usefull for TDOA and Single-Sided TWR applciaitons. 
+ * API to read system time.
  *
  * @param inst  Pointer to _dw1000_dev_instance_t. 
  * @return time
