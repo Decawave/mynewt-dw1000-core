@@ -28,14 +28,27 @@
 #  - MFG_IMAGE is "1" if this is a manufacturing image
 #  - FLASH_OFFSET contains the flash offset to download to
 #  - BOOT_LOADER is set if downloading a bootloader
-. $CORE_PATH/hw/scripts/openocd.sh
 
-CFG="-f board/stm32f429discovery.cfg"
+if [ -z "$TTK1000_USE_STLINK" ];then
+    echo "using openocd"
+    . $CORE_PATH/hw/scripts/openocd.sh
+    CFG="-f board/stm32f429discovery.cfg"
+    if [ "$MFG_IMAGE" ]; then
+        FLASH_OFFSET=0x08000000
+    fi
 
-if [ "$MFG_IMAGE" ]; then
-    FLASH_OFFSET=0x08000000
+    common_file_to_load
+
+    openocd_load
+    openocd_reset_run
+else
+    echo "using stlink"
+    . $CORE_PATH/hw/scripts/stlink.sh
+
+    if [ "$MFG_IMAGE" ]; then
+        FLASH_OFFSET=0x08000000
+    fi
+
+    common_file_to_load
+    stlink_load
 fi
-
-common_file_to_load
-openocd_load
-openocd_reset_run
