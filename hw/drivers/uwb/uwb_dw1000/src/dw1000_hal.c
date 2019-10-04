@@ -42,7 +42,7 @@
 
 #if MYNEWT_VAL(DW1000_DEVICE_0)
 /* Needed for DMA transfer operations */
-static const uint8_t tx_buffer[MYNEWT_VAL(DW1000_HAL_SPI_BUFFER_SIZE)] __attribute__ ((aligned (8))) = {0};
+static uint8_t tx_buffer[MYNEWT_VAL(DW1000_HAL_SPI_BUFFER_SIZE)] __attribute__ ((aligned (8))) = {0};
 
 static dw1000_dev_instance_t hal_dw1000_instances[]= {
     #if  MYNEWT_VAL(DW1000_DEVICE_0)
@@ -369,16 +369,49 @@ hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cm
 
     err = dpl_sem_pend(inst->spi_sem, DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
+
+    /* Reset the txrx_cb to make sure it has the correct instance
+     * as argument */
+    rc = hal_spi_disable(inst->spi_num);
+    rc |= hal_spi_set_txrx_cb(inst->spi_num, hal_dw1000_spi_txrx_cb, (void*)inst);
+    rc |= hal_spi_enable(inst->spi_num);
+    assert(rc == DPL_OK);
     
     hal_gpio_write(inst->ss_pin, 0);
 
+    /* Faster read for shorter exchanges */
+    if (cmd_size + length < sizeof(tx_buffer) && cmd_size + length < 255) {
+        memset(tx_buffer, 0, cmd_size + length);
+        memcpy(tx_buffer, cmd, cmd_size);
+        rc = hal_spi_txrx_noblock(inst->spi_num, (void*)tx_buffer,
+                                  (void*)tx_buffer, cmd_size+length);
+
+        err = dpl_sem_pend(inst->spi_sem, DPL_TIMEOUT_NEVER);
+        assert(err == DPL_OK);
+
+        memcpy(buffer, tx_buffer+cmd_size, length);
+        err = dpl_sem_release(inst->spi_sem);
+        assert(err == DPL_OK);
+        return;
+    }
+
+    err = dpl_sem_pend(&inst->spi_nb_sem, DPL_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
+
     /* Send command portion */
-    hal_spi_txrx(inst->spi_num, (void*)cmd, 0, cmd_size);
+    rc = hal_spi_txrx_noblock(inst->spi_num, (void*)cmd, tx_buffer, cmd_size);
+    assert(rc==DPL_OK);
+    memset(tx_buffer, 0, (length < sizeof(tx_buffer))? length : sizeof(tx_buffer));
+
+    /* Wait for command to send */
+    err = dpl_sem_pend(&inst->spi_nb_sem, DPL_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
+    err = dpl_sem_release(&inst->spi_nb_sem);
+    assert(err == DPL_OK);
 
     /* Nonblocking reads can only do a maximum of 255 bytes at a time. And
      * not read more than what can fit in the tx_buffer at a time. */
-    int step = (MYNEWT_VAL(DW1000_HAL_SPI_BUFFER_SIZE) > 255) ? 255 :
-        MYNEWT_VAL(DW1000_HAL_SPI_BUFFER_SIZE);
+    int step = (sizeof(tx_buffer) > 255)? 255 : sizeof(tx_buffer);
     int bytes_left = length;
     for (int offset = 0;offset<length;offset+=step) {
         int bytes_to_read = (bytes_left > step) ? step : bytes_left;
@@ -390,11 +423,6 @@ hal_dw1000_read_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cm
             assert(err == DPL_OK);
         }
    
-        rc = hal_spi_disable(inst->spi_num);
-        rc |= hal_spi_set_txrx_cb(inst->spi_num, hal_dw1000_spi_txrx_cb, (void*)inst);   
-        rc |= hal_spi_enable(inst->spi_num);
-        assert(rc == DPL_OK);
-
         rc = hal_spi_txrx_noblock(inst->spi_num, (void*)tx_buffer,
                                   (void*)buffer+offset, bytes_to_read);
         assert(rc==DPL_OK);
@@ -463,19 +491,46 @@ hal_dw1000_write(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint
 void 
 hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * cmd, uint8_t cmd_size, uint8_t * buffer, uint16_t length)
 {
-    int rc = OS_OK;
+    int rc = DPL_OK;
     dpl_error_t err;
     assert(length);
     assert(inst->spi_sem);
     err = dpl_sem_pend(inst->spi_sem, DPL_TIMEOUT_NEVER);
     assert(err == DPL_OK);
 
+    /* Reset the txrx_cb to make sure it has the correct instance
+     * as argument */
+    rc = hal_spi_disable(inst->spi_num);
+    rc |= hal_spi_set_txrx_cb(inst->spi_num, hal_dw1000_spi_txrx_cb, (void*)inst);
+    rc |= hal_spi_enable(inst->spi_num);
+    assert(rc == DPL_OK);
+
     hal_gpio_write(inst->ss_pin, 0);
-    rc = hal_spi_txrx(inst->spi_num, (void*)cmd, 0, cmd_size);
-    assert(rc == OS_OK);
+
+    /* If command and data fit in tx_buffer, send immediately */
+    if (cmd_size + length < sizeof(tx_buffer) && cmd_size + length < 255) {
+        memcpy(tx_buffer, cmd, cmd_size);
+        memcpy(tx_buffer+cmd_size, buffer, length);
+
+        rc = hal_spi_txrx_noblock(inst->spi_num, (void*)tx_buffer,
+                                  tx_buffer, cmd_size + length);
+        assert(rc==DPL_OK);
+        return;
+    }
+    err = dpl_sem_pend(&inst->spi_nb_sem, DPL_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
+
+    rc = hal_spi_txrx_noblock(inst->spi_num, (void*)cmd, tx_buffer, cmd_size);
+    assert(rc==DPL_OK);
+
+    /* Wait for cmd to finish sending */
+    err = dpl_sem_pend(&inst->spi_nb_sem, DPL_TIMEOUT_NEVER);
+    assert(err == DPL_OK);
+    err = dpl_sem_release(&inst->spi_nb_sem);
+    assert(err == DPL_OK);
 
     /* Nonblocking writes can only do a maximum of 255 bytes at a time */
-    int step = 255;
+    int step = (sizeof(tx_buffer) > 255)? 255 : sizeof(tx_buffer);
     int bytes_left = length;
     for (int offset = 0;offset<length;offset+=step) {
         int bytes_to_write = (bytes_left > step) ? step : bytes_left;
@@ -487,14 +542,9 @@ hal_dw1000_write_noblock(struct _dw1000_dev_instance_t * inst, const uint8_t * c
             assert(err == DPL_OK);
         }
 
-        rc = hal_spi_disable(inst->spi_num);
-        rc |= hal_spi_set_txrx_cb(inst->spi_num, hal_dw1000_spi_txrx_cb, (void*)inst);   
-        rc |= hal_spi_enable(inst->spi_num);
-        assert(rc == OS_OK);
-
         rc = hal_spi_txrx_noblock(inst->spi_num, (void*)buffer+offset,
-                                  0, bytes_to_write);
-        assert(rc==OS_OK);
+                                  tx_buffer, bytes_to_write);
+        assert(rc==DPL_OK);
 
         /* Only wait for this round if there is more data to read */
         if (bytes_left) {

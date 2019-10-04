@@ -27,11 +27,23 @@
 #  - RESET set if target should be reset when attaching
 #  - NO_GDB set if we should not start gdb to debug
 #
-. $CORE_PATH/hw/scripts/openocd.sh
 
-FILE_NAME=$BIN_BASENAME.elf
-CFG="-f board/stm32f429discovery.cfg"
-# Exit openocd when gdb detaches.
-EXTRA_JTAG_CMD="$EXTRA_JTAG_CMD; stm32f4x.cpu configure -event gdb-detach {if {[stm32f4x.cpu curstate] eq \"halted\"} resume;shutdown}"
+if [ -z "$TTK1000_USE_STLINK" ];then
+    echo "using openocd"
+    . $CORE_PATH/hw/scripts/openocd.sh
 
-openocd_debug
+    FILE_NAME=$BIN_BASENAME.elf
+    CFG="-f board/stm32f429discovery.cfg"
+    # Exit openocd when gdb detaches.
+    EXTRA_JTAG_CMD="$EXTRA_JTAG_CMD; stm32f4x.cpu configure -event gdb-detach {if {[stm32f4x.cpu curstate] eq \"halted\"} resume;shutdown}"
+
+    openocd_debug
+else
+    echo "using stlink"
+    . $CORE_PATH/hw/scripts/stlink.sh
+
+    FILE_NAME=$BIN_BASENAME.elf
+    # Exit openocd when gdb detaches.
+
+    stlink_debug
+fi
