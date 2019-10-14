@@ -185,12 +185,9 @@ ccp_master_timer_ev_cb(struct dpl_event *ev)
     CCP_STATS_INC(master_cnt);
 
     if (ccp_send(ccp, UWB_BLOCKING).start_tx_error){
+        os_cputime_timer_stop(&ccp->timer);
         os_cputime_timer_start(&ccp->timer, ccp->os_epoch
             + os_cputime_usecs_to_ticks((uint32_t)uwb_dwt_usecs_to_usecs(ccp->period) << 1)
-        );
-    }else{
-        os_cputime_timer_start(&ccp->timer, ccp->os_epoch
-            + os_cputime_usecs_to_ticks((uint32_t)uwb_dwt_usecs_to_usecs(ccp->period))
         );
     }
 }
